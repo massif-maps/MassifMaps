@@ -29,6 +29,7 @@ import com.massifmaps.MassifDemo.demo.DemoConfig;
 import com.massifmaps.MassifDemo.demo.DemoLive;
 import com.massifmaps.MassifDemo.demo.DemoMap;
 import com.massifmaps.MassifDemo.demo.DemoPanel;
+import com.massifmaps.MassifDemo.demo.FpsCounter;
 import com.massifmaps.components.Options;
 import com.massifmaps.components.PanningMode;
 import com.massifmaps.core.MapPos;
@@ -69,6 +70,7 @@ public class SecondFragment extends Fragment {
     private DemoMap demo;
     private android.content.BroadcastReceiver liveConfigReceiver;
     private TextView zoomText;
+    private FpsCounter fpsCounter; // the director holds a weak reference
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Nullable
@@ -105,6 +107,9 @@ public class SecondFragment extends Fragment {
             mapView.setRenderMode(android.opengl.GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         }
         DemoConfig.applyIntentOverrides();
+        if (DemoConfig.SHOW_FPS) {
+            fpsCounter = FpsCounter.attach(mapView, (ViewGroup) view);
+        }
 
         checkStoragePermission(view);
         return view;

@@ -43,7 +43,7 @@ namespace massif {
         _drawDistance(16),
         _labelViewDistance(static_cast<float>(vt::LabelDistance::DEFAULT_VIEW_DISTANCE)),
         _labelPadding(-1.0f),
-        _fovY(70),
+        _fovY(36.87f),
         _panningMode(PanningMode::PANNING_MODE_FREE),
         _pivotMode(PivotMode::PIVOT_MODE_TOUCHPOINT),
         _seamlessPanning(true),

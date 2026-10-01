@@ -41,21 +41,21 @@ namespace massif {
             return std::max(std::max(0.0, std::max(cameraZ, maxZoomOrbit)) * fractionOr(fraction), floorZ);
         }
 
-        // Height above the shell, in shells, where the focus stops following the ground; not mapbox's,
-        // whose always-pinned centre makes a pan across a ridge bob the whole camera.
-        static constexpr double FOLLOW_BAND = 4.0;
-
         /**
-         * How much of the ground's height the focus takes: all at the shell, none FOLLOW_BAND shells above, linear between.
-         * @param clearance The camera's height above the ground under it, with the focus pinned to the ground
-         *                  (the lift moves the camera, so feeding back the current height would oscillate).
-         * @param minHeight The shell, from minHeight() above.
+         * maplibre's recalculateZoomAndCenter, after a gesture held the focus height: the camera stays, the focus slides
+         * along the view ray onto the ground, and the zoom follows the new distance. False for a ray that never meets it.
+         * @param cameraZ The camera height.
+         * @param dirZ The view direction's z (unit vector).
+         * @param groundZ The height the focus is to land at.
+         * @param distance The current camera-to-focus distance.
+         * @param newDistance The camera-to-focus distance once on the ground.
          */
-        static double focusFollow(double clearance, double minHeight) {
-            if (!(minHeight > 0) || !(clearance > minHeight)) {
-                return 1.0;
+        static bool groundAlongView(double cameraZ, double dirZ, double groundZ, double distance, double& newDistance) {
+            if (!(dirZ < -1.0e-6) || !(distance > 0) || !(cameraZ > groundZ)) {
+                return false;
             }
-            return std::max(0.0, 1.0 - (clearance - minHeight) / (minHeight * (FOLLOW_BAND - 1)));
+            newDistance = (groundZ - cameraZ) / dirZ;
+            return std::isfinite(newDistance) && newDistance > 0;
         }
 
         /**

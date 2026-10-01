@@ -711,6 +711,10 @@ Defaulting them instead of translating only what is stated would turn the occlus
 every label of every converted style; it costs ~0.85 ms a frame and both scopes above it default to
 off. See [labels](../internals/rendering/06-labels.mdx#asking-for-it) for the three scopes.
 
+`symbol-z-elevate` becomes `text-z-elevate` (`shield-z-elevate` on a shield): the label is drawn on
+the roof of the 3D building its anchor stands in, see
+[06-labels](../internals/rendering/06-labels.mdx#per-label-occlusion-by-3d-content).
+
 ## What mapbox2css does not carry
 
 Every skipped property is counted and named — `mapbox2css` prints a coverage report, and `--strict`
@@ -1636,11 +1640,18 @@ own table, and a subset that drops it stops answering to the name the style asks
 
 The SDK's zoom number sits `log2(512 / TileDrawSize)` levels above MapBox's — a level at the default
 256, none at all for an app that adopted maplibre's 512. Every zoom stop and every zoom predicate
-carries that shift, so `--tile-draw-size` has to state what the style will be DRAWN at.
+carries that shift for the size `--tile-draw-size` names (256 by default), and the Map block records
+it as `tile-draw-size`.
 
-Converted at 256 and drawn at 512, a trunk casing measured 5.2 px where maplibre gave 7.6 at the
-same camera: the whole style renders a level behind, which reads as roads that are simply too thin
-rather than as a zoom error.
+The SDK then shifts the zoom the style reads by `log2(app / tile-draw-size)` levels
+(`Map::Settings::zoomShift`): the decode zoom the selectors gate on, and the `[view::zoom]` every
+style function and Map-block property reads each frame. So a style converted at 512 draws the same
+at an app's 256, and the flag only says which numbers the stylesheet is written in. A style with no
+`tile-draw-size` is read unshifted, as before.
+
+Without the shift, Massif (written for 512) on an app left at 256 rendered a level AHEAD: roads ~1.7x
+wide, rail sleepers a band, water taps at z13. The reverse - converted at 256, drawn at 512 - had a
+trunk casing at 5.2 px where maplibre gave 7.6: a level behind, roads that read as simply too thin.
 
 ## Which road is drawn on top
 

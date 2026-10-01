@@ -2,6 +2,7 @@
 #include "renderers/utils/GLContext.h"
 #include "terrain/DrapeEviction.h"
 #include "terrain/DrapeStandIn.h"
+#include "terrain/DrapeTuning.h"
 #include "utils/Log.h"
 
 #include <vt/RenderStats.h>
@@ -20,7 +21,7 @@ namespace massif {
     // Keep a generation of tiles past the visible cover: a zoom or pan walks back over the same
     // tiles and re-acquiring means re-baking every layer of each. A BYTE budget, not a tile count -
     // 160 entries are 10 MB at 128 and 640 MB at 1024. docs/internals/rendering/04-terrain.md.
-const std::size_t TerrainDrapeCache::MAX_BYTES = 96 * 1024 * 1024;
+const std::size_t TerrainDrapeCache::MAX_BYTES = 192 * 1024 * 1024;
 const std::size_t TerrainDrapeCache::MIN_ENTRIES = 24;
 const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
 
@@ -43,7 +44,8 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         _stackSignature(0),
         _frameBuffer(0),
         _entries(),
-        _texturePool(),
+        _texturePools(),
+        _maskTexturePools(),
         _frameCounter(0)
     {
     }
@@ -74,16 +76,15 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             glDeleteTextures(1, &texture);
         }
         _entries.clear();
-        for (unsigned int texture : _texturePool) {
-            GLuint tex = texture;
-            glDeleteTextures(1, &tex);
+        for (std::map<int, std::vector<unsigned int>>* pools : { &_texturePools, &_maskTexturePools }) {
+            for (auto it = pools->begin(); it != pools->end(); it++) {
+                for (unsigned int texture : it->second) {
+                    GLuint tex = texture;
+                    glDeleteTextures(1, &tex);
+                }
+            }
+            pools->clear();
         }
-        _texturePool.clear();
-        for (unsigned int texture : _maskTexturePool) {
-            GLuint tex = texture;
-            glDeleteTextures(1, &tex);
-        }
-        _maskTexturePool.clear();
     }
 
     void TerrainDrapeCache::setStackSignature(std::size_t signature) {
@@ -130,8 +131,8 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
     }
 #endif
 
-    unsigned int TerrainDrapeCache::createTexture(bool mask) {
-        std::vector<unsigned int>& pool = (mask ? _maskTexturePool : _texturePool);
+    unsigned int TerrainDrapeCache::createTexture(bool mask, int resolution) {
+        std::vector<unsigned int>& pool = (mask ? _maskTexturePools : _texturePools)[resolution];
         if (!pool.empty()) {
             unsigned int texture = pool.back();
             pool.pop_back();
@@ -143,9 +144,9 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         // A coverage mask is one channel: R8 (core in ES3, which both platforms require - see
         // CLAUDE.md) rather than a quarter-used RGBA, so a mask costs a quarter of a drape.
         if (mask) {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _resolution, _resolution, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, resolution, resolution, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
         } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _resolution, _resolution, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, resolution, resolution, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         // Mipmapped, because a drape texture is almost always MINIFIED: the bake resolution is sized
@@ -168,12 +169,50 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         return texture;
     }
 
+    void TerrainDrapeCache::pool(unsigned int texture, bool mask, int resolution) {
+        std::vector<unsigned int>& pool = (mask ? _maskTexturePools : _texturePools)[resolution];
+        if (pool.size() < MAX_POOLED_TEXTURES) {
+            pool.push_back(texture);
+        } else {
+            GLuint tex = texture;
+            glDeleteTextures(1, &tex);
+        }
+    }
+
+    void TerrainDrapeCache::recycle(unsigned int texture, bool mask, int resolution) {
+        if (texture != 0) {
+            pool(texture, mask, resolution);
+        }
+    }
+
+    int TerrainDrapeCache::getTextureResolution(const vt::TileId& tileId, int stack) const {
+        auto it = _entries.find(Key { tileId, stack });
+        return it != _entries.end() && it->second.texture != 0 ? it->second.resolution : 0;
+    }
+
     unsigned int TerrainDrapeCache::acquire(const vt::TileId& tileId, int stack, std::size_t fingerprint, bool& needsBake, bool& hasContent) {
+        return acquire(tileId, stack, fingerprint, 0, nullptr, needsBake, hasContent);
+    }
+
+    unsigned int TerrainDrapeCache::acquire(const vt::TileId& tileId, int stack, std::size_t fingerprint, int resolution, unsigned int* replaced, bool& needsBake, bool& hasContent) {
+        int size = (resolution > 0 ? std::min(2048, std::max(128, resolution)) : _resolution);
         Key key { tileId, stack };
         Entry& entry = _entries[key];
+        if (replaced) {
+            *replaced = 0;
+        }
+        if (entry.texture != 0 && entry.resolution != size && DrapeTuning::needsResize(entry.resolution, size)) {
+            if (replaced) {
+                *replaced = entry.texture;
+            } else {
+                pool(entry.texture, stack > 0, entry.resolution);
+            }
+            entry.texture = 0;
+        }
         if (entry.texture == 0) {
-            entry.texture = createTexture(stack > 0);
-            entry.bytes = static_cast<std::size_t>(_resolution) * _resolution * (stack > 0 ? 1 : 4);
+            entry.texture = createTexture(stack > 0, size);
+            entry.resolution = size;
+            entry.bytes = static_cast<std::size_t>(size) * size * (stack > 0 ? 1 : 4);
             entry.baked = false;
             entry.seeded = false;
             entry.stale = false;
@@ -386,13 +425,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             if (it == _entries.end()) {
                 continue;
             }
-            std::vector<unsigned int>& pool = (candidates[i].second.stack > 0 ? _maskTexturePool : _texturePool);
-            if (pool.size() < MAX_POOLED_TEXTURES) {
-                pool.push_back(it->second.texture);
-            } else {
-                GLuint texture = it->second.texture;
-                glDeleteTextures(1, &texture);
-            }
+            pool(it->second.texture, candidates[i].second.stack > 0, it->second.resolution);
             if (candidates[i].second.stack == 0) {
                 bytes -= std::min(bytes, it->second.bytes); // the budget counts colour drapes only
                 colourEntries -= (colourEntries > 0 ? 1 : 0);
@@ -410,16 +443,15 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             glDeleteTextures(1, &texture);
         }
         _entries.clear();
-        for (unsigned int texture : _texturePool) {
-            GLuint tex = texture;
-            glDeleteTextures(1, &tex);
+        for (std::map<int, std::vector<unsigned int>>* pools : { &_texturePools, &_maskTexturePools }) {
+            for (auto it = pools->begin(); it != pools->end(); it++) {
+                for (unsigned int texture : it->second) {
+                    GLuint tex = texture;
+                    glDeleteTextures(1, &tex);
+                }
+            }
+            pools->clear();
         }
-        _texturePool.clear();
-        for (unsigned int texture : _maskTexturePool) {
-            GLuint tex = texture;
-            glDeleteTextures(1, &tex);
-        }
-        _maskTexturePool.clear();
         if (_frameBuffer != 0) {
             GLuint fbo = _frameBuffer;
             glDeleteFramebuffers(1, &fbo);

@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from layers import boundaries, buildings, imagery, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
-from lib import FONTS, fold_config, night_inverted, occlusion  # noqa: E402
+from lib import FONTS, fold_config, night_inverted, occlusion, on_roof, wider_halo  # noqa: E402
 from params import PARAMS  # noqa: E402
 import legend  # noqa: E402
 
@@ -39,9 +39,9 @@ class Variant:
         self.flags = flags
 
     def layers(self):
-        out = [occlusion(lay) for part in self.parts for lay in part(self)]
+        out = [on_roof(occlusion(lay)) for part in self.parts for lay in part(self)]
         if self.flags.get('mono'):
-            out = [night_inverted(lay) for lay in out]
+            out = [wider_halo(night_inverted(lay), 1) for lay in out]
         # `lighting` 0 (e-ink, a flat OSM look): every colour as stated, lit by nothing, so white
         # stays white and a road never reads whiter than the ground it crosses
         for lay in out:
@@ -88,8 +88,8 @@ HYBRID = [land.background, imagery.layers, outdoor.hillshade, outdoor.contours, 
           outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
           labels.places]
 
-# a walker's map brings the campsites in with the huts
-OUTDOOR_PARAMS = {'campsite_min_zoom': 13}
+# a walker's map brings the campsites in with the huts, and its water points early
+OUTDOOR_PARAMS = {'campsite_min_zoom': 13, 'water_min_zoom': 13}
 
 VARIANTS = {v.name: v for v in [
     Variant('streets', 'Massif Streets', STREETS, sources=('dem', 'contours')),

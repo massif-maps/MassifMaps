@@ -341,7 +341,7 @@ namespace massif {
         if (!_map) {
             return mvt::ResolvedLayerConfig();
         }
-        return mvt::resolveLayerConfig(*_map, layerName, viewZoom, _parameterStore);
+        return mvt::resolveLayerConfig(*_map, layerName, viewZoom + _map->getSettings().zoomShift(_tileSize), _parameterStore);
     }
 
     std::vector<int> MBVectorTileDecoder::getStyleLayerZoomRange(const std::string& layerName) const {

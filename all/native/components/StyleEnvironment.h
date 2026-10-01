@@ -27,6 +27,8 @@ namespace massif {
      * Internal class, not exposed through the public API.
      */
     struct StyleEnvironment {
+        // Map::Settings::zoomShift at the app's TileDrawSize, added to the zoom every style function reads.
+        float zoomShift = 0.0f;
         std::optional<float> sunAzimuth;
         std::optional<float> sunAltitude;
         std::optional<Color> sunColor;

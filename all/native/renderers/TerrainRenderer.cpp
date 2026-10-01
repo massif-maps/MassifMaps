@@ -1019,7 +1019,7 @@ namespace massif {
         // terrain LOD is distance based, so a near tile may sit above the camera zoom.
         int zoomOffset = terrainOptions->getMaxTileZoomOffset();
         if (zoomOffset < 100) {
-            maxZoom = std::min(maxZoom, static_cast<int>(viewState.getZoom() + 0.001f) + zoomOffset);
+            maxZoom = std::min(maxZoom, static_cast<int>(viewState.getRenderZoom() + 0.001f) + zoomOffset);
         }
         for (;;) {
             tiles.clear();

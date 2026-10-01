@@ -426,7 +426,7 @@ ahead.
 
 **...except that the byte budget was silently taking it back.** The ladder above is only the first
 half of `resolveDrapeResolution`; the second caps it at the largest power of two a working cover
-still fits in the drape cache's 96 MB (`DrapeTuning::resolution`). With `DRAPE_WORKING_SET` at 64
+still fitted in the drape cache's 96 MB of then (`DrapeTuning::resolution`). With `DRAPE_WORKING_SET` at 64
 that cap was 512 on **every** device — 64 × 1024² × 4 B is 256 MB — so the screen's 1024 was asked
 for and never granted, and the comparison above was wrong in our favour: we were baking at half
 mapbox's linear resolution, a quarter of the texels, which is the blurry stretched drape at a
@@ -436,12 +436,23 @@ holds one cover and not the generation stand-ins read from, so it went back to *
 ([two generations](#the-cache-has-to-hold-two-generations-not-one)): the default bake is 512 again,
 and 1024 is the app's to buy with `DrapeCacheSize`.
 
-**Still open: the oblique near ground.** At a low tilt the ground at the bottom of the screen is
-magnified several times past what a cover at `floor(camera zoom)` resolves, and neither model splits
-deeper there — `--es drapeResolution 2048` visibly sharpens it, which is what says it is texel-bound
-rather than cover-bound. The fix would be a per-tile resolution (near leaves large, far leaves
-small, same byte budget) or a split rule with a pitch term; mapbox's `distToSplitScale` is not it,
-that one makes grazing tiles *coarser*.
+**Each leaf is sized by its own footprint** (`DrapeTuning::leafResolutions`, `MapRenderer`'s drape
+block), which is what the paragraphs above were missing: one size for the whole cover magnified the
+oblique near ground 3-4x and wasted texels on off-screen leaves. Per leaf, a 9 x 9 grid of points is
+projected at the focus height; where a point lands on screen (plus a quarter-screen margin, or a
+coarse far leaf's sliver falls between samples) the local pixels per tile width are taken, and the
+largest is the leaf's demand, rounded up to a power of two in [128, 2048]. A leaf seen nowhere takes
+its smallest in-front scale. The cover then has to fit HALF the cache (the other half is the
+previous generation): the largest leaf is halved first, the most over-sampled of equals before the
+rest. Halving the most over-sampled first was tried and starved the cover: a leaf at the bottom edge
+asking for 50 000 px kept 2048 while everything else fell to 128.
+
+A cached texture is replaced only to sharpen, or once it is 4x the demand (`DrapeTuning::needsResize`),
+and the old picture is blitted into the new one, so a leaf grows without a blank frame. An app's
+`DrapeResolution` keeps one size for every leaf, as before. The default cache went 96 -> **192 MB**
+with it (cover 96 MB, about MapLibre's ~30 x 1024^2 RTT tiles). Measured, emulator 1080 x 2400,
+Cours Jean Jaures tilt 30: z18.77, 24 leaves all 512 before, all 1024 after; z20.08, 57 leaves, 14 at
+1024, 37 at 512, 6 off-screen at 128.
 
 ### The drape cache: budget, seeding, and completeness
 
@@ -1183,14 +1194,16 @@ zoom from driving the camera into the ground in the first place.
 `TerrainOptions::CameraClampDuration` animated that correction and no longer has anything to
 animate.
 
-**The focus follows the ground only NEAR the shell**, which is a second divergence.
-mapbox pins the centre to the terrain at every altitude (`_centerAltitude`), and because the lift
-carries the camera with it, a pan across a ridge lifted the whole view - the map visibly bobbing
-from far above the ground, which is what the previous paragraph's tilt fix only halved.
-`CameraClearance::focusFollow` ramps it instead: the full ground height at the shell, none of it
-`FOLLOW_BAND` (4) shells above, linear between. Everything feeding the ramp is measured with the
-focus PINNED - the lift moves the camera, so a ramp fed the CURRENT height would drive its own
-input and oscillate.
+**The focus is on the ground, held while a finger is down: maplibre's model.** maplibre pins the centre to
+the terrain every frame, so a zoom is the distance to the ground at every altitude; during a drag,
+pinch or fling (`elevationFreeze`) the centre keeps its height, and at the end
+`recalculateZoomAndCenter` holds the camera and slides the centre down the view ray onto the ground,
+the zoom re-derived from the new distance (`CameraClearance::groundAlongView`,
+`MapRenderer::landFocusAlongView`). Pinned during the drag too, as mapbox does, a pan across a ridge
+bobbed the whole view. The ramp it replaced (`focusFollow`: the ground's height only near the shell,
+sea level 4 shells above) left the zoom measured to sea level over high ground: at z16 over
+Grenoble (212 m) the camera hung tens of metres above the roofs, the drape a level short of the
+view.
 
 **Both work on the globe too.** They read a camera or focus position through
 `ProjectionSurface::calculateMapPos`, so a sphere's 3D point becomes the internal x/y an elevation

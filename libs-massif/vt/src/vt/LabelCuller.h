@@ -74,6 +74,10 @@ namespace massif::vt {
         struct CullRecord {
             cglib::bbox2<float> bounds;
             std::array<cglib::vec2<float>, 4> envelope;
+            // The boxes it collides by when the envelope claims more than it covers (Label::calculateVariantEnvelopes):
+            // a name and its icon, a line run's glyphs. Empty = the envelope.
+            std::vector<std::array<cglib::vec2<float>, 4>> parts;
+            std::vector<cglib::bbox2<float>> partBounds;
             long long localId = 0;
             bool allowOverlapSameFeatureId = false;
             // The envelope is a screen-aligned rectangle, so its bounds ARE its shape and two such

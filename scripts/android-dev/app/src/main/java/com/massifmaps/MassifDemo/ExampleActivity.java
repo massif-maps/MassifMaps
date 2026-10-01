@@ -22,6 +22,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
+import com.massifmaps.MassifDemo.demo.FpsCounter;
 import com.massifmaps.MassifDemo.examples.ExampleHost;
 import com.massifmaps.MassifDemo.examples.ExampleLive;
 import com.massifmaps.MassifDemo.examples.Examples;
@@ -53,6 +54,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     private MapView mapView;
+    private FpsCounter fpsCounter; // the director holds a weak reference
     private MassifMap map;
     private boolean settingsBuilt;
     private MapExample example;
@@ -92,6 +94,9 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         com.massifmaps.utils.Log.setShowError(true);
 
         mapView = findViewById(R.id.mapView);
+        if ("true".equals(getIntent().getStringExtra("showFps"))) {
+            fpsCounter = FpsCounter.attach(mapView, (ViewGroup) findViewById(R.id.exampleRoot));
+        }
         controls = findViewById(R.id.controls);
         sliders = findViewById(R.id.sliders);
         caption = findViewById(R.id.caption);

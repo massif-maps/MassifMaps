@@ -1505,6 +1505,9 @@ public class DemoMap {
         }
         mapView.getOptions().setTileLODMaxZoomLevelsOnScreen(DemoConfig.TILE_LOD_LEVELS_ON_SCREEN);
         mapView.getOptions().setTileLODTileCountRatio(DemoConfig.TILE_LOD_COUNT_RATIO);
+        if (DemoConfig.FIELD_OF_VIEW_Y > 0) {
+            mapView.getOptions().setFieldOfViewY(DemoConfig.FIELD_OF_VIEW_Y);
+        }
     }
 
     /** Plane or sphere. Rebuilds every tile layer's transformer, so the tile caches drop and refill. */

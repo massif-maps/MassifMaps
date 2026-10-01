@@ -7,7 +7,9 @@
 #ifndef _MASSIF_DRAPETUNING_H_
 #define _MASSIF_DRAPETUNING_H_
 
+#include <algorithm>
 #include <cstddef>
+#include <vector>
 
 namespace massif {
 
@@ -34,6 +36,54 @@ namespace massif {
                 size /= 2;
             }
             return size;
+        }
+
+        /**
+         * One resolution per cover leaf, each the power of two its on-screen footprint asks for, then the largest
+         * halved (the most over-sampled of equals first) until the cover fits budgetBytes: an oblique near leaf spans
+         * thousands of pixels, a far one a few hundred, and one shared size blurred the first and wasted the second.
+         * @param edgePixels Per leaf, its longest projected edge in device pixels.
+         * @param budgetBytes What the whole cover may take; 0 for no budget at all.
+         */
+        static std::vector<int> leafResolutions(const std::vector<double>& edgePixels, std::size_t budgetBytes, int minResolution, int maxResolution) {
+            std::vector<int> sizes;
+            sizes.reserve(edgePixels.size());
+            std::size_t bytes = 0;
+            for (double edge : edgePixels) {
+                int size = minResolution;
+                while (size < edge && size < maxResolution) {
+                    size *= 2;
+                }
+                sizes.push_back(size);
+                bytes += bytesPerTile(size);
+            }
+            while (budgetBytes > 0 && bytes > budgetBytes) {
+                std::size_t pick = sizes.size();
+                double worst = 0;
+                for (std::size_t i = 0; i < sizes.size(); i++) {
+                    // Largest first: halving the most over-sampled first starved the cover to feed the one leaf at
+                    // the bottom edge asking for 50000 px, which no size satisfies.
+                    double excess = sizes[i] / std::max(1.0, edgePixels[i]);
+                    if (sizes[i] > minResolution && (pick == sizes.size() || sizes[i] > sizes[pick] || (sizes[i] == sizes[pick] && excess > worst))) {
+                        pick = i;
+                        worst = excess;
+                    }
+                }
+                if (pick == sizes.size()) {
+                    break;
+                }
+                bytes -= bytesPerTile(sizes[pick]) - bytesPerTile(sizes[pick] / 2);
+                sizes[pick] /= 2;
+            }
+            return sizes;
+        }
+
+        /**
+         * Whether a cached texture of `current` texels must be replaced for one of `wanted`: at once to sharpen,
+         * only past a factor of 4 to shrink, so a leaf near a size boundary does not re-bake as the camera moves.
+         */
+        static bool needsResize(int current, int wanted) {
+            return wanted > current || wanted * 4 <= current;
         }
 
         static std::size_t bytesPerTile(int size) {

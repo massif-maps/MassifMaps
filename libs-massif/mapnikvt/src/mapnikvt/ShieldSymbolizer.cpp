@@ -169,8 +169,10 @@ namespace massif::mvt {
             bitmapSize = static_cast<float>(std::max(backgroundImage->bitmap->width, backgroundImage->bitmap->height)) * imageScale;
         }
         float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale * pixelScale;
-        float collisionPadding = _collisionPadding.getValue(exprContext) * fontScale * pixelScale;
+        float collisionPadding = _collisionPadding.getValue(exprContext) * fontScale; // grows the box in glyph units, scaled to pixels with it
         float maxDistance = _maxDistance.getValue(exprContext);
+        float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
+        bool zElevate = _zElevate.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         vt::FloatFunction rankFunc = _rank.getFunction(exprContext);
         vt::FloatFunction emissiveFunc = _emissive.getFunction(exprContext);
@@ -355,10 +357,14 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, collisionPadding, maxDistance, anchors, textRadialOffset, textOptional, iconGlyphs, iconColorFunc, iconOpacityFunc, textLineAlign, textPlate, iconPlate, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, collisionPadding, maxDistance, occlusionOpacity, zElevate, anchors, textRadialOffset, textOptional, iconGlyphs, iconColorFunc, iconOpacityFunc, textLineAlign, textPlate, iconPlate, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, imageScale, backgroundOffset, backgroundImage, maxDistance,
                                      std::optional<vt::ColorFunction>(), rankFunc);
             style.collisionPadding = collisionPadding;
+            if (occlusionOpacity >= 0.0f) {
+                style.occlusionOpacity = occlusionOpacity;
+            }
+            style.zElevate = zElevate;
             style.emissiveFunc = emissiveFunc;
             style.haloEmissiveFunc = haloEmissiveFunc;
             style.iconHaloColorFunc = iconHaloColorFunc;

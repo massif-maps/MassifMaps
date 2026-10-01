@@ -59,6 +59,11 @@ palette plus the modules it adds.
   off `surface_detail` (gravel, ground, dirt...). Only Alpimaps' planetiler writes that field.
 - **Tracks and paths are named**, in italic and their own ink, from z14 and z15: the name, else the
   ref (a greenway's `V 64`).
+- **Oneway arrows** are a dark arrow in a white edge (`oneway-ink`, e-ink's black `oneway-dark`): a
+  white one vanished on a white street. From z16, as Standard; the SDK spaces them along the whole way
+  and puts none on a stub too short for two.
+- **A cycleway's ribbon is a path's**, the green dash laid over it as Standard's: drawn green, it was
+  a solid band wherever no road covered it and a dash where one did.
 - **Tunnels and bridges are their own passes**: a tunnel is the road at half opacity with a dashed
   casing, drawn under everything; a bridge is drawn after the rail it crosses, with a darker casing.
 - **Links** (OMT `ramp=1`) take Standard's `*_link` widths.
@@ -150,7 +155,8 @@ colour's lightness mirrored past brightness 0.25-0.3, so the page goes black and
 
 - **Patterns** from `sprite-src/pattern/`, the ones Alpimaps' e-ink style uses: openstreetmap-carto's
   trees, scrub, wetland, rock, beach, ice sheet, graves and hatching, baked to one grey at 45 %
-  alpha on a clear ground so a road still reads through them; dots for grass and parks. Each lays
+  alpha on a clear ground so a road still reads through them; dots for grass and parks. Rock is our
+  own sparse scree marks: the openstreetmap-carto texture was a grey noise over two thirds of the tile. Each lays
   over a flat grey fill from the zoom its texture says something (`PATTERNS` in `layers/land.py`,
   Alpimaps' zooms: wood 11, rock and scree 12, wetland 13, parks and graves 14), because a pattern
   is a textured fill per tile and at z8 a wood's trees are noise. A patterned fill is its own layer
@@ -170,6 +176,8 @@ colour's lightness mirrored past brightness 0.25-0.3, so the page goes black and
   roads are an uncased light grey line at the other variants' width, fading to white over z12-13 as
   their casing grows (`casing-from`). **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood.
+- **Every label's halo is a pixel wider** (`lib.wider_halo`): a black word on a thin halo was lost over
+  a dark pattern or a road casing.
 - **Shields** are one white plate with a black ring, for every country.
 - **Buildings** are outlined grey footprints to z15, then grey 3D blocks as in the other variants
   (`building_opacity` looking down, opaque once the camera leans in).
@@ -215,7 +223,7 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
   bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
-- `water_min_zoom` (14) — drinking water and springs; 12 to plan a hike by its water.
+- `water_min_zoom` (17; 13 on outdoor, topo, e-ink) — drinking water and springs; 12 to plan a hike by its water.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
@@ -226,7 +234,13 @@ Switches (0/1):
 - `road_shields` (1), `show_boundaries` (1), `sub_boundaries` (1, states and communes).
 - `show_tram` (1), `show_underground` (1, rail and metro in tunnels), `emphasis_rails` (0: main
   lines, no `service`, dark and wide from z6).
-- `highlight_drinking_water` (0) — water points larger and placed over any other label.
+- `highlight_drinking_water` (0) — water points larger, placed over any other label, and from z12
+  whatever `water_min_zoom` says.
+- `label_occlusion` (1) — road names, POIs and natural labels hidden behind a 3D building (a POI is
+  tested from the roof it stands under, [06-labels](../../docs/internals/rendering/06-labels.mdx#per-label-occlusion-by-3d-content));
+  0 casts no ray at all.
+- `poi_on_roof` (0) — a POI inside a 3D building is drawn on its roof, as Mapbox Standard's
+  `symbol-z-elevate` does; SDK only, MapLibre keeps it on the ground.
 - `show_caravan_site` (1), `campsite_allow_overlap` (0) — each campsite layer comes twice, with and
   without overlap, since overlap is decided per layer.
 - `polygons_border` (0; 1 on e-ink) — every landcover (dotted) and landuse polygon edged.

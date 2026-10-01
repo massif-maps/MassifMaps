@@ -45,6 +45,7 @@ namespace massif::mvt {
             bindProperty("max-char-angle-delta", &_maxCharAngleDelta);
             bindProperty("max-distance", &_maxDistance);
             bindProperty("occlusion-opacity", &_occlusionOpacity);
+            bindProperty("z-elevate", &_zElevate);
             bindProperty("callout-screen-anchor", &_calloutScreenAnchor);
             bindProperty("callout-band-follow", &_calloutBandFollow);
             bindProperty("callout-anchor-visible", &_calloutAnchorVisible);
@@ -144,6 +145,8 @@ namespace massif::mvt {
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Negative = unset, i.e. the layer's own default stands.
         FloatProperty _occlusionOpacity = FloatProperty(-1.0f);
+        // On the roof of the 3D building the anchor is in (mapbox symbol-z-elevate).
+        BoolProperty _zElevate = BoolProperty(false);
         FloatProperty _maxDistance = FloatProperty(0.0f); // meters from the camera; 0 = no limit
         // 'callout' placement only (see vt::LabelOrientation::CALLOUT). Screen pixels, except
         // the anchor: a fraction of the screen height from the top, < 0 = stack from the anchor.

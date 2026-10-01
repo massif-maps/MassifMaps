@@ -327,6 +327,7 @@ namespace massif {
         vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         // vt scales labels by the planar WORLD_SIZE; the globe's world is twice as wide.
         prepareViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
+        prepareViewState.styleZoomShift = _styleZoomShift.load();
         prepareViewState.planarProjection = isPlanarProjectionMode();
         prepareViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         prepareViewState.lightBrightness = _resolvedBrightness;
@@ -820,6 +821,7 @@ namespace massif {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
+        vtViewState.styleZoomShift = _styleZoomShift.load();
         vtViewState.planarProjection = isPlanarProjectionMode();
         vtViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         vtViewState.lightBrightness = _resolvedBrightness;
@@ -1272,6 +1274,7 @@ namespace massif {
         vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
+        cullViewState.styleZoomShift = _styleZoomShift.load();
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
         // A hidden label must take no collision slot from a visible one.
         culler.setOcclusionTest(getLabelOcclusionTest());
@@ -1427,12 +1430,13 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         tileRenderer->findBitmapIntersections(rays, results);
     }
 
-    Color TileRenderer::evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness) {
+    Color TileRenderer::evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness, float zoomShift) {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         vtViewState.lightBrightness = brightness;
+        vtViewState.styleZoomShift = zoomShift;
         return Color(colorFunc(vtViewState).value());
     }
 
@@ -1440,13 +1444,15 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         std::lock_guard<std::mutex> lock(_mutex);
 
         _styleEnvironment = env;
+        _styleZoomShift.store(env.zoomShift);
     }
 
-    float TileRenderer::evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness) {
+    float TileRenderer::evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness, float zoomShift) {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         vtViewState.lightBrightness = brightness;
+        vtViewState.styleZoomShift = zoomShift;
         return floatFunc(vtViewState);
     }
 
@@ -1674,6 +1680,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         _vtRenderer = glResourceManager->create<VTRenderer>(_tileTransformer);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
+            // Not only the shadow fit's: unset, the label occlusion margin was 0 and a roof hid its own label.
+            tileRenderer->setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE);
             tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles, {}, _shadowCasterTiles);
             // These tiles' placement pass found no GL renderer; see consumeLabelPlacementOwed.
             _labelPlacementOwed = !_tiles.empty();

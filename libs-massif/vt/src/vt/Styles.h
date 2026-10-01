@@ -273,6 +273,8 @@ namespace massif::vt {
         float maxDistance; // meters from the camera beyond which the label is not placed; 0 = no limit
         // Opacity kept while the anchor is hidden by 3D content (mapbox text-occlusion-opacity); unset = the layer default.
         std::optional<float> occlusionOpacity;
+        // Stands on the roof of the 3D building its anchor is in (mapbox symbol-z-elevate).
+        bool zElevate = false;
         // The second run of text may have its own colour (unset = the label's own fill).
         std::optional<ColorFunction> secondaryColorFunc;
         // Added to the placement priority by the culler per label per pass, so it can read view::distance.

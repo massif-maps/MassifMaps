@@ -1452,7 +1452,9 @@ terrain only"*, which is exactly what this codebase already did):
 2. Per frame, `GLTileRenderer::calculateLabelVisibility` lists the visible extrusions with their
    tile frame and height scale - the zoom ramp and the tile's own grow-in, the shader's arithmetic.
    The base comes from the vertex bytes `resolveExtrusionBases` writes, so a building rises with
-   its DEM; one not yet resolved occludes nothing.
+   its DEM; one not yet resolved occludes nothing. With no DEM at all (a flat map) a base never
+   resolves, and there the ground is the base: read as "not yet", no building hid a label until
+   something else, the preview's shadows, loaded a DEM.
 3. For a label whose opacity asks for it, four rays go from the eye to the corners of a 30 px
    square around the **anchor**, at the anchor's distance (mapbox's square of taps). A ray stops
    1 m short of its target, so a label on a roof is not hidden by that roof. The fraction of rays
@@ -1476,6 +1478,42 @@ wrong twice over: a building crossing a word cuts it in half, and — the reason
 label's anchor sits ON the ground, so the ground eats it. Nearly every label on a terrain camera
 disappeared. mapbox's small NDC offset (`-0.0001`, "to prevent coplanar symbol/geometry cases") plus
 the multi-tap average is what makes the coplanar case a non-event.
+
+**A label standing in a building is tested from its roof.** A POI's anchor is on the ground inside
+its own footprint, so every ray to it crossed that building's roof and nearly every shop vanished at
+any tilt. mapbox draws such a label on the roof (`symbol-z-elevate`); here only the TEST moves: the
+target is lifted to the highest roof triangle over the anchor (`ExtrusionOccluder::roofAt`), and the
+1 m margin keeps that roof from hiding it. The tap square then stands ON the roof rather than
+centred on it: centred, its two lower taps sat inside the building, its own roof took them, and every
+such label drew at half opacity. A building in front still hides it.
+
+**A hidden label claims no room.** The occlusion is a draw-time fade, so the culler still placed a
+road name behind a building, at opacity 0, and the POI on the roof in front lost its slot to it. A
+label left at 0 by the last frame (`Label::isFullyOccluded`) stays placed but adds no collision
+record; once it shows again, the next pass weighs it as any other.
+
+**A line run collides by its glyphs**, as maplibre's by collision circles along the line
+(`Label::calculateEnvelope`'s glyphEnvelopes): the bounds of a run round a bend covered the corner
+beside it (405x320 device px for Place Grenette, tilt 60) and hid what stood there. Neighbouring glyphs
+share a box while it stays within 1.2x their own area, so a straight run is one box and a bend a few:
+a box per glyph cost the Crosscall 3-5 ms a placement pass (Grenoble z19.2 tilt 31).
+A point label with an icon and a name collides as two boxes, as maplibre's text and icon boxes.
+
+**A label on its roof.** `text-z-elevate` / `shield-z-elevate` (mapbox `symbol-z-elevate`, the
+Massif `poi_on_roof` parameter) draws the label there instead. Each frame the renderer gathers
+every loaded roof at full growth (`refreshRoofSurfaces`); when that set or the building height scale
+moves, the z-elevated labels are re-anchored on the render thread with `roofAt` over their terrain
+height, and flagged absolute so `labelVsh` keeps the roof height. Not in the cull thread's bulk
+anchoring: a roof reads extrusion bases the render thread resolves. A flat map anchors these labels
+too, and nothing else. A building growing in carries its label at the full height from the start. Such a label, once on
+its roof, skips the occlusion test, as mapbox Standard's elevated POIs do. Tested, it lost most of
+them at street tilt: measured on the emulator at Grenoble z19.2 tilt 23, the blocked rays came down at
+5-17 degrees and met roofs 4-16 m taller 10-120 m in front of the anchor, while the billboard itself was
+drawn over those roofs.
+
+**Not near top-down.** Past tilt 80 (`LABEL_OCCLUSION_MAX_TILT`, 90 = straight down) no ray is cast:
+looking down, nothing stands between the eye and a label. A flattened (2D) extrusion has no height,
+so it is never an occluder either, and with none in view the test returns before any ray.
 
 **Not on a globe** (the planar tile frame the rays are cast in does not hold there) and not for a
 translated extrusion layer or a bridge span, which the old pass skipped as well.

@@ -12,6 +12,7 @@
 #include "ExtrusionOccluder.h"
 #include "TileGeometry.h"
 
+#include <cmath>
 #include <cstring>
 #include <vector>
 
@@ -86,8 +87,23 @@ void testExtrusionOccluder() {
     std::shared_ptr<TileGeometry> unresolved = makeBox(TileGeometry::UNRESOLVED_BASE);
     std::shared_ptr<const ExtrusionOccluder> unresolvedOccluder = ExtrusionOccluder::build(*unresolved);
     TEST_CHECK(unresolvedOccluder && !blocked(*unresolvedOccluder, *unresolved, 0.5), "a building whose base is not resolved occludes nothing");
+    // A flat map has no DEM, so the base never resolves: there the ground IS the base. Taken for "not yet",
+    // no building hid a label unless something else (the preview's shadows) loaded a DEM.
+    TEST_CHECK(unresolvedOccluder && unresolvedOccluder->intersects(cglib::vec3<double>(0.0, 0.5, 0.5), cglib::vec3<double>(1.0, 0.0, 0.0), 0.0, 1.0, *unresolved, 0.01, 0.0, true), "on a flat map the unresolved building occludes from the ground");
+    std::optional<double> flatRoof = unresolvedOccluder->roofAt(0.5, 0.5, *unresolved, 0.01, 0.0, true);
+    TEST_CHECK(flatRoof && std::abs(*flatRoof - 1.0) < 1e-6, "and has its roof there");
 
     std::shared_ptr<TileGeometry> raised = makeBox(2.0f);
     std::shared_ptr<const ExtrusionOccluder> raisedOccluder = ExtrusionOccluder::build(*raised);
     TEST_CHECK(raisedOccluder && !blocked(*raisedOccluder, *raised, 0.5) && blocked(*raisedOccluder, *raised, 2.5), "the resolved base lifts the whole building");
+
+    // A POI stands IN its building: tested from the ground, its own roof hid it from every camera.
+    std::optional<double> roof = occluder->roofAt(0.5, 0.5, *box, 0.01, 0.0);
+    TEST_CHECK(roof && std::abs(*roof - 1.0) < 1e-6, "a point inside the footprint is under the roof");
+    TEST_CHECK(!occluder->roofAt(0.3, 0.5, *box, 0.01, 0.0), "a point beside the building is under nothing");
+    std::optional<double> raisedRoof = raisedOccluder->roofAt(0.5, 0.5, *raised, 0.01, 0.0);
+    TEST_CHECK(raisedRoof && std::abs(*raisedRoof - 3.0) < 1e-6, "the roof rides the resolved base");
+    TEST_CHECK(!unresolvedOccluder->roofAt(0.5, 0.5, *unresolved, 0.01, 0.0), "an unresolved building has no roof yet");
+    cglib::vec3<double> onRoof(0.5, 0.5, *roof);
+    TEST_CHECK(!occluder->intersects(eye, onRoof - eye, 0.0, 0.99, *box, 0.01, 0.0), "and from that roof the building no longer hides it");
 }

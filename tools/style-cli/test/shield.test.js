@@ -487,6 +487,19 @@ test('only a STATED occlusion opacity is carried, and a label carries one', () =
     assert.ok(iconOnly.coverage.report().includes('a marker, which is not a label'));
 });
 
+test('symbol-z-elevate stands the label on its roof, a shield included', () => {
+    assert.match(mss(symbol({ 'text-field': '{name}', 'symbol-z-elevate': true }, {})), /text-z-elevate: true;/);
+    assert.ok(!mss(symbol({ 'text-field': '{name}' }, {})).includes('z-elevate'));
+    const sprites = new Map([['default', {
+        index: { circle: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const shielded = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'circle', 'symbol-z-elevate': true }, { 'icon-color': '#000' })] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    assert.match(shielded, /shield-z-elevate: true;/);
+});
+
 test('an icon-overlap alone never builds a fileless marker', () => {
     // marker-allow-overlap on its own makes a MarkersSymbolizer with no file, whose default fill is
     // #0000ff - a blue ellipse over every airport whose sprite could not be resolved.

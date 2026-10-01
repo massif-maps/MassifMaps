@@ -170,31 +170,21 @@ namespace {
                    "targetHeight is the same height, measured from the focus");
     }
 
-    void testTheFocusFollowsTheGroundOnlyNearTheShell() {
-        // The focus is pinned to the ground so the zoom means "distance to the terrain". Pinned at
-        // EVERY altitude - mapbox's rule - a pan across a ridge lifts the camera with it, which
-        // reads as the whole view bobbing from far above the ground.
-        double shell = 200;
-        TEST_CHECK(CameraClearance::focusFollow(0, shell) == 1.0, "under the shell the focus is on the ground");
-        TEST_CHECK(CameraClearance::focusFollow(shell, shell) == 1.0, "... and exactly at it too");
-        TEST_CHECK(CameraClearance::focusFollow(shell * CameraClearance::FOLLOW_BAND, shell) == 0.0,
-                   "a band above it the focus is back at sea level");
-        TEST_CHECK(CameraClearance::focusFollow(shell * 100, shell) == 0.0, "and stays there however high");
-
-        // Monotone in between, so a slow climb hands the ground over smoothly instead of stepping.
-        double previous = 1.0;
-        bool monotone = true;
-        for (double h = shell; h <= shell * CameraClearance::FOLLOW_BAND; h += shell * 0.1) {
-            double follow = CameraClearance::focusFollow(h, shell);
-            monotone = monotone && follow <= previous + 1.0e-12 && follow >= 0.0 && follow <= 1.0;
-            previous = follow;
-        }
-        TEST_CHECK(monotone, "and falls monotonically between the two, inside [0, 1]");
-
-        // No shell (no terrain options, no floor, a camera at sea level) leaves the old behaviour.
-        TEST_CHECK(CameraClearance::focusFollow(1000, 0) == 1.0, "with no shell at all the focus still follows");
+    void testAGestureEndLandsTheFocusWithTheCameraHeld() {
+        // maplibre's recalculateZoomAndCenter. Ridden at sea level above high ground, a z16 camera over
+        // Grenoble (212 m) hung tens of metres over the roofs; a focus pinned while a finger drags bobs.
+        // So the drag holds the focus height, and its end slides the focus down the view ray instead.
+        double down45 = -std::sqrt(0.5);
+        double distance = 0;
+        TEST_CHECK(CameraClearance::groundAlongView(500, down45, 0, 707.1, distance) && std::abs(distance - 707.1) < 0.1,
+                   "a focus already on the ground stays where it is");
+        TEST_CHECK(CameraClearance::groundAlongView(500, down45, 200, 707.1, distance) && std::abs(distance - 424.26) < 0.1,
+                   "ground 200 up, the focus lands 300 below the camera along the ray");
+        double zoomDelta = std::log2(707.1 / distance);
+        TEST_CHECK(zoomDelta > 0.7 && zoomDelta < 0.8, "and the zoom says the camera is that much closer to it");
+        TEST_CHECK(!CameraClearance::groundAlongView(500, 0, 0, 707.1, distance), "a level view never meets the ground");
+        TEST_CHECK(!CameraClearance::groundAlongView(100, down45, 200, 707.1, distance), "nor does a camera under it");
     }
-
 }
 
 void testCameraClearance() {
@@ -205,6 +195,6 @@ void testCameraClearance() {
     testMaxZoomLandsOnTheShell();
     testMaxZoomAppFloor();
     testMaxZoomGivesUpWhereNoZoomHelps();
-    testTheFocusFollowsTheGroundOnlyNearTheShell();
+    testAGestureEndLandsTheFocusWithTheCameraHeld();
     testTheShellHeightLandsExactlyOnTheShell();
 }

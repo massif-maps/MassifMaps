@@ -63,13 +63,14 @@
       const [lon, lat] = pane.camera.focusPos;
       const utc = hour - lon / 15;
       m.call(light, 'setSunPositionFromTime', [2026, 3, 20, Math.floor(utc), Math.round((utc % 1) * 60), lat, lon]);
-      // through the day, Standard's own sun (its `day` preset: azimuth 180, polar 20), so the shadows
-      // and the lit walls compare one for one with the reference pane
-      if (hour >= 8 && hour < 18) {
+      // Beside the Standard reference, its own sun through the day (its `day` preset: azimuth 180, polar
+      // 20), so shadows and lit walls compare one for one; otherwise the real sun at that hour.
+      if (standardSun && hour >= 8 && hour < 18) {
         m.set(light, 'sunAzimuth', 180);
         m.set(light, 'sunAltitude', 70);
       }
     };
+    let standardSun = params.get('standardsun') === '1';
     if (params.get('hour')) setHour(Number(params.get('hour')));
     // A style's relief is an app layer on the SDK, not CartoCSS: a DEM source gets a hillshade above the base.
     if (params.get('imagery')) {
@@ -84,22 +85,40 @@
                   metaData: { dem_encoding: params.get('demEncoding') || 'mapbox' } } });
       pane.massif.call(pane.massif.find('layers', 'map'), 'insert', [1, hillshade]);
     }
-    // Standard casts building shadows on a flat map; ours land on a terrain surface, so the pane gets
-    // a flat one (exaggeration 0), never auto-flattened, at Standard's day depth (shadow-intensity 1).
-    if (params.get('shadows') !== '0') {
+    // Standard casts building shadows on a flat map; ours land on a terrain surface, so for shadows
+    // alone the pane gets a flat one (exaggeration 0), at Standard's day depth (shadow-intensity 1).
+    // ?relief=1 is the real relief. Never auto-flattened: a 2D nadir view drops shadows and ground AO.
+    // Live, so a toggle on the page does not reload the pane: once made, the terrain stays and goes flat.
+    let terrain = null;
+    const applyScene = ({ relief, shadows }) => {
       const m = pane.massif;
-      const terrain = m.create('options', 'preview.terrain', { type: 'terrain',
-        source: { type: 'http', url: params.get('dem') || MAPTERHORN, minZoom: 1, maxZoom: 16,
-                  metaData: { dem_encoding: 'terrarium' } },
-        exaggeration: 0, autoFlattenTilt: 0, autoFlattenParallax: 0 });
-      m.setObject(m.find('options', 'map'), 'terrainOptions', terrain);
-      const light = lightOf(m);
-      m.set(light, 'terrainLightingEnabled', true);
-      m.set(light, 'shadowStrength', 1);
-    }
+      if ((relief || shadows) && !terrain) {
+        terrain = m.create('options', 'preview.terrain', { type: 'terrain',
+          source: { type: 'http', url: params.get('dem') || MAPTERHORN, minZoom: 1, maxZoom: 16,
+                    metaData: { dem_encoding: 'terrarium' } },
+          exaggeration: relief ? 1 : 0, autoFlattenTilt: 0, autoFlattenParallax: 0 });
+        m.setObject(m.find('options', 'map'), 'terrainOptions', terrain);
+      }
+      if (terrain) m.set(terrain, 'exaggeration', relief ? 1 : 0);
+      if (shadows || terrain) {
+        const light = lightOf(m);
+        m.set(light, 'terrainLightingEnabled', shadows);
+        m.set(light, 'shadowStrength', shadows ? 1 : 0);
+      }
+    };
+    applyScene({ relief: params.get('relief') === '1', shadows: params.get('shadows') !== '0' });
+    const setStyleParams = (list) => {
+      for (const pair of list.split(',').filter(Boolean)) {
+        const [name, value] = pair.split('=');
+        pane.module.ccall('massifSetStyleParameter', null, ['string', 'string'], [name, value]);
+      }
+    };
     addEventListener('message', (event) => {
       if (event.data && event.data.massifCamera) pane.moveTo(event.data.massifCamera);
+      if (event.data && event.data.massifStandardSun !== undefined) standardSun = event.data.massifStandardSun;
       if (event.data && event.data.massifHour !== undefined) setHour(event.data.massifHour);
+      if (event.data && event.data.massifScene) applyScene(event.data.massifScene);
+      if (event.data && event.data.massifStyleParams) setStyleParams(event.data.massifStyleParams);
     });
     // The SDK starts north-up and flat whatever MASSIF_DEFAULTS said, so the opening camera is
     // pushed once the pane is up rather than left to the first sync, which only fires on a move.

@@ -23,6 +23,7 @@ void testLegendResolver();
 void testBuiltinParameters();
 void testLineAnchors();
 void testMBVTSubtile();
+void testZoomShift();
 void testDrawOnce();
 
 int main() {
@@ -43,6 +44,7 @@ int main() {
     testBuiltinParameters();
     testLineAnchors();
     testMBVTSubtile();
+    testZoomShift();
     testDrawOnce();
 
     std::printf("\n%d failure(s)\n", failures);

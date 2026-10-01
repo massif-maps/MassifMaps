@@ -102,6 +102,7 @@ namespace massif {
         }
 
         // Runs even when a listener consumed the event, or a consumed UP leaves _pointersDown stuck and onMapStable dead.
+        bool pointersDown = false;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
             switch (action) {
@@ -120,7 +121,10 @@ namespace massif {
                 _pointersDown = 0;
                 break;
             }
+            pointersDown = _pointersDown > 0;
         }
+        // Outside _mutex: the renderer's own lock is never taken under it.
+        _mapRenderer->setTouchGestureActive(pointersDown);
 
         checkCameraEvents();
         checkMapStable();

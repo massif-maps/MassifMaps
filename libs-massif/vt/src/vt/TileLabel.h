@@ -46,6 +46,8 @@ namespace massif::vt {
             // What this label keeps while its anchor is hidden by 3D content (mapbox's
             // text-occlusion-opacity, per style layer). Unset = the layer's own default.
             std::optional<float> occlusionOpacity;
+            // Stands on the roof of the 3D building its anchor is in (mapbox symbol-z-elevate).
+            bool zElevate = false;
             // Own colour for the second run of text (see TextLabelStyle); unset = the label's fill.
             std::optional<ColorFunction> secondaryColorFunc;
             // Own colour for the icon run (the glyphs before the text, see TextLabelStyle);

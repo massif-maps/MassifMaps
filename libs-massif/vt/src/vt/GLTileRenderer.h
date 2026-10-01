@@ -859,9 +859,26 @@ namespace massif::vt {
         static constexpr float LABEL_OCCLUSION_SIZE_PIXELS = 30.0f; // the square sampled around an anchor
         // Where a ray stops short of its target: a label on a roof is not hidden by that roof.
         static constexpr float LABEL_OCCLUSION_MARGIN_METERS = 1.0f;
+        // Past this tilt (90 = straight down) no building stands between the eye and a label: no rays cast.
+        static constexpr float LABEL_OCCLUSION_MAX_TILT = 80.0f;
         float _labelOcclusionOpacity = 1.0f;  // what an occluded label keeps; 1 = no occlusion
         std::vector<FrameOccluder> _frameOccluders;
         bool _frameOccludersValid = false;
+        // What a z-elevated label stands on (mapbox symbol-z-elevate): every loaded roof at full growth.
+        struct RoofSurface {
+            std::shared_ptr<const TileGeometry> geometry;
+            cglib::vec3<double> origin;
+            double scale;
+            double heightScale;
+            cglib::bbox3<double> bounds;
+        };
+        std::vector<RoofSurface> _roofSurfaces;
+        std::size_t _roofSignature = 0;
+        // Dirties the z-elevated labels when the roofs moved; false when nothing changed.
+        bool refreshRoofSurfaces();
+        // Under the lock only: a roof reads the extrusion bases the render thread resolves.
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc) const;
+        std::optional<double> roofHeightAt(const cglib::vec3<double>& pos) const;
         bool _groundAOBakePass = false; // set only while the ground AO mask is a drape bake
         TerrainPaint _terrainPaint;
         bool _terrainPaintOnGround = false;      // the paint replaces the ground fill (see setTerrainPaintOnGround)

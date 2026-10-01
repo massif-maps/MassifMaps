@@ -12,6 +12,7 @@ add_executable(vt_tests
   PlateBoxTest.cpp
   LineLabelTest.cpp
   CollisionPaddingTest.cpp
+  LabelSplitBoxTest.cpp
   LabelAnchorAlignTest.cpp
   LabelElevationAnchorTest.cpp
   LabelPaddingTest.cpp

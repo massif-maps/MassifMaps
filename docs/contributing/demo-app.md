@@ -93,13 +93,16 @@ is already straight once it leaves the bake and would show a fix that is not the
 `--es demo terrain|project|composite` is a legacy shorthand for `base`/`style`. Every knob read in
 `DemoConfig.applyIntentOverrides` is an intent extra, so most experiments need no rebuild:
 
-- camera: `lon lat zoom tilt rotation`
+- camera: `lon lat zoom tilt rotation`, `fovY` (0 = the SDK default)
 - terrain: `drape drapeLines drapeResolution meshResolution exaggeration`, `viewDistance
   viewDistanceMeters`, `autoFlatten autoFlattenTilt autoFlattenMs`, `stitch`
 - composite overlays: `hs sat satZoom contour`; buildings: `bld3d`
 - light/shadow: `daycycle sunHour sunAzimuth sunAltitude shadow`
 - labels: `textOcclusion`, `roadLabelOcclusion` (a re-decode)
 - `ui false` (hide the panel), `anim zoom|pan|rotate|zoomseq|approach`
+- `showFps true` (bench and `.ExampleActivity`): frames drawn per second and the GL-thread draw time,
+  bottom-left and once a second in logcat (`devtap.py logs android --grep fps`); WHEN_DIRTY draws on request only, so it reads
+  `idle` on a still map
 
 **`--es buildings 0|1|2`** drives a COMPILED style's own `buildings` parameter (none / footprints /
 extrusions), which is what a converted Mapbox Standard gates its 3D on. `--es bld3d` sets it too.

@@ -16,6 +16,8 @@
       "sub_boundaries",
       "road_shields",
       "highlight_drinking_water",
+      "label_occlusion",
+      "poi_on_roof",
       "show_caravan_site",
       "campsite_allow_overlap",
       "polygons_border",
@@ -549,8 +551,6 @@
               "get",
               "subclass"
             ],
-            "cycleway",
-            "hsl(125, 50%, 55%)",
             "bridleway",
             "hsl(30, 40%, 55%)",
             "hsla(0, 0%, 100%, 0.4)"
@@ -562,8 +562,6 @@
               "get",
               "subclass"
             ],
-            "cycleway",
-            "hsl(125, 50%, 55%)",
             "bridleway",
             "hsl(30, 40%, 55%)",
             "hsla(0, 0%, 100%, 0.5)"
@@ -1600,8 +1598,6 @@
               "get",
               "subclass"
             ],
-            "cycleway",
-            "hsl(125, 50%, 55%)",
             "bridleway",
             "hsl(30, 40%, 55%)",
             "hsla(0, 0%, 100%, 0.4)"
@@ -1613,8 +1609,6 @@
               "get",
               "subclass"
             ],
-            "cycleway",
-            "hsl(125, 50%, 55%)",
             "bridleway",
             "hsl(30, 40%, 55%)",
             "hsla(0, 0%, 100%, 0.5)"
@@ -6577,7 +6571,7 @@
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 200,
-        "icon-image": "oneway-white",
+        "icon-image": "oneway-ink",
         "icon-size": [
           "interpolate",
           [
@@ -6660,7 +6654,7 @@
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 200,
-        "icon-image": "oneway-reverse-white",
+        "icon-image": "oneway-reverse-ink",
         "icon-size": [
           "interpolate",
           [
@@ -7386,8 +7380,6 @@
               "get",
               "subclass"
             ],
-            "cycleway",
-            "hsl(125, 50%, 55%)",
             "bridleway",
             "hsl(30, 40%, 55%)",
             "hsla(0, 0%, 100%, 0.4)"
@@ -7399,8 +7391,6 @@
               "get",
               "subclass"
             ],
-            "cycleway",
-            "hsl(125, 50%, 55%)",
             "bridleway",
             "hsl(30, 40%, 55%)",
             "hsla(0, 0%, 100%, 0.5)"
@@ -9634,7 +9624,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -9840,7 +9839,16 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -9963,7 +9971,16 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10089,7 +10106,16 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10199,7 +10225,16 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10342,7 +10377,16 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10447,7 +10491,16 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10536,7 +10589,16 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10683,8 +10745,26 @@
             1,
             1
           ],
-          "text-occlusion-opacity": 0,
-          "icon-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10884,7 +10964,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10959,8 +11048,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -11046,8 +11153,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -11549,8 +11674,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -12042,8 +12185,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -12130,8 +12291,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -12218,8 +12397,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -12305,8 +12502,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -12393,8 +12608,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -12481,8 +12714,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -12568,8 +12819,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -13067,8 +13336,26 @@
           1
         ],
         "massif:paint": {
-          "text-occlusion-opacity": 0.1,
-          "icon-occlusion-opacity": 0.1
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
         }
       }
     },
@@ -13306,6 +13593,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:paint": {
@@ -13320,6 +13615,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -14370,6 +14685,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:paint": {
@@ -14524,6 +14847,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -15577,6 +15920,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:paint": {
@@ -15731,6 +16082,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -16767,6 +17138,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:paint": {
@@ -16921,6 +17300,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -17980,6 +18379,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:paint": {
@@ -18135,6 +18542,26 @@
             "plain",
             1.5,
             0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
           ]
         }
       }
@@ -18144,7 +18571,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 14,
+      "minzoom": 17,
       "maxzoom": 18,
       "filter": [
         "==",
@@ -19172,7 +19599,15 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
         },
         "massif:paint": {
           "text-color": [
@@ -19327,6 +19762,26 @@
             "plain",
             1.5,
             0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
           ]
         },
         "massif:minzoom-param": "water_min_zoom",
@@ -19345,7 +19800,7 @@
       "type": "circle",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 14,
+      "minzoom": 17,
       "filter": [
         "==",
         [
@@ -19453,7 +19908,15 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
         },
         "massif:filter": [
           "==",
@@ -19462,7 +19925,19 @@
             "highlight_drinking_water"
           ],
           0
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
       }
     },
     {
@@ -20495,6 +20970,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:paint": {
@@ -20649,6 +21132,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -21685,6 +22188,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:paint": {
@@ -21839,6 +22350,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -22883,6 +23414,14 @@
           "visibility": "visible",
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -23045,6 +23584,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -24097,6 +24656,14 @@
           "visibility": "visible",
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -24259,6 +24826,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -25311,6 +25898,14 @@
           "visibility": "visible",
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -25473,6 +26068,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -26525,7 +27140,15 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
         },
         "massif:paint": {
           "text-color": [
@@ -26679,6 +27302,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         },
@@ -27741,7 +28384,15 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
         },
         "massif:paint": {
           "text-color": [
@@ -27895,6 +28546,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         },
@@ -28956,7 +29627,15 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
         },
         "massif:paint": {
           "text-color": [
@@ -29110,6 +29789,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         },
@@ -30183,7 +30882,15 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
         },
         "massif:paint": {
           "text-color": [
@@ -30337,6 +31044,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         },
@@ -31406,6 +32133,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -31568,6 +32303,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -32630,6 +33385,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -32792,6 +33555,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -33844,6 +34627,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -34006,6 +34797,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -35053,6 +35864,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -35215,6 +36034,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -36272,6 +37111,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -36434,6 +37281,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -37489,6 +38356,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -37651,6 +38526,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -38708,6 +39603,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -38870,6 +39773,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -39932,6 +40855,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -40094,6 +41025,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -41144,6 +42095,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -41306,6 +42265,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -42353,6 +43332,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -42515,6 +43502,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -43577,6 +44584,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -43739,6 +44754,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -44798,6 +45833,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -44960,6 +46003,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -46007,6 +47070,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -46169,6 +47240,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -47225,6 +48316,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -47387,6 +48486,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -48438,6 +49557,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -48600,6 +49727,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -49653,6 +50800,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -49815,6 +50970,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -50864,6 +52039,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -51026,6 +52209,26 @@
             ],
             "plain",
             1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
             0
           ]
         }
@@ -51265,6 +52468,14 @@
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         },
         "massif:filter": [
@@ -51288,6 +52499,26 @@
             "plain",
             1.5,
             0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
           ]
         }
       }
@@ -51297,7 +52528,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 14,
+      "minzoom": 12,
       "filter": [
         "in",
         [
@@ -52331,7 +53562,15 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
         },
         "massif:paint": {
           "text-color": [
@@ -52486,9 +53725,28 @@
             "plain",
             1.5,
             0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
           ]
         },
-        "massif:minzoom-param": "water_min_zoom",
         "massif:filter": [
           "==",
           [
@@ -52585,7 +53843,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -52680,7 +53947,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -52778,7 +54054,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -52876,7 +54161,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -52974,7 +54268,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -53073,7 +54376,16 @@
             0.3,
             "hsla(0, 0%, 0%, 0.75)"
           ],
-          "text-occlusion-opacity": 0
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -54590,6 +55902,20 @@
         1
       ]
     },
+    "label_occlusion": {
+      "default": 1,
+      "values": [
+        0,
+        1
+      ]
+    },
+    "poi_on_roof": {
+      "default": 0,
+      "values": [
+        0,
+        1
+      ]
+    },
     "show_caravan_site": {
       "default": 1,
       "values": [
@@ -54642,7 +55968,7 @@
       "default": 12
     },
     "water_min_zoom": {
-      "default": 14
+      "default": 17
     },
     "campsite_min_zoom": {
       "default": 15

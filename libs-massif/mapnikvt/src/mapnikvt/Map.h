@@ -15,6 +15,7 @@
 #include "Properties.h"
 #include "SelectionParameter.h"
 
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <string>
@@ -31,6 +32,8 @@ namespace massif::mvt {
             ColorFunctionProperty southPoleColor = ColorFunctionProperty("transparent");
             std::string fontDirectory = "fonts";
             float bufferSize = -1.0f;
+            // The Options::TileDrawSize the style's zoom numbers are written for; 0 = whatever the app sets.
+            float tileDrawSize = 0.0f;
 
             // Sun, shadows, fog and the terrain view distance. Each is a normal style property - a
             // constant or any zoom-dependent expression - and isDefined() says whether the style set it
@@ -128,6 +131,12 @@ namespace massif::mvt {
             ColorFunctionProperty skyAtmosphereHaloColor = ColorFunctionProperty("white"); // Mie tint
             FloatFunctionProperty skyAtmosphereLuminance = FloatFunctionProperty(1.0f);
             FloatFunctionProperty terrainMaxVisibleDistance = FloatFunctionProperty(0.0f); // meters, 0 = unlimited
+
+            // Levels to add to the app's zoom so the style reads the zoom it was written for: the same
+            // ground is a level higher at 256 than at 512.
+            float zoomShift(float appTileDrawSize) const {
+                return tileDrawSize > 0.0f && appTileDrawSize > 0.0f ? std::log2(appTileDrawSize / tileDrawSize) : 0.0f;
+            }
         };
         
         explicit Map(const Settings& settings) : _settings(settings) { }

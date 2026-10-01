@@ -31,6 +31,9 @@ namespace massif::mvt {
         if (mapSettings.bufferSize >= 0.0f) {
             mapNode.append_attribute("buffer-size").set_value(mapSettings.bufferSize);
         }
+        if (mapSettings.tileDrawSize > 0.0f) {
+            mapNode.append_attribute("tile-draw-size").set_value(mapSettings.tileDrawSize);
+        }
 
         // Only what the style actually set: writing a default back would make it look declared, and
         // a declared value overrides the application's own setting.

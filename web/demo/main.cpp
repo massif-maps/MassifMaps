@@ -44,6 +44,7 @@
 
 #include <cstdlib>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include <emscripten/emscripten.h>
@@ -54,6 +55,7 @@ namespace {
     std::shared_ptr<massif::WebMapView> _MapView;
     // Held for the relief hooks below; the page supplies the shader sources, so a reload changes them.
     std::shared_ptr<massif::TerrainOptions> _terrainOptions;
+    std::shared_ptr<massif::MBVectorTileDecoder> _styleDecoder;
     std::shared_ptr<massif::PostProcessEffect> _reliefEffect;
     bool _reliefWantsNormals = true;
 
@@ -164,6 +166,14 @@ int main() {
             auto styleSet = std::make_shared<massif::CartoCSSStyleSet>(queryParam("css", DEFAULT_CSS));
             decoder = std::make_shared<massif::MBVectorTileDecoder>(styleSet);
         }
+        // ?styleparams=poi_on_roof=1,label_occlusion=0: the style's own parameters.
+        std::stringstream styleParams(queryParam("styleparams", ""));
+        for (std::string pair; std::getline(styleParams, pair, ',');) {
+            std::size_t eq = pair.find('=');
+            if (eq != std::string::npos) {
+                decoder->setStyleParameter(pair.substr(0, eq), pair.substr(eq + 1));
+            }
+        }
         // Every font in /fonts becomes a fallback, so a style that names one the build does not
         // carry - "DIN Pro Medium" in Mapbox Standard - still draws its labels.
         auto fonts = std::make_shared<massif::DirAssetPackage>("/fonts/");
@@ -172,6 +182,7 @@ int main() {
                 decoder->addFallbackFont(data);
             }
         }
+        _styleDecoder = decoder;
         auto vectorLayer = std::make_shared<massif::VectorTileLayer>(dataSource, decoder);
         // A cased road cross-fades badly: the fill is near the background colour, so early in the
         // fade only the casing reads and the road looks like an outline waiting to be filled.
@@ -352,6 +363,13 @@ EMSCRIPTEN_KEEPALIVE void massifSetSkyEnabled(int enabled, int r, int g, int b) 
 }
 
 /** Eye height above the ground, metres; not a camera z, which the renderer resets every frame. */
+/* A style parameter on the base map, live: the facade cannot hand the page the decoder object. */
+EMSCRIPTEN_KEEPALIVE void massifSetStyleParameter(const char* name, const char* value) {
+    if (_styleDecoder) {
+        _styleDecoder->setStyleParameter(name, value);
+    }
+}
+
 EMSCRIPTEN_KEEPALIVE void massifSetFocusLift(float metres) {
     if (_terrainOptions) {
         _terrainOptions->setFocusLift(metres < 0.0f ? 0.0f : metres);

@@ -53,10 +53,23 @@ if (ref.startsWith('mapbox-')) {
   if (!tokens.maptiler) fail('no ~/.maptiler_token');
   await load('https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js',
              'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css');
-  map = new maplibregl.Map({ container: 'map', ...camera, attributionControl: false,
+  map = new maplibregl.Map({ container: 'map', ...camera, maxPitch: 85, attributionControl: false,
     style: `https://api.maptiler.com/maps/${ref.slice(9)}/style.json?key=${tokens.maptiler}` });
 }
 map.on('error', (e) => fail(String((e && e.error && e.error.message) || e)));
+
+// ?terrain=1: the reference over its own DEM, Mapbox's for Mapbox, Mapterhorn for MapTiler's
+function setTerrain(on) {
+  if (!on) { map.setTerrain(null); return; }
+  const mapbox = ref.startsWith('mapbox-');
+  if (!map.getSource('preview-dem')) {
+    map.addSource('preview-dem', mapbox
+      ? { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 }
+      : { type: 'raster-dem', tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'], encoding: 'terrarium', tileSize: 512, maxzoom: 16 });
+  }
+  map.setTerrain({ source: 'preview-dem', exaggeration: 1 });
+}
+if (params.get('terrain') === '1') map.on('style.load', () => setTerrain(true));
 
 const readout = document.getElementById('readout');
 map.on('move', () => {
@@ -65,6 +78,7 @@ map.on('move', () => {
     `rot ${map.getBearing().toFixed(1)}  tilt ${map.getPitch().toFixed(1)}`;
 });
 addEventListener('message', (event) => {
+  if (event.data && event.data.refTerrain !== undefined) setTerrain(event.data.refTerrain);
   const preset = event.data && event.data.refPreset;
   if (preset && map.setConfigProperty) map.setConfigProperty('basemap', 'lightPreset', preset);
   const to = event.data && event.data.massifCamera;

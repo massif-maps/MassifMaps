@@ -459,14 +459,14 @@ namespace massif {
 
         /**
          * Returns the drape cache budget in megabytes.
-         * @return The drape cache budget in megabytes, or 0 for the built-in 96. The default is 0.
+         * @return The drape cache budget in megabytes, or 0 for the built-in 192. The default is 0.
          */
         int getDrapeCacheSize() const;
         /**
          * Sets how much video memory the cached drape textures may take, in megabytes. It must hold the live cover
          * and the generation it replaced, or the ground blinks during a fast zoom. It also bounds the automatic
          * drape resolution (see DrapeResolution and DrapeWorkingSet).
-         * @param megabytes The new budget in megabytes, or 0 for the default of 96.
+         * @param megabytes The new budget in megabytes, or 0 for the default of 192.
          */
         void setDrapeCacheSize(int megabytes);
 

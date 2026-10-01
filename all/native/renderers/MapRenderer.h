@@ -194,6 +194,8 @@ namespace massif {
     
         AnimationHandler& getAnimationHandler();
         KineticEventHandler& getKineticEventHandler();
+        // A finger is on the map: the terrain focus holds its height until it lifts (maplibre's elevationFreeze).
+        void setTouchGestureActive(bool active);
 
         // An animated call reports reason once, here; the frames it produces report ANIMATION.
         void calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
@@ -249,6 +251,8 @@ namespace massif {
 
         // Per camera event rather than one frame later (mapbox's transform._constrainCamera). Call with _mutex held.
         void constrainCameraToClearance();
+        // After a gesture: the camera held, the focus slid down its view ray to groundZ, the zoom re-derived.
+        void landFocusAlongView(double groundZ);
 
         // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
         double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);
@@ -380,6 +384,8 @@ namespace massif {
         unsigned int _layersElevationVersion = 0;
         // settleEyeGround's state: the level that answered last frame, and the eye's ground minus that answer.
         int _eyeGroundZoom = -1;
+        std::atomic<bool> _touchGestureActive { false };
+        bool _terrainFocusFrozen = false;
         double _eyeGroundZ = 0;
         double _eyeGroundOffset = 0;
         double _eyeGroundTarget = 0; // the answer the glide heads for, and where it was asked

@@ -49,6 +49,7 @@ add_executable(style_tests
   BuiltinParameterTest.cpp
   LineAnchorsTest.cpp
   MBVTSubtileTest.cpp
+  ZoomShiftTest.cpp
   DrawOnceTest.cpp
   ${STYLE_SOURCES})
 

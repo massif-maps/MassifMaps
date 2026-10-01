@@ -80,6 +80,7 @@ void testDrapeStandIn();
 void testDrapeEviction();
 void testStyleConfigZoom();
 void testDrapeTuning();
+void testNearPlaneCover();
 void testZoomConvention();
 void testShadowCasterRing();
 void testTerrainTesselation();
@@ -470,6 +471,7 @@ int main() {
     testDrapeEviction();
     testStyleConfigZoom();
     testDrapeTuning();
+    testNearPlaneCover();
     testZoomConvention();
     testShadowCasterRing();
     testTerrainTesselation();

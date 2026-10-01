@@ -161,8 +161,9 @@ def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
     walk_prefix = prefix + ('urban-' if trails else '')
     steps = ['all', ['==', get('class'), 'path'], ['==', get('subclass'), 'steps'], brunnel_test]
     # the zoom ramp outside: maplibre only takes a zoom expression at the top of a property
+    # a cycleway's ribbon is a path's, Standard's: in green it was a solid band wherever no road covered it
     color = zoom_ramp(*[x for z, key in ((15, 'path'), (16, 'path-z16')) for x in (
-        z, ['match', get('subclass'), 'cycleway', c['cycleway'], 'bridleway', c['bridleway'], c[key]])])
+        z, ['match', get('subclass'), 'bridleway', c['bridleway'], c[key]])])
     return [
         layer(walk_prefix + 'path-casing', 'line', 'transportation', minzoom=15, filter=walk,
               metadata=draw_once(c, walk_prefix + 'path'), layout={'line-join': 'round'},
@@ -279,9 +280,10 @@ def ground(v):
 def oneway(c):
     base = ['all', in_class(CLASSES), ['!=', get('class'), 'motorway']]
     # its own layer per arrow colour: an icon that differs by variant is data-driven, and a data-driven
-    # icon converts to a shield, which drops the line placement
-    arrow = c.get('oneway-arrow', 'white')
-    return [layer('oneway' + ('' if arrow == 'white' else '-' + arrow) + suffix, 'symbol', 'transportation', minzoom=16,
+    # icon converts to a shield, which drops the line placement. A dark arrow in a white edge, which
+    # reads on a white street, a coloured major and a night road alike
+    arrow = c.get('oneway-arrow', 'ink')
+    return [layer('oneway' + ('' if arrow == 'ink' else '-' + arrow) + suffix, 'symbol', 'transportation', minzoom=16,
                   filter=base + [['==', get('oneway'), value]],
                   layout={'symbol-placement': 'line', 'symbol-spacing': 200, 'icon-image': icon,
                           'icon-size': zoom_ramp(16, 0.6, 18, 1), 'icon-rotation-alignment': 'map',

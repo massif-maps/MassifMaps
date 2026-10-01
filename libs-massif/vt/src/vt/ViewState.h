@@ -20,6 +20,8 @@
 namespace massif::vt {
     struct ViewState final {
         float zoom = 0;
+        // Added to `zoom` where a style reads it (view::zoom): Map::Settings::zoomShift of the layer drawn.
+        float styleZoomShift = 0;
         float rotation = 0;
         float tilt = 0;
         float aspect = 1;

@@ -74,8 +74,9 @@ is still on screen well after the ground it stands on has left the frustum, and 
 the building with it. maplibre grows the culling elevation for exactly this reason
 (`covering_tiles.ts`, `getElevationForTileCulling`): nothing while the camera looks down, rising to
 `ASSUMED_MAX_FEATURE_HEIGHT_METERS` (500 m) as the frustum's bottom edge comes within 15° of the
-horizon. Ported whole as `tileCullingHeadroom`. At tilt 45 with the SDK's default fov of 70 the
-bottom edge is 9.25° up, which is 38 % of the way in — 191 m of headroom. Before it, five of six
+horizon. Ported whole as `tileCullingHeadroom`. At tilt 45 with the old default fov of 70 the
+bottom edge was 9.25° up, which is 38 % of the way in — 191 m of headroom; at today's 36.87 it is
+26.6° up, and the headroom only starts below tilt 33 (maplibre pitch 57). Before it, five of six
 measured building losses during a zoom were this test.
 
 ### What a draw costs

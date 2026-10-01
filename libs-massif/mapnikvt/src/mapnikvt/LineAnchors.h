@@ -66,6 +66,12 @@ namespace massif::mvt {
         }
         return anchors;
     }
+
+    // Where the first spaced marker sits along a line of `lineLength`, or -1 for none: from the whole
+    // line, not its first segment, and none on a line too short to hold two markers.
+    inline float lineMarkerStart(float lineLength, float spacing, float markerSize) {
+        return lineLength < 2 * markerSize ? -1.0f : std::min(lineLength, spacing) * 0.5f;
+    }
 }
 
 #endif

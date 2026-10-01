@@ -1,4 +1,5 @@
 #include "MarkersSymbolizer.h"
+#include "LineAnchors.h"
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
@@ -310,6 +311,16 @@ namespace massif::mvt {
         std::vector<std::pair<vt::Transform, vt::TileLayerBuilder::Vertices>> transformedPointList;
 
         float linePos = 0;
+        if (spacing > 0) {
+            float totalLen = 0;
+            for (std::size_t i = 1; i < vertices.size(); i++) {
+                totalLen += cglib::length(vertices[i] - vertices[i - 1]) * tileSize;
+            }
+            linePos = lineMarkerStart(totalLen, spacing, bitmapSize);
+            if (linePos < 0) {
+                return transformedPointList;
+            }
+        }
         for (std::size_t i = 1; i < vertices.size(); i++) {
             const cglib::vec2<float>& v0 = vertices[i - 1];
             const cglib::vec2<float>& v1 = vertices[i];
@@ -317,9 +328,6 @@ namespace massif::mvt {
             float lineLen = cglib::length(v1 - v0) * tileSize;
             if (spacing <= 0) {
                 linePos = lineLen * 0.5f;
-            }
-            else if (i == 1) {
-                linePos = std::min(lineLen, spacing) * 0.5f;
             }
 
             vt::TileLayerBuilder::Vertices points;

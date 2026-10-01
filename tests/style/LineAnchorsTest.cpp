@@ -74,4 +74,9 @@ void testLineAnchors() {
         std::vector<float> at = anchors(polyline({ { 0, 0 }, { 2000, 0 } }), true, 540, 140, 12);
         TEST_CHECK(at.size() == 4 && at[0] == 270, "half a step, then a step apart");
     }
+    // Oneway arrows (marker-spacing): the first sits half a spacing into the WAY. Read off its first
+    // segment, a 4 px stub at a junction put an arrow on the junction itself, on every way of a city.
+    TEST_CHECK(std::fabs(mvt::lineMarkerStart(600, 200, 16) - 100) < 1e-4f, "a long way starts half a spacing in");
+    TEST_CHECK(std::fabs(mvt::lineMarkerStart(80, 200, 16) - 40) < 1e-4f, "a way shorter than the spacing gets one at its middle");
+    TEST_CHECK(mvt::lineMarkerStart(30, 200, 16) < 0, "a stub too short for two arrows gets none");
 }

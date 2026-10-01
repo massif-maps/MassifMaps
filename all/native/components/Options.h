@@ -447,7 +447,8 @@ namespace massif {
         float getFieldOfViewY() const;
         /**
          * Sets the vertical field of view angle. Larger values increase the viewable area, at the cost of performance and
-         * additional perspective distortion. The default is 70.
+         * additional perspective distortion. The default is 36.87, maplibre's and mapbox-gl's: at 70 (before 6.1) the
+         * camera stood 2.1 times closer at the same ground scale, so a tilted city or slope at z16 was a wide-angle close-up.
          * Fractional, so an AR overlay can match the field of view of the camera behind it exactly.
          * @param fovY The new vertical field of view angle in degrees.
          */

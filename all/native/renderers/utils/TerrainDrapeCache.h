@@ -53,6 +53,20 @@ namespace massif {
          * caller skipping the bake must not draw it.
          */
         unsigned int acquire(const vt::TileId& tileId, int stack, std::size_t fingerprint, bool& needsBake, bool& hasContent);
+        /**
+         * The same at a size of the caller's (0: getResolution()). A texture of the wrong size (DrapeTuning::needsResize)
+         * is swapped for a new one; the old one comes back in `replaced`, for the caller to copy its picture across and
+         * then hand to recycle(), or it is recycled here when `replaced` is null.
+         */
+        unsigned int acquire(const vt::TileId& tileId, int stack, std::size_t fingerprint, int resolution, unsigned int* replaced, bool& needsBake, bool& hasContent);
+        /**
+         * The size a cached texture was made at, 0 if none.
+         */
+        int getTextureResolution(const vt::TileId& tileId, int stack) const;
+        /**
+         * Returns a texture from acquire's `replaced` to the pool of its size.
+         */
+        void recycle(unsigned int texture, bool mask, int resolution);
         // Default budget for setMaxBytes; public because the automatic bake resolution must agree with it.
         static const std::size_t MAX_BYTES;
         /**
@@ -123,6 +137,7 @@ namespace massif {
 
         struct Entry {
             unsigned int texture = 0;
+            int resolution = 0;
             std::size_t bytes = 0; // 4 bytes/texel for a colour drape, 1 for an R8 coverage mask
             std::size_t fingerprint = 0;
             std::size_t layerMask = 0;
@@ -134,7 +149,9 @@ namespace massif {
         };
 
         // mask: a one-channel R8 coverage mask (stack > 0) rather than the RGBA colour drape.
-        unsigned int createTexture(bool mask);
+        unsigned int createTexture(bool mask, int resolution);
+        // Back to the pool of its size, or deleted past MAX_POOLED_TEXTURES.
+        void pool(unsigned int texture, bool mask, int resolution);
         std::size_t cachedBytes() const;
 
         static const int MAX_ANISOTROPY;
@@ -148,8 +165,9 @@ namespace massif {
         std::size_t _stackSignature;
         unsigned int _frameBuffer;
         std::map<Key, Entry> _entries;
-        std::vector<unsigned int> _texturePool;
-        std::vector<unsigned int> _maskTexturePool; // R8, kept apart: a pooled texture keeps its format
+        // By size: a pooled texture keeps its format and its dimensions. R8 masks apart.
+        std::map<int, std::vector<unsigned int>> _texturePools;
+        std::map<int, std::vector<unsigned int>> _maskTexturePools;
         unsigned int _frameCounter;
     };
 

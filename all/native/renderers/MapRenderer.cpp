@@ -12,6 +12,7 @@
 #include "layers/VectorTileLayer.h"
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
+#include "projections/PlanarProjectionSurface.h"
 #include "renderers/BillboardRenderer.h"
 #include "renderers/MapRendererListener.h"
 #include "renderers/RendererCaptureListener.h"
@@ -892,9 +893,15 @@ namespace massif {
     KineticEventHandler& MapRenderer::getKineticEventHandler() {
         return _kineticEventHandler;
     }
+
+    void MapRenderer::setTouchGestureActive(bool active) {
+        if (_touchGestureActive.exchange(active) != active) {
+            requestRedraw();
+        }
+    }
     
     /**
-     * Raises only; lowering is CameraClearance::focusFollow's. Cached heights only.
+     * Raises only; the frame puts the focus back on the ground. Cached heights only.
      */
     void MapRenderer::constrainCameraToClearance() {
         std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
@@ -927,6 +934,24 @@ namespace massif {
         if (shellFocusZ > focusMapPos.getZ()) {
             _viewState.setFocusHeight(shellFocusZ);
         }
+    }
+
+    void MapRenderer::landFocusAlongView(double groundZ) {
+        std::shared_ptr<ProjectionSurface> projectionSurface = _options->getProjectionSurface();
+        // The vertical ray math holds on the plane only; a globe just takes the frame's pin.
+        if (!std::dynamic_pointer_cast<PlanarProjectionSurface>(projectionSurface)) {
+            return;
+        }
+        cglib::vec3<double> cameraPos = _viewState.getCameraPos();
+        cglib::vec3<double> offset = _viewState.getFocusPos() - cameraPos;
+        double distance = cglib::length(offset);
+        double newDistance = 0;
+        if (!(distance > 0) || !CameraClearance::groundAlongView(cameraPos(2), offset(2) / distance, groundZ, distance, newDistance)) {
+            return;
+        }
+        _viewState.setFocusPos(cameraPos + offset * (newDistance / distance));
+        _viewState.setZoom(static_cast<float>(_viewState.getZoom() + std::log2(distance / newDistance)));
+        _viewState.cameraChanged();
     }
 
     /**
@@ -1374,8 +1399,8 @@ namespace massif {
                 }
             }
             if (elevationManager) {
-                // The focus sits on the ground (mapbox's _centerAltitude), but only near the clearance shell
-                // (CameraClearance::focusFollow): pinned everywhere, a ridge pan bobbed the camera.
+                // maplibre's model: the focus sits on the ground, so a zoom is the distance to it at every altitude; while a
+                // finger drags or a fling runs it keeps its height (a ridge pan would bob), and is put back when it ends.
                 {
                     MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
                     MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
@@ -1396,17 +1421,30 @@ namespace massif {
                         // Measured with the focus pinned, so the lift cannot feed back into its input.
                         double cameraTerrainZ = terrainZ;
                         elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ);
-                        double pinnedCameraZ = terrainZ + orbitHeight;
                         double clearanceFloor = focusTerrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
                         double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
                         double clearanceFraction = focusTerrainOptions->getCameraClearanceFraction();
-                        double minHeight = CameraClearance::minHeight(pinnedCameraZ, maxZoomOrbit, clearanceFloor, clearanceFraction);
-                        double follow = CameraClearance::focusFollow(pinnedCameraZ - cameraTerrainZ, minHeight);
                         // Never below the shell: raising keeps the user's tilt and zoom.
                         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, clearanceFraction) - orbitHeight;
                         _eyeGroundZoom = -1;
                         _eyeGroundOffset = 0;
-                        _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
+                        bool gesture = _touchGestureActive.load() || _kineticEventHandler.isPanning() || _kineticEventHandler.isZooming() || _kineticEventHandler.isRotating();
+                        if (gesture) {
+                            _terrainFocusFrozen = true;
+                            _viewState.setFocusHeight(std::max(focusMapPos.getZ(), shellFocusZ + lift));
+                        } else {
+                            if (_terrainFocusFrozen) {
+                                _terrainFocusFrozen = false;
+                                landFocusAlongView(terrainZ + lift);
+                            }
+                            double pinnedZ = std::max(terrainZ, shellFocusZ) + lift;
+                            // A finer DEM tile moves the ground under a still camera: without a frame for it, the
+                            // picture stays at the old height.
+                            if (pinnedZ != focusMapPos.getZ()) {
+                                _viewState.setFocusHeight(pinnedZ);
+                                requestRedraw();
+                            }
+                        }
                     }
                 }
                 MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
@@ -2704,7 +2742,8 @@ namespace massif {
             minTopZoom = std::min(minTopZoom, tileId.zoom);
         }
         // Capped at what the camera shows: blending-out tiles from before a zoom out would drag it finer.
-        int viewZoomCap = static_cast<int>(std::ceil(viewState.getZoom())) + 1;
+        // The render zoom, which tiles are picked at: the app's number is a level short with ZoomOffset 1 (web).
+        int viewZoomCap = static_cast<int>(std::ceil(viewState.getRenderZoom())) + 1;
         coverZoom = std::min(maxCollectedZoom, std::max(viewZoomCap, minTopZoom));
         // Split only where a finer collected tile sits inside, or leaves explode (04-terrain.md).
         std::vector<vt::TileId> tops = pending;
@@ -3212,6 +3251,66 @@ namespace massif {
                         drapeTiles[tileId] = fingerprint;
                     }
 
+                    // A texel per screen pixel per leaf, the cover fitting half the cache (the other half holds the
+                    // generation stand-ins read). An app's DrapeResolution keeps one size for all.
+                    std::map<vt::TileId, int> leafResolution;
+                    if (terrainOptions->getDrapeResolution() <= 0 && TerrainDrapeCache::isBudgetEnabled() && std::dynamic_pointer_cast<PlanarProjectionSurface>(_options->getProjectionSurface())) {
+                        const cglib::mat4x4<double>& mvp = viewState.getModelviewProjectionMat();
+                        double groundZ = viewState.getFocusPos()(2);
+                        std::vector<double> edgePixels;
+                        std::vector<vt::TileId> sizedLeaves;
+                        for (auto it = drapeTiles.begin(); it != drapeTiles.end(); it++) {
+                            const vt::TileId& tileId = it->first;
+                            double extent = static_cast<double>(1 << tileId.zoom);
+                            // Screen pixels per tile width where the leaf is ON screen; the ground under the camera is nearer
+                            // than anything drawn. A leaf seen only in the margin (a sliver between samples) takes its nearest scale.
+                            double marginX = 0.25 * viewState.getWidth(), marginY = 0.25 * viewState.getHeight();
+                            auto project = [&](double u, double v, cglib::vec2<double>& screen) {
+                                double x = ((tileId.x + u) / extent - 0.5) * Const::WORLD_SIZE;
+                                double y = (0.5 - (tileId.y + v) / extent) * Const::WORLD_SIZE;
+                                cglib::vec4<double> clip = cglib::transform(cglib::vec4<double>(x, y, groundZ, 1.0), mvp);
+                                if (!(clip(3) > 1.0e-9)) {
+                                    return false;
+                                }
+                                screen = cglib::vec2<double>((clip(0) / clip(3) + 1.0) * 0.5 * viewState.getWidth(), (clip(1) / clip(3) + 1.0) * 0.5 * viewState.getHeight());
+                                return true;
+                            };
+                            static const int SAMPLES = 9;
+                            static const double STEP = 0.01;
+                            double edge = 0;
+                            double margin = std::numeric_limits<double>::max();
+                            for (int i = 0; i < SAMPLES; i++) {
+                                for (int j = 0; j < SAMPLES; j++) {
+                                    double u = (i + 0.5) / SAMPLES, v = (j + 0.5) / SAMPLES;
+                                    cglib::vec2<double> p, pu, pv;
+                                    if (!project(u, v, p) || !project(u + STEP, v, pu) || !project(u, v + STEP, pv) || std::abs(p(0) - 0.5 * viewState.getWidth()) > 0.5 * viewState.getWidth() + marginX || std::abs(p(1) - 0.5 * viewState.getHeight()) > 0.5 * viewState.getHeight() + marginY) {
+                                        continue;
+                                    }
+                                    double scale = std::max(cglib::length(pu - p), cglib::length(pv - p)) / STEP;
+                                    if (p(0) >= 0 && p(0) <= viewState.getWidth() && p(1) >= 0 && p(1) <= viewState.getHeight()) {
+                                        edge = std::max(edge, scale);
+                                    } else {
+                                        margin = std::min(margin, scale);
+                                    }
+                                }
+                            }
+                            if (edge == 0 && margin < std::numeric_limits<double>::max()) {
+                                edge = margin;
+                            }
+                            edgePixels.push_back(edge);
+                            sizedLeaves.push_back(tileId);
+                        }
+                        std::size_t cacheBytes = (terrainOptions->getDrapeCacheSize() > 0 ? static_cast<std::size_t>(terrainOptions->getDrapeCacheSize()) * 1024 * 1024 : TerrainDrapeCache::MAX_BYTES);
+                        std::vector<int> sizes = DrapeTuning::leafResolutions(edgePixels, cacheBytes / 2, TileRenderer::MIN_DRAPE_RESOLUTION, TileRenderer::MAX_DRAPE_RESOLUTION);
+                        for (std::size_t i = 0; i < sizedLeaves.size(); i++) {
+                            leafResolution[sizedLeaves[i]] = sizes[i];
+                        }
+                    }
+                    auto resolutionOf = [&leafResolution](const vt::TileId& tileId) {
+                        auto it = leafResolution.find(tileId);
+                        return it != leafResolution.end() ? it->second : 0;
+                    };
+
                     // External targets suppress each layer's surface: only with tiles to drape.
                     bool drapeActive = !drapeTiles.empty();
                     std::vector<vt::TileId> drapeTileIds;
@@ -3289,6 +3388,11 @@ namespace massif {
                         glDepthMask(GL_FALSE);
                         glDisable(GL_STENCIL_TEST);
                         bakeStarted = true;
+                    };
+                    // Leaves are sized one by one, so the viewport follows the texture being written.
+                    auto bindDrapeTarget = [&](unsigned int texture, int size) {
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+                        glViewport(0, 0, size, size);
                     };
                     // Resolved once, not per tile: it locks two mutexes per layer.
                     bool groundAOWanted = false;
@@ -3374,7 +3478,7 @@ namespace massif {
                             return false; // genuinely new ground: nothing in the cache covers it
                         }
                         beginOffscreen();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+                        bindDrapeTarget(texture, _terrainDrapeCache->getTextureResolution(tileId, 0));
                         glClearColor(drapeClearColor.getR() / 255.0f, drapeClearColor.getG() / 255.0f, drapeClearColor.getB() / 255.0f, drapeClearColor.getA() / 255.0f);
                         glClear(GL_COLOR_BUFFER_BIT);
                         for (const SeedSource& source : sources) {
@@ -3389,7 +3493,21 @@ namespace massif {
                     for (auto it = drapeTiles.begin(); it != drapeTiles.end(); it++) {
                         bool needsBake = false;
                         bool hasContent = false;
-                        unsigned int texture = _terrainDrapeCache->acquire(it->first, 0, it->second, needsBake, hasContent);
+                        unsigned int replaced = 0;
+                        int replacedSize = _terrainDrapeCache->getTextureResolution(it->first, 0);
+                        unsigned int texture = _terrainDrapeCache->acquire(it->first, 0, it->second, resolutionOf(it->first), &replaced, needsBake, hasContent);
+                        if (replaced != 0) {
+                            // Resized: the old picture carried across, so the leaf sharpens without a blank frame.
+                            beginOffscreen();
+                            bindDrapeTarget(texture, _terrainDrapeCache->getTextureResolution(it->first, 0));
+                            glClearColor(drapeClearColor.getR() / 255.0f, drapeClearColor.getG() / 255.0f, drapeClearColor.getB() / 255.0f, drapeClearColor.getA() / 255.0f);
+                            glClear(GL_COLOR_BUFFER_BIT);
+                            drapeLayers.front()->blitDrapeTexture(replaced, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+                            TerrainDrapeCache::generateMipmaps(texture);
+                            _terrainDrapeCache->recycle(replaced, false, replacedSize);
+                            _terrainDrapeCache->markSeeded(it->first, 0);
+                            hasContent = true;
+                        }
                         bool fingerprintStale = needsBake;
                         if (!hasContent && seedTile(it->first, texture)) {
                             _terrainDrapeCache->markSeeded(it->first, 0);
@@ -3507,9 +3625,10 @@ namespace massif {
                     }
                     auto bakeTile = [&](const BakeRequest& request) {
                         bool needsBake = false, hasContent = false;
-                        unsigned int texture = _terrainDrapeCache->acquire(request.tileId, 0, request.fingerprint, needsBake, hasContent);
+                        unsigned int texture = _terrainDrapeCache->acquire(request.tileId, 0, request.fingerprint, resolutionOf(request.tileId), nullptr, needsBake, hasContent);
+                        int tileResolution = _terrainDrapeCache->getTextureResolution(request.tileId, 0);
                         beginOffscreen();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+                        bindDrapeTarget(texture, tileResolution);
                         glClearColor(drapeClearColor.getR() / 255.0f, drapeClearColor.getG() / 255.0f, drapeClearColor.getB() / 255.0f, drapeClearColor.getA() / 255.0f);
                         glClear(GL_COLOR_BUFFER_BIT);
                         // Later layers composite over earlier ones: the owner clears, the bakers do not.
@@ -3538,7 +3657,7 @@ namespace massif {
                             if (!_groundAODrapeBuffer) {
                                 _groundAODrapeBuffer = std::make_unique<ScreenMaskBuffer>(false);
                             }
-                            _groundAODrapeBuffer->setSize(resolution, resolution, 1);
+                            _groundAODrapeBuffer->setSize(tileResolution, tileResolution, 1);
                             GLint drapeFBO = 0;
                             glGetIntegerv(GL_FRAMEBUFFER_BINDING, &drapeFBO);
                             int aoBaked = 0;
@@ -3550,11 +3669,11 @@ namespace massif {
                                     aoBaked += tileLayer->bakeGroundAOMask(request.tileId);
                                 }
                                 glBlendEquation(GL_FUNC_ADD);
-                                _groundAODrapeBuffer->endPassRaw(drapeFBO, resolution, resolution);
+                                _groundAODrapeBuffer->endPassRaw(drapeFBO, tileResolution, tileResolution);
                                 if (aoBaked > 0) {
                                     // Premultiplied drape; the mask's alpha is 1, so dst alpha is untouched.
                                     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-                                    drawMaskQuad(_groundAODrapeBuffer->getTexture(), 1.0f / resolution, 1.0f / resolution);
+                                    drawMaskQuad(_groundAODrapeBuffer->getTexture(), 1.0f / tileResolution, 1.0f / tileResolution);
                                 }
                                 // Back to bakeDrapeTile's state; beginOffscreen runs once per frame.
                                 glDisable(GL_CULL_FACE);
@@ -3571,12 +3690,12 @@ namespace massif {
                         for (std::size_t k = 0; k < drapeCuts.size(); k++) {
                             std::size_t maskFingerprint = bakedFingerprint ^ (drapeCutSignature + k * 0x9e3779b9);
                             bool maskNeedsBake = false, maskHasContent = false;
-                            unsigned int maskTexture = _terrainDrapeCache->acquire(request.tileId, static_cast<int>(k) + 1, maskFingerprint, maskNeedsBake, maskHasContent);
+                            unsigned int maskTexture = _terrainDrapeCache->acquire(request.tileId, static_cast<int>(k) + 1, maskFingerprint, tileResolution, nullptr, maskNeedsBake, maskHasContent);
                             if (maskTexture == 0) {
                                 VT_STAT_INC(drapeMaskAcquireFail); // never markBaked: this tile re-bakes next frame too
                                 continue;
                             }
-                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, maskTexture, 0);
+                            bindDrapeTarget(maskTexture, _terrainDrapeCache->getTextureResolution(request.tileId, static_cast<int>(k) + 1));
                             glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
                             glClear(GL_COLOR_BUFFER_BIT);
                             for (std::size_t i = drapeCuts[k].layerIndex; i < drapeLayers.size(); i++) {
@@ -3666,7 +3785,7 @@ namespace massif {
                                 spanBakedThisFrame++;
                                 bakedThisFrame++;
                                 VT_STAT_INC(drapeBakes);
-                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spanTexture, 0);
+                                bindDrapeTarget(spanTexture, _terrainDrapeCache->getTextureResolution(it->first, SPAN_DRAPE_STACK));
                                 glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
                                 glClear(GL_COLOR_BUFFER_BIT);
                                 for (std::size_t i = 0; i < drapeLayers.size(); i++) {

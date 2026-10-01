@@ -22,6 +22,8 @@
 
 #include "terrain/DrapeTuning.h"
 
+#include <vector>
+
 using namespace massif;
 
 #include "TestCheck.h"
@@ -128,9 +130,37 @@ namespace {
                    "a zero threshold degrades to one constant term, not a division by zero");
     }
 
+    void testEachLeafGetsTheTexelsItsFootprintAsksFor() {
+        // An oblique cover: the leaf under the camera spans 1900 px, the far ones a few hundred. One
+        // shared 512 was the near leaf magnified 4x and the blurry road the user saw at z19.
+        std::vector<int> sizes = DrapeTuning::leafResolutions({ 1900, 700, 300, 90 }, 0, 128, 2048);
+        TEST_CHECK(sizes == std::vector<int>({ 2048, 1024, 512, 128 }), "a texel per pixel, rounded up, clamped");
+        // Over budget the most OVER-sampled gives first. Largest-first made a 1046 px leaf 512 while a
+        // 573 px one kept 1024 (Crosscall cover at Cours Jean Jaures, z18.8 tilt 30).
+        std::size_t budget = DrapeTuning::bytesPerTile(1024) * 2 + DrapeTuning::bytesPerTile(512);
+        sizes = DrapeTuning::leafResolutions({ 1046, 573, 1046 }, budget, 128, 2048);
+        std::size_t bytes = 0;
+        for (int size : sizes) {
+            bytes += DrapeTuning::bytesPerTile(size);
+        }
+        TEST_CHECK(bytes <= budget, "the cover fits its budget");
+        TEST_CHECK(sizes[1] <= sizes[0] && sizes[1] <= sizes[2], "the leaf needing least never keeps more than one needing more");
+        TEST_CHECK(DrapeTuning::leafResolutions({ 4000, 4000, 4000 }, 1, 128, 2048) == std::vector<int>({ 128, 128, 128 }),
+                   "an impossible budget bottoms out at the minimum, not below");
+    }
+
+    void testAResizeGrowsAtOnceAndShrinksLazily() {
+        TEST_CHECK(DrapeTuning::needsResize(512, 1024), "a leaf that came closer sharpens at once");
+        TEST_CHECK(!DrapeTuning::needsResize(1024, 512), "one that moved a little away keeps its texels");
+        TEST_CHECK(DrapeTuning::needsResize(1024, 256), "only far off does it give them back");
+        TEST_CHECK(!DrapeTuning::needsResize(512, 512), "and an unchanged one never re-bakes");
+    }
+
 }
 
 void testDrapeTuning() {
+    testEachLeafGetsTheTexelsItsFootprintAsksFor();
+    testAResizeGrowsAtOnceAndShrinksLazily();
     testBudgetBoundaryLets1024Through();
     testTheWorkingSetHasToHoldMoreThanOneCover();
     testABiggerBudgetBuysTheSharperBake();

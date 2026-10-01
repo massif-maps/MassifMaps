@@ -278,7 +278,8 @@ only builds and packs; `build.yml` publishes its tarball.
    It makes a GitHub *prerelease*, publishes the npm packages under the `next` dist-tag (a plain
    `npm install` does not pick them up), tags JitPack and the Swift package `6.1.0-rc.1`, and does
    not touch `CHANGELOG.md`. Styles: `release-styles.yml` with `1.2.0-rc.1` does the same for them.
-3. **Test every package** from the registries:
+3. **Test every package** from the registries — the full procedure, with what each check must
+   print: [Testing a release](docs/contributing/release-testing.md):
    - Android: `scripts/release-check/android` — the AAR from JitPack
      (`com.github.massif-maps:MassifMaps-android-aar:6.1.0-rc.1`) and its `routing` variant
    - iOS: `scripts/release-check/ios` — the Swift package at *Exact version* `6.1.0-rc.1`: the map

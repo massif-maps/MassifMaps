@@ -176,8 +176,8 @@ namespace massif {
         void setStyleEnvironment(const StyleEnvironment& env);
 
         // brightness is view::brightness; pass it in, a ViewState built here defaults to full daylight.
-        static Color evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness = 1.0f);
-        static float evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness = 1.0f);
+        static Color evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness = 1.0f, float zoomShift = 0.0f);
+        static float evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness = 1.0f, float zoomShift = 0.0f);
 
         /**
          * True once, after the GL renderer was created with tiles already waiting: they missed label
@@ -284,6 +284,7 @@ namespace massif {
         bool _buildingGrowOnAppear = false;
         bool _buildingFadeOnAppear = true;
         std::atomic<float> _textOcclusionOpacity{1.0f};
+        std::atomic<float> _styleZoomShift{0.0f};
         float _groundAOIntensity = 0.5f;
         float _groundAOAttenuation = 0.69f;
         cglib::vec3<float> _normalLightDir;

@@ -51,6 +51,9 @@ namespace massif::mvt {
         if (pugi::xml_attribute bufferSizeAttr = mapNode.attribute("buffer-size")) {
             mapSettings.bufferSize = bufferSizeAttr.as_float();
         }
+        if (pugi::xml_attribute tileDrawSizeAttr = mapNode.attribute("tile-draw-size")) {
+            mapSettings.tileDrawSize = tileDrawSizeAttr.as_float();
+        }
 
         // Sun, shadows, fog, buildings. An absent attribute leaves the property undefined, which is
         // what tells the SDK the style did not set it and the application's own value stands.

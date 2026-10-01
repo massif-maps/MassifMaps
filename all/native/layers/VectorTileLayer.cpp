@@ -628,7 +628,7 @@ namespace massif {
     std::shared_ptr<Bitmap> VectorTileLayer::getBackgroundBitmap(const ViewState& viewState) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
-        Color backgroundColor = TileRenderer::evaluateColorFunc(_tileDecoder->getMapSettings()->backgroundColor.getFunction(getExpressionContext()), viewState);
+        Color backgroundColor = TileRenderer::evaluateColorFunc(_tileDecoder->getMapSettings()->backgroundColor.getFunction(getExpressionContext()), viewState, 1.0f, getStyleZoomShift());
         if (backgroundColor != _backgroundColor || !_backgroundBitmap) {
             if (backgroundColor != Color(0, 0, 0, 0)) {
                 _backgroundBitmap = BackgroundBitmapGenerator(BACKGROUND_BLOCK_SIZE, BACKGROUND_BLOCK_COUNT).generateBitmap(backgroundColor);
@@ -650,9 +650,9 @@ namespace massif {
         getStyleEnvironment(viewState, env);
         ResolvedLighting lighting = resolveLighting(options ? options->getLightOptions() : std::shared_ptr<LightOptions>(), env);
 
-        Color color = TileRenderer::evaluateColorFunc(mapSettings->backgroundColor.getFunction(getExpressionContext()), viewState, lighting.brightness);
+        Color color = TileRenderer::evaluateColorFunc(mapSettings->backgroundColor.getFunction(getExpressionContext()), viewState, lighting.brightness, env.zoomShift);
         // A Map setting misses the draw-time grade every symbolizer colour gets, so it is lit here by the same rule.
-        float emissive = TileRenderer::evaluateFloatFunc(mapSettings->backgroundEmissive.getFunction(getExpressionContext()), viewState, lighting.brightness);
+        float emissive = TileRenderer::evaluateFloatFunc(mapSettings->backgroundEmissive.getFunction(getExpressionContext()), viewState, lighting.brightness, env.zoomShift);
         if (emissive < 1.0f && options) {
             auto lit = [&](unsigned char c, int i) {
                 float value = c / 255.0f * (emissive + (1.0f - emissive) * lighting.radiance(i));
@@ -675,6 +675,12 @@ namespace massif {
         return readStyleEnvironment(viewState, lighting.brightness, env);
     }
 
+    float VectorTileLayer::getStyleZoomShift() const {
+        std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
+        std::shared_ptr<Options> options = getOptions();
+        return mapSettings && options ? mapSettings->zoomShift(static_cast<float>(options->getTileDrawSize())) : 0.0f;
+    }
+
     bool VectorTileLayer::readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const {
         // No layer mutex: _tileDecoder is const and locks itself, and refreshDrawData holds _mutex for a whole tile-set change.
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
@@ -682,21 +688,22 @@ namespace massif {
             return false;
         }
         mvt::ExpressionContext context = getExpressionContext();
+        env.zoomShift = getStyleZoomShift();
         // An undeclared property keeps coming from the application's own options.
         auto readFloat = [&](const mvt::FloatFunctionProperty& property, std::optional<float>& value) {
             if (property.isDefined()) {
-                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness);
+                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness, env.zoomShift);
             }
         };
         // A flag written as a number, like building-rounded-roof beside it.
         auto readBool = [&](const mvt::FloatFunctionProperty& property, std::optional<bool>& value) {
             if (property.isDefined()) {
-                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness) != 0.0f;
+                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness, env.zoomShift) != 0.0f;
             }
         };
         auto readColor = [&](const mvt::ColorFunctionProperty& property, std::optional<Color>& value) {
             if (property.isDefined()) {
-                value = TileRenderer::evaluateColorFunc(property.getFunction(context), viewState, brightness);
+                value = TileRenderer::evaluateColorFunc(property.getFunction(context), viewState, brightness, env.zoomShift);
             }
         };
         readFloat(mapSettings->sunAzimuth, env.sunAzimuth);
@@ -724,7 +731,7 @@ namespace massif {
         readFloat(mapSettings->shadowSoftness, env.shadowSoftness);
         readFloat(mapSettings->shadowDistance, env.shadowDistance);
         if (mapSettings->fogEnabled.isDefined()) {
-            env.fogEnabled = TileRenderer::evaluateFloatFunc(mapSettings->fogEnabled.getFunction(context), viewState, brightness) != 0.0f;
+            env.fogEnabled = TileRenderer::evaluateFloatFunc(mapSettings->fogEnabled.getFunction(context), viewState, brightness, env.zoomShift) != 0.0f;
         }
         readColor(mapSettings->fogColor, env.fogColor);
         readFloat(mapSettings->fogRangeStart, env.fogRangeStart);
@@ -742,11 +749,11 @@ namespace massif {
         readFloat(mapSettings->skyAtmosphereLuminance, env.skyAtmosphereLuminance);
         readFloat(mapSettings->terrainMaxVisibleDistance, env.terrainMaxVisibleDistance);
         if (mapSettings->terrainLighting.isDefined()) {
-            env.terrainLightingEnabled = TileRenderer::evaluateFloatFunc(mapSettings->terrainLighting.getFunction(context), viewState, brightness) != 0.0f;
+            env.terrainLightingEnabled = TileRenderer::evaluateFloatFunc(mapSettings->terrainLighting.getFunction(context), viewState, brightness, env.zoomShift) != 0.0f;
         }
         auto readInt = [&](const mvt::FloatFunctionProperty& property, std::optional<int>& value) {
             if (property.isDefined()) {
-                value = static_cast<int>(TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness) + 0.5f);
+                value = static_cast<int>(TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness, env.zoomShift) + 0.5f);
             }
         };
         readInt(mapSettings->shadowMapSize, env.shadowMapSize);
@@ -763,7 +770,7 @@ namespace massif {
             return std::shared_ptr<Bitmap>();
         }
 
-        Color skyGroundColor = TileRenderer::evaluateColorFunc(_tileDecoder->getMapSettings()->backgroundColor.getFunction(getExpressionContext()), viewState);
+        Color skyGroundColor = TileRenderer::evaluateColorFunc(_tileDecoder->getMapSettings()->backgroundColor.getFunction(getExpressionContext()), viewState, 1.0f, getStyleZoomShift());
         Color skyColor = options->getSkyColor();
         if (skyGroundColor != _skyGroundColor || skyColor != _skyColor || !_skyBitmap) {
             if (skyColor == Color(0, 0, 0, 0)) {

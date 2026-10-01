@@ -236,6 +236,8 @@ namespace massif {
         virtual bool getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const;
         // Every Map setting read at one brightness. See getStyleEnvironment for why it is called twice.
         bool readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const;
+        // Map::Settings::zoomShift at this map's TileDrawSize.
+        float getStyleZoomShift() const;
         virtual std::shared_ptr<Bitmap> getSkyBitmap(const ViewState& viewState) const;
 
         virtual void registerDataSourceListener();

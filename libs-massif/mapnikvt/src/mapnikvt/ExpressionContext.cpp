@@ -72,7 +72,7 @@ namespace massif::mvt {
     Value ExpressionContext::getViewStateVariable(const vt::ViewState& viewState, const std::string& name) const {
         if (isViewStateVariable(name)) {
             if (name == "view::zoom") {
-                return viewState.zoom;
+                return viewState.zoom + viewState.styleZoomShift;
             } else if (name == "view::rotation") {
                 return viewState.rotation;
             } else if (name == "view::tilt") {

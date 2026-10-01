@@ -369,6 +369,10 @@ namespace massif::css {
         else if (getMapProperty(mapProperties, "buffer-size", bufferSizeInt)) {
             mapSettings.bufferSize = static_cast<float>(bufferSizeInt);
         }
+        long long tileDrawSize = 0;
+        if (getMapProperty(mapProperties, "tile-draw-size", tileDrawSize)) {
+            mapSettings.tileDrawSize = static_cast<float>(tileDrawSize);
+        }
 
         return mapSettings;
     }

@@ -49,6 +49,7 @@ add_executable(style_tests
   BuiltinParameterTest.cpp
   LineAnchorsTest.cpp
   MBVTSubtileTest.cpp
+  ZoomShiftTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

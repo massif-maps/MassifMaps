@@ -45,7 +45,8 @@ namespace massif::mvt {
     std::shared_ptr<vt::Tile> TileReader::readTile(const vt::TileId& tileId, int styleZoom) const {
         ExpressionContext exprContext;
         exprContext.setTileId(tileId);
-        exprContext.setAdjustedZoom(styleZoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
+        int zoomShift = static_cast<int>(std::lround(_map->getSettings().zoomShift(_symbolizerContext.getSettings().getTileSize())));
+        exprContext.setAdjustedZoom(styleZoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()) + zoomShift);
         exprContext.setStyleParameterStore(_symbolizerContext.getSettings().getStyleParameterStore());
         exprContext.setRender3D(_transformer && _transformer->isElevationBased());
 
@@ -106,6 +107,7 @@ namespace massif::mvt {
                 // per tile, which is as close as a decode-time split can get.
                 vt::ViewState tileViewState;
                 tileViewState.zoom = static_cast<float>(tileId.zoom);
+                tileViewState.styleZoomShift = static_cast<float>(zoomShift);
                 tileLayerBuilder.setPolygon3DGradientHeight((_map->getSettings().buildingVerticalGradientHeight.getFunction(exprContext))(tileViewState));
                 tileLayerBuilder.setPolygon3DGroundRadius((_map->getSettings().buildingAoGroundRadius.getFunction(exprContext))(tileViewState));
                 tileLayerBuilder.setPolygon3DGroundStep((_map->getSettings().buildingAoGroundStep.getFunction(exprContext))(tileViewState));

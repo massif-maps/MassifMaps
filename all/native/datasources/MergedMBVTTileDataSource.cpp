@@ -65,7 +65,8 @@ namespace massif {
             return mbtilesDatasource->getTileMask();
         }
 #endif
-        return NULL;
+        // not NULL: a std::string built from it reads a null pointer
+        return std::string();
     }
 
 

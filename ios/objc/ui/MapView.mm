@@ -8,6 +8,9 @@
 #include "utils/Log.h"
 
 #import  <UIKit/UIKit.h>
+#if TARGET_OS_MACCATALYST
+#import  <UIKit/UIGestureRecognizerSubclass.h>
+#endif
 
 @interface MSFMapView() { }
 
@@ -20,7 +23,92 @@
 @property (strong, nonatomic) UITouch* pointer1;
 @property (strong, nonatomic) UITouch* pointer2;
 
+-(void)handleTouchesBegan:(NSSet*)touches withEvent:(UIEvent*)event;
+-(void)handleTouchesMoved:(NSSet*)touches withEvent:(UIEvent*)event;
+-(void)handleTouchesEnded:(NSSet*)touches withEvent:(UIEvent*)event;
+-(void)handleTouchesCancelled:(NSSet*)touches withEvent:(UIEvent*)event;
+
 @end
+
+#if TARGET_OS_MACCATALYST
+/**
+ * Feeds the map its touches on Mac Catalyst. Once a gesture recognizer anywhere in the window has
+ * taken over a mouse drag (a sheet, a scroll view, text selection), UIKit stops delivering the
+ * mouse's touch to plain views - only to gesture recognizers - until the app is reactivated, so
+ * the map's own touch methods go silent. This recognizer still gets them. It never recognizes, so
+ * it blocks nothing.
+ */
+@interface MSFMapTouchGestureRecognizer : UIGestureRecognizer <UIGestureRecognizerDelegate>
+@end
+
+@implementation MSFMapTouchGestureRecognizer {
+    NSMutableSet<UITouch*>* _activeTouches;
+    UIEvent* _lastEvent;
+}
+
+-(instancetype)init {
+    if (self = [super initWithTarget:nil action:nil]) {
+        self.cancelsTouchesInView = NO;
+        self.delaysTouchesBegan = NO;
+        self.delaysTouchesEnded = NO;
+        self.delegate = self;
+        _activeTouches = [NSMutableSet set];
+    }
+    return self;
+}
+
+-(BOOL)gestureRecognizer:(UIGestureRecognizer*)recognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer*)other {
+    return YES;
+}
+
+-(BOOL)canPreventGestureRecognizer:(UIGestureRecognizer*)other {
+    return NO;
+}
+
+-(BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer*)other {
+    return NO;
+}
+
+-(void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+    [_activeTouches unionSet:touches];
+    _lastEvent = event;
+    [(MSFMapView*)self.view handleTouchesBegan:touches withEvent:event];
+}
+
+-(void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+    _lastEvent = event;
+    [(MSFMapView*)self.view handleTouchesMoved:touches withEvent:event];
+}
+
+-(void)touchesEnded:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+    [_activeTouches minusSet:touches];
+    [(MSFMapView*)self.view handleTouchesEnded:touches withEvent:event];
+    if (_activeTouches.count == 0) {
+        self.state = UIGestureRecognizerStateFailed;
+    }
+}
+
+-(void)touchesCancelled:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+    [_activeTouches minusSet:touches];
+    [(MSFMapView*)self.view handleTouchesCancelled:touches withEvent:event];
+    if (_activeTouches.count == 0) {
+        self.state = UIGestureRecognizerStateFailed;
+    }
+}
+
+// Reset with touches still down means they went elsewhere: the map must stop tracking them.
+-(void)reset {
+    if (_activeTouches.count > 0) {
+        NSSet* pending = [_activeTouches copy];
+        [_activeTouches removeAllObjects];
+        [(MSFMapView*)self.view handleTouchesCancelled:pending withEvent:_lastEvent];
+    }
+    _lastEvent = nil;
+    [super reset];
+}
+
+@end
+#endif
 
 static const int NATIVE_ACTION_POINTER_1_DOWN = 0;
 static const int NATIVE_ACTION_POINTER_2_DOWN = 1;
@@ -29,6 +117,12 @@ static const int NATIVE_ACTION_CANCEL = 3;
 static const int NATIVE_ACTION_POINTER_1_UP = 4;
 static const int NATIVE_ACTION_POINTER_2_UP = 5;
 static const int NATIVE_NO_COORDINATE = -1;
+
+// A tracked touch whose end never arrived: it left the event, or it begins again (Mac Catalyst
+// reuses the mouse's touch). Kept, it turns every later touch into a second pointer.
+static BOOL IsStalePointer(UITouch* pointer, NSSet* touches, UIEvent* event) {
+    return pointer && (![[event allTouches] containsObject:pointer] || [touches containsObject:pointer]);
+}
 
 @implementation MSFMapView
 
@@ -77,6 +171,10 @@ static const int NATIVE_NO_COORDINATE = -1;
 
     MSFMapRedrawRequestListener* redrawRequestListener = [[MSFMapRedrawRequestListener alloc] initWithView:self];
     [_baseMapView setRedrawRequestListener:redrawRequestListener];
+
+#if TARGET_OS_MACCATALYST
+    [self addGestureRecognizer:[[MSFMapTouchGestureRecognizer alloc] init]];
+#endif
     
     if (self.window != nil) {
         [self initContext];
@@ -292,7 +390,36 @@ static const int NATIVE_NO_COORDINATE = -1;
     screenCoord->y *= _scale;
 }
 
+// On Mac Catalyst the touches come from MSFMapTouchGestureRecognizer instead: UIKit's own delivery
+// can stop, and taking both would see every touch twice.
 -(void)touchesBegan:(NSSet*)touches withEvent:(UIEvent*)event {
+#if !TARGET_OS_MACCATALYST
+    [self handleTouchesBegan:touches withEvent:event];
+#endif
+}
+
+-(void)touchesMoved:(NSSet*)touches withEvent:(UIEvent*)event {
+#if !TARGET_OS_MACCATALYST
+    [self handleTouchesMoved:touches withEvent:event];
+#endif
+}
+
+-(void)touchesCancelled:(NSSet*)touches withEvent:(UIEvent*)event {
+#if !TARGET_OS_MACCATALYST
+    [self handleTouchesCancelled:touches withEvent:event];
+#endif
+}
+
+-(void)touchesEnded:(NSSet*)touches withEvent:(UIEvent*)event {
+#if !TARGET_OS_MACCATALYST
+    [self handleTouchesEnded:touches withEvent:event];
+#endif
+}
+
+-(void)handleTouchesBegan:(NSSet*)touches withEvent:(UIEvent*)event {
+    if (IsStalePointer(_pointer1, touches, event) || IsStalePointer(_pointer2, touches, event)) {
+        [self handleTouchesCancelled:touches withEvent:event];
+    }
     for (UITouch* pointer in [touches allObjects]) {
         if (!_pointer1) {
             _pointer1 = pointer;
@@ -314,7 +441,7 @@ static const int NATIVE_NO_COORDINATE = -1;
     }
 }
 
--(void)touchesMoved:(NSSet*)touches withEvent:(UIEvent*)event {
+-(void)handleTouchesMoved:(NSSet*)touches withEvent:(UIEvent*)event {
     if (_pointer1) {
         CGPoint screenPos1 = [_pointer1 locationInView:self];
         [self transformScreenCoord:&screenPos1];
@@ -328,13 +455,13 @@ static const int NATIVE_NO_COORDINATE = -1;
     }
 }
 
--(void)touchesCancelled:(NSSet*)touches withEvent:(UIEvent*)event {
+-(void)handleTouchesCancelled:(NSSet*)touches withEvent:(UIEvent*)event {
     [_baseMapView onInputEvent:NATIVE_ACTION_CANCEL x1:NATIVE_NO_COORDINATE y1:NATIVE_NO_COORDINATE x2:NATIVE_NO_COORDINATE y2:NATIVE_NO_COORDINATE];
     _pointer1 = nil;
     _pointer2 = nil;
 }
 
--(void)touchesEnded:(NSSet*)touches withEvent:(UIEvent*)event {
+-(void)handleTouchesEnded:(NSSet*)touches withEvent:(UIEvent*)event {
     if (_pointer2 && [touches containsObject:_pointer2]) {
         // Dual pointer, second pointer goes up first
         CGPoint screenPos1 = [_pointer1 locationInView:self];

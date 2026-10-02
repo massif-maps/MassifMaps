@@ -157,8 +157,9 @@ def occlusion(lay):
 
 
 def on_roof(lay):
-    """`poi_on_roof` 1: a POI inside a 3D building stands on its roof (mapbox symbol-z-elevate), SDK-only"""
-    if lay['type'] == 'symbol' and lay['id'].startswith('poi-'):
+    """`poi_on_roof` 1: a POI or house number inside a 3D building stands on its roof (mapbox
+    symbol-z-elevate, as Standard's building-number-label), SDK-only"""
+    if lay['type'] == 'symbol' and (lay['id'].startswith('poi-') or lay['id'] == 'housenumber'):
         meta = lay.setdefault('metadata', {})
         meta['massif:layout'] = {**meta.get('massif:layout', {}),
                                  'symbol-z-elevate': ['==', ['config', 'poi_on_roof'], 1]}

@@ -90,6 +90,7 @@ void testPrefetchOrder();
 void testTileStyleZoom();
 void testTileCacheHold();
 void testKineticStep();
+void testLabelPlacementFollowUp();
 void testTileLODRule();
 void testSphericalSurface();
 void testGlobeElevationScale();
@@ -481,6 +482,7 @@ int main() {
     testTileStyleZoom();
     testTileCacheHold();
     testKineticStep();
+    testLabelPlacementFollowUp();
     testTileLODRule();
     testSphericalSurface();
     testGlobeElevationScale();

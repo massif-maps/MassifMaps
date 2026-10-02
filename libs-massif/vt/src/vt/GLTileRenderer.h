@@ -360,8 +360,8 @@ namespace massif::vt {
         void renderLabels(bool labels2D, bool labels3D);
         bool endFrame();
 
-        /** Returns false when the culler's slice ran out before this layer's labels did. */
-        bool cullLabels(LabelCuller& culler);
+        /** Returns false when the culler's slice ran out before this layer's labels did; `empty`: there were none. */
+        bool cullLabels(LabelCuller& culler, bool& empty);
         void restartLabelPlacement();
         /** Whether labels were moved onto newly arrived terrain since the last call. */
         bool consumeLabelsReanchored() { return _labelsReanchored.exchange(false); }

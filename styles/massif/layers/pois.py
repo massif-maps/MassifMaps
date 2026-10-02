@@ -27,9 +27,10 @@ CATEGORY = OrderedDict([
 ])
 
 CLASSES = {
-    'food_and_drink': ['bar', 'cafe', 'fast_food', 'restaurant', 'ice_cream', 'sushi'],
-    'store_like': ['alcohol_shop', 'bakery', 'beer', 'butcher', 'clothing_store', 'florist',
-                   'furniture', 'gift', 'grocery', 'hairdresser', 'laundry', 'shop'],
+    # food shops with the food, as Standard's food_and_drink_stores share its orange
+    'food_and_drink': ['alcohol_shop', 'bakery', 'bar', 'beer', 'butcher', 'cafe', 'fast_food', 'grocery',
+                       'ice_cream', 'restaurant', 'sushi'],
+    'store_like': ['clothing_store', 'florist', 'furniture', 'gift', 'hairdresser', 'laundry', 'shop'],
     'arts_and_entertainment': ['amusement_park', 'aquarium', 'archaeological_site', 'art_gallery', 'attraction',
                                'castle', 'cinema', 'fort', 'fountain', 'monument', 'museum', 'music', 'ruins',
                                'theatre', 'windmill', 'zoo'],
@@ -163,38 +164,23 @@ def flat_match(value_of, default, furniture=None, keep_furniture=False, fixed=No
     return out
 
 
-# Least important first, so a station still wins a collision. Gated by CATEGORY the way Standard
-# draws them early; the rank layers are the `poiRanking: rank` switch, Liberty's own ladder.
+# The data decides when a POI appears: OpenMapTiles' `rank`, on OpenFreeMap Liberty's ladder. Least
+# important first, so a lower rank wins a collision.
 RANK_LAYERS = [
     ('poi-rank-r20', 17, ['all', ['>=', get('rank'), 20]]),
     ('poi-rank-r7', 16, ['all', ['>=', get('rank'), 7], ['<', get('rank'), 20]]),
     ('poi-rank-r1', 15, ['all', ['>=', get('rank'), 1], ['<', get('rank'), 7]]),
 ]
-CATEGORY_LAYERS = [
-    ('poi-waste', 18, ['drinking_water', 'toilets', 'waste_basket']),
-    ('poi-shop', 17, ['alcohol_shop', 'bakery', 'beer', 'butcher', 'clothing_store', 'florist', 'furniture',
-                      'gift', 'grocery', 'hairdresser', 'ice_cream', 'laundry', 'nightclub', 'shop', 'sushi',
-                      'telephone']),
-    ('poi-amenity', 17, ['bicycle', 'bicycle_rental', 'car', 'fuel', 'parking', 'parking_garage']),
-    ('poi-bus', 16, ['bus']),
-    ('poi-attraction', 16, ['amusement_park', 'aquarium', 'attraction']),  # but a viewpoint: see MOUNTAIN_LAYERS
-    ('poi-cultural', 16, ['archaeological_site', 'art_gallery', 'castle', 'fort', 'fountain', 'monument', 'museum',
-                          'ruins', 'windmill']),
-    ('poi-sport', 16, ['american_football', 'baseball', 'basketball', 'cricket', 'golf', 'pitch', 'skiing',
-                       'soccer', 'stadium', 'swimming', 'tennis']),
-    ('poi-outdoor', 16, ['adit', 'beach', 'bird_hide', 'cave_entrance', 'dog_park', 'garden', 'mountain', 'park',
-                         'playground', 'ranger_station', 'viewpoint', 'volcano', 'water', 'waterfall', 'wetland', 'zoo']),
-    ('poi-food', 16, ['bar', 'cafe', 'fast_food', 'restaurant']),
-    ('poi-cemetery', 15, ['cemetery']),
-    ('poi-lodging', 15, ['alpine_hut', 'lodging', 'picnic_site', 'shelter']),
-    ('poi-public', 15, ['atm', 'bank', 'cinema', 'embassy', 'fire_station', 'information', 'library', 'music',
-                        'police', 'post', 'prison', 'theatre', 'town_hall']),
-    ('poi-worship', 15, ['place_of_worship']),
-    ('poi-education', 15, ['college', 'school']),  # but a kindergarten: see kindergarten()
-    ('poi-health', 14, ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary']),
+# The exceptions, each its own layer: stations and airports before the ladder starts, as Standard
+# draws them; the bus stop after it, as Standard does - icon at 17, name at 18.
+STATION_LAYERS = [
     ('poi-transit', 13, ['aerialway', 'ferry', 'harbor', 'lighthouse', 'railway', 'railway_light', 'railway_metro']),
     ('poi-airport', 12, ['airfield', 'airport', 'heliport']),
 ]
+BUS = ('bus', 17, 18)
+# Drawn by a layer of their own at every zoom, so the ladder leaves them out. Excluded rather than
+# listed: a class list is a when() per feature, an exclusion a few prunable selectors.
+OWN_LAYER = sorted({'bus', 'campsite', 'spring', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
 
 # a viewpoint is an attraction to OpenMapTiles: its own glyph at every zoom (a ruin keeps the castle, as Standard)
 ICON = ['match', get('subclass'), ['florist', 'furniture', 'viewpoint'], get('subclass'), get('class')]
@@ -260,7 +246,7 @@ NAME = ['coalesce', get('name'), get('name_int')]
 SHELTER_NAME = ['case', ['==', get('shelter_type'), 'public_transport'], '', NAME]
 
 
-def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAME, overlap=False, scale=1,
+def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overlap=False, scale=1,
               category=None):
     layout = {
         # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
@@ -285,17 +271,14 @@ def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAM
     massif_layout = {'icon-image': ['image', icon, {'params': mono_params() if mono else icon_params(category)}]}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
     massif_layout['icon-size'] = 0.4 * scale if mono else ['match', ['config', 'poiStyle'], 'plain', 0.6 * scale, 0.4 * scale]
-    if ranking == 'rank':
-        # maplibre draws the default mode; the SDK turns these back on through massif:layout
-        layout['visibility'] = 'none'
-        massif_layout['visibility'] = 'visible'
     return layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
                  paint={'text-color': MONO_INK if mono else night_color(category) if dark else day_color(category),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
+                 # ONE template and ONE attachment for every POI: a child project's rule extends the one
+                 # and merges with the other, see docs/internals/cartocss-templates.md
                  metadata={'massif:params': ['icon-image', 'text-color'],
+                           'massif:template': 'poi', 'massif:attachment': 'poi',
                            'massif:layout': massif_layout,
-                           # maplibre rejects ["config", ...] in a filter, so the switch rides here
-                           **({'massif:filter': ['==', ['config', 'poiRanking'], ranking]} if ranking else {}),
                            'massif:paint': {'text-color': MONO_INK if mono else night_color(category) if dark else text_color(category),
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
                                             # `plain`: a bare glyph needs the halo its disc gave it
@@ -351,7 +334,7 @@ def mountain(v):
     out = []
     for id, minzoom, maxzoom, filter, icon, param in MOUNTAIN_LAYERS:
         # a water point's glyph a size down: they are many, and a walker needs the dot, not the badge
-        lay = poi_layer(id, minzoom, filter, None, v, icon=icon, maxzoom=maxzoom, text=shelter_text(id),
+        lay = poi_layer(id, minzoom, filter, v, icon=icon, maxzoom=maxzoom, text=shelter_text(id),
                         category='park_like' if id == 'poi-mountain-viewpoint' else None,
                         scale=0.75 if id == 'poi-mountain-water' else 1)
         if param:
@@ -374,7 +357,7 @@ def campsites(v):
                                ('poi-caravan-site', ['all', camp, ['==', get('subclass'), 'caravan_site']],
                                 'show_caravan_site')):
         for overlap in (0, 1):
-            lay = poi_layer(id + ('-overlap' if overlap else ''), 12, filter, None, v, overlap=bool(overlap))
+            lay = poi_layer(id + ('-overlap' if overlap else ''), 12, filter, v, overlap=bool(overlap))
             lay['metadata']['massif:minzoom-param'] = 'campsite_min_zoom'
             gate(lay, v, 'campsite_allow_overlap', overlap)
             if switch:
@@ -386,25 +369,37 @@ def campsites(v):
 def kindergarten(v):
     """a kindergarten in the parks' green rather than a school's brown; OpenMapTiles files it under
     school, so it is its own layer the way a viewpoint is"""
-    return [poi_layer('poi-kindergarten', 15, ['==', get('subclass'), 'kindergarten'], 'category', v,
+    return [poi_layer('poi-kindergarten', 15, ['==', get('subclass'), 'kindergarten'], v,
                       category='park_like')]
 
 
 def water_highlight(v):
     """`highlight_drinking_water`, Alpimaps': water points larger, never hidden by another label, and
     from z12 whatever `water_min_zoom` says"""
-    lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], None, v,
+    lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], v,
                     icon=MOUNTAIN_ICON, overlap=True, scale=1.4)
     return [gate(lay, v, 'highlight_drinking_water')]
 
 
+def bus(v):
+    """The stop's icon from `poi_bus_minzoom`, its name from `poi_bus_label_minzoom`: project constants,
+    so a child project moves either in its `constants`"""
+    cls, icon_zoom, name_zoom = BUS
+    stop = ['==', get('class'), cls]
+    icon = poi_layer('poi-bus-icon', icon_zoom, stop, v, maxzoom=name_zoom, text='')
+    icon['metadata'].update({'massif:minzoom-const': 'poi_bus_minzoom', 'massif:maxzoom-const': 'poi_bus_label_minzoom'})
+    named = poi_layer('poi-bus', name_zoom, stop, v)
+    named['metadata']['massif:minzoom-const'] = 'poi_bus_label_minzoom'
+    return [icon, named]
+
+
 def layers(v):
-    return ([poi_layer(id, minzoom, filter, 'rank', v) for id, minzoom, filter in RANK_LAYERS] + campsites(v) +
-            [poi_layer(id, minzoom, ['all', ['in', get('class'), ['literal', classes]],
-                                     *([['!=', get('subclass'), 'viewpoint']] if 'attraction' in classes else []),
-                                     *([['!=', get('subclass'), 'kindergarten']] if 'school' in classes else [])],
-                       'category', v, text=shelter_text(id))
-             for id, minzoom, classes in CATEGORY_LAYERS] + kindergarten(v) + water_highlight(v))
+    ladder = ['all', *[['!=', get('class'), c] for c in OWN_LAYER],
+              ['!=', get('subclass'), 'kindergarten'], ['!=', get('subclass'), 'viewpoint']]
+    return (bus(v) + [poi_layer(id, minzoom, ['all', ladder, filter], v, text=shelter_text('poi-lodging'))
+                      for id, minzoom, filter in RANK_LAYERS] + campsites(v) +
+            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], v)
+             for id, minzoom, classes in STATION_LAYERS] + kindergarten(v) + water_highlight(v))
 
 
 def write_sprite_palette(path):

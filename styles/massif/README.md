@@ -17,8 +17,7 @@ feature - and a layer only some variants draw is gated by a parameter filter the
 tile - always as `==` or a chain of `!=`, never an `in`, because every one of those brackets.
 `build.py --convert` FAILS if the stylesheet holds a single `when()`: one is evaluated per feature
 and blocks rule pruning. `carto/<variant>.json` extends `project.json` with that parameter set, so an app loads a
-variant by its style name and can still switch at runtime with the style parameter (a re-decode,
-like `poiRanking`).
+variant by its style name and can still switch at runtime with the style parameter (a re-decode).
 
 ```sh
 python3 build.py --convert                                        # styles + SDK project, ~45 s
@@ -211,7 +210,6 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
   ([style-tools](../../docs/contributing/style-tools.md)).
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger. It reads the class tables, so switching is a re-decode.
-- `poiRanking` — `category` or `rank`, see below.
 All of them are in [`params.py`](params.py), named as in Alpimaps' OSM style where it had one. A
 variant may state its own default (`Variant(params=...)`), written into `carto/<variant>.json` and,
 for a zoom, into the MapLibre file as the layer's `minzoom`. A switch is `lib.gate`: a selector the
@@ -355,37 +353,30 @@ INSIDE its filter, which is the one thing not taken: a filter that reads the zoo
 same gate is **one layer per class**, ordered least important first so the motorway's name is placed
 first and wins the collision.
 
-**POIs come in by CATEGORY, and transit by MODE.** Standard's `poi-label` is built on `filterrank`,
-`sizerank` and `maki`, none of which OpenMapTiles has, so the gate is taken from what Standard
-DRAWS early rather than from its expressions. Its `transit-label` is a layer of its own from z12 and
-lets buses in only at z17; parking and fuel are not transit to it at all, they sit with the shops.
-So:
+**POIs come in by RANK, as Liberty draws them; stations and buses by MODE, as Standard does.**
+OpenMapTiles' `rank` orders a tile's POIs by how much they matter where they stand, so the data
+decides: OpenFreeMap Liberty's ladder, rank 1–6 at z15, 7–19 at z16, the rest at z17. Standard's
+`poi-label` is built on `filterrank` the same way — a density rank OpenMapTiles does not carry,
+`rank` is the nearest thing. The exceptions are layers of their own, gated by mode as Standard's
+`transit-label` gates them:
 
 | z | |
 |---|---|
-| 12 | airport |
-| 13 | transit — rail, metro, tram, ferry, harbour, aerialway |
-| 14 | health |
-| 15 | education, worship, public, lodging, cemetery |
-| 16 | food, outdoor, sport, cultural, attraction, **bus** |
-| 17 | shop, **amenity** — parking, fuel, car, bicycle |
-| 18 | waste |
+| 12 | airport, airfield, heliport |
+| 13 | rail, metro, tram, ferry, harbour, aerialway, lighthouse |
+| 15–17 | everything else, by rank |
+| 17 | bus stop, its badge; its name at 18 |
 
-MapTiler's own zooms were tried first and put a gallery two levels before the tram stop that gets you
-to it. Seventeen layers, ordered least important first, so a station still wins a collision.
+The ladder excludes the classes those layers draw with a chain of `!=` rather than listing the ones
+it keeps: a list is an `in`, a `when()` per feature, where the chain brackets. A class with no glyph
+draws its name, as on Liberty.
 
-**...and that gate is a SWITCH, not the only way in.** `poiRanking` is a style parameter — `category`
-by default, `rank` for the source's own ranking and nothing else: OpenFreeMap Liberty's ladder,
-rank 1–6 at z15, 7–19 at z16, the rest at z17, three layers and no class named anywhere. Setting it
-is a re-decode rather than a repaint (a parameter in a FILTER is), which is what a mode switch is.
-
-Two things make it cost nothing when it is not used. The switch is a bracketed predicate
-(`['param::poiRanking' = 'rank']`), so the decoder pre-evaluates it with no feature in hand and
-prunes the losing set of layers WHOLE — a `when()` there would have tested the mode per feature, in
-both sets, at every zoom. And it lives in `metadata.massif:filter`, not in the filter: maplibre
-rejects `["config", …]` in a filter outright, so the reference pane goes on drawing the default
-mode, which is what a comparison wants. The rank layers say `visibility: none` for the same reason
-and turn themselves back on through `massif:layout`.
+**A child project moves any of it.** Every POI layer extends ONE template, `%poi`, and draws into
+ONE attachment, `::poi` (`massif:template`, `massif:attachment`), so a child widens a class with a
+rule of its own and the cascade merges it with the base's — see
+[CartoCSS templates](../../docs/internals/cartocss-templates.md). The bus stop's two zooms are
+project `constants`, `poi_bus_minzoom` and `poi_bus_label_minzoom` (`massif:minzoom-const`), which
+a child overrides with no rule at all. `examples/osm/` does both.
 
 Liberty's italic face for them is taken as well — it is the one thing on the
 map that is not a road, and it should not read like one.
@@ -522,6 +513,9 @@ footways red, road colours ramped over zoom as Alpimaps ramps them, tertiaries w
 widths kept, POIs as bare glyphs (`poiStyle: plain`), Alpimaps' textures on woods, scrub, wetland
 and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
 reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
+Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
+their rank and hides pharmacies before z17 (`display: none`), and `osm.json`'s `constants` bring the
+bus stops in at z15, named from z16.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

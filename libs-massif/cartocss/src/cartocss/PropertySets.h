@@ -62,6 +62,18 @@ namespace massif::css {
             return it != _properties.end() ? *it : std::shared_ptr<const Property>();
         }
 
+        // `display: none`. Its rule is kept with no symbolizer: the attachment stops at the first rule
+        // that matches, so the features it selects are drawn by none of the rules after it.
+        bool isSuppressed() const {
+            std::shared_ptr<const Property> prop = findProperty("display");
+            const Value* val = prop ? std::get_if<Value>(&prop->getExpression()) : nullptr;
+            if (!val) {
+                return false;
+            }
+            const std::string* str = std::get_if<std::string>(val);
+            return std::holds_alternative<std::monostate>(*val) || (str && *str == "none");
+        }
+
         bool operator == (const PropertySet& other) const {
             return _filters == other._filters && _properties == other._properties;
         }

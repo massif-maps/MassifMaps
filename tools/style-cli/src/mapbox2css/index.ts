@@ -396,6 +396,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     // Set while emitting, so the parameter is only declared when there is a building to gate.
     let usesBuildings = false;
+    // The project's `constants`: zoom ranges a child project may move, see `massif:minzoom-const`.
+    const constants = new Map<string, Json>();
 
     // The brightness of the style's OWN default preset, which the emissive fold measures against.
     // sceneBrightness is an ambient-only proxy, so its absolute value is not a light level - but
@@ -560,9 +562,13 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 .flatMap((ordered) => splitLayer(ordered, coverage))
                 .flatMap((ordered) => splitDashByZoom(ordered, coverage))
                 .map(narrowLayer);
+            // `massif:attachment`: layers drawing into ONE attachment, so a child project's rule on it
+            // merges with whichever of them matches instead of drawing the feature a second time.
+            const sharedAttachment = (layer.metadata as Record<string, Json> | undefined)?.['massif:attachment'];
             variants.forEach((variant, branch) => {
                 const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
-                emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, target, symbolizer, index);
+                const attachment = typeof sharedAttachment === 'string' ? attachmentName(sharedAttachment) : `${attachmentName(layer.id)}${suffix}`;
+                emitLayer(variant, attachment, target, symbolizer, index);
             });
         }
     });
@@ -775,9 +781,18 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             const minDefault = typeof minParam === 'string' ? Number(parameters.get(minParam)?.default) : NaN;
             const hasParam = typeof minParam === 'string' && zoomOffsetLevels() === 0;
             const paramStart = hasParam && typeof layer.minzoom === 'number' && Math.floor(layer.minzoom) === minDefault;
+            // `massif:minzoom-const` / `massif:maxzoom-const`: the zoom range is a project constant, resolved
+            // when the style compiles - a child project overrides it in its `constants`, at no runtime cost.
+            const minConst = (layer.metadata as Record<string, Json> | undefined)?.['massif:minzoom-const'];
+            const maxConst = (layer.metadata as Record<string, Json> | undefined)?.['massif:maxzoom-const'];
+            if (typeof minConst === 'string' && typeof layer.minzoom === 'number') constants.set(minConst, Math.floor(layer.minzoom) + zoomOffsetLevels());
+            if (typeof maxConst === 'string' && typeof layer.maxzoom === 'number') constants.set(maxConst, Math.ceil(layer.maxzoom) + zoomOffsetLevels());
             const predicates = [
                 ...(hasParam ? [`[zoom >= 'param::${minParam}']`] : []),
-                ...zoomPredicates(paramStart ? undefined : layer.minzoom, layer.maxzoom),
+                ...(typeof minConst === 'string' ? [`[zoom >= $${minConst}]`] : []),
+                ...(typeof maxConst === 'string' ? [`[zoom < $${maxConst}]`] : []),
+                ...zoomPredicates(paramStart || typeof minConst === 'string' ? undefined : layer.minzoom,
+                    typeof maxConst === 'string' ? undefined : layer.maxzoom),
                 ...(buildings ? [buildings] : []),
                 ...translateFilter(filter),
             ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));
@@ -911,11 +926,51 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const render = (block: { selector: string; declarations: string[] }): string =>
         `${block.selector} {\n${block.declarations.map((d) => `  ${d}`).join('\n')}\n}`;
 
+    // `massif:template`: every property all layers of a template state goes into `%name`, at its most
+    // common value; a rule keeps what differs. A child project extends it to draw a rule of its own.
+    const templateOf = new Map<string, string>();
+    for (const layer of style.layers ?? []) {
+        const name = (layer.metadata as Record<string, Json> | undefined)?.['massif:template'];
+        if (typeof name === 'string') templateOf.set(layer.id, attachmentName(name));
+    }
+    const templateBlocks = new Map<string, typeof ruleBlocks>();
+    for (const block of ruleBlocks) {
+        const name = templateOf.get(block.owner);
+        if (name) (templateBlocks.get(name) ?? templateBlocks.set(name, []).get(name)!).push(block);
+    }
+    const renderedRules: string[] = [];
+    const emittedTemplates = new Set<string>();
+    for (const block of ruleBlocks) {
+        const name = templateOf.get(block.owner);
+        const group = name ? templateBlocks.get(name)! : [];
+        if (!name || group.length < 2) {
+            renderedRules.push(render(block));
+            continue;
+        }
+        const propertyOf = (d: string) => d.slice(0, d.indexOf(':'));
+        const common = group[0].declarations.map(propertyOf)
+            .filter((p) => group.every((other) => other.declarations.some((d) => propertyOf(d) === p)))
+            .map((p) => {
+                const counts = new Map<string, number>();
+                for (const other of group) {
+                    const d = other.declarations.find((x) => propertyOf(x) === p)!;
+                    counts.set(d, (counts.get(d) ?? 0) + 1);
+                }
+                return [...counts].sort((a, b) => b[1] - a[1])[0][0];
+            });
+        if (!emittedTemplates.has(name)) {
+            emittedTemplates.add(name);
+            renderedRules.push(render({ selector: `%${name}`, declarations: common }));
+        }
+        renderedRules.push(render({ selector: block.selector,
+            declarations: [...block.declarations.filter((d) => !common.includes(d)), `@extend %${name};`] }));
+    }
+
     const mss = [
         ...header,
         '',
         ...(mapRule.declarations.length > 0 ? [render(mapRule), ''] : []),
-        ...ruleBlocks.map(render),
+        ...renderedRules,
         '',
     ].join('\n');
 
@@ -937,6 +992,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             ...(options.styleParams!.size > 0
                 ? { styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
                 : {}),
+            ...(constants.size > 0 ? { constants: Object.fromEntries([...constants].sort()) } : {}),
         },
         null, 2) + '\n';
 
@@ -2720,7 +2776,9 @@ function aliasSprites(names: string[], file: Map<string, string>, prefix: string
 
 function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string | null {
     const sprites = options.sprites!;
-    const slug = safeParamName(layer.id);
+    // Layers sharing a template share its tables, so the icon lookup is a declaration they have in common.
+    const template = (layer.metadata as Record<string, Json> | undefined)?.['massif:template'];
+    const slug = safeParamName(typeof template === 'string' ? template : layer.id);
     let sample: ExtractedIcon | null = null;
     let tableIndex = 0;
 

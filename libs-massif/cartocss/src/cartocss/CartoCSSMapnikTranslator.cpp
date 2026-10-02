@@ -30,6 +30,10 @@
 
 namespace massif::css {
     std::shared_ptr<const mvt::Rule> CartoCSSMapnikTranslator::buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
+        if (propertySet.isSuppressed()) {
+            return std::make_shared<mvt::Rule>("auto", minZoom, maxZoom, buildFilter(propertySet.getFilters()), std::vector<std::shared_ptr<const mvt::Symbolizer>>());
+        }
+
         std::vector<std::shared_ptr<const Property>> properties = propertySet.getProperties();
         std::sort(properties.begin(), properties.end(), [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) {
             return prop1->getRuleOrder() < prop2->getRuleOrder();
@@ -457,9 +461,13 @@ namespace massif::css {
             // Extact text expression and font name or font set name
             mvt::Expression mapnikTextExpr = mvt::Value(std::string());
             std::pair<std::string, mvt::Expression> fontSetFaceName;
+            bool hasIcon = false;
             for (const std::shared_ptr<const Property>& prop : properties) {
                 if (prop->getField() == symbolizerType + "-name") {
                     mapnikTextExpr = buildExpression(prop->getExpression());
+                }
+                else if (prop->getField() == "shield-file" || prop->getField() == "shield-icon-name") {
+                    hasIcon = true;
                 }
                 else if (prop->getField() == symbolizerType + "-face-name") {
                     if (auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&prop->getExpression())) {
@@ -493,8 +501,9 @@ namespace massif::css {
                 }
             }
 
-            // Check if the text expression is not empty.
-            if (mapnikTextExpr != mvt::Expression(mvt::Value(std::string()))) {
+            // Check if the text expression is not empty. A shield with an icon draws without one: a bus
+            // stop's badge before its name, as Mapbox Standard draws it.
+            if (mapnikTextExpr != mvt::Expression(mvt::Value(std::string())) || (symbolizerType == "shield" && hasIcon)) {
                 if (symbolizerType == "text") {
                     mapnikSymbolizer = std::make_shared<mvt::TextSymbolizer>(mapnikTextExpr, map->getFontSets(), _logger);
                 }

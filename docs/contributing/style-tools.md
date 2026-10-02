@@ -474,6 +474,19 @@ beside the parameter), the lowest an app may go, and pays for decoding those til
 `["zoom"]` with `["config", …]` brackets the same way; both need 512 px tiles (no zoom offset), and
 were a `when()` over `[view::zoom]`, read per feature, before.
 
+`massif:minzoom-const` / `massif:maxzoom-const` name a project CONSTANT for the layer's start or
+end: the band tests `[zoom >= $name]` / `[zoom < $name]` instead of the literal, and `project.json`
+gets `"constants": { name: the layer's own minzoom/maxzoom }`. Resolved when the style compiles, so a
+child project moves it in its own `constants` at no runtime cost - where `massif:minzoom-param` is a
+parameter an app sets on a running map.
+
+`massif:template` names a template the layer shares with others: the converter writes `%name` with
+every property all of them state, at its most common value, and each rule keeps what differs plus
+`@extend %name;` - so a child project can draw a rule of its own the same way.
+`massif:attachment` names the attachment the layer draws into instead of its id, so several layers
+share one and a child's rule on it merges with theirs. See
+[CartoCSS templates](../internals/cartocss-templates.md).
+
 `massif:draw-once` names a group (or an expression picking one, `''` for none): every attachment the
 layer splits into gets `draw-once: <group>`, so the SDK draws the group's pixels once, as Mapbox draws
 a translucent line - see [the vt renderer](../internals/rendering/03-vt-renderer.md#translucent-layers-draw-once-groups-opt-in).

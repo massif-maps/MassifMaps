@@ -5,7 +5,6 @@ state its own default (build.py's `Variant(params=...)`); a layer reads one thro
 SWITCH = [0, 1]
 
 PARAMS = {
-    'poiRanking': {'default': 'category', 'values': ['category', 'rank']},
     'poiStyle': {'default': 'badge', 'values': ['badge', 'plain']},
     'building_opacity': {'default': 1},
     'contour_opacity': {'default': 1},

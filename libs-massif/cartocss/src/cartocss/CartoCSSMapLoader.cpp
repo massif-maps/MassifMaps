@@ -513,7 +513,7 @@ namespace massif::css {
             attachmentStyle.order = std::min(attachmentStyle.order, layerAttachmentOrder);
             for (const PropertySet& propertySet : layerAttachment.getPropertySets()) {
                 std::shared_ptr<const mvt::Rule> rule = translator.buildRule(propertySet, map, minZoom, maxZoom);
-                if (rule && rule.get()->getSymbolizers().size() > 0) {
+                if (rule && (rule.get()->getSymbolizers().size() > 0 || propertySet.isSuppressed())) {
                     attachmentStyle.rules.push_back(rule);
                 }
 

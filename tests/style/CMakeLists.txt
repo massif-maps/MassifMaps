@@ -21,9 +21,10 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParseTables.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/CSSColorParser.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/StringUtils.cpp"
-  # The CartoCSS parser, for the nesting-depth guard. Its own tree types only - the compiler and
-  # the mapnik translator are not reached from a parse.
+  # The CartoCSS parser and compiler, for the nesting-depth guard and templates. Their own tree
+  # types only - the mapnik translator is not reached.
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/CartoCSSParser.cpp"
+  "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/CartoCSSCompiler.cpp"
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Expression.cpp"
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Predicate.cpp"
   # No dependencies at all, so the font-name parser costs nothing to link here.
@@ -52,6 +53,7 @@ add_executable(style_tests
   MBVTGeometryBoundsTest.cpp
   ZoomShiftTest.cpp
   DrawOnceTest.cpp
+  CartoCSSTemplateTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

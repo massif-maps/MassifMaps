@@ -1739,7 +1739,7 @@
         "plain": "plain"
       }
     },
-    "poi_on_roof": 0,
+    "poi_on_roof": 1,
     "polygons_border": 0,
     "river_label_min_zoom": 9,
     "road_osm_low": 0,

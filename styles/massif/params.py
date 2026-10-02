@@ -16,7 +16,7 @@ PARAMS = {
     'road_shields': {'default': 1, 'values': SWITCH},
     'highlight_drinking_water': {'default': 0, 'values': SWITCH},
     'label_occlusion': {'default': 1, 'values': SWITCH},
-    'poi_on_roof': {'default': 0, 'values': SWITCH},
+    'poi_on_roof': {'default': 1, 'values': SWITCH},
     'show_caravan_site': {'default': 1, 'values': SWITCH},
     'campsite_allow_overlap': {'default': 0, 'values': SWITCH},
     'polygons_border': {'default': 0, 'values': SWITCH},

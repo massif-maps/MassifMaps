@@ -1500,7 +1500,7 @@ a box per glyph cost the Crosscall 3-5 ms a placement pass (Grenoble z19.2 tilt 
 A point label with an icon and a name collides as two boxes, as maplibre's text and icon boxes.
 
 **A label on its roof.** `text-z-elevate` / `shield-z-elevate` (mapbox `symbol-z-elevate`, the
-Massif `poi_on_roof` parameter) draws the label there instead. Each frame the renderer gathers
+Massif `poi_on_roof` parameter, on by default) draws the label there instead. Each frame the renderer gathers
 every loaded roof at full growth (`refreshRoofSurfaces`); when that set or the building height scale
 moves, the z-elevated labels are re-anchored on the render thread with `roofAt` over their terrain
 height, and flagged absolute so `labelVsh` keeps the roof height. Not in the cull thread's bulk

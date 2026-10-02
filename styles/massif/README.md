@@ -237,7 +237,7 @@ Switches (0/1):
 - `label_occlusion` (1) — road names, POIs and natural labels hidden behind a 3D building (a POI is
   tested from the roof it stands under, [06-labels](../../docs/internals/rendering/06-labels.mdx#per-label-occlusion-by-3d-content));
   0 casts no ray at all.
-- `poi_on_roof` (0) — a POI inside a 3D building is drawn on its roof, as Mapbox Standard's
+- `poi_on_roof` (1) — a POI or a house number inside a 3D building is drawn on its roof, as Mapbox Standard's
   `symbol-z-elevate` does; SDK only, MapLibre keeps it on the ground.
 - `show_caravan_site` (1), `campsite_allow_overlap` (0) — each campsite layer comes twice, with and
   without overlap, since overlap is decided per layer.

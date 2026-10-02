@@ -9852,6 +9852,14 @@
         "massif:layout": {
           "text-font": [
             "ios:Helvetica Neue, Roboto, sans-serif"
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
           ]
         }
       }
@@ -40095,7 +40103,7 @@
       ]
     },
     "poi_on_roof": {
-      "default": 0,
+      "default": 1,
       "values": [
         0,
         1

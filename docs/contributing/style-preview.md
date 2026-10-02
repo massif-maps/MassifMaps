@@ -114,8 +114,8 @@ Mapterhorn, the Mapbox reference over its own DEM, the Massif panes at exaggerat
 panes never auto-flatten either, so a top-down view keeps its shadows and ground AO. Every pane
 tilts to pitch 85, Mapbox's limit, past MapLibre's default 60.
 
-`?styleparams=poi_on_roof=1,label_occlusion=0` sets the style's own parameters on the Massif panes. The
-**POIs on roofs** box (`?poiroof=1`) adds `poi_on_roof=1` to them.
+`?styleparams=poi_on_roof=0,label_occlusion=0` sets the style's own parameters on the Massif panes. The
+**POIs on roofs** box mirrors the style's default (on); unticked (`?poiroof=0`) it adds `poi_on_roof=0`.
 The shadows, terrain and POIs-on-roofs boxes apply to the running Massif panes, without reloading
 them: once made, the terrain stays and goes flat (exaggeration 0) when both shadows and terrain are off.
 

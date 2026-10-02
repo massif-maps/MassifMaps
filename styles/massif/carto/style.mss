@@ -4204,6 +4204,7 @@ Map {
   text-face-name: @font_regular;
   text-size: linear([view::zoom], (17, 10), (20, 13));
   text-collision-padding: (1 * 3);
+  text-z-elevate: ([param::poi_on_roof] = 1);
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @housenumber_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @rail_emphasis)) : linear([view::brightness], (0.25, @label_night), (0.3, @housenumber))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);

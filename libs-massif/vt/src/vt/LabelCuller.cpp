@@ -336,8 +336,23 @@ namespace massif::vt {
             }
         }
 
+        for (int y = 0; y < GRID_RESOLUTION_Y; y++) {
+            for (int x = 0; x < GRID_RESOLUTION_X; x++) {
+                _reservedGrid[y][x].clear();
+            }
+        }
+        for (std::size_t i = 0; i < validLabelList.size(); i++) {
+            const LabelInfo& labelInfo = validLabelList[i];
+            if (labelInfo.valid && labelInfo.wasVisible && labelInfo.label->getGroupId() >= 0 && !labelInfo.label->isFullyOccluded()) {
+                CullRecord record = labelInfo.cullRecord;
+                record.reservation = static_cast<int>(i);
+                addGridRecord(_reservedGrid, record);
+            }
+        }
+
         labelLock.acquire();
-        for (LabelInfo& labelInfo : validLabelList) {
+        for (std::size_t labelIndex = 0; labelIndex < validLabelList.size(); labelIndex++) {
+            LabelInfo& labelInfo = validLabelList[labelIndex];
             labelLock.step();
 
             const std::shared_ptr<Label>& label = labelInfo.label;
@@ -349,7 +364,7 @@ namespace massif::vt {
             if (label->getStyle()->orientation == LabelOrientation::CALLOUT && groupId >= 0) {
                 visible = labelInfo.valid && placeCalloutLabel(labelInfo, testGroupDistance);
             } else if (labelInfo.variants.size() > 1 && groupId >= 0) {
-                visible = labelInfo.valid && placeAnchoredLabel(labelInfo, testGroupDistance);
+                visible = labelInfo.valid && placeAnchoredLabel(labelInfo, static_cast<int>(labelIndex), testGroupDistance);
             } else {
                 visible = groupId >= 0 ? labelInfo.valid && testGridOverlap(labelInfo) : labelInfo.valid;
                 visible = visible && testGroupDistance(labelInfo);
@@ -616,7 +631,24 @@ namespace massif::vt {
         return false;
     }
 
-    bool LabelCuller::placeAnchoredLabel(LabelInfo& labelInfo, const std::function<bool(const LabelInfo&)>& testGroupDistance) {
+    bool LabelCuller::testReservedOverlap(const CullRecord& cullRecord, int index) const {
+        cglib::vec2<int> minPos = getGridIndex(cullRecord.bounds.min);
+        cglib::vec2<int> maxPos = getGridIndex(cullRecord.bounds.max);
+        for (int y = minPos(1); y <= maxPos(1); y++) {
+            for (int x = minPos(0); x <= maxPos(0); x++) {
+                for (const CullRecord& otherRecord : _reservedGrid[y][x]) {
+                    if (otherRecord.reservation > index && otherRecord.bounds.inside(cullRecord.bounds) &&
+                        (!cullRecord.allowOverlapSameFeatureId || !otherRecord.allowOverlapSameFeatureId || cullRecord.localId != otherRecord.localId) &&
+                        testRecordOverlap(otherRecord, cullRecord, 0)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    bool LabelCuller::placeAnchoredLabel(LabelInfo& labelInfo, int labelIndex, const std::function<bool(const LabelInfo&)>& testGroupDistance) {
         const std::shared_ptr<Label>& label = labelInfo.label;
         int count = static_cast<int>(labelInfo.variants.size());
 
@@ -633,11 +665,21 @@ namespace massif::vt {
             }
         }
 
+        int evicting = -1;
         for (int index : candidates) {
             takeVariant(labelInfo, index);
             if (testGridOverlap(labelInfo) && testGroupDistance(labelInfo)) {
-                return true;
+                if (!label->drawsText() || !testReservedOverlap(labelInfo.cullRecord, labelIndex)) {
+                    return true;
+                }
+                if (evicting < 0) {
+                    evicting = index;
+                }
             }
+        }
+        if (evicting >= 0) {
+            takeVariant(labelInfo, evicting);
+            return true;
         }
 
         // Nothing free: fade out on the side it held, not the last one tried.

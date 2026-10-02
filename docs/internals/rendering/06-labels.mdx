@@ -709,9 +709,19 @@ opacity and inserts greedily, so a label sorted earlier claims its side first;
 `shield-placement-priority` is the knob for "these names matter more than those", and a bigger
 `shield-size` sorts earlier among equal priorities.
 
-Insertion is **greedy and single-pass**: a label takes the first of its sides that is free, and a name
-placed there may leave a neighbour's icon nowhere to go — the neighbour is hidden. That is what
-mapbox does, and it is what makes a dense POI field readable: names win space from icons.
+Insertion is **greedy and single-pass**: a label takes the first of its sides that is free. On a
+fresh screen a name placed there may leave a neighbour's icon nowhere to go — the neighbour is
+hidden. That is what mapbox does, and it is what makes a dense POI field readable: names win space
+from icons.
+
+**But a name does not evict a label already on screen.** Every label shown on the last pass reserves
+the box it held (`_reservedGrid`, per layer). A side whose name covers a reservation still to be
+inserted is skipped: the label tries its other sides, then its icon alone. Only when none of those
+fits does it take the first side that did, evicting as before, so yielding never hides it. The icon
+alone ignores reservations: a higher-ranked icon still wins. Measured on the style preview
+(Grenoble z16.5, pitch 50, terrain, two-finger rotate and mouse pan, 4 alternating page loads):
+mid-screen collision flips 47 → 36 per rotation and 69 → 45 per pan, and slightly MORE labels per
+pass (65–75 → 69–82). `LabelYieldTest` pins the four cases.
 
 **Two alternatives were tried and reverted, both on the device and both worth not re-deriving:**
 
@@ -725,8 +735,9 @@ mapbox does, and it is what makes a dense POI field readable: names win space fr
   every icon that fits, so the dense camera showed ~18 names where greedy shows ~60. Icons are not
   worth that much.
 
-So a name still displaces a lower-ranked icon, and `shield-placement-priority` is the only lever over
-who wins.
+Yielding only to what the user already sees is what avoids the first one's collapse: on a fresh
+screen nothing is reserved and greedy fills it, and from then on the screen only changes where
+space is free.
 
 ### Justifying a wrapped name (fork-specific)
 

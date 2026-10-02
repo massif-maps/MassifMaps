@@ -38,6 +38,7 @@ void testDrawOnce();
 void testViewStateMatrix();
 void testLabelNormalBuild();
 void testNormalMapSlope();
+void testLabelGroupDistance();
 void testCollisionPadding();
 void testLabelSplitBox();
 void testLabelAnchorAlign();
@@ -83,6 +84,7 @@ int main() {
     testViewStateMatrix();
     testLabelNormalBuild();
     testNormalMapSlope();
+    testLabelGroupDistance();
     testCollisionPadding();
     testLabelSplitBox();
     testLabelAnchorAlign();

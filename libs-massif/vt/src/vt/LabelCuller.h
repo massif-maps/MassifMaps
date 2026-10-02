@@ -115,7 +115,7 @@ namespace massif::vt {
         bool testGridOverlap(const LabelInfo& labelInfo) const;
         // Whether the record covers a label shown last pass that has not been inserted yet.
         bool testReservedOverlap(const CullRecord& cullRecord, int index) const;
-        // Whether two records whose bounds already intersect really overlap.
+        // Whether two records whose bounds, grown by the buffer, already intersect really overlap.
         static bool testRecordOverlap(const CullRecord& record1, const CullRecord& record2, float buffer);
         // Points the label at one of its layouts, and its cull record with it.
         static void takeVariant(LabelInfo& labelInfo, int index);

@@ -233,7 +233,10 @@ read at the wrong angle next to maplibre's.
 
 `text-spacing` places anchors by **ground** distance, as mapbox's `symbol-spacing` does; under tilt
 they project closer together in the far field. The screen-space guarantee is `text-min-distance`,
-which gives the label a group id the culler enforces in pixels.
+which gives the label a group id the culler enforces in pixels. It tests only the pairs whose
+bounds, grown by that distance, meet: two axis-aligned boxes passed to `testRecordOverlap` with no
+buffer count as overlapping wherever they are, so a group with distance 0 used to show only its first
+label. No CartoCSS style builds one — a symbolizer gives a group only with a distance above 0.
 
 **A line label's group is its TEXT**, so the distance thins repeats of one name and leaves a
 different name alone; only a point label shares one group with every other. `shield-min-distance`

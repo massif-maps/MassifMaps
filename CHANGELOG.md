@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.1.1] - 2026-10-02
+### BREAKING CHANGES
+- due to [`aafed6f`](https://github.com/massif-maps/MassifMaps/commit/aafed6f52a0d8cf4a49e61d6734a718f599e2b51) - bring Massif POIs in by rank and let a child style widen, hide or re-zoom them *(PR [#303](https://github.com/massif-maps/MassifMaps/pull/303) by [@farfromrefug](https://github.com/farfromrefug))*:
+
+  the poiRanking style parameter is removed; POIs start by rank (z15-17) instead of  
+  by category.  
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>  
+  ---------
+
+- due to [`7a17c20`](https://github.com/massif-maps/MassifMaps/commit/7a17c20ced779be3034c9a567d02bfa8e34f7c9e) - draw POIs and house numbers on their building's roof by default in the Massif styles *(PR [#305](https://github.com/massif-maps/MassifMaps/pull/305) by [@farfromrefug](https://github.com/farfromrefug))*:
+
+  the Massif style parameter poi_on_roof now defaults to 1 and also lifts house  
+  numbers; set it to 0 to keep both on the ground.
+
+
+### New Features
+- [`aafed6f`](https://github.com/massif-maps/MassifMaps/commit/aafed6f52a0d8cf4a49e61d6734a718f599e2b51) - **styles**: bring Massif POIs in by rank and let a child style widen, hide or re-zoom them *(PR [#303](https://github.com/massif-maps/MassifMaps/pull/303) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`7a17c20`](https://github.com/massif-maps/MassifMaps/commit/7a17c20ced779be3034c9a567d02bfa8e34f7c9e) - **styles**: draw POIs and house numbers on their building's roof by default in the Massif styles *(PR [#305](https://github.com/massif-maps/MassifMaps/pull/305) by [@farfromrefug](https://github.com/farfromrefug))*
+
+### Bug Fixes
+- [`670e35f`](https://github.com/massif-maps/MassifMaps/commit/670e35f157e31a549cadf795f223af54ea80c799) - **examples**: stop the day-cycle example drawing buildings out to the horizon *(PR [#302](https://github.com/massif-maps/MassifMaps/pull/302) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`d9d46cf`](https://github.com/massif-maps/MassifMaps/commit/d9d46cf90ef14d8fbe1ba7fba8b78bd9558164de) - **labels**: stop POIs vanishing mid-screen while you rotate or pan a 3D map *(PR [#304](https://github.com/massif-maps/MassifMaps/pull/304) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`c8613a4`](https://github.com/massif-maps/MassifMaps/commit/c8613a43cfc1633bde326e0798de29f6c787ca1e) - **renderers**: stop POIs blinking when the app moves a 3D map with moveTo *(PR [#306](https://github.com/massif-maps/MassifMaps/pull/306) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`b624efd`](https://github.com/massif-maps/MassifMaps/commit/b624efdd805efcb96b8f39cc8c74846a88bf35d9) - **renderers**: draw map elements at their own size again, and stop a tap moving the map *(PR [#307](https://github.com/massif-maps/MassifMaps/pull/307) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`5bcadca`](https://github.com/massif-maps/MassifMaps/commit/5bcadcabe6df0cfeb7240928fcc45eaf7a01b4da) - **labels**: stop a label group with no minimum distance hiding all but its first label *(PR [#308](https://github.com/massif-maps/MassifMaps/pull/308) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`5b273a8`](https://github.com/massif-maps/MassifMaps/commit/5b273a812ffbcbdce08b844b2ea004b811642a68) - **labels**: stop the placement worker spinning when there is nothing to place *(PR [#309](https://github.com/massif-maps/MassifMaps/pull/309) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`5e94133`](https://github.com/massif-maps/MassifMaps/commit/5e941339f66241bed706ccd2cc8d099ffc3dc601) - **ios**: merge MetalANGLE into the Mac Catalyst library *(PR [#310](https://github.com/massif-maps/MassifMaps/pull/310) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`22f1aef`](https://github.com/massif-maps/MassifMaps/commit/22f1aefafe716d672ea10e2e4a8dfdca4504fcb6) - **ios**: Mac Catalyst map touches, and two MBTiles crashes *(PR [#311](https://github.com/massif-maps/MassifMaps/pull/311) by [@farfromrefug](https://github.com/farfromrefug))*
+
+
 ## [v6.1.0] - 2026-10-01
 ### BREAKING CHANGES
 - due to [`c56c62c`](https://github.com/massif-maps/MassifMaps/commit/c56c62c04fbc0249348b0600e6e6b48f622c33c4) - require OpenGL ES 3.0 and drop the ES 2.0 fallbacks *(PR [#142](https://github.com/massif-maps/MassifMaps/pull/142) by [@farfromrefug](https://github.com/farfromrefug))*:
@@ -4644,3 +4674,4 @@ Release notes for next releases can be found from [Releases section](https://git
 [v6.0.0]: https://github.com/massif-maps/MassifMaps/compare/v5.2.3...v6.0.0
 [v6.0.1]: https://github.com/massif-maps/MassifMaps/compare/v6.0.0...v6.0.1
 [v6.1.0]: https://github.com/massif-maps/MassifMaps/compare/v6.0.2...v6.1.0
+[v6.1.1]: https://github.com/massif-maps/MassifMaps/compare/v6.1.0...v6.1.1

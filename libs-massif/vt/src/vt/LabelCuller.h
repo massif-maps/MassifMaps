@@ -84,6 +84,8 @@ namespace massif::vt {
             // records need no separating-axis test. True for every billboard label, whatever the
             // camera does - they face it.
             bool axisAligned = false;
+            // In _reservedGrid: the insertion index of the label holding it.
+            int reservation = -1;
 
             CullRecord() = default;
         };
@@ -93,6 +95,7 @@ namespace massif::vt {
         struct LabelInfo {
             bool valid;
             bool wasVisible;
+            bool occluded; // partly hidden by 3D content on the last frame drawn
             float priority;
             int layerIndex;
             float size;
@@ -110,6 +113,8 @@ namespace massif::vt {
         void clearGrid();
         void addGridRecord(RecordGrid& grid, const CullRecord& cullRecord) const;
         bool testGridOverlap(const LabelInfo& labelInfo) const;
+        // Whether the record covers a label shown last pass that has not been inserted yet.
+        bool testReservedOverlap(const CullRecord& cullRecord, int index) const;
         // Whether two records whose bounds already intersect really overlap.
         static bool testRecordOverlap(const CullRecord& record1, const CullRecord& record2, float buffer);
         // Points the label at one of its layouts, and its cull record with it.
@@ -123,8 +128,8 @@ namespace massif::vt {
         bool placeCalloutLabel(LabelInfo& labelInfo, const std::function<bool(const LabelInfo&)>& testGroupDistance);
         // A label whose style names several sides (TextLabelStyle::anchors) takes the first free
         // one - tangram's 'do { ... } while (isOccluded() && nextAnchor())' (labelManager.cpp).
-        // Returns false when no side is free. Updates the label's variant and the cull record.
-        bool placeAnchoredLabel(LabelInfo& labelInfo, const std::function<bool(const LabelInfo&)>& testGroupDistance);
+        // A name yields to a label shown last pass (see 06-labels.mdx), evicting only when nothing else fits.
+        bool placeAnchoredLabel(LabelInfo& labelInfo, int index, const std::function<bool(const LabelInfo&)>& testGroupDistance);
 
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
@@ -138,6 +143,7 @@ namespace massif::vt {
         bool _sliceBudgeted = false;
         bool _sliceExhausted = false;
         RecordGrid _recordGrid;
+        RecordGrid _reservedGrid; // this layer's labels shown last pass, by the side they held
 
         const float _scale;
 

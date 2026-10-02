@@ -47,8 +47,11 @@ add_executable(vt_tests
   ViewStateMatrixTest.cpp
   LabelNormalBuildTest.cpp
   NormalMapSlopeTest.cpp
+  LabelYieldTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
+  # The yield test runs a placement pass.
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/LabelCuller.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/ExtrusionAnchors.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/ExtrusionOccluder.cpp"

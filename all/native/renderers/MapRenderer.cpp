@@ -949,6 +949,10 @@ namespace massif {
         if (!(distance > 0) || !CameraClearance::groundAlongView(cameraPos(2), offset(2) / distance, groundZ, distance, newDistance)) {
             return;
         }
+        // A tap lands where it stood: marking the camera changed would apply a pending FocusPointOffset.
+        if (std::abs(newDistance - distance) <= distance * 1.0e-9) {
+            return;
+        }
         _viewState.setFocusPos(cameraPos + offset * (newDistance / distance));
         _viewState.setZoom(static_cast<float>(_viewState.getZoom() + std::log2(distance / newDistance)));
         _viewState.cameraChanged();
@@ -1433,11 +1437,11 @@ namespace massif {
                             _terrainFocusFrozen = true;
                             _viewState.setFocusHeight(std::max(focusMapPos.getZ(), shellFocusZ + lift));
                         } else {
+                            double pinnedZ = std::max(terrainZ, shellFocusZ) + lift;
                             if (_terrainFocusFrozen) {
                                 _terrainFocusFrozen = false;
-                                landFocusAlongView(terrainZ + lift);
+                                landFocusAlongView(pinnedZ);
                             }
-                            double pinnedZ = std::max(terrainZ, shellFocusZ) + lift;
                             // A finer DEM tile moves the ground under a still camera: without a frame for it, the
                             // picture stays at the old height.
                             if (pinnedZ != focusMapPos.getZ()) {

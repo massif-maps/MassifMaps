@@ -66,11 +66,8 @@ if(APPLE)
   set(CMAKE_XCODE_ATTRIBUTE_GCC_INSTRUMENT_PROGRAM_FLOW_ARCS NO)
 
   if(SDK_CPP_DEFINES MATCHES ".*_MASSIF_USE_METALANGLE.*")
-    if(SDK_MACCATALYST)
-      # No prelink here (see below), so libangle is merged by the libtool step instead. libtool
-      # copies archive members without checking their platform, which ld -r refuses to do.
-      set(CMAKE_XCODE_ATTRIBUTE_OTHER_LIBTOOLFLAGS "${SDK_EXTERNAL_LIBS_DIR}/angle-metal/${SDK_IOS_BASEARCH}/libangle.a")
-    else()
+    # Mac Catalyst merges libangle in the libtool step instead, on the massif target below.
+    if(NOT SDK_MACCATALYST)
       set(CMAKE_XCODE_ATTRIBUTE_PRELINK_LIBS "${SDK_EXTERNAL_LIBS_DIR}/angle-metal/${SDK_IOS_BASEARCH}/libangle.a")
     endif()
   endif()
@@ -406,6 +403,13 @@ elseif(APPLE)
   target_link_libraries(massif "-framework Foundation" "-framework CoreGraphics" "-framework CoreText" "-framework CFNetwork" "-framework UIKit")
   if(SDK_CPP_DEFINES MATCHES ".*_MASSIF_USE_METALANGLE.*")
     target_link_libraries(massif "-weak_framework OpenGLES" "-weak_framework Metal" "-framework QuartzCore")
+    if(SDK_MACCATALYST)
+      # No prelink here (see above), so libangle is merged by the libtool step: libtool copies
+      # archive members without checking their platform, which ld -r refuses to do. It must be
+      # set on the target: CMake writes an empty OTHER_LIBTOOLFLAGS on it, which hides a
+      # project-level CMAKE_XCODE_ATTRIBUTE_OTHER_LIBTOOLFLAGS - the slice then shipped without ANGLE.
+      set_target_properties(massif PROPERTIES STATIC_LIBRARY_OPTIONS "${SDK_EXTERNAL_LIBS_DIR}/angle-metal/${SDK_IOS_BASEARCH}/libangle.a")
+    endif()
   else()
     target_link_libraries(massif "-framework OpenGLES" "-framework GLKit")
   endif()

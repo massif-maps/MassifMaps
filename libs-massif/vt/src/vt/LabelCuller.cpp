@@ -319,6 +319,10 @@ namespace massif::vt {
             }
             for (const LabelInfo* otherLabelInfo : groupMap[groupId]) {
                 float minimumDistance = std::min(info.label->getMinimumGroupDistance(), otherLabelInfo->label->getMinimumGroupDistance());
+                cglib::bbox2<float> reach(info.cullRecord.bounds.min - cglib::vec2<float>(minimumDistance, minimumDistance), info.cullRecord.bounds.max + cglib::vec2<float>(minimumDistance, minimumDistance));
+                if (!reach.inside(otherLabelInfo->cullRecord.bounds)) {
+                    continue;
+                }
                 if ((!info.cullRecord.allowOverlapSameFeatureId || !otherLabelInfo->cullRecord.allowOverlapSameFeatureId || info.cullRecord.localId != otherLabelInfo->cullRecord.localId) && testRecordOverlap(info.cullRecord, otherLabelInfo->cullRecord, minimumDistance)) {
                     return false;
                 }
@@ -450,7 +454,7 @@ namespace massif::vt {
     }
 
     bool LabelCuller::testRecordOverlap(const CullRecord& record1, const CullRecord& record2, float buffer) {
-        // Callers pass records whose bounds intersect; for two axis-aligned boxes that already is an overlap.
+        // Callers pass records whose bounds, grown by the buffer, intersect; for two axis-aligned boxes that already is an overlap.
         if (record1.parts.empty() && record2.parts.empty()) {
             if (buffer <= 0 && record1.axisAligned && record2.axisAligned) {
                 return true;

@@ -48,9 +48,10 @@ add_executable(vt_tests
   LabelNormalBuildTest.cpp
   NormalMapSlopeTest.cpp
   LabelYieldTest.cpp
+  LabelGroupDistanceTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
-  # The yield test runs a placement pass.
+  # The yield and group distance tests run a placement pass.
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/LabelCuller.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/ExtrusionAnchors.cpp"

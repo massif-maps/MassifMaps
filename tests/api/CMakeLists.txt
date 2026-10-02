@@ -263,6 +263,8 @@ add_executable(api_tests
   CelestialImageGridTest.cpp
   # Same: KineticStep.h is the per-frame fraction of a kinetic delta, and nothing else.
   KineticStepTest.cpp
+  # Same: LabelPlacementFollowUp.h is what a placement pass owes once done, and nothing else.
+  LabelPlacementFollowUpTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.
   TileLODRuleTest.cpp
   # The globe's surface against the planar one - the conventions terrain-on-globe rests on.

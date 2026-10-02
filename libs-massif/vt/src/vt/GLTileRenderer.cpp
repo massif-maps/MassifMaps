@@ -1887,12 +1887,13 @@ namespace massif::vt {
         _labelCullCursor = 0;
     }
 
-    bool GLTileRenderer::cullLabels(LabelCuller& culler) {
+    bool GLTileRenderer::cullLabels(LabelCuller& culler, bool& empty) {
         std::vector<std::shared_ptr<Label>> labels;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             labels = _labels;
         }
+        empty = labels.empty();
 
         culler.process(labels, _mutex, _labelCullCursor);
         if (_labelCullCursor >= labels.size()) {

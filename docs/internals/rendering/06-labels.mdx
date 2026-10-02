@@ -991,6 +991,16 @@ and does not work: it bounds one cycle, and once placement got cheap enough to r
 ran more often, back to 120 ms/s ([performance log 29](../performance-log.md)). Measured worst cases
 are 62 ms/s at tilt 30 and 57 at tilt 80, against a 100 ms objective.
 
+**The gate scales with the pass, so an empty pass is not gated at all.** A pass over no label costs
+microseconds, and so does its wait. Before the surface had a size, the worker ran 140 000 to 250 000
+such passes a second (160 ms/s of CPU), each asking for a redraw. Seen on the web at startup and on a
+pane that stayed blank. A 0x0 surface makes the view NaN (`ViewState::calculatePerspMat` divides by
+the height), and the "placed for a camera that has since moved" check compares matrices with `!=`.
+NaN is never equal to itself, so every pass read as a moved camera and scheduled the next one at once.
+Now a pass does no work for a non-finite view. A pass that found no label anywhere neither redraws nor
+continues (`LabelPlacementFollowUp.h`, covered by `LabelPlacementFollowUpTest`). Labels that arrive
+schedule their own pass.
+
 The cut is applied in TWO places, and the second is the one that matters. In the culler it can only
 HIDE a label, and it reads the label's placement - which an unplaced label does not have, so the
 ~9000 unplaced labels a second bypassed it. In `Label::updatePlacement`, next to the existing

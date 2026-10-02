@@ -158,6 +158,7 @@ namespace massif {
     
         /**
          * Places this layer's labels; `finished` is cleared when the culler's slice ran out first.
+         * Returns false when there was nothing to place, so the pass owes no redraw.
          */
         bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
         // Copy of the vt label occlusion test for the culler: an occluded label must not reserve a collision slot.

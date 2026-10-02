@@ -1303,14 +1303,15 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         }
         culler.setViewState(cullViewState);
 
+        bool empty = true;
         try {
-            finished = tileRenderer->cullLabels(culler) && finished;
+            finished = tileRenderer->cullLabels(culler, empty) && finished;
         }
         catch (const std::exception& ex) {
             Log::Errorf("TileRenderer::cullLabels: Culling failed: %s", ex.what());
             return false; // and 'finished' is left alone - retrying a layer that threw will not help
         }
-        return true;
+        return !empty;
     }
     
     bool TileRenderer::refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas, const std::vector<std::shared_ptr<const vt::Tile> >& spanReferenceTiles) {

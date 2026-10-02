@@ -1,4 +1,5 @@
 #include "VTLabelPlacementWorker.h"
+#include "LabelPlacementFollowUp.h"
 #include "components/Layers.h"
 #include "layers/VectorTileLayer.h"
 #include "renderers/MapRenderer.h"
@@ -154,6 +155,9 @@ namespace massif {
             _cycleViewState = mapRenderer->getViewState();
         }
         const ViewState& viewState = _cycleViewState;
+        if (!isLabelPlacementViewValid(viewState.getModelviewProjectionMat())) {
+            return false;
+        }
 
         // Outlives a pass: clearing the collision grid mid-cycle would free slots already taken.
         if (!_culler) {
@@ -205,7 +209,11 @@ namespace massif {
             _cycleWrappedLayers.clear();
         }
 
-        if (changed) {
+        // Placed for a camera that has since moved: redo, cross-faded rather than snapped.
+        bool viewMoved = finished && mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat();
+        LabelPlacementFollowUp followUp = labelPlacementFollowUp(changed, finished, viewMoved);
+
+        if (followUp.redraw) {
             // Only an abandoned cycle snaps: a turning view's redo cross-fades, or a changed name blinks.
             if (forced) {
                 for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
@@ -225,14 +233,11 @@ namespace massif {
 
         // Only the cycle knows a continuation is owed; a still map stops waking this thread.
         _cycleActive = !finished;
-        if (_cycleActive) {
-            scheduleContinuation();
-        } else {
+        if (!_cycleActive) {
             _cycleMs = 0;
-            // Placed for a camera that has since moved: redo, cross-faded rather than snapped.
-            if (mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
-                scheduleContinuation();
-            }
+        }
+        if (followUp.continuation) {
+            scheduleContinuation();
         }
 
         return true;

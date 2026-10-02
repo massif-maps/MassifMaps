@@ -30,6 +30,12 @@ static const int NATIVE_ACTION_POINTER_1_UP = 4;
 static const int NATIVE_ACTION_POINTER_2_UP = 5;
 static const int NATIVE_NO_COORDINATE = -1;
 
+// A tracked touch whose end never arrived: it left the event, or it begins again (Mac Catalyst
+// reuses the mouse's touch). Kept, it turns every later touch into a second pointer.
+static BOOL IsStalePointer(UITouch* pointer, NSSet* touches, UIEvent* event) {
+    return pointer && (![[event allTouches] containsObject:pointer] || [touches containsObject:pointer]);
+}
+
 @implementation MSFMapView
 
 +(void)initialize {
@@ -293,6 +299,9 @@ static const int NATIVE_NO_COORDINATE = -1;
 }
 
 -(void)touchesBegan:(NSSet*)touches withEvent:(UIEvent*)event {
+    if (IsStalePointer(_pointer1, touches, event) || IsStalePointer(_pointer2, touches, event)) {
+        [self touchesCancelled:touches withEvent:event];
+    }
     for (UITouch* pointer in [touches allObjects]) {
         if (!_pointer1) {
             _pointer1 = pointer;

@@ -33,7 +33,7 @@
       "border": 1.75
     },
     "alcohol_shop": {
-      "disc": "hsl(210, 75%, 65%)",
+      "disc": "hsl(30, 100%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -87,7 +87,7 @@
       "border": 3
     },
     "bakery": {
-      "disc": "hsl(210, 75%, 65%)",
+      "disc": "hsl(30, 100%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -123,7 +123,7 @@
       "border": 3
     },
     "beer": {
-      "disc": "hsl(210, 75%, 65%)",
+      "disc": "hsl(30, 100%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -159,7 +159,7 @@
       "border": 3
     },
     "butcher": {
-      "disc": "hsl(210, 75%, 65%)",
+      "disc": "hsl(30, 100%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -321,7 +321,7 @@
       "border": 3
     },
     "grocery": {
-      "disc": "hsl(210, 75%, 65%)",
+      "disc": "hsl(30, 100%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3

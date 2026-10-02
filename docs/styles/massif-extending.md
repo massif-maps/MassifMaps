@@ -39,6 +39,21 @@ Three things it can do:
 
 A layer is **replaced** by moving the base one out of reach through its parameter and drawing your
 own: `track_min_zoom: 24` hides Massif's tracks, a rule after `style.mss` draws them your way.
+**POIs** are one template, `%poi`, drawn into one attachment, `::poi`, so a child **widens** a class —
+draws it where the base's rank ladder does not yet — or **narrows** one, with a rule of its own:
+
+```css
+#poi[zoom >= 15][class = 'bakery']::poi { @extend %poi; shield-placement-priority: 30000000; }
+#poi[zoom < 17][class = 'pharmacy']::poi { display: none; }
+```
+
+The bus stop's zooms are project **constants**, moved with no rule at all:
+
+```json
+"constants": { "poi_bus_minzoom": 15, "poi_bus_label_minzoom": 16 }
+```
+
+How the template, the attachment and `display` compile: [CartoCSS templates](../internals/cartocss-templates.md).
 
 ## The OpenStreetMap example
 
@@ -51,10 +66,12 @@ three files:
   `@primary: linear([view::zoom], (11, #f3ba5c), (12, #fcd6a4));`), its water, woods, landuse and
   buildings.
 - **`osm-rules.mss`** (after `style.mss`) — what the palette cannot say: tracks as a brown line
-  under white dashes by `tracktype`, and OSM Carto's textures over woods, scrub, wetland and rock.
+  under white dashes by `tracktype`, OSM Carto's textures over woods, scrub, wetland and rock, and
+  the POIs above (bakeries early, pharmacies late).
 - **`osm.json`** — the defaults: POIs as bare glyphs (`poiStyle: plain`), Massif's tracks out of
   reach (`track_min_zoom: 24`), roads outlined and widened at low zoom as OSM Carto does
-  (`road_osm_low: 1`), tunnels plain until z13 (`tunnel_min_zoom: 13`).
+  (`road_osm_low: 1`), tunnels plain until z13 (`tunnel_min_zoom: 13`), and bus stops from z15,
+  named from z16 (`constants`).
 
 `custom.json` is the smaller example: two colours, one rule, a new parameter.
 

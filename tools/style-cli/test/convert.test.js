@@ -489,6 +489,35 @@ test('a zoom an app sets is a selector on a parameter, not a when() per feature'
     assert.doesNotMatch(filtered, /when\(/);
 });
 
+test('a zoom range a child project moves is a project constant, resolved when the style compiles', () => {
+    const { mss, project } = convert({ layers: [{
+        id: 'bus-icon', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom: 17, maxzoom: 18,
+        filter: ['==', ['get', 'class'], 'bus'], layout: { 'text-field': ['get', 'name'] },
+        metadata: { 'massif:minzoom-const': 'bus_minzoom', 'massif:maxzoom-const': 'bus_label_minzoom' },
+    }] }, table, { ...NO_PALETTE, tileDrawSize: 512 });
+
+    assert.match(mss, /#poi\[zoom >= \$bus_minzoom\]\[zoom < \$bus_label_minzoom\]\[class = 'bus'\]::bus_icon/);
+    assert.doesNotMatch(mss, /\[zoom >= 17\]|\[zoom < 18\]/, 'the constant replaces the literal range');
+    assert.deepEqual(JSON.parse(project).constants, { bus_label_minzoom: 18, bus_minzoom: 17 });
+});
+
+test('layers of one template share it and one attachment, keeping only what they state differently', () => {
+    const poi = (id, minzoom, color) => ({
+        id, type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom,
+        layout: { 'text-field': ['get', 'name'], 'text-size': 12 }, paint: { 'text-color': color },
+        metadata: { 'massif:template': 'poi', 'massif:attachment': 'poi' },
+    });
+    const { mss } = convert({ layers: [poi('poi-a', 15, '#111111'), poi('poi-b', 16, '#111111'), poi('poi-c', 17, '#222222')] },
+        table, { ...NO_PALETTE, tileDrawSize: 512 });
+
+    assert.equal(mss.match(/^%poi \{/gm)?.length, 1, 'one template');
+    assert.match(mss, /%poi \{[^}]*text-size: 12;[^}]*\}/, 'what every layer states');
+    assert.match(mss, /%poi \{[^}]*text-fill: #111111;[^}]*\}/, 'at its most common value');
+    assert.match(mss, /#poi\[zoom >= 17\]::poi \{\n  text-fill: #222222;\n[^}]*@extend %poi;\n\}/, 'a rule keeps what differs');
+    assert.match(mss, /#poi\[zoom >= 15\]::poi \{\n  @extend %poi;\n\}/);
+    assert.doesNotMatch(mss, /::poi_a|::poi_b|::poi_c/, 'all three draw into ::poi');
+});
+
 test('massif:draw-once names one group on every attachment a sort key splits the layer into', () => {
     const road = (metadata) => ({ id: 'road', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
         metadata, layout: { 'line-sort-key': ['match', ['get', 'class'], 'motorway', 2, 1] },

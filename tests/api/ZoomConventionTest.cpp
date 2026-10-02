@@ -103,6 +103,21 @@ namespace {
                    "and neither does a zero field of view");
     }
 
+    void testElementSizeIgnoresTheFieldOfView() {
+        // A 20 dp point drew 4.4x larger when FieldOfViewY went from 70 to maplibre's 36.87.
+        auto pixels = [](double fovY) {
+            double tanHalf = std::tan(fovY * 0.5 * M_PI / 180.0);
+            double distance = ZoomConvention::zoom0Distance(1000, WORLD, 256, 0, tanHalf, 1) / std::pow(2.0, 14);
+            double unitsPerPixel = 2 * distance * tanHalf / 1000;
+            return 20 * ZoomConvention::unitToPixel(distance * std::pow(2.0, 14), 1000, tanHalf, std::pow(2.0, 14)) / unitsPerPixel;
+        };
+        TEST_CHECK(nearly(pixels(36.87), pixels(70)), "an element is as big on screen at 36.87 degrees as at 70");
+        double tanHalf70 = std::tan(35.0 * M_PI / 180.0);
+        double distance70 = ZoomConvention::zoom0Distance(1000, WORLD, 256, 0, tanHalf70, 1);
+        TEST_CHECK(nearly(ZoomConvention::unitToPixel(distance70, 1000, tanHalf70, 1), distance70 / (1000 * tanHalf70)),
+                   "and at 70 degrees exactly as big as CARTO drew it");
+    }
+
     void testAFractionalOffsetIsAllowed() {
         // Not a use case anyone has asked for, but the type is a float and half a level has to
         // mean half a level rather than round to something.
@@ -120,5 +135,6 @@ void testZoomConvention() {
     testTheOffsetIsInterchangeableWithTheTileDrawSize();
     testDisplayScalingDoesNotChangeTheConvention();
     testDegenerateInputsDoNotDivideByZero();
+    testElementSizeIgnoresTheFieldOfView();
     testAFractionalOffsetIsAllowed();
 }

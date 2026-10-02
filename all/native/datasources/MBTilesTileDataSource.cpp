@@ -327,13 +327,20 @@ namespace massif {
     }
 
     std::string MBTilesTileDataSource::getContainerMetaData(const std::string &key) const {
+        // tile fetch threads call this per tile (hillshade): the connection is shared with them
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        if (!_database) {
+            return std::string();
+        }
         // As a first step, try to use metadata
         std::string result;
         try {
             sqlite3pp::query query(*_database, "SELECT value FROM metadata WHERE name=:name");
             query.bind(":name", key.c_str());
            for (auto it = query.begin(); it != query.end(); it++) {
-               result = (*it).get<const char*>(0);
+               // a NULL value would make a std::string read a null pointer
+               const char* value = (*it).get<const char*>(0);
+               result = value ? value : "";
            }
             query.finish();
         }

@@ -59,7 +59,7 @@ tests `APPLE AND (NOT IOS)` and only drops the prelink):
 - **no `GENERATE_MASTER_OBJECT_FILE`** — no `ld -r` prelink, so nothing platform-checks the objects
 - **no `-flto=full`** — the prelink was what ran the LTO codegen; without it the shipped `.a` would
   contain bitcode, which every consuming app would then need a matching toolchain to read
-- **`OTHER_LIBTOOLFLAGS` instead of `PRELINK_LIBS`** for `libangle.a` — the libtool step merges
+- **`OTHER_LIBTOOLFLAGS` instead of `PRELINK_LIBS`** for `libangle.a`, set on the `massif` target (`STATIC_LIBRARY_OPTIONS`; CMake writes an empty target-level value that hides a project-level one) — the libtool step merges
   archive members without looking at their platform
 
 Catalyst therefore ships **without LTO**. iOS and the simulator slices are untouched.

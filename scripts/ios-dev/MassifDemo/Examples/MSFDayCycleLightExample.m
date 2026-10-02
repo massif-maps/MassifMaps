@@ -146,11 +146,6 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
     _preset = 2;
     MSFMassifMap *map = host.map;
 
-    // How far a TILTED far field may coarsen: unbounded, the grazing term makes the horizon band
-    // jump between levels as the camera turns, so one side keeps its buildings and the other does
-    // not. This caps the grazing half alone; distance still coarsens freely.
-    [map.options set:@"tileLODMaxZoomLevelsOnScreen" value:@6.0];
-
     [self buildLayer:map];
 
     // A TERRAIN, for the shadows. Cast shadows are drawn from the drape pass and land on the

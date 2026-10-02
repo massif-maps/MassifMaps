@@ -88,10 +88,6 @@ function clock(hours) {
 export default async function start(host) {
   const map = host.map;
 
-  // Keep a TILTED far field uniform: a low levels-on-screen decays the grazing term more
-  // slowly, so the horizon band stops jumping between levels as the camera turns.
-  map.set('tileLODMaxZoomLevelsOnScreen', 6.0);
-
   map.addLayer('basemap', {
     type: 'vector',
     source: vectorTiles(),

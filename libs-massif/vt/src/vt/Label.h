@@ -69,6 +69,7 @@ namespace massif::vt {
         void setOcclusion(float occlusion) { _occlusion = occlusion; }
         // Wholly hidden by 3D content on the last frame drawn: kept, but it claims no room from the labels in front.
         bool isFullyOccluded() const { return _occlusion <= 0.0f; }
+        bool isPartlyOccluded() const { return _occlusion < 1.0f; }
         // The anchor the occlusion rays aim at, world coordinates; null before placement.
         const cglib::vec3<double>* getAnchorPosition() const { return _placement ? &_placement->position : nullptr; }
 

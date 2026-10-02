@@ -95,6 +95,7 @@ namespace massif::vt {
         struct LabelInfo {
             bool valid;
             bool wasVisible;
+            bool occluded; // partly hidden by 3D content on the last frame drawn
             float priority;
             int layerIndex;
             float size;

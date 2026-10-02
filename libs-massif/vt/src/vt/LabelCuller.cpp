@@ -268,7 +268,7 @@ namespace massif::vt {
                     record.allowOverlapSameFeatureId = label->allowOverlapSameFeatureId();
                 }
                 int variantIndex = std::min(static_cast<int>(variants.size()) - 1, std::max(0, label->getVariantIndex()));
-                validLabelList.push_back({ valid, wasVisible, priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
+                validLabelList.push_back({ valid, wasVisible, label->isPartlyOccluded(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
                                            variants.size() > 1 ? variants : std::vector<CullRecord>() });
             }
         }
@@ -283,6 +283,10 @@ namespace massif::vt {
         // Previously visible labels go before new ones of equal priority (MapLibre's committed placement);
         // wasVisible, not opacity, since updatePlacement() can reset the opacity of a visible label.
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
+            // A label a building half hides gives way to any label in the clear, whatever their priorities.
+            if (labelInfo1.occluded != labelInfo2.occluded) {
+                return labelInfo2.occluded;
+            }
             if (labelInfo1.priority != labelInfo2.priority) {
                 return labelInfo1.priority > labelInfo2.priority;
             }
@@ -343,7 +347,7 @@ namespace massif::vt {
         }
         for (std::size_t i = 0; i < validLabelList.size(); i++) {
             const LabelInfo& labelInfo = validLabelList[i];
-            if (labelInfo.valid && labelInfo.wasVisible && labelInfo.label->getGroupId() >= 0 && !labelInfo.label->isFullyOccluded()) {
+            if (labelInfo.valid && labelInfo.wasVisible && !labelInfo.occluded && labelInfo.label->getGroupId() >= 0) {
                 CullRecord record = labelInfo.cullRecord;
                 record.reservation = static_cast<int>(i);
                 addGridRecord(_reservedGrid, record);

@@ -1503,6 +1503,14 @@ road name behind a building, at opacity 0, and the POI on the roof in front lost
 label left at 0 by the last frame (`Label::isFullyOccluded`) stays placed but adds no collision
 record; once it shows again, the next pass weighs it as any other.
 
+**A partly hidden label gives way to every label in the clear.** Half-transparent behind a building,
+a street name still claimed its whole box, and the POI under it stayed off screen until a little
+more tilt hid the name completely. A label with any ray blocked (`Label::isPartlyOccluded`) now
+sorts after all unoccluded labels of its layer, whatever their priorities, and reserves nothing
+(above). The occlusion is computed only for labels being drawn, so a label hidden while partly
+blocked keeps that value, and its low rank, until it is drawn again: sticky, but it cannot flip
+every pass, which treating an unknown occlusion as clear does.
+
 **A line run collides by its glyphs**, as maplibre's by collision circles along the line
 (`Label::calculateEnvelope`'s glyphEnvelopes): the bounds of a run round a bend covered the corner
 beside it (405x320 device px for Place Grenette, tilt 60) and hid what stood there. Neighbouring glyphs

@@ -68,7 +68,13 @@ namespace massif {
             cglib::vec3<double> pos1 = projectionSurface->calculatePosition(_posDelta.second);
             translateTransform = projectionSurface->calculateTranslateMatrix(pos0, pos1, 1.0f);
         } else {
-            cglib::vec3<double> pos = projectionSurface->calculatePosition(_pos);
+            // No height given: keep the focus on the terrain. Dropped to sea level, the camera is wrong
+            // for every reader until the next frame re-pins it, and the label placement culls with it.
+            MapPos target = _pos;
+            if (target.getZ() == 0) {
+                target.setZ(projectionSurface->calculateMapPos(focusPos).getZ());
+            }
+            cglib::vec3<double> pos = projectionSurface->calculatePosition(target);
             translateTransform = projectionSurface->calculateTranslateMatrix(focusPos, pos, 1.0f);
         }
 

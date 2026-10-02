@@ -1132,10 +1132,15 @@ the peaks: z12.73 for a z16.27 request. mapbox defines zoom as the distance to t
 centre (`transform._centerAltitude`, `_updateCameraOnTerrain`) and lifts the camera with it.
 `MapRenderer` now does the same every frame in terrain mode: when a decoded grid answers under the
 focus, `ViewState::setFocusHeight` moves focus and camera together onto it (zoom, tilt and rotation kept).
-Cached-only and only when a grid answers — an evicted grid is not a valley. A pan or zoom event still
-places its focus at sea level; the next frame lifts it, and the camera-to-focus vector the event
-built is preserved, so the camera follows the ground's height difference as mapbox's does. Both
-spots read z16.27 after it.
+Cached-only and only when a grid answers — an evicted grid is not a valley. The next frame lifts the
+focus after any camera event, and the camera-to-focus vector the event built is preserved, so the
+camera follows the ground's height difference as mapbox's does. Both spots read z16.27 after it.
+
+**A pan to a position with no height keeps the focus height** (`CameraPanEvent`, z = 0). It used to
+drop the focus to sea level until the next frame, and the label placement reads the camera
+between frames: every `moveTo([lon, lat])` handed it a camera ~300 m low at Grenoble, on-screen POIs
+tested outside the frustum and were re-placed at opacity 0. Measured on the style preview while
+driving `moveTo` at 60 Hz: 588–748 visible labels re-placed per 90° rotation, 75–123 after, as in 2D.
 
 **The auto-flatten rule hands back what it set.** The SDK's defaults (2 px, 88°) run on the first
 frame, at the default tilt of 90, before an app has set its own thresholds — and an app that then

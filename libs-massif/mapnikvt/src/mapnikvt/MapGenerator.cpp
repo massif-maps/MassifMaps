@@ -157,7 +157,9 @@ namespace massif::mvt {
                         hasSymbolizers = true;
                     }
                 }
-                if (!hasSymbolizers) {
+                // A rule built with no symbolizer is a `display: none`: under filter-mode first it hides
+                // the features it matches from the rules after it, so it is written out empty.
+                if (!hasSymbolizers && !rule.getSymbolizers().empty()) {
                     styleNode.remove_child(ruleNode);
                 } else {
                     styleNodeHasRules = true;

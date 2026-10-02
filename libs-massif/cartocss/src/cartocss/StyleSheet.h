@@ -47,11 +47,25 @@ namespace massif::css {
         int _order = 0;
     };
 
+    // `@extend %name;` - the template's block is compiled as part of the one it appears in.
+    class ExtendDeclaration final {
+    public:
+        ExtendDeclaration() = default;
+        explicit ExtendDeclaration(std::string templateName, int order) : _templateName(std::move(templateName)), _order(order) { }
+
+        const std::string& getTemplateName() const { return _templateName; }
+        int getOrder() const { return _order; }
+
+    private:
+        std::string _templateName;
+        int _order = 0;
+    };
+
     class RuleSet;
 
     class Block final {
     public:
-        using Element = std::variant<PropertyDeclaration, RuleSet>;
+        using Element = std::variant<PropertyDeclaration, RuleSet, ExtendDeclaration>;
 
         Block() = default;
         explicit Block(std::vector<Element> elements); // defined below: Element needs RuleSet complete
@@ -90,9 +104,23 @@ namespace massif::css {
         Expression _expr;
     };
 
+    // `%name { ... }` - a block with no selector, drawn only where a rule extends it.
+    class TemplateDeclaration final {
+    public:
+        TemplateDeclaration() = default;
+        explicit TemplateDeclaration(std::string name, Block block) : _name(std::move(name)), _block(std::move(block)) { }
+
+        const std::string& getName() const { return _name; }
+        const Block& getBlock() const { return _block; }
+
+    private:
+        std::string _name;
+        Block _block;
+    };
+
     class StyleSheet final {
     public:
-        using Element = std::variant<VariableDeclaration, RuleSet>;
+        using Element = std::variant<VariableDeclaration, RuleSet, TemplateDeclaration>;
 
         StyleSheet() = default;
         explicit StyleSheet(std::vector<Element> elements) : _elements(std::move(elements)) { }

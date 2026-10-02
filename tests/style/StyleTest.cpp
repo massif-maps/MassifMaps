@@ -26,6 +26,7 @@ void testMBVTSubtile();
 void testMBVTGeometryBounds();
 void testZoomShift();
 void testDrawOnce();
+void testCartoCSSTemplate();
 
 int main() {
     testLayerConfig();
@@ -48,6 +49,7 @@ int main() {
     testMBVTGeometryBounds();
     testZoomShift();
     testDrawOnce();
+    testCartoCSSTemplate();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

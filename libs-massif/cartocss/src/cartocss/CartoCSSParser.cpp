@@ -182,8 +182,11 @@ namespace massif::css {
                 
                 propdeclaration = (propid >> (':' > expressionlist)) [_val = phoenix::bind(&makePropertyDeclaration, phoenix::ref(_declarationOrder), _1, _2)];
                 
+                extenddeclaration = (qi::lit("@extend") > '%' > blockid) [_val = phoenix::bind(&makeExtendDeclaration, phoenix::ref(_declarationOrder), _1)];
+
                 blockelement =
                       propdeclaration                               [_val = phoenix::construct<Block::Element>(_1)]
+                    | extenddeclaration                             [_val = phoenix::construct<Block::Element>(_1)]
                     | ruleset                                       [_val = phoenix::construct<Block::Element>(_1)]
                     ;
                 block = (*(blockelement > -qi::lit(';')))           [_val = phoenix::construct<Block>(_1)];
@@ -192,8 +195,11 @@ namespace massif::css {
                 
                 vardeclaration = ('@' > varid > ':' > expressionlist) [_val = phoenix::construct<VariableDeclaration>(_1, _2)];
 
+                templatedeclaration = (qi::lit('%') > blockid > '{' > block > '}') [_val = phoenix::construct<TemplateDeclaration>(_1, _2)];
+
                 stylesheetelement =
                       vardeclaration                                [_val = phoenix::construct<StyleSheet::Element>(_1)] 
+                    | templatedeclaration                           [_val = phoenix::construct<StyleSheet::Element>(_1)]
                     | ruleset                                       [_val = phoenix::construct<StyleSheet::Element>(_1)]
                     ;
                 stylesheet = (*(stylesheetelement > -qi::lit(';'))) [_val = phoenix::construct<StyleSheet>(_1)];
@@ -217,10 +223,12 @@ namespace massif::css {
             boost::spirit::qi::rule<Iterator, Predicate(), Skipper<Iterator> > predicate;
             boost::spirit::qi::rule<Iterator, Selector(), Skipper<Iterator> > selector;
             boost::spirit::qi::rule<Iterator, PropertyDeclaration(), Skipper<Iterator> > propdeclaration;
+            boost::spirit::qi::rule<Iterator, ExtendDeclaration(), Skipper<Iterator> > extenddeclaration;
             boost::spirit::qi::rule<Iterator, Block::Element(), Skipper<Iterator> > blockelement;
             boost::spirit::qi::rule<Iterator, Block(), Skipper<Iterator> > block;
             boost::spirit::qi::rule<Iterator, RuleSet(), Skipper<Iterator> > ruleset;
             boost::spirit::qi::rule<Iterator, VariableDeclaration(), Skipper<Iterator> > vardeclaration;
+            boost::spirit::qi::rule<Iterator, TemplateDeclaration(), Skipper<Iterator> > templatedeclaration;
             boost::spirit::qi::rule<Iterator, StyleSheet::Element(), Skipper<Iterator> > stylesheetelement;
             boost::spirit::qi::rule<Iterator, StyleSheet(), Skipper<Iterator> > stylesheet;
 
@@ -327,6 +335,10 @@ namespace massif::css {
 
             static PropertyDeclaration makePropertyDeclaration(int& order, const std::string& field, const Expression& expr) {
                 return PropertyDeclaration(field, expr, order++);
+            }
+
+            static ExtendDeclaration makeExtendDeclaration(int& order, const std::string& templateName) {
+                return ExtendDeclaration(templateName, order++);
             }
 
             int _declarationOrder = 0;

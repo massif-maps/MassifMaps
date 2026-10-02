@@ -3,6 +3,7 @@
 #include "PredicateUtils.h"
 
 #include <set>
+#include <stdexcept>
 
 namespace massif::css {
     namespace {
@@ -156,6 +157,15 @@ namespace massif::css {
     }
 
     void CartoCSSCompiler::buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const {
+        // The last definition of a template wins, wherever it is extended: an extending project's
+        // stylesheets come after the base's, so redefining a template restyles every rule using it.
+        TemplateMap templates;
+        for (const StyleSheet::Element& element : styleSheet.getElements()) {
+            if (auto templateDecl = std::get_if<TemplateDeclaration>(&element)) {
+                templates[templateDecl->getName()] = &templateDecl->getBlock();
+            }
+        }
+
         for (const StyleSheet::Element& element : styleSheet.getElements()) {
             if (auto decl = std::get_if<VariableDeclaration>(&element)) {
                 if (context.expressionContext.variableMap->find(decl->getVariable()) == context.expressionContext.variableMap->end()) {
@@ -163,7 +173,7 @@ namespace massif::css {
                 }
             }
             else if (auto ruleSet = std::get_if<RuleSet>(&element)) {
-                buildPropertyList(*ruleSet, context, std::string(), std::vector<std::size_t>(), state, propertyLists);
+                buildPropertyList(*ruleSet, context, templates, std::string(), std::vector<std::size_t>(), state, propertyLists);
             }
         }
 
@@ -190,7 +200,7 @@ namespace massif::css {
         }
     }
     
-    void CartoCSSCompiler::buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const {
+    void CartoCSSCompiler::buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const TemplateMap& templates, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const {
         // List of selectors to use
         const std::vector<Selector>* selectors = &ruleSet.getSelectors();
         if (selectors->empty() && !context.layerName.empty()) {
@@ -231,34 +241,59 @@ namespace massif::css {
             
             // Process block elements
             std::set<std::string> existingBlockFields;
-            for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto decl = std::get_if<PropertyDeclaration>(&element)) {
-                    if (existingBlockFields.find(decl->getField()) != existingBlockFields.end()) {
-                        continue;
-                    }
-                    existingBlockFields.insert(decl->getField());
-                    
-                    // Find property set list for current attachment
-                    auto propertyListsIt = std::find_if(propertyLists.begin(), propertyLists.end(), [&attachment](const FilteredPropertyList& propertyList) {
-                        return propertyList.attachment == attachment;
-                    });
-                    if (propertyListsIt == propertyLists.end()) {
-                        FilteredPropertyList propertyList;
-                        propertyList.attachment = attachment;
-                        propertyListsIt = propertyLists.insert(propertyListsIt, propertyList);
-                    }
-                    
-                    // Add property
-                    Property::RuleSpecificity specificity = calculateRuleSpecificity(filters, state, decl->getOrder());
-                    FilteredProperty& property = propertyListsIt->properties.emplace_back();
-                    property.property = state.insertProperty(Property(decl->getField(), decl->getExpression(), specificity));
-                    property.filters = filters;
+            std::vector<std::string> templateStack;
+            buildBlockProperties(ruleSet.getBlock(), context, templates, attachment, filters, std::optional<int>(), existingBlockFields, templateStack, state, propertyLists);
+        }
+    }
+
+    void CartoCSSCompiler::buildBlockProperties(const Block& block, const PredicateContext& context, const TemplateMap& templates, const std::string& attachment, const std::vector<std::size_t>& filters, std::optional<int> extendOrder, std::set<std::string>& existingBlockFields, std::vector<std::string>& templateStack, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const {
+        // Extended templates go after the block's own declarations: the first declaration of a field
+        // wins, so a rule overrides what it extends wherever it writes the `@extend`.
+        std::vector<const ExtendDeclaration*> extendDecls;
+        for (const Block::Element& element : block.getElements()) {
+            if (auto decl = std::get_if<PropertyDeclaration>(&element)) {
+                if (existingBlockFields.find(decl->getField()) != existingBlockFields.end()) {
+                    continue;
                 }
-                else if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
-                    // Recurse with subrule
-                    buildPropertyList(*subRuleSet, context, attachment, filters, state, propertyLists);
+                existingBlockFields.insert(decl->getField());
+
+                // Find property set list for current attachment
+                auto propertyListsIt = std::find_if(propertyLists.begin(), propertyLists.end(), [&attachment](const FilteredPropertyList& propertyList) {
+                    return propertyList.attachment == attachment;
+                });
+                if (propertyListsIt == propertyLists.end()) {
+                    FilteredPropertyList propertyList;
+                    propertyList.attachment = attachment;
+                    propertyListsIt = propertyLists.insert(propertyListsIt, propertyList);
                 }
+
+                // Add property. An extended one ranks as if written at its `@extend`.
+                Property::RuleSpecificity specificity = calculateRuleSpecificity(filters, state, extendOrder ? *extendOrder : decl->getOrder());
+                FilteredProperty& property = propertyListsIt->properties.emplace_back();
+                property.property = state.insertProperty(Property(decl->getField(), decl->getExpression(), specificity));
+                property.filters = filters;
             }
+            else if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
+                // Recurse with subrule
+                buildPropertyList(*subRuleSet, context, templates, attachment, filters, state, propertyLists);
+            }
+            else if (auto extendDecl = std::get_if<ExtendDeclaration>(&element)) {
+                extendDecls.push_back(extendDecl);
+            }
+        }
+
+        for (const ExtendDeclaration* extendDecl : extendDecls) {
+            const std::string& name = extendDecl->getTemplateName();
+            auto templateIt = templates.find(name);
+            if (templateIt == templates.end()) {
+                throw std::runtime_error("Undefined template %" + name);
+            }
+            if (std::find(templateStack.begin(), templateStack.end(), name) != templateStack.end()) {
+                throw std::runtime_error("Template %" + name + " extends itself");
+            }
+            templateStack.push_back(name);
+            buildBlockProperties(*templateIt->second, context, templates, attachment, filters, extendOrder ? extendOrder : extendDecl->getOrder(), existingBlockFields, templateStack, state, propertyLists);
+            templateStack.pop_back();
         }
     }
 

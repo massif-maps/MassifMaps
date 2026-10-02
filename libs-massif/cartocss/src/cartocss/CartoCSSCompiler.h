@@ -20,6 +20,8 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <optional>
+#include <set>
 #include <unordered_map>
 #include <utility>
 
@@ -306,8 +308,11 @@ namespace massif::css {
             mutable bool _predicateMasksOverflowed = false; // set from the const merge path too
         };
 
+        using TemplateMap = std::map<std::string, const Block*>;
+
         void buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const;
-        void buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const;
+        void buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const TemplateMap& templates, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const;
+        void buildBlockProperties(const Block& block, const PredicateContext& context, const TemplateMap& templates, const std::string& attachment, const std::vector<std::size_t>& filters, std::optional<int> extendOrder, std::set<std::string>& existingBlockFields, std::vector<std::string>& templateStack, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const;
         void buildLayerAttachment(const FilteredPropertyList& propertyList, const FilteredPropertyState& state, std::list<AttachmentPropertySets>& layerAttachments) const;
         
         static Property::RuleSpecificity calculateRuleSpecificity(const std::vector<size_t>& filters, const FilteredPropertyState& state, int order);

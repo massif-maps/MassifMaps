@@ -1205,7 +1205,10 @@ pinch or fling (`elevationFreeze`) the centre keeps its height, and at the end
 `recalculateZoomAndCenter` holds the camera and slides the centre down the view ray onto the ground,
 the zoom re-derived from the new distance (`CameraClearance::groundAlongView`,
 `MapRenderer::landFocusAlongView`). Pinned during the drag too, as mapbox does, a pan across a ridge
-bobbed the whole view. The ramp it replaced (`focusFollow`: the ground's height only near the shell,
+bobbed the whole view. It lands at the pinned height, the shell included, and a gesture that ends
+where it started (a tap) lands nothing: marking the camera changed applied a pending
+`FocusPointOffset`, which is only read when the camera moves, so a tap after an app set one jumped
+the map. The ramp it replaced (`focusFollow`: the ground's height only near the shell,
 sea level 4 shells above) left the zoom measured to sea level over high ground: at z16 over
 Grenoble (212 m) the camera hung tens of metres above the roofs, the drape a level short of the
 view.

@@ -678,7 +678,7 @@ namespace massif {
         if (_cameraChanged) {
             _cameraChanged = false;
 
-            _unitToPXCoef = static_cast<float>(_zoom0Distance / (_height * _tanHalfFOVY) / _2PowZoom);
+            _unitToPXCoef = static_cast<float>(ZoomConvention::unitToPixel(_zoom0Distance, _height, _tanHalfFOVY, _2PowZoom));
             _unitToDPCoef = _unitToPXCoef * _dpi / Const::UNSCALED_DPI;
 
             calculateViewDistances(options, _near, _far, _skyVisible, _skyHorizonNDC);

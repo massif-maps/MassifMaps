@@ -47,6 +47,18 @@ namespace massif {
             }
             return screenHeight * 0.5 * worldSize / (tilePixels * tanHalfFOVY);
         }
+
+        /**
+         * Internal units per screen pixel that a vector element's size is multiplied by. CARTO's formula scaled with
+         * 1 / tan²(fovY / 2); sizes stay where they were at its 70° whatever the field of view.
+         */
+        static double unitToPixel(double zoom0Distance, double screenHeight, double tanHalfFOVY, double pow2Zoom) {
+            const double tanHalf70 = std::tan(35.0 * 3.14159265358979323846 / 180.0);
+            if (screenHeight <= 0 || pow2Zoom <= 0) {
+                return 0;
+            }
+            return zoom0Distance * tanHalfFOVY / (screenHeight * tanHalf70 * tanHalf70 * pow2Zoom);
+        }
     };
 
 }

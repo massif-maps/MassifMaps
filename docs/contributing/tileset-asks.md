@@ -68,7 +68,9 @@ should use them where they are and cope where they are not.
 `transportation_name` carries `network` (raw OSM, `FR:A-road`), `iso_a2`, and motorway exits as
 `subclass=junction` points. `poi` carries `shelter_type`, a transit stop's `network` and `agg_stop`,
 and with `poi_trees` `class=tree` from z14: the unnamed trees one MultiPoint per tile with the class
-alone, the named ones points of their own (Massif draws both).
+alone, the named ones points of their own (Massif draws both). Point barriers (`gate`, `lift_gate`,
+`bollard`, `cycle_barrier`, `stile`, `toll_booth`, `border_control`, `sally_port`) are packed the
+same way, with no rank and no subclass; Massif draws them from z17.
 `tracktype` and `sac_scale` are written as their index in OSM's list (grade1 = 0, hiking = 0), where
 stock OpenMapTiles writes the name; the Massif styles accept both. `building.render_height` is left
 out when it is the 5 m default (stock writes 5), so a style reads it through a coalesce. There are `building_name`,

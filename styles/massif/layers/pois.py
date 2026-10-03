@@ -23,6 +23,8 @@ CATEGORY = OrderedDict([
     ('water', {'disc': 'hsl(200, 85%, 45%)', 'night': 'hsl(200, 80%, 72%)', 'day': 'hsl(200, 85%, 40%)'}),
     # Standard draws transit in its own layer and its own blue; this style keeps that.
     ('transit', {'disc': 'hsl(225, 60%, 58%)', 'night': 'hsl(225, 55%, 78%)', 'day': 'hsl(225, 60%, 48%)'}),
+    # ours: the landcover barrier line's grey-brown, darkened to read as a glyph; its night is the line
+    ('barrier', {'disc': 'hsl(20, 12%, 45%)', 'night': 'hsl(20, 10%, 70%)', 'day': 'hsl(20, 12%, 38%)'}),
     ('default', {'disc': 'hsl(200, 20%, 55%)', 'night': 'hsl(210, 20%, 70%)', 'day': 'hsl(210, 20%, 43%)'}),
 ])
 
@@ -50,13 +52,16 @@ CLASSES = {
     'default': ['place_of_worship'],
     'transit': ['aerialway', 'airfield', 'airport', 'bus', 'ferry', 'harbor', 'heliport',
                 'lighthouse', 'railway', 'railway_light', 'railway_metro'],
+    # every point barrier Alpimaps' planetiler emits (Poi.MULTIPOINT_CLASSES), and the shared glyph
+    'barrier': ['barrier', 'bollard', 'border_control', 'cycle_barrier', 'gate', 'lift_gate', 'sally_port',
+                'stile', 'toll_booth'],
 }
 
 # Street furniture, not a place: the glyph stands on the map with no disc under it, which is what
 # Standard's backgroundPointOfInterestLabels=none does for the whole map. Matched on class AND
 # subclass, because OpenMapTiles carries a bench or a tree as a subclass of something coarser.
 NO_BACKGROUND = ['bench', 'drinking_water', 'garden', 'picnic_site', 'shelter', 'telephone',
-                 'toilets', 'tree', 'waste_basket']
+                 'toilets', 'tree', 'waste_basket', *CLASSES['barrier']]
 
 # A subclass that belongs to another category than its class. Liberty reads `subclass` for the ICON
 # only (florist, furniture) and colours nothing by it, so there is no MapTiler palette to copy here -
@@ -205,7 +210,8 @@ OTHER_SHELTER = ['all', ['==', get('class'), 'shelter'], ['!=', get('shelter_typ
                  *[['!=', get('shelter_type'), t] for t in OUTDOOR_SHELTERS]]
 # Drawn by a layer of their own at every zoom, so the ladder leaves them out. Excluded rather than
 # listed: a class list is a when() per feature, an exclusion a few prunable selectors.
-OWN_LAYER = sorted({'bus', 'campsite', 'drinking_water', 'shelter', 'spring', 'tree', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
+OWN_LAYER = sorted({'bus', 'campsite', 'drinking_water', 'shelter', 'spring', 'tree', 'wilderness_hut'} |
+                   {c for _, _, cs in STATION_LAYERS for c in cs} | set(CLASSES['barrier']) - {'barrier'})
 
 # a viewpoint is an attraction to OpenMapTiles: its own glyph at every zoom (a ruin keeps the castle, as Standard)
 ICON = ['match', get('subclass'), ['florist', 'furniture', 'viewpoint'], get('subclass'), get('class')]
@@ -433,6 +439,32 @@ def trees(v):
                        'circle-radius': zoom_ramp(16, 1.5, 18, 2.5),
                        'circle-stroke-color': HALO_DAY, 'circle-stroke-width': 1})
     return [dot, sunk(poi_layer('poi-tree', 18, unnamed, v, text='', scale=TREE_SCALE)), named]
+
+
+# no glyph of their own: Maki's barrier
+BARRIER_ICON = ['match', get('class'), ['border_control', 'sally_port'], 'barrier', get('class')]
+# least important first, a layer each: also keeps any one priority off most %poi rules (the template's)
+BARRIER_TIERS = [('bollard', ['bollard']),
+                 ('passage', ['cycle_barrier', 'gate', 'lift_gate', 'sally_port', 'stile']),
+                 ('control', ['border_control', 'toll_booth'])]
+
+
+def barriers(v):
+    """a point barrier (gate, bollard, stile...: unnamed ones one MultiPoint per tile, `class` only) is
+    a small bare glyph from z17, named if it is, just over the trees and under every other label. A
+    halo round the glyph keeps it on imagery and patterns; hybrid draws it in its night colour."""
+    out = []
+    for tier, classes in BARRIER_TIERS:
+        cls = ['==', get('class'), classes[0]] if len(classes) == 1 else ['in', get('class'), ['literal', classes]]
+        for suffix, named, text in (('', ['!', ['has', 'name']], ''), ('-named', ['has', 'name'], NAME)):
+            lay = sunk(poi_layer('poi-barrier-%s%s' % (tier, suffix), 17, ['all', cls, named], v, icon=BARRIER_ICON,
+                                 text=text, scale=0.75, extra={'text-size': 11, 'text-variable-anchor': ['top']}))
+            lay['metadata']['massif:paint']['icon-halo-width'] = 1.5
+            if v.flags.get('dark_ground'):
+                params = lay['metadata']['massif:layout']['icon-image'][2]['params']
+                params['icon'] = per_class(lambda c, cat: CATEGORY[cat]['night'], CATEGORY['default']['night'])
+            out.append(lay)
+    return out
 
 
 def stop(id, filter, zooms, const, v):

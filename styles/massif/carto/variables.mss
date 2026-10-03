@@ -226,12 +226,13 @@
 @oneway_spacing: 200;
 @park_outline_stroke_opacity: 0.6;
 @poi_size: 12;
+@poi_size_2: 11;
 @poi_wrap_width: 108;
+@poi_wrap_width_2: 99;
 @road_exit_shield_size: 8;
 @road_shield_character_spacing: 0.45;
 @road_shield_spacing: 400;
 @road_size: 9;
-@shield_size: 11;
 @text_wrap_width: 88;
 @trail_spacing: 300;
 @tunnel_stroke_opacity: 0.5;

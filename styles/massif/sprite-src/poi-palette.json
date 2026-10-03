@@ -104,6 +104,12 @@
       "radius": 21,
       "border": 3
     },
+    "barrier": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
+    },
     "baseball": {
       "disc": "hsl(190, 75%, 50%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -151,6 +157,18 @@
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
+    },
+    "bollard": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
+    },
+    "border_control": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
     },
     "bus": {
       "disc": "hsl(225, 60%, 58%)",
@@ -223,6 +241,12 @@
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
+    },
+    "cycle_barrier": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
     },
     "dentist": {
       "disc": "hsl(0, 94%, 72%)",
@@ -308,6 +332,12 @@
       "radius": 21,
       "border": 0
     },
+    "gate": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
+    },
     "gift": {
       "disc": "hsl(210, 75%, 65%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -367,6 +397,12 @@
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
+    },
+    "lift_gate": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
     },
     "lighthouse": {
       "disc": "hsl(225, 60%, 58%)",
@@ -512,6 +548,12 @@
       "radius": 21,
       "border": 3
     },
+    "sally_port": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
+    },
     "school": {
       "disc": "hsl(30, 50%, 50%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -554,6 +596,12 @@
       "radius": 21,
       "border": 3
     },
+    "stile": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
+    },
     "sushi": {
       "disc": "hsl(30, 100%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -587,6 +635,12 @@
     "toilets": {
       "disc": null,
       "glyph": "hsl(200, 20%, 55%)",
+      "radius": 21,
+      "border": 0
+    },
+    "toll_booth": {
+      "disc": null,
+      "glyph": "hsl(20, 12%, 45%)",
       "radius": 21,
       "border": 0
     },

@@ -54,6 +54,7 @@
       "poi-boost-bakery",
       "poi-boost-bank",
       "poi-boost-bar",
+      "poi-boost-barrier",
       "poi-boost-baseball",
       "poi-boost-basketball",
       "poi-boost-beach",
@@ -63,6 +64,8 @@
       "poi-boost-bicycle_rental",
       "poi-boost-biergarten",
       "poi-boost-bird_hide",
+      "poi-boost-bollard",
+      "poi-boost-border_control",
       "poi-boost-bus",
       "poi-boost-butcher",
       "poi-boost-cafe",
@@ -77,6 +80,7 @@
       "poi-boost-college",
       "poi-boost-convenience",
       "poi-boost-cricket",
+      "poi-boost-cycle_barrier",
       "poi-boost-deli",
       "poi-boost-dentist",
       "poi-boost-doctors",
@@ -94,6 +98,7 @@
       "poi-boost-furniture",
       "poi-boost-gallery",
       "poi-boost-garden",
+      "poi-boost-gate",
       "poi-boost-gift",
       "poi-boost-golf",
       "poi-boost-greengrocer",
@@ -106,6 +111,7 @@
       "poi-boost-kindergarten",
       "poi-boost-laundry",
       "poi-boost-library",
+      "poi-boost-lift_gate",
       "poi-boost-lighthouse",
       "poi-boost-lodging",
       "poi-boost-monument",
@@ -135,6 +141,7 @@
       "poi-boost-restaurant",
       "poi-boost-ruins",
       "poi-boost-saddle",
+      "poi-boost-sally_port",
       "poi-boost-school",
       "poi-boost-shelter",
       "poi-boost-shop",
@@ -142,6 +149,7 @@
       "poi-boost-soccer",
       "poi-boost-spring",
       "poi-boost-stadium",
+      "poi-boost-stile",
       "poi-boost-supermarket",
       "poi-boost-sushi",
       "poi-boost-swimming",
@@ -150,6 +158,7 @@
       "poi-boost-theatre",
       "poi-boost-theme_park",
       "poi-boost-toilets",
+      "poi-boost-toll_booth",
       "poi-boost-town_hall",
       "poi-boost-tree",
       "poi-boost-veterinary",
@@ -19858,13 +19867,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -19879,13 +19897,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -19910,13 +19937,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -19931,13 +19967,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20334,13 +20379,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20355,13 +20409,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20386,13 +20449,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20407,13 +20479,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20678,6 +20759,2895 @@
       }
     },
     {
+      "id": "poi-barrier-bollard",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "bollard"
+        ],
+        [
+          "!",
+          [
+            "has",
+            "name"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "border_control",
+            "sally_port"
+          ],
+          "barrier",
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "border_control",
+                "sally_port"
+              ],
+              "barrier",
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.30000000000000004,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 1.5,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-barrier-bollard-named",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "bollard"
+        ],
+        [
+          "has",
+          "name"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "border_control",
+            "sally_port"
+          ],
+          "barrier",
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "border_control",
+                "sally_port"
+              ],
+              "barrier",
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.30000000000000004,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 1.5,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-barrier-passage",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "cycle_barrier",
+              "gate",
+              "lift_gate",
+              "sally_port",
+              "stile"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "has",
+            "name"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "border_control",
+            "sally_port"
+          ],
+          "barrier",
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "border_control",
+                "sally_port"
+              ],
+              "barrier",
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.30000000000000004,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 1.5,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-barrier-passage-named",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "cycle_barrier",
+              "gate",
+              "lift_gate",
+              "sally_port",
+              "stile"
+            ]
+          ]
+        ],
+        [
+          "has",
+          "name"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "border_control",
+            "sally_port"
+          ],
+          "barrier",
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "border_control",
+                "sally_port"
+              ],
+              "barrier",
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.30000000000000004,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 1.5,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-barrier-control",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "border_control",
+              "toll_booth"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "has",
+            "name"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "border_control",
+            "sally_port"
+          ],
+          "barrier",
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "border_control",
+                "sally_port"
+              ],
+              "barrier",
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.30000000000000004,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 1.5,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-barrier-control-named",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "border_control",
+              "toll_booth"
+            ]
+          ]
+        ],
+        [
+          "has",
+          "name"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "border_control",
+            "sally_port"
+          ],
+          "barrier",
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "border_control",
+                "sally_port"
+              ],
+              "barrier",
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "barrier",
+                      "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
+                      "drinking_water",
+                      "garden",
+                      "gate",
+                      "lift_gate",
+                      "picnic_site",
+                      "sally_port",
+                      "shelter",
+                      "stile",
+                      "telephone",
+                      "toilets",
+                      "toll_booth",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.30000000000000004,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 1.5,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
       "id": "poi-mountain-viewpoint",
       "type": "symbol",
       "source": "openmaptiles",
@@ -20793,13 +23763,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20814,13 +23793,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20845,13 +23833,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -20866,13 +23863,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21247,13 +24253,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21268,13 +24283,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21299,13 +24323,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21320,13 +24353,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21704,13 +24746,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21725,13 +24776,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21756,13 +24816,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -21777,13 +24846,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22144,13 +25222,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22165,13 +25252,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22196,13 +25292,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22217,13 +25322,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22604,13 +25718,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22625,13 +25748,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22656,13 +25788,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -22677,13 +25818,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23044,13 +26194,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23065,13 +26224,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23096,13 +26264,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23117,13 +26294,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23714,13 +26900,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23735,13 +26930,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23766,13 +26970,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -23787,13 +27000,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24154,13 +27376,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24175,13 +27406,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24206,13 +27446,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24227,13 +27476,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24598,13 +27856,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24619,13 +27886,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24650,13 +27926,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -24671,13 +27956,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25090,13 +28384,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25111,13 +28414,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25142,13 +28454,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25163,13 +28484,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25524,13 +28854,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25545,13 +28884,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25576,13 +28924,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25597,13 +28954,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25969,13 +29335,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -25990,13 +29365,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -26021,13 +29405,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -26042,13 +29435,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -26337,6 +29739,22 @@
               "get",
               "class"
             ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "bus"
           ],
           [
@@ -26346,6 +29764,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
           ],
           [
             "!=",
@@ -26369,6 +29795,14 @@
               "get",
               "class"
             ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "harbor"
           ],
           [
@@ -26378,6 +29812,14 @@
               "class"
             ],
             "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
           ],
           [
             "!=",
@@ -26417,6 +29859,14 @@
               "get",
               "class"
             ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "shelter"
           ],
           [
@@ -26426,6 +29876,22 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
           ],
           [
             "!=",
@@ -26571,13 +30037,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -26592,13 +30067,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -26623,13 +30107,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -26644,13 +30137,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -26939,6 +30441,22 @@
               "get",
               "class"
             ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "bus"
           ],
           [
@@ -26948,6 +30466,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
           ],
           [
             "!=",
@@ -26971,6 +30497,14 @@
               "get",
               "class"
             ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "harbor"
           ],
           [
@@ -26980,6 +30514,14 @@
               "class"
             ],
             "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
           ],
           [
             "!=",
@@ -27019,6 +30561,14 @@
               "get",
               "class"
             ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "shelter"
           ],
           [
@@ -27028,6 +30578,22 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
           ],
           [
             "!=",
@@ -27184,13 +30750,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -27205,13 +30780,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -27236,13 +30820,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -27257,13 +30850,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -27552,6 +31154,22 @@
               "get",
               "class"
             ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "bus"
           ],
           [
@@ -27561,6 +31179,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
           ],
           [
             "!=",
@@ -27584,6 +31210,14 @@
               "get",
               "class"
             ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "harbor"
           ],
           [
@@ -27593,6 +31227,14 @@
               "class"
             ],
             "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
           ],
           [
             "!=",
@@ -27632,6 +31274,14 @@
               "get",
               "class"
             ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "shelter"
           ],
           [
@@ -27641,6 +31291,22 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
           ],
           [
             "!=",
@@ -27805,13 +31471,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -27826,13 +31501,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -27857,13 +31541,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -27878,13 +31571,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -28174,6 +31876,22 @@
               "get",
               "class"
             ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "bus"
           ],
           [
@@ -28183,6 +31901,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
           ],
           [
             "!=",
@@ -28206,6 +31932,14 @@
               "get",
               "class"
             ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "harbor"
           ],
           [
@@ -28215,6 +31949,14 @@
               "class"
             ],
             "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
           ],
           [
             "!=",
@@ -28254,6 +31996,14 @@
               "get",
               "class"
             ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "shelter"
           ],
           [
@@ -28263,6 +32013,22 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
           ],
           [
             "!=",
@@ -28417,13 +32183,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -28438,13 +32213,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -28469,13 +32253,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -28490,13 +32283,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -28786,6 +32588,22 @@
               "get",
               "class"
             ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "bus"
           ],
           [
@@ -28795,6 +32613,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
           ],
           [
             "!=",
@@ -28818,6 +32644,14 @@
               "get",
               "class"
             ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "harbor"
           ],
           [
@@ -28827,6 +32661,14 @@
               "class"
             ],
             "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
           ],
           [
             "!=",
@@ -28866,6 +32708,14 @@
               "get",
               "class"
             ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "shelter"
           ],
           [
@@ -28875,6 +32725,22 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
           ],
           [
             "!=",
@@ -29039,13 +32905,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -29060,13 +32935,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -29091,13 +32975,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -29112,13 +33005,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -29407,6 +33309,22 @@
               "get",
               "class"
             ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "bus"
           ],
           [
@@ -29416,6 +33334,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
           ],
           [
             "!=",
@@ -29439,6 +33365,14 @@
               "get",
               "class"
             ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "harbor"
           ],
           [
@@ -29448,6 +33382,14 @@
               "class"
             ],
             "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
           ],
           [
             "!=",
@@ -29487,6 +33429,14 @@
               "get",
               "class"
             ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "shelter"
           ],
           [
@@ -29496,6 +33446,22 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
           ],
           [
             "!=",
@@ -29661,13 +33627,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -29682,13 +33657,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -29713,13 +33697,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -29734,13 +33727,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30029,6 +34031,22 @@
               "get",
               "class"
             ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "bus"
           ],
           [
@@ -30038,6 +34056,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
           ],
           [
             "!=",
@@ -30061,6 +34087,14 @@
               "get",
               "class"
             ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "harbor"
           ],
           [
@@ -30070,6 +34104,14 @@
               "class"
             ],
             "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
           ],
           [
             "!=",
@@ -30109,6 +34151,14 @@
               "get",
               "class"
             ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "shelter"
           ],
           [
@@ -30118,6 +34168,22 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
           ],
           [
             "!=",
@@ -30306,13 +34372,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30327,13 +34402,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30358,13 +34442,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30379,13 +34472,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30762,13 +34864,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30783,13 +34894,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30814,13 +34934,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -30835,13 +34964,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31228,13 +35366,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31249,13 +35396,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31280,13 +35436,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31301,13 +35466,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31693,13 +35867,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31714,13 +35897,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31745,13 +35937,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -31766,13 +35967,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32170,13 +36380,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32191,13 +36410,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32222,13 +36450,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32243,13 +36480,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32656,13 +36902,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32677,13 +36932,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32708,13 +36972,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -32729,13 +37002,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33117,13 +37399,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33138,13 +37429,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33169,13 +37469,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33190,13 +37499,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33562,13 +37880,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33583,13 +37910,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33614,13 +37950,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -33635,13 +37980,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34018,13 +38372,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34039,13 +38402,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34070,13 +38442,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34091,13 +38472,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34462,13 +38852,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34483,13 +38882,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34514,13 +38922,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34535,13 +38952,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34909,13 +39335,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34930,13 +39365,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34961,13 +39405,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -34982,13 +39435,22 @@
                       "class"
                     ],
                     [
+                      "barrier",
                       "bench",
+                      "bollard",
+                      "border_control",
+                      "cycle_barrier",
                       "drinking_water",
                       "garden",
+                      "gate",
+                      "lift_gate",
                       "picnic_site",
+                      "sally_port",
                       "shelter",
+                      "stile",
                       "telephone",
                       "toilets",
+                      "toll_booth",
                       "tree",
                       "waste_basket"
                     ],
@@ -40245,6 +44707,9 @@
     "poi-boost-bar": {
       "default": 0
     },
+    "poi-boost-barrier": {
+      "default": 0
+    },
     "poi-boost-baseball": {
       "default": 0
     },
@@ -40270,6 +44735,12 @@
       "default": 0
     },
     "poi-boost-bird_hide": {
+      "default": 0
+    },
+    "poi-boost-bollard": {
+      "default": 0
+    },
+    "poi-boost-border_control": {
       "default": 0
     },
     "poi-boost-bus": {
@@ -40312,6 +44783,9 @@
       "default": 0
     },
     "poi-boost-cricket": {
+      "default": 0
+    },
+    "poi-boost-cycle_barrier": {
       "default": 0
     },
     "poi-boost-deli": {
@@ -40365,6 +44839,9 @@
     "poi-boost-garden": {
       "default": 0
     },
+    "poi-boost-gate": {
+      "default": 0
+    },
     "poi-boost-gift": {
       "default": 0
     },
@@ -40399,6 +44876,9 @@
       "default": 0
     },
     "poi-boost-library": {
+      "default": 0
+    },
+    "poi-boost-lift_gate": {
       "default": 0
     },
     "poi-boost-lighthouse": {
@@ -40488,6 +44968,9 @@
     "poi-boost-saddle": {
       "default": 0
     },
+    "poi-boost-sally_port": {
+      "default": 0
+    },
     "poi-boost-school": {
       "default": 0
     },
@@ -40507,6 +44990,9 @@
       "default": 0
     },
     "poi-boost-stadium": {
+      "default": 0
+    },
+    "poi-boost-stile": {
       "default": 0
     },
     "poi-boost-supermarket": {
@@ -40531,6 +45017,9 @@
       "default": 0
     },
     "poi-boost-toilets": {
+      "default": 0
+    },
+    "poi-boost-toll_booth": {
       "default": 0
     },
     "poi-boost-town_hall": {

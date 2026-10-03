@@ -56,6 +56,7 @@ void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
 void testMergedOverzoom();
+void testContainerDemEncoding();
 void testBagProperties();
 void testFogOptions();
 void testSkyOptions();
@@ -449,6 +450,7 @@ int main() {
     testTileMetaData();
     testElevationDecoderResolve();
     testMergedOverzoom();
+    testContainerDemEncoding();
     testBagProperties();
     testFogOptions();
     testSkyOptions();

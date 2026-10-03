@@ -41,6 +41,7 @@ namespace massif {
         
         std::vector<uint8_t> decompressed = pmtiles::decompressData(rootDirData, _header.internalCompression);
         _rootDirectory = pmtiles::decodeDirectory(decompressed);
+        adoptContainerDemEncoding();
         
         Log::Infof("PMTilesTileDataSource: Opened %s with %llu tiles, zoom %d-%d", 
                    path.c_str(), _header.numTileEntries, _header.minZoom, _header.maxZoom);
@@ -71,6 +72,7 @@ namespace massif {
         
         std::vector<uint8_t> decompressed = pmtiles::decompressData(rootDirData, _header.internalCompression);
         _rootDirectory = pmtiles::decodeDirectory(decompressed);
+        adoptContainerDemEncoding();
         
         Log::Infof("PMTilesTileDataSource: Opened %s with %llu tiles, zoom %d-%d", 
                    path.c_str(), _header.numTileEntries, _header.minZoom, _header.maxZoom);

@@ -2,6 +2,7 @@
 #include "core/Variant.h"
 #include "projections/Projection.h"
 #include "projections/EPSG3857.h"
+#include "rastertiles/ElevationDecoder.h"
 #include "utils/Const.h"
 
 #include <algorithm>
@@ -79,6 +80,7 @@ namespace massif {
         _maxOverzoomLevel(-1),
         _projection(std::make_shared<EPSG3857>()),
         _metaData(),
+        _containerMetaData(),
         _onChangeListeners(),
         _mutex()
     {
@@ -90,6 +92,7 @@ namespace massif {
         _maxOverzoomLevel(-1),
         _projection(std::make_shared<EPSG3857>()),
         _metaData(),
+        _containerMetaData(),
         _onChangeListeners(),
         _mutex()
     {
@@ -129,7 +132,9 @@ namespace massif {
     void TileDataSource::setMetaData(const std::map<std::string, Variant>& metaData) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            _metaData = metaData.empty() ? std::shared_ptr<const std::map<std::string, Variant> >() : std::make_shared<const std::map<std::string, Variant> >(metaData);
+            std::map<std::string, Variant> merged(metaData);
+            merged.insert(_containerMetaData.begin(), _containerMetaData.end());
+            _metaData = merged.empty() ? std::shared_ptr<const std::map<std::string, Variant> >() : std::make_shared<const std::map<std::string, Variant> >(std::move(merged));
         }
         notifyTilesChanged(false);
     }
@@ -167,6 +172,20 @@ namespace massif {
             return;
         }
         tileData->setMetaData(getMetaDataPtr());
+    }
+
+    void TileDataSource::adoptContainerDemEncoding() {
+        std::string encoding = getContainerMetaData("encoding");
+        if (encoding != "terrarium" && encoding != "mapbox") {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(_mutex);
+        _containerMetaData[ElevationDecoder::ENCODING_KEY] = Variant(encoding);
+        if (!_metaData || _metaData->find(ElevationDecoder::ENCODING_KEY) == _metaData->end()) {
+            auto metaData = _metaData ? std::make_shared<std::map<std::string, Variant> >(*_metaData) : std::make_shared<std::map<std::string, Variant> >();
+            (*metaData)[ElevationDecoder::ENCODING_KEY] = Variant(encoding);
+            _metaData = metaData;
+        }
     }
 
     std::string TileDataSource::getContainerMetaData(const std::string& key) const {

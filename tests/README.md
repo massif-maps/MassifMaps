@@ -8,10 +8,10 @@ a host-native binary over the parts that can be linked without the renderer, plu
 cd tests && ./run.sh
 ```
 
-Needs `cmake`, `python3` and a host compiler. Nothing Android or iOS. `libs-external` has to be
-checked out with its nested submodules (`git submodule update --init --recursive libs-external`) —
-`rapidjson` and `utf8` are both on the link — and `libs-external/boost` symlinked as in
-[`BUILDING.md`](../BUILDING.md).
+Needs `cmake`, `python3`, a host compiler and the system zlib and sqlite3. Nothing Android or iOS.
+`libs-external` has to be checked out with its nested submodules
+(`git submodule update --init --recursive libs-external`) — `rapidjson`, `utf8` and `brotli` are
+all on the link — and `libs-external/boost` symlinked as in [`BUILDING.md`](../BUILDING.md).
 
 ## What is covered, and what is not
 
@@ -31,6 +31,10 @@ line it names — and line tesselation (`TileLayerBuilder.cpp` and the six TUs i
 of its own width a line reaches at a join. That last chain wants tess2 and bidi but **no font** —
 `TextFormatter` reaches `Font` through its interface only, so freetype and harfbuzz stay out.
 Anything reaching GL still belongs behind a device check instead.
+
+`archive/` covers the MBTiles and PMTiles sources over small archives each test writes itself:
+what they read out of their own metadata. It is a binary of its own because it links sqlite (the
+system one) and brotli's decoder, which the `api/` link stays without.
 
 It does **not** cover anything that needs a real map. Two things make that a hard boundary rather
 than a choice:

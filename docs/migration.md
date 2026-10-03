@@ -541,7 +541,8 @@ the DEM key is renamed:
 | `MBTilesTileDataSource.getMetaData()` | `getContainerMetaData()` |
 
 `getMetaDataElement` falls back to `getContainerMetaData`, so a tileset that declares `dem_encoding`
-in its own MBTiles/PMTiles metadata needs no application code at all.
+in its own MBTiles/PMTiles metadata needs no application code at all. An MBTiles or PMTiles DEM that
+declares the standard `encoding` (`terrarium` / `mapbox`) gets it as `dem_encoding` too.
 
 **The decoder is now resolved per TILE**, from the map that tile carries. Two DEM sources of
 different encodings can therefore sit behind one `OrderedTileDataSource` — see

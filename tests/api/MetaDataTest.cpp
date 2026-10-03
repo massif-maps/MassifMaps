@@ -3,7 +3,8 @@
  * per-tile elevation decoder resolved from its "dem_encoding" entry.
  *
  * NOT covered here: PersistentCacheTileDataSource's stored copy of the map, which needs sqlite,
- * and anything that renders. See tests/README.md.
+ * and anything that renders. See tests/README.md. The real archives' adoption of their "encoding"
+ * is in ../archive.
  */
 
 #include "core/MapTile.h"
@@ -38,6 +39,19 @@ namespace {
 
         std::string getContainerMetaData(const std::string& key) const override {
             return key == ElevationDecoder::ENCODING_KEY ? containerEncoding : std::string();
+        }
+    };
+
+    /** An archive declaring its encoding the way MBTiles and PMTiles do, under "encoding". */
+    struct ArchiveStub : public StubTileDataSource {
+        std::string encoding;
+
+        explicit ArchiveStub(const std::string& encoding) : encoding(encoding) {
+            adoptContainerDemEncoding();
+        }
+
+        std::string getContainerMetaData(const std::string& key) const override {
+            return key == "encoding" ? encoding : std::string();
         }
     };
 
@@ -134,4 +148,42 @@ void testElevationDecoderResolve() {
     numericTile->setMetaDataElement("dem_encoding", Variant(static_cast<long long>(3)));
     TEST_CHECK(ElevationDecoder::Resolve(numericTile, nullptr, preferred) == preferred,
                "a non-string dem_encoding falls back to the preferred decoder");
+}
+
+void testContainerDemEncoding() {
+    auto terrarium = std::make_shared<ArchiveStub>("terrarium");
+    TEST_CHECK(terrarium->getMetaDataElement("dem_encoding").getString() == "terrarium",
+               "a container's terrarium encoding is adopted as dem_encoding");
+    TEST_CHECK(isTerrarium(ElevationDecoder::Resolve(terrarium->loadTile(MapTile(0, 0, 0, 0)), nullptr, nullptr)),
+               "the adopted dem_encoding is stamped on every tile, so a wrapper source still resolves it");
+    TEST_CHECK(terrarium->getMetaDataElement("encoding").getString() == "terrarium",
+               "the container's own encoding key still answers as before");
+
+    std::map<std::string, Variant> unrelated;
+    unrelated["other"] = str("x");
+    terrarium->setMetaData(unrelated);
+    TEST_CHECK(terrarium->getMetaDataElement("dem_encoding").getString() == "terrarium",
+               "setMetaData without dem_encoding keeps the adopted one");
+    TEST_CHECK(terrarium->getMetaDataElement("other").getString() == "x", "and still sets the rest");
+
+    std::map<std::string, Variant> explicitMapBox;
+    explicitMapBox["dem_encoding"] = str("mapbox");
+    terrarium->setMetaData(explicitMapBox);
+    TEST_CHECK(isMapBox(ElevationDecoder::Resolve(terrarium->loadTile(MapTile(0, 0, 0, 0)), nullptr, nullptr)),
+               "an explicit dem_encoding in setMetaData wins over the container's");
+
+    auto overridden = std::make_shared<ArchiveStub>("terrarium");
+    overridden->setMetaDataElement("dem_encoding", str("mapbox"));
+    TEST_CHECK(overridden->getMetaDataElement("dem_encoding").getString() == "mapbox",
+               "an explicit setMetaDataElement wins over the container's");
+
+    TEST_CHECK(std::make_shared<ArchiveStub>("mapbox")->getMetaDataElement("dem_encoding").getString() == "mapbox",
+               "a container's mapbox encoding is adopted too");
+
+    // Vector archives name their tile FORMAT under the same key.
+    for (const char* vectorEncoding : { "mlt", "mvt", "pbf", "" }) {
+        auto vector = std::make_shared<ArchiveStub>(vectorEncoding);
+        TEST_CHECK(vector->getMetaData().empty() && !vector->containsMetaDataKey("dem_encoding"),
+                   "a non-DEM container encoding adopts nothing");
+    }
 }

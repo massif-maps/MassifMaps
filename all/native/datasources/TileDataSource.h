@@ -85,7 +85,8 @@ namespace massif {
          */
         std::map<std::string, Variant> getMetaData() const;
         /**
-         * Sets a new meta data map for the data source. Old meta data values will be lost.
+         * Sets a new meta data map for the data source. Old meta data values will be lost, except a
+         * "dem_encoding" the source read from its container, which the new map overrides only by naming it.
          * Takes effect for tiles loaded after the call.
          * @param metaData The new meta data map for this data source.
          */
@@ -200,6 +201,12 @@ namespace massif {
          */
         void applyTileMetaData(const std::shared_ptr<TileData>& tileData) const;
 
+        /**
+         * Adopts the container's "encoding" metadata as "dem_encoding" when it is "terrarium" or "mapbox".
+         * Vector archives use that key for their tile format, so any other value is ignored.
+         */
+        void adoptContainerDemEncoding();
+
         std::atomic<int> _minZoom;
         std::atomic<int> _maxZoom;
         std::atomic<int> _maxOverzoomLevel;
@@ -208,6 +215,7 @@ namespace massif {
         std::shared_ptr<const std::map<std::string, Variant> > _metaData;
 
     private:
+        std::map<std::string, Variant> _containerMetaData;
         std::vector<std::shared_ptr<OnChangeListener> > _onChangeListeners;
         mutable std::mutex _mutex;
     };

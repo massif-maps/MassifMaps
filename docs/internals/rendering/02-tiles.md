@@ -519,7 +519,11 @@ Distinct from it, and deliberately so: **`getContainerMetaData(key)`** reads the
 metadata — the MBTiles metadata table, the PMTiles header JSON — returns a plain string, and is
 **not** attached to tiles, because an MBTiles `json` field is tens of kilobytes. `getMetaDataElement`
 falls back to it, so a tileset that already declares `dem_encoding` or `format` in its own table
-needs no application code. The wrapper sources (`Cache`, `Contour`, `Ordered`, `Combined`) forward
+needs no application code. Archives rarely do: they name it **`encoding`** (`{"encoding":"terrarium"}`
+in a PMTiles DEM), so `MBTiles` and `PMTiles` adopt an `encoding` of `terrarium` or `mapbox` into
+the map at construction, where it is stamped on every tile like an app-set one. Any other value is a
+vector archive's tile format and is left alone. `setMetaData` keeps the adopted entry unless the new
+map names `dem_encoding`. The wrapper sources (`Cache`, `Contour`, `Ordered`, `Combined`) forward
 both: own entries first, then the first child that declares any.
 
 ## Two binary formats: MVT and MLT

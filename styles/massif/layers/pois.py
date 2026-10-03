@@ -170,12 +170,20 @@ def flat_match(value_of, default, furniture=None, keep_furniture=False, fixed=No
     return out
 
 
-# The data decides when a POI appears: OpenMapTiles' `rank`, on OpenFreeMap Liberty's ladder. Least
-# important first, so a lower rank wins a collision.
-RANK_LAYERS = [
-    ('poi-rank-r20', 17, ['all', ['>=', get('rank'), 20]]),
-    ('poi-rank-r7', 16, ['all', ['>=', get('rank'), 7], ['<', get('rank'), 20]]),
-    ('poi-rank-r1', 15, ['all', ['>=', get('rank'), 1], ['<', get('rank'), 7]]),
+# The data decides when a POI appears: `rank`, ordinal in its z14 tile (1-390 over Grenoble), on
+# Alpimaps' OSM ladder: 10 from z14, 30 from 15 (named from 16), 70 from 16, all from 17; eating,
+# parking and schools a band later, shops two. Least important first: a lower rank wins a collision.
+RANK = get('rank')
+LATE = ['bar', 'college', 'parking', 'restaurant', 'school']
+RANK_LADDER = [
+    ('poi-rank-all', 17, ['>', RANK, 70], 'poi_rank_all_minzoom'),
+    ('poi-rank-r70', 16, ['all', ['>', RANK, 30], ['<=', RANK, 70]], 'poi_rank70_minzoom'),
+    ('poi-rank-r30-shop', 16, ['all', ['>', RANK, 10], ['<=', RANK, 30], ['==', get('class'), 'shop']], 'poi_rank70_minzoom'),
+]
+RANK30 = ['all', ['>', RANK, 10], ['<=', RANK, 30], ['!=', get('class'), 'shop']]
+RANK10 = [
+    ('poi-rank-r10-late', 15, ['all', ['<=', RANK, 10], ['in', get('class'), ['literal', LATE]]], 'poi_rank30_minzoom'),
+    ('poi-rank-r10', 14, ['all', ['<=', RANK, 10], *[['!=', get('class'), c] for c in LATE]], 'poi_rank10_minzoom'),
 ]
 # The exceptions, each its own layer: stations and airports before the ladder starts, as Standard
 # draws them; the bus stop after it, as Standard does - icon at 17, name at 18.
@@ -404,6 +412,15 @@ def stop(id, filter, zooms, const, v):
     return [icon, named]
 
 
+def ranked(rows, ladder, v):
+    out = []
+    for id, minzoom, filter, const in rows:
+        lay = poi_layer(id, minzoom, ['all', ladder, filter], v)
+        lay['metadata']['massif:minzoom-const'] = const
+        out.append(lay)
+    return out
+
+
 def pt_shelter(v):
     """`poi_pt_shelter_minzoom` in a city (streets, hybrid), z15 on the walker's variants"""
     if v.flags.get('trails'):
@@ -418,7 +435,8 @@ def layers(v):
               ['!=', get('subclass'), 'kindergarten'], ['!=', get('subclass'), 'viewpoint']]
     not_tram = ['!=', get('subclass'), 'tram_stop']
     return (pt_shelter(v) + [poi_layer('poi-shelter', 17, OTHER_SHELTER, v, text='')] + stop('poi-bus', ['==', get('class'), BUS[0]], BUS[1:], 'bus', v) +
-            [poi_layer(id, minzoom, ['all', ladder, filter], v) for id, minzoom, filter in RANK_LAYERS] + campsites(v) +
+            ranked(RANK_LADDER, ladder, v) + stop('poi-rank-r30', ['all', ladder, RANK30], (15, 16), 'rank30', v) +
+            ranked(RANK10, ladder, v) + campsites(v) +
             [poi_layer(id, minzoom, ['all', ['in', get('class'), ['literal', classes]], not_tram], v)
              for id, minzoom, classes in STATION_LAYERS] + stop('poi-tram', TRAM_STOP, TRAM, 'tram', v) +
             kindergarten(v) + water_highlight(v))

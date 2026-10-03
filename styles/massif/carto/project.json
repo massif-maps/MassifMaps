@@ -1899,6 +1899,11 @@
     "poi_bus_label_minzoom": 18,
     "poi_bus_minzoom": 17,
     "poi_pt_shelter_minzoom": 17,
+    "poi_rank10_minzoom": 14,
+    "poi_rank30_label_minzoom": 16,
+    "poi_rank30_minzoom": 15,
+    "poi_rank70_minzoom": 16,
+    "poi_rank_all_minzoom": 17,
     "poi_tram_label_minzoom": 16,
     "poi_tram_minzoom": 16
   }

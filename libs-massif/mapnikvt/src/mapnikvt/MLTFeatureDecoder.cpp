@@ -263,12 +263,13 @@ namespace massif::mvt {
 
             std::shared_ptr<Geometry> geometry;
             switch (convertGeometryType(mltGeometry.type)) {
-            case FeatureData::GeometryType::POINT_GEOMETRY:
-                verticesList.erase(std::remove_if(verticesList.begin(), verticesList.end(), partMissesClip), verticesList.end());
-                if (verticesList.empty()) {
-                    return std::shared_ptr<Geometry>();
+            case FeatureData::GeometryType::POINT_GEOMETRY: {
+                    std::vector<int> partIndices = mbvtKeepPointParts(verticesList, partMissesClip);
+                    if (verticesList.empty()) {
+                        return std::shared_ptr<Geometry>();
+                    }
+                    geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList), std::move(partIndices)));
                 }
-                geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList)));
                 break;
             case FeatureData::GeometryType::LINE_GEOMETRY:
                 verticesList.erase(std::remove_if(verticesList.begin(), verticesList.end(), partMissesClip), verticesList.end());

@@ -21,8 +21,12 @@ namespace massif::mvt {
         using VerticesList = std::vector<Vertices>;
 
         explicit PointGeometry(VerticesList verticesList) : _verticesList(std::move(verticesList)) { }
+        // partIndices: each part's index in the source feature, when an overzoom clip dropped some.
+        // Label ids are built from it, so one point keeps one id in every tile cut from its source.
+        PointGeometry(VerticesList verticesList, std::vector<int> partIndices) : _verticesList(std::move(verticesList)), _partIndices(std::move(partIndices)) { }
 
         const VerticesList& getVerticesList() const { return _verticesList; }
+        int getPartIndex(std::size_t part) const { return _partIndices.empty() ? static_cast<int>(part) : _partIndices[part]; }
         const Vertices getVertices() const {
             Vertices flattened;
             for (auto const &v: _verticesList) {
@@ -33,6 +37,7 @@ namespace massif::mvt {
 
     private:
         VerticesList _verticesList;
+        std::vector<int> _partIndices;
     };
 
     class LineGeometry final {

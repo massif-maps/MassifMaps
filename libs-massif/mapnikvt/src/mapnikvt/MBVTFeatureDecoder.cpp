@@ -182,9 +182,9 @@ namespace massif::mvt {
 
             switch (_layer->features(_index).type()) {
             case vector_tile::Tile::POINT: {
-                    verticesList.erase(std::remove_if(verticesList.begin(), verticesList.end(), partMissesClip), verticesList.end());
+                    std::vector<int> partIndices = mbvtKeepPointParts(verticesList, partMissesClip);
                     if (!verticesList.empty()) {
-                        auto geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList)));
+                        auto geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList), std::move(partIndices)));
                         _geometryCache->put(_index, geometry);
                         return geometry;
                     }

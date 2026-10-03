@@ -22,7 +22,8 @@ generated-table lookups, the base-class chain, handle generations and the stale-
 `style/` covers the mapnikvt style MODEL without the renderer: what `resolveLayerConfig` reads out
 of a style layer that also carries ordinary line/text rules, which is what a converted MapBox style
 produces. Only the TUs the model needs are linked — the symbolizer implementations pull vt's tile
-builders in, so a case that needs one belongs behind a device check instead.
+builders in, so a case that needs one belongs behind a device check instead. The MVT decoder is
+linked too (it needs only zlib): what an overzoomed tile keeps of a merged MultiPoint.
 
 `vt/` covers what of the renderer links without the renderer: the label plate cell
 (`LabelPlateBitmap.h`, header-only) — what the fill and border shapes in one atlas cell have to

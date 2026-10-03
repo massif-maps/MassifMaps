@@ -157,12 +157,11 @@ namespace massif::mvt {
                         long long localId = featureCollection.getLocalId(featureIndex);
                         auto verticesList = pointGeometry->getVerticesList();
 
-                        int index = 0;
-                        for (const auto& vertices : verticesList) {
-                            for (const auto &vertex: vertices) {
+                        for (std::size_t part = 0; part < verticesList.size(); part++) {
+                            int index = pointGeometry->getPartIndex(part);
+                            for (const auto &vertex: verticesList[part]) {
                                 textProcessor(localId, vertex, text, index);
                             }
-                            index++;
                         }
                     }
                     else if (!repeat) {
@@ -248,16 +247,15 @@ namespace massif::mvt {
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     auto verticesList = pointGeometry->getVerticesList();
-                    int index = 0;
-                    for (const auto& vertices : verticesList) {
-                        for (const auto &vertex: vertices) {
+                    for (std::size_t part = 0; part < verticesList.size(); part++) {
+                        int index = pointGeometry->getPartIndex(part);
+                        for (const auto &vertex: verticesList[part]) {
                             long long pointLabelId = (anchorLabelId ? combineAnchorId(labelId, tileId, vertex) : labelId);
                             textProcessor(localId, 10 * pointLabelId + index, groupId, vertex,
                                           vt::TileLayerBuilder::Vertices(), text, placementPriority,
                                           minimumDistance, allowOverlapSameFeatureId,
                                           sameFeatureIdDependent, index);
                         }
-                        index++;
                     }
                 }
                 else if (!repeat) {

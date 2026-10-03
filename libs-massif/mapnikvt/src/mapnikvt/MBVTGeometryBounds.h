@@ -10,6 +10,9 @@
 #include <cglib/bbox.h>
 #include <cglib/mat.h>
 
+#include <algorithm>
+#include <cstddef>
+#include <utility>
 #include <vector>
 
 namespace massif::mvt {
@@ -55,6 +58,30 @@ namespace massif::mvt {
             bounds.add(p);
         }
         return bounds.inside(clipBox);
+    }
+
+    /**
+     * Drops the parts of a point feature that miss the clip. Returns the source index of each kept
+     * part, or nothing when all are kept: the symbolizers key a point's label id on that index.
+     */
+    template <typename Misses>
+    std::vector<int> mbvtKeepPointParts(std::vector<std::vector<cglib::vec2<float>>>& verticesList, const Misses& partMissesClip) {
+        std::vector<int> partIndices;
+        if (std::none_of(verticesList.begin(), verticesList.end(), partMissesClip)) {
+            return partIndices;
+        }
+        std::size_t kept = 0;
+        for (std::size_t i = 0; i < verticesList.size(); i++) {
+            if (!partMissesClip(verticesList[i])) {
+                partIndices.push_back(static_cast<int>(i));
+                if (kept != i) {
+                    verticesList[kept] = std::move(verticesList[i]);
+                }
+                kept++;
+            }
+        }
+        verticesList.resize(kept);
+        return partIndices;
     }
 
     /** Whether bounds, carried by a scale-and-translate transform, meet the clip box. */

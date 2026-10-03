@@ -27,6 +27,7 @@ void testMBVTGeometryBounds();
 void testZoomShift();
 void testDrawOnce();
 void testCartoCSSTemplate();
+void testMultiPointPartIndex();
 
 int main() {
     testLayerConfig();
@@ -50,6 +51,7 @@ int main() {
     testZoomShift();
     testDrawOnce();
     testCartoCSSTemplate();
+    testMultiPointPartIndex();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -55,6 +55,7 @@ void testGetterLock();
 void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
+void testMergedOverzoom();
 void testBagProperties();
 void testFogOptions();
 void testSkyOptions();
@@ -447,6 +448,7 @@ int main() {
     testBundleAssets();
     testTileMetaData();
     testElevationDecoderResolve();
+    testMergedOverzoom();
     testBagProperties();
     testFogOptions();
     testSkyOptions();

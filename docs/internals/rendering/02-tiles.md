@@ -486,6 +486,13 @@ Standard sources (HTTP, MBTiles, PMTiles, assets) plus two of interest here:
   only what labels need; see [07-hillshade-contours.md](07-hillshade-contours.md).
 - **elevation sources** — decoded by `MapBoxElevationDataDecoder` / `TerrariumElevationDataDecoder`
   into `ElevationTileGrid`s held by `ElevationManager` ([04-terrain.md](04-terrain.md)).
+- **`MergedMBVTTileDataSource`** — concatenates two MVT sources' tiles. A merged tile holds one
+  zoom, so the layer cannot overzoom one source alone: past a source's max zoom its last tile is cut
+  into the requested one (`MBVTSubtile.h`). The cut stops at that source's `maxOverzoomLevel` when
+  one is set; past it the source answers nothing, so the other source's "replace with parent"
+  reaches the layer. Unset, it cuts at any zoom — which hides that answer: a z0-6 bathymetry
+  archive merged over a chain whose last tile is z7 drew empty tiles at z10 instead of the
+  overzoomed z7 one.
 
 ## Source meta data, and what a tile carries
 

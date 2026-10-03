@@ -105,6 +105,9 @@ namespace massif {
             if (dz <= 0) {
                 return dataSource.loadTile(mapTile);
             }
+            if (dataSource.isMaxOverzoomLevelSet() && zoom > dataSource.getMaxZoomWithOverzoom()) {
+                return std::shared_ptr<TileData>();
+            }
             MapTile parentTile(mapTile.getX() >> dz, mapTile.getY() >> dz, dataSource.getMaxZoom(), mapTile.getFrameNr());
             std::shared_ptr<TileData> parent = dataSource.loadTile(parentTile);
             if (!parent || !parent->getData() || parent->isReplaceWithParent()) {

@@ -152,6 +152,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/rastertiles/ElevationDecoder.cpp"
   "${SDK_BASE_DIR}/all/native/rastertiles/MapBoxElevationDataDecoder.cpp"
   "${SDK_BASE_DIR}/all/native/rastertiles/TerrariumElevationDataDecoder.cpp"
+  # The per-source overzoom cut: header-only mapnikvt (MBVTSubtile.h) plus zlib for gzipped tiles.
+  "${SDK_BASE_DIR}/all/native/datasources/MergedMBVTTileDataSource.cpp"
 )
 
 set(TEST_TABLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/api")
@@ -208,6 +210,7 @@ add_executable(api_tests
   BundleAssetsTest.cpp
   CAbiTest.cpp
   MetaDataTest.cpp
+  MergedMBVTTest.cpp
   BagTest.cpp
   FogSkyTest.cpp
   EffectSpecTest.cpp
@@ -314,11 +317,15 @@ target_include_directories(api_tests PRIVATE
   "${SDK_BASE_DIR}/libs-external/picojson"
   # DrapeStandIn.h is written in tile ids, which live in vt.
   "${SDK_BASE_DIR}/libs-massif/vt/src"
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src"
   # RoutingRequest uses boost::algorithm for its parameter paths - see ../../BUILDING.md for the
   # symlink this expects.
   "${SDK_BASE_DIR}/libs-external/boost"
   "${SDK_BASE_DIR}/libs-external/rapidjson/include"
   "${SDK_BASE_DIR}/libs-external/tinyformat")
+
+find_package(ZLIB REQUIRED)
+target_link_libraries(api_tests PRIVATE ZLIB::ZLIB)
 
 add_test(NAME api COMMAND api_tests)
 add_test(NAME profile_guards COMMAND "${TEST_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/ProfileGuardTest.py" "${SDK_BASE_DIR}")

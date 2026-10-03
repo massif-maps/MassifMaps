@@ -116,7 +116,8 @@ deeper woods (`OUTDOOR` in the palette):
   hybrid draw them too.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
-- **Peaks from z9**, the three most prominent per tile first.
+- **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
+  before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
   wilderness_hut: a roof-on-posts glyph on nature's green, named), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
@@ -259,9 +260,9 @@ POI ranking (SDK only; MapLibre ignores it):
   it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
   (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
   for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
-  set). A priority is the layer's position × 100000: POIs span 16.5M (peaks) to 21.0M (the rank
-  ladder's top), place names reach 24M. So `100000` lifts a class one layer, `5000000` over every
-  unboosted POI and past most road and trail names, and a negative value demotes. Whole numbers: the
+  set). A priority is the layer's position × 100000: the airport sits at 16.5M, POIs span 18.5M to
+  21.6M, road and trail names reach 23.4M, summits 23.5M–23.7M, place names 24.9M. So `100000` lifts a
+  class one layer, `3000000` over every unboosted POI and most road and trail names (not a summit), and a negative value demotes. Whole numbers: the
   culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
   rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
 

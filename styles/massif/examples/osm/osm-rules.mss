@@ -42,7 +42,7 @@
    bakeries from z15 whatever their rank, winning their collisions; pharmacies held back to z17. */
 #poi[zoom >= 15][class = 'bakery']::poi {
   @extend %poi;
-  shield-placement-priority: 30000000;
+  shield-placement-priority: (30000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
 }
 #poi[zoom < 17][class = 'pharmacy']::poi {
   display: none;

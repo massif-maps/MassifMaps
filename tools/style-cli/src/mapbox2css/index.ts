@@ -6,7 +6,7 @@ import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
-import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
+import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate, hasIcon } from './sprite.js';
 import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
 import { narrowLayer } from './narrow.js';
 import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
@@ -1892,7 +1892,7 @@ function layerDeclarations(
  * so they are evaluated per feature, which is what gets a POI its class colour back.
  */
 function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: string, coverage: Coverage,
-                               options: ConvertOptions): string[] {
+                               options: ConvertOptions, fixedBox = false): string[] {
     const params = layer.layout?.[ICON_PARAMS] as Record<string, Json> | undefined;
     if (!icon.plate || !params) return [];
     const out: string[] = [];
@@ -1902,6 +1902,7 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: s
     // Radius and ring are the artwork's pixels at icon-size 1, the plate's are the screen's: at
     // icon-size 0.4 a ring stated 3 drew 3 px where MapLibre draws 1.2, and the disc grew with it.
     const sizedBy = (value: string) => (sized === '1' ? value : `((${value}) * (${sized}))`);
+    const stated = new Map<string, string>();
     const colour = (name: string, target: string, gate = false, size = false): boolean => {
         if (params[name] === undefined) return false;
         // `"massif:params": ["icon-image"]` puts the icon's own palette in project.json too, so the
@@ -1912,6 +1913,7 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: s
         const value = size ? sizedBy(translated) : translated;
         out.push(`${target}: ${gate ? scoped(value) : value};`);
         coverage.emit(target);
+        stated.set(target, translated);
         return true;
     };
 
@@ -1941,6 +1943,17 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: s
         if (!colour('background-stroke-width', 'shield-icon-background-border-width', false, true)) {
             out.push(`shield-icon-background-border-width: ${sizedBy(String(round(icon.plate.borderWidth)))};`);
             coverage.emit('shield-icon-background-border-width');
+            stated.set('shield-icon-background-border-width', String(round(icon.plate.borderWidth)));
+        }
+    }
+    // A glyph's box is its own outline, so a plate fitted to it took each glyph's shape: the disc's box
+    // is stated instead, ring included (LabelPlateStyle::size is the outer size).
+    if (fixedBox) {
+        const ring = stated.get('shield-icon-background-border-width');
+        for (const [axis, side] of [['width', icon.width], ['height', icon.height]] as const) {
+            const outer = ring !== undefined ? `(${round(side)} + 2 * (${ring}))` : String(round(side));
+            out.push(`shield-icon-background-${axis}: ${sizedBy(outer)};`);
+            coverage.emit(`shield-icon-background-${axis}`);
         }
     }
     // MapBox's `icon-stroke` is the outline it draws UNDER the glyph, which is exactly what the
@@ -3284,9 +3297,7 @@ function patternDeclarations(
  * about the label is unchanged. The face is resolved as a fallback of the label font, which is what
  * puts its glyphs in the label's own atlas.
  *
- * The face carries one glyph per icon NAME, so a name it has none for draws no icon: an artwork
- * shield (an RER roundel, a country's motorway plate) has no font equivalent and is lost here. That
- * is the trade the mode is for - one font against a sheet of several hundred PNGs.
+ * A name the face has no glyph for keeps its sprite (markerDeclarations), or draws no icon without one.
  */
 function fontShieldDeclarations(layer: MapboxLayer, image: Json, coverage: Coverage,
         options: ConvertOptions): string[] {
@@ -3328,7 +3339,7 @@ function fontShieldDeclarations(layer: MapboxLayer, image: Json, coverage: Cover
     emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
     // A recolourable badge keeps its disc: the plate measured off the sheet, as the sprite path does.
     const plate = layer.layout?.[ICON_PARAMS] !== undefined ? fontPlateSample(options) : null;
-    if (plate) out.push(...iconPlateDeclarations(layer, plate, sized, coverage, options));
+    if (plate) out.push(...iconPlateDeclarations(layer, plate, sized, coverage, options, true));
     out.push(...variableAnchorDeclarations(layer, coverage, options));
     return out;
 }
@@ -3352,6 +3363,24 @@ function fontPlateSample(options: ConvertOptions): ExtractedIcon | null {
     return fontPlates.get(options)!;
 }
 
+/** Every name an icon-image can resolve to, when it states them outright through `match`/`case`. */
+function statedIconNames(image: Json): string[] | null {
+    if (typeof image === 'string') return /\{[A-Za-z0-9_:-]+\}/.test(image) ? null : [image];
+    if (!Array.isArray(image)) return null;
+    const outputs = image[0] === 'match' ? image.filter((_, i) => i >= 3 && (i % 2 === 1 || i === image.length - 1))
+        : image[0] === 'case' ? image.filter((_, i) => i >= 2 && (i % 2 === 0 || i === image.length - 1))
+            : null;
+    if (!outputs) return null;
+    const names = outputs.map((o) => statedIconNames(o as Json));
+    return names.every((n) => n !== null) ? (names as string[][]).flat() : null;
+}
+
+function spriteOnlyIcon(image: Json, options: ConvertOptions): boolean {
+    const names = statedIconNames(image);
+    if (!names || !options.sprites) return false;
+    return names.every((n) => !options.iconFont!.glyphs.has(n)) && names.some((n) => hasIcon(options.sprites!.sheets, n));
+}
+
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
 function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
     const image = layer.layout?.['icon-image'];
@@ -3359,6 +3388,8 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     // --icon-font replaces a shield's ARTWORK with a glyph, and needs no sheet at all. Only a
     // shield: an icon-only layer is a marker (a oneway arrow, a crossing), which has no glyph run.
     if (options.iconFont && layer.layout?.['text-field'] !== undefined) {
+        // A map symbol the face has no glyph for (a peak, a town's dot) keeps its sprite.
+        if (spriteOnlyIcon(image, options)) return markerDeclarations(layer, coverage, { ...options, iconFont: undefined });
         return fontShieldDeclarations(layer, image, coverage, options);
     }
     if (!options.sprites) {
@@ -3561,6 +3592,11 @@ function placementPriority(layer: MapboxLayer, layerIndex: number, coverage: Cov
     const sortKey = layer.layout?.['symbol-sort-key'];
     if (sortKey === undefined) return String(base);
 
+    // a negated key is a boost: `base + boost` rather than `base - (0 - boost)`
+    if (Array.isArray(sortKey) && sortKey[0] === '-' && sortKey.length === 2) {
+        const boost = tryTranslate(sortKey[1] as Json, 'symbol-sort-key', layer.id, coverage);
+        return boost === null ? String(base) : `(${base} + ${boost})`;
+    }
     const translated = tryTranslate(sortKey, 'symbol-sort-key', layer.id, coverage);
     // MapBox places the LOWEST key first, and the culler takes the highest priority.
     return translated === null ? String(base) : `(${base} - ${translated})`;

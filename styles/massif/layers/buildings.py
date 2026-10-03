@@ -1,4 +1,4 @@
-from lib import by_hour, get, layer, zoom_ramp
+from lib import by_hour, gate, get, layer, zoom_ramp
 
 
 # the SDK only: building_opacity looking straight down, so the tunnels show through; opaque once the
@@ -25,17 +25,19 @@ def extrusion(color, night=None):
                      'massif:layout': {'fill-extrusion-edge-radius': 0.4}, 'massif:minzoom-param': 'building_min_zoom'})
 
 
+def flat(id, paint, v):
+    """footprints to z15, and past it while `buildings` is 1 (2 raises them from z15)"""
+    return [layer(id, 'fill', 'building', minzoom=13, maxzoom=15, paint=paint,
+                  metadata={'massif:minzoom-param': 'building_min_zoom'}),
+            gate(layer(id + '-z15', 'fill', 'building', minzoom=15, paint=paint,
+                       metadata={'massif:minzoom-param': 'building_min_zoom'}), v, 'buildings', 1)]
+
+
 def layers(v):
     if v.flags.get('mono'):
         # e-ink: outlined footprints, then grey blocks whose walls the lighting shades
         c = v.palette
-        return [layer('building-flat', 'fill', 'building', minzoom=13, maxzoom=15,
-                      paint={'fill-color': c['building'], 'fill-outline-color': c['building-outline']},
-                      metadata={'massif:minzoom-param': 'building_min_zoom'}),
-                extrusion(c['building'])]
-    return [
-        layer('building', 'fill', 'building', minzoom=13, maxzoom=15,
-              paint={'fill-color': 'hsl(40, 43%, 93%)', 'fill-outline-color': 'hsl(40, 25%, 85%)'},
-              metadata={'massif:minzoom-param': 'building_min_zoom'}),
-        extrusion('hsl(30, 43%, 93%)', 'hsl(0, 0%, 58%)'),
-    ]
+        return flat('building-flat', {'fill-color': c['building'], 'fill-outline-color': c['building-outline']}, v) + \
+            [extrusion(c['building'])]
+    return flat('building', {'fill-color': 'hsl(40, 43%, 93%)', 'fill-outline-color': 'hsl(40, 25%, 85%)'}, v) + \
+        [extrusion('hsl(30, 43%, 93%)', 'hsl(0, 0%, 58%)')]

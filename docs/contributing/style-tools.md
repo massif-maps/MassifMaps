@@ -1221,9 +1221,10 @@ characters instead of file paths.
 
 Two things it does not cover, deliberately:
 
-- a name the face has no glyph for draws **no icon**, and the coverage report names it. Country
-  artwork — an RER roundel, a national motorway plate — has no font equivalent, and one font against
-  a sheet of several hundred PNGs is the trade the mode is for;
+- a name the face has no glyph for keeps its **sprite** when the sheet has it — every name a
+  `match`/`case` can resolve to, so Massif's peak and town dot stay bitmaps beside the font. One
+  in neither draws **no icon**, and the coverage report names it: country artwork — an RER roundel,
+  a national motorway plate — has no font equivalent;
 - a **marker** keeps its sprite. A oneway arrow or a crossing is not a label and has no glyph run.
 
 `--icon-font-size PX` is the height in **sprite** pixels a glyph fills at `icon-size` 1, so
@@ -1554,6 +1555,9 @@ text-placement-priority: (11200000 - (0 + [rank]));
 `layerIndex × 100000`, minus the sort key (MapBox places the lowest first, the culler takes the
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
+
+A negated key, `["-", boost]`, is written as `(base + boost)`, and a `config` whose name is
+`["concat", "prefix-", ["get", field]]` reads `[param::prefix-[field]]`: Massif's `poi-boost-<class>`.
 
 ## Folding a casing and ordering roads do not mix
 

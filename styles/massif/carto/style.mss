@@ -4151,14 +4151,28 @@ Map {
 #building[zoom >= 'param::building_min_zoom'][zoom >= 13][zoom < 15]['param::buildings'>0]['param::variant' = 'eink']::building_flat {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
   line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
-  line-width: @line_stroke_width;
+  line-width: @building_stroke_width;
+  polygon-emissive-strength: 0;
+  line-emissive-strength: 0;
+}
+#building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' = 'eink']::building_flat_z15 {
+  polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
+  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 13][zoom < 15]['param::buildings'>0]['param::variant' != 'hybrid']['param::variant' != 'eink']::building {
   polygon-fill: @building_fill;
   line-color: @building_stroke_2;
-  line-width: @line_stroke_width;
+  line-width: @building_stroke_width;
+  polygon-emissive-strength: 0;
+  line-emissive-strength: 0;
+}
+#building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' != 'hybrid']['param::variant' != 'eink']::building_z15 {
+  polygon-fill: @building_fill;
+  line-color: @building_stroke_2;
+  line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
@@ -4180,7 +4194,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 15400000;
+  text-placement-priority: 15600000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -4193,7 +4207,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 15500000;
+  text-placement-priority: 15700000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -4209,7 +4223,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 15600000;
+  text-placement-priority: 15800000;
   text-wrap-width: (10 * linear([view::zoom], (17, 10), (20, 13)));
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -4225,7 +4239,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 15700000;
+  text-placement-priority: 15900000;
   text-collision-padding: 2;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
@@ -4242,7 +4256,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 15700000;
+  text-placement-priority: 15900000;
   text-collision-padding: 2;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
@@ -4258,7 +4272,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 15800000;
+  text-placement-priority: 16000000;
   text-collision-padding: 2;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
@@ -4275,7 +4289,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 15900000;
+  text-placement-priority: 16100000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -4291,7 +4305,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 16000000;
+  text-placement-priority: 16200000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -4307,7 +4321,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 16100000;
+  text-placement-priority: 16300000;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
@@ -4322,81 +4336,9 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 16200000;
+  text-placement-priority: 16400000;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
-}
-#mountain_peak[zoom >= 9][class != 'cliff'][name != null][rank <= 3]['param::variant' != 'streets']['param::variant' != 'hybrid']::peak_outdoor {
-  shield-placement: 'billboard';
-  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
-'), ('' + [ele])), ' m');
-  shield-face-name: @font_regular;
-  shield-size: linear([view::zoom], (11, 10), (16, 12));
-  shield-horizontal-alignment: 'middle';
-  shield-vertical-alignment: 'top';
-  shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
-  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
-  shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
-  shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: 16300000;
-  shield-collision-padding: 2;
-  shield-wrap-before: true;
-  shield-file: url('icons/peak.png');
-  shield-unlock-image: true;
-  shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
-  shield-text-optional: true;
-  shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
-}
-#mountain_peak[zoom >= 13][class != 'cliff'][name != null][rank > 3]['param::variant' != 'streets']['param::variant' != 'hybrid']::peak_outdoor_minor {
-  shield-placement: 'billboard';
-  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
-'), ('' + [ele])), ' m');
-  shield-face-name: @font_regular;
-  shield-size: @text_size;
-  shield-horizontal-alignment: 'middle';
-  shield-vertical-alignment: 'top';
-  shield-text-dx: 0;
-  shield-text-dy: 5.5;
-  shield-wrap-width: @text_wrap_width;
-  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
-  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
-  shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
-  shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: 16400000;
-  shield-collision-padding: 2;
-  shield-wrap-before: true;
-  shield-file: url('icons/peak.png');
-  shield-unlock-image: true;
-  shield-image-scale: ((0.8) / 2.0);
-  shield-text-optional: true;
-  shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
-}
-#mountain_peak[zoom >= 11][class != 'cliff'][name != null]['param::variant' != 'outdoor']['param::variant' != 'topo']['param::variant' != 'eink']::peak {
-  shield-placement: 'billboard';
-  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
-'), ('' + [ele])), ' m');
-  shield-face-name: @font_regular;
-  shield-size: linear([view::zoom], (11, 10), (16, 12));
-  shield-horizontal-alignment: 'middle';
-  shield-vertical-alignment: 'top';
-  shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_night)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
-  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
-  shield-halo-radius: 1;
-  shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: 16500000;
-  shield-collision-padding: 2;
-  shield-wrap-before: true;
-  shield-file: url('icons/peak.png');
-  shield-unlock-image: true;
-  shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
-  shield-text-optional: true;
-  shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
 #aerodrome_label[zoom >= 10]::airport_label {
   shield-placement: 'billboard';
@@ -4410,7 +4352,7 @@ Map {
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @airport_label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_airport))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
-  shield-placement-priority: 16600000;
+  shield-placement-priority: (16500000 + (([param::poi-boost-airport]) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-width: 120;
   shield-wrap-before: true;
@@ -4433,7 +4375,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 16700000;
+  text-placement-priority: 16600000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -4450,7 +4392,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 16700000;
+  text-placement-priority: 16600000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -4460,11 +4402,11 @@ Map {
   text-name: [ref];
   text-face-name: @font_bold;
   text-size: @road_exit_shield_size;
-  text-character-spacing: @line_stroke_width;
+  text-character-spacing: @building_stroke_width;
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 16800000;
+  text-placement-priority: 16700000;
   text-min-distance: @label_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4483,7 +4425,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 16900000;
+  text-placement-priority: 16800000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4502,7 +4444,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17000000;
+  text-placement-priority: 16900000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4521,7 +4463,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17100000;
+  text-placement-priority: 17000000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4540,7 +4482,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17200000;
+  text-placement-priority: 17100000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4559,7 +4501,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17300000;
+  text-placement-priority: 17200000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4578,7 +4520,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17400000;
+  text-placement-priority: 17300000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4597,7 +4539,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @trail_background_border_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17400000;
+  text-placement-priority: 17300000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -4612,11 +4554,11 @@ Map {
   text-name: [ref];
   text-face-name: @font_bold;
   text-size: @road_exit_shield_size;
-  text-character-spacing: @line_stroke_width;
+  text-character-spacing: @building_stroke_width;
   text-collision-padding: (1 * 2);
   text-fill: @road_background_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17500000;
+  text-placement-priority: 17400000;
   text-min-distance: @label_spacing;
   text-background-fill: @road_background_fill_2;
   text-background-border-fill: @road_background_fill;
@@ -4635,7 +4577,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: @road_background_fill;
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17600000;
+  text-placement-priority: 17500000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: @road_background_fill_2;
   text-background-border-fill: @road_background_fill;
@@ -4654,7 +4596,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (((((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? (([class] = 'motorway') ? 'shield-plate-green' : (([class] = 'trunk') ? 'shield-plate-blue' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? (([class] = 'motorway') ? 'shield-plate-blue' : (([class] = 'trunk') ? 'shield-plate-blue' : 'shield-plate-neutral')) : 'shield-plate-neutral'))))))))) = 'shield-plate-yellow' || (((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? (([class] = 'motorway') ? 'shield-plate-green' : (([class] = 'trunk') ? 'shield-plate-blue' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? (([class] = 'motorway') ? 'shield-plate-blue' : (([class] = 'trunk') ? 'shield-plate-blue' : 'shield-plate-neutral')) : 'shield-plate-neutral'))))))))) = 'shield-plate-neutral') ? @road_shield_background_border_fill : @road_background_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17700000;
+  text-placement-priority: 17600000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_shield_plate_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill_2 : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_plate_background_fill_2 : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? ((([class] = 'motorway')) ? @road_background_fill_2 : ((([class] = 'trunk')) ? @road_shield_plate_background_fill : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? ((([class] = 'motorway')) ? @road_shield_plate_background_fill : ((([class] = 'trunk')) ? @road_shield_plate_background_fill : @road_background_fill)) : @road_background_fill)))))))));
   text-background-border-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_background_border_fill : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? ((([class] = 'motorway')) ? @road_background_fill : ((([class] = 'trunk')) ? @road_background_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? ((([class] = 'motorway')) ? @road_background_fill : ((([class] = 'trunk')) ? @road_background_fill : @road_shield_background_border_fill)) : @road_shield_background_border_fill)))))))));
@@ -4673,7 +4615,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (((((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? 'shield-plate-neutral' : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? 'shield-plate-neutral' : 'shield-plate-neutral'))))))))) = 'shield-plate-yellow' || (((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? 'shield-plate-neutral' : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? 'shield-plate-neutral' : 'shield-plate-neutral'))))))))) = 'shield-plate-neutral') ? @road_shield_background_border_fill : @road_background_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 17800000;
+  text-placement-priority: 17700000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_shield_plate_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill_2 : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_plate_background_fill_2 : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? @road_background_fill : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? @road_background_fill : @road_background_fill)))))))));
   text-background-border-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_background_border_fill : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? @road_shield_background_border_fill : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)))))))));
@@ -4692,7 +4634,7 @@ Map {
   shield-collision-padding: (1 * 2);
   shield-fill: @road_shield_background_border_fill;
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  shield-placement-priority: 17900000;
+  shield-placement-priority: 17800000;
   shield-min-distance: @road_shield_spacing;
   shield-file: url('icons/shield-us-highway-3.png');
   shield-unlock-image: true;
@@ -4708,7 +4650,7 @@ Map {
   shield-collision-padding: (1 * 2);
   shield-fill: @road_shield_background_border_fill;
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  shield-placement-priority: 18000000;
+  shield-placement-priority: 17900000;
   shield-min-distance: @road_shield_spacing;
   shield-file: url('icons/shield-us-highway-2.png');
   shield-unlock-image: true;
@@ -4724,7 +4666,7 @@ Map {
   shield-collision-padding: (1 * 2);
   shield-fill: @road_shield_background_border_fill;
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  shield-placement-priority: 18100000;
+  shield-placement-priority: 18000000;
   shield-min-distance: @road_shield_spacing;
   shield-file: url('icons/shield-us-highway-3.png');
   shield-unlock-image: true;
@@ -4740,7 +4682,7 @@ Map {
   shield-collision-padding: (1 * 2);
   shield-fill: @road_background_fill;
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  shield-placement-priority: 18200000;
+  shield-placement-priority: 18100000;
   shield-min-distance: @road_shield_spacing;
   shield-file: url('icons/shield-us-interstate-3.png');
   shield-unlock-image: true;
@@ -4756,7 +4698,7 @@ Map {
   shield-collision-padding: (1 * 2);
   shield-fill: @road_background_fill;
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  shield-placement-priority: 18300000;
+  shield-placement-priority: 18200000;
   shield-min-distance: @road_shield_spacing;
   shield-file: url('icons/shield-us-interstate-2.png');
   shield-unlock-image: true;
@@ -4772,7 +4714,7 @@ Map {
   shield-collision-padding: (1 * 2);
   shield-fill: @road_background_fill;
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  shield-placement-priority: 18400000;
+  shield-placement-priority: 18300000;
   shield-min-distance: @road_shield_spacing;
   shield-file: url('icons/shield-us-interstate-3.png');
   shield-unlock-image: true;
@@ -4788,7 +4730,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (((((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? 'shield-plate-blue' : 'shield-plate-neutral'))))))))) = 'shield-plate-yellow' || (((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? 'shield-plate-blue' : 'shield-plate-neutral'))))))))) = 'shield-plate-neutral') ? @road_shield_background_border_fill : @road_background_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 18500000;
+  text-placement-priority: 18400000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_shield_plate_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill_2 : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_plate_background_fill_2 : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? @road_background_fill_2 : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? @road_shield_plate_background_fill : @road_background_fill)))))))));
   text-background-border-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_background_border_fill : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? @road_background_fill : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? @road_background_fill : @road_shield_background_border_fill)))))))));
@@ -4807,7 +4749,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (((((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? 'shield-plate-blue' : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? 'shield-plate-blue' : 'shield-plate-neutral'))))))))) = 'shield-plate-yellow' || (((([network]) ?? ('')) = 'gb-motorway' || (([network]) ?? ('')) = 'ie-motorway') ? 'shield-plate-blue' : (((([network]) ?? ('')) = 'gb-trunk' || (([network]) ?? ('')) = 'gb-primary' || (([network]) ?? ('')) = 'ie-national') ? 'shield-plate-green' : (((([iso_a2]) ?? ('')) = 'FR') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? 'shield-plate-yellow' : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')))) : (((([iso_a2]) ?? ('')) = 'DE') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'GB') ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? 'shield-plate-blue' : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'NL') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-red' : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? 'shield-plate-yellow' : 'shield-plate-neutral')) : (((([iso_a2]) ?? ('')) = 'CH') ? 'shield-plate-blue' : (((([iso_a2]) ?? ('')) = 'IT') ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? 'shield-plate-green' : 'shield-plate-neutral') : (((([iso_a2]) ?? ('')) = 'ES') ? 'shield-plate-blue' : 'shield-plate-neutral'))))))))) = 'shield-plate-neutral') ? @road_shield_background_border_fill : @road_background_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 18500000;
+  text-placement-priority: 18400000;
   text-min-distance: @road_shield_spacing;
   text-background-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_shield_plate_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill_2 : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_plate_background_fill_2 : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_plate_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_shield_plate_background_fill_3 : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_plate_background_fill_2 : @road_background_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? @road_shield_plate_background_fill : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill_2 : @road_background_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? @road_shield_plate_background_fill : @road_background_fill)))))))));
   text-background-border-fill: (((((([network]) ?? ('')) = 'gb-motorway') || ((([network]) ?? ('')) = 'ie-motorway'))) ? @road_background_fill : (((((([network]) ?? ('')) = 'gb-trunk') || ((([network]) ?? ('')) = 'gb-primary') || ((([network]) ?? ('')) = 'ie-national'))) ? @road_background_fill : ((((([iso_a2]) ?? ('')) = 'FR')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'D.*')) ? @road_shield_background_border_fill : (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)))) : ((((([iso_a2]) ?? ('')) = 'DE')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'B.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'GB')) ? (((uppercase((([ref]) ?? (''))) =~ 'M.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'NL')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : (((uppercase((([ref]) ?? (''))) =~ 'N.*')) ? @road_shield_background_border_fill : @road_shield_background_border_fill)) : ((((([iso_a2]) ?? ('')) = 'CH')) ? @road_background_fill : ((((([iso_a2]) ?? ('')) = 'IT')) ? (((uppercase((([ref]) ?? (''))) =~ 'A.*')) ? @road_background_fill : @road_shield_background_border_fill) : ((((([iso_a2]) ?? ('')) = 'ES')) ? @road_background_fill : @road_shield_background_border_fill)))))))));
@@ -4828,7 +4770,7 @@ Map {
   shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: 20500000;
+  shield-placement-priority: (21100000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-wrap-before: true;
   shield-file: ([param::poi-t0-[subclass]] ?? [param::glyph-[class]]);
   shield-unlock-image: true;
@@ -4850,56 +4792,105 @@ Map {
 }
 #poi[zoom >= 14][subclass = 'viewpoint']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: 18600000;
+  shield-placement-priority: (18500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
   shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'adit']::poi {
-  shield-placement-priority: 18700000;
+  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'archaeological_site']::poi {
-  shield-placement-priority: 18700000;
+  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'castle']::poi {
-  shield-placement-priority: 18700000;
+  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'cave_entrance']::poi {
-  shield-placement-priority: 18700000;
+  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'fort']::poi {
-  shield-placement-priority: 18700000;
+  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'waterfall']::poi {
-  shield-placement-priority: 18700000;
+  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'park'][name != null]::poi {
-  shield-placement-priority: 18800000;
+  shield-placement-priority: (18700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'garden'][name != null]::poi {
-  shield-placement-priority: 18800000;
+  shield-placement-priority: (18700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][zoom < 15][class = 'picnic_site']::poi {
-  shield-placement-priority: 18900000;
+  shield-placement-priority: (18800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   @extend %poi;
 }
-#poi[zoom >= 13][zoom < 15][class = 'shelter'][shelter_type != 'public_transport']::poi {
-  shield-placement-priority: 19000000;
+#poi[zoom >= 13][class = 'shelter'][shelter_type = 'basic_hut']::poi {
+  shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
+  shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   @extend %poi;
 }
-#poi[zoom >= 'param::water_min_zoom'][zoom >= 12][zoom < 18][class = 'drinking_water']['param::highlight_drinking_water' = 0]::poi {
-  shield-placement-priority: 19100000;
+#poi[zoom >= 13][class = 'shelter'][shelter_type = 'lean_to']::poi {
+  shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
+  shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  @extend %poi;
+}
+#poi[zoom >= 13][class = 'shelter'][shelter_type = 'picnic_shelter']::poi {
+  shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
+  shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  @extend %poi;
+}
+#poi[zoom >= 13][class = 'shelter'][shelter_type = 'rock_shelter']::poi {
+  shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
+  shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  @extend %poi;
+}
+#poi[zoom >= 13][class = 'shelter'][shelter_type = 'weather_shelter']::poi {
+  shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
+  shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  @extend %poi;
+}
+#poi[zoom >= 13][class = 'shelter'][shelter_type = 'wilderness_hut']::poi {
+  shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
+  shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
+  @extend %poi;
+}
+#poi[zoom >= 'param::water_min_zoom'][zoom >= 12][class = 'drinking_water']['param::highlight_drinking_water' = 0]::poi {
+  shield-placement-priority: (19000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-image-scale: (((([param::variant] = 'eink') ? 0.30000000000000004 : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : 0.30000000000000004))) / 2.0);
   shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? 0.30000000000000004 : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : 0.30000000000000004))));
@@ -4928,105 +4919,173 @@ Map {
   text-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @glacier_low);
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 19300000;
+  text-placement-priority: (19200000 + (([param::poi-boost-[class]]) ?? (0)));
   text-collision-padding: 2;
   text-wrap-before: true;
 }
 #poi[zoom >= 12][class = 'wilderness_hut']::poi {
-  shield-placement-priority: 19400000;
+  shield-placement-priority: (19300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   @extend %poi;
 }
 #poi[zoom >= 12][zoom < 15][subclass = 'alpine_hut']::poi {
-  shield-placement-priority: 19500000;
+  shield-placement-priority: (19400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
+  @extend %poi;
+}
+#poi[zoom >= 15][class = 'shelter'][shelter_type = 'public_transport']['param::variant' != 'streets']['param::variant' != 'hybrid']::poi {
+  shield-name: '';
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, (([param::poi-fill-b25-[class]]) ?? @poi_fill)), (0.3, (([param::poi-fill-[class]]) ?? @poi_fill_2))));
+  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-placement-priority: (19500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-icon-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  @extend %poi;
+}
+#poi[zoom >= $poi_pt_shelter_minzoom][class = 'shelter'][shelter_type = 'public_transport']['param::variant' != 'outdoor']['param::variant' != 'topo']['param::variant' != 'eink']::poi {
+  shield-name: '';
+  shield-fill: (([param::variant] = 'hybrid') ? (([param::poi-fill-hybrid-[class]]) ?? @poi_fill) : linear([view::brightness], (0.25, (([param::poi-fill-b25-[class]]) ?? @poi_fill)), (0.3, (([param::poi-fill-[class]]) ?? @poi_fill_2))));
+  shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-halo-radius: 1.25;
+  shield-placement-priority: (19600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-image-scale: (((([param::poiStyle] = 'plain') ? 0.6 : 0.4)) / 2.0);
+  shield-icon-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-icon-halo-radius: (([param::poiStyle] = 'plain') ? 1.5 : 0);
+  shield-icon-fill: (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, (([param::poi-icon-fill-plain-b25-[class]]) ?? @poi_fill)), (0.3, (([param::poi-icon-fill-plain-[class]]) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, (([param::poi-icon-fill-b25-[class]]) ?? @poi_icon_fill)), (0.3, (([param::poi-icon-fill-[class]]) ?? @glacier_low))));
+  shield-icon-background-fill: (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, (([param::poi-icon-background-fill-b25-[class]]) ?? @poi_fill)), (0.3, (([param::poi-icon-background-fill-[class]]) ?? @poi_icon_fill_2))));
+  shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::poiStyle] = 'plain') ? 0.6 : 0.4)));
+  shield-icon-background-border-fill: (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-b25-[class]]) ?? @poi_icon_fill)), (0.3, (([param::poi-icon-background-border-fill-[class]]) ?? @glacier_low))));
+  shield-icon-background-border-width: (((([param::poi-icon-background-border-width-[class]]) ?? 3)) * ((([param::poiStyle] = 'plain') ? 0.6 : 0.4)));
+  @extend %poi;
+}
+#poi[zoom >= 17][class = 'shelter'][shelter_type != 'public_transport'][shelter_type != 'basic_hut'][shelter_type != 'lean_to'][shelter_type != 'picnic_shelter'][shelter_type != 'rock_shelter'][shelter_type != 'weather_shelter'][shelter_type != 'wilderness_hut']::poi {
+  shield-name: '';
+  shield-placement-priority: (19700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= $poi_bus_minzoom][zoom < $poi_bus_label_minzoom][class = 'bus']::poi {
   shield-name: '';
-  shield-placement-priority: 19600000;
+  shield-placement-priority: (19800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= $poi_bus_label_minzoom][class = 'bus']::poi {
-  shield-placement-priority: 19700000;
+  shield-placement-priority: (19900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 17][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 20]::poi {
-  shield-name: (([shelter_type] = 'public_transport') ? '' : (([name]) ?? ([name_int])));
-  shield-placement-priority: 19800000;
+#poi[zoom >= $poi_rank_all_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 70]::poi {
+  shield-placement-priority: (20000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 16][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 7][rank < 20]::poi {
-  shield-name: (([shelter_type] = 'public_transport') ? '' : (([name]) ?? ([name_int])));
-  shield-placement-priority: 19900000;
+#poi[zoom >= $poi_rank70_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 30][rank <= 70]::poi {
+  shield-placement-priority: (20100000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 15][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 1][rank < 7]::poi {
-  shield-name: (([shelter_type] = 'public_transport') ? '' : (([name]) ?? ([name_int])));
-  shield-placement-priority: 20000000;
+#poi[zoom >= $poi_rank70_minzoom][class = 'shop'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30]::poi {
+  shield-placement-priority: (20200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][zoom < $poi_rank30_label_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30][class != 'shop']::poi {
+  shield-name: '';
+  shield-placement-priority: (20300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_label_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30][class != 'shop']::poi {
+  shield-placement-priority: (20400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'bar'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'college'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'parking'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'restaurant'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'school'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank10_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10][class != 'bar'][class != 'college'][class != 'parking'][class != 'restaurant'][class != 'school']::poi {
+  shield-placement-priority: (20600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 0]::poi {
-  shield-placement-priority: 20100000;
+  shield-placement-priority: (20700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 1]::poi {
-  shield-placement-priority: 20200000;
+  shield-placement-priority: (20800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-allow-overlap: true;
   @extend %poi;
 }
 #poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 0]['param::show_caravan_site' = 1]::poi {
-  shield-placement-priority: 20300000;
+  shield-placement-priority: (20900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 1]['param::show_caravan_site' = 1]::poi {
-  shield-placement-priority: 20400000;
+  shield-placement-priority: (21000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-allow-overlap: true;
   @extend %poi;
 }
-#poi[zoom >= 13][class = 'aerialway']::poi {
+#poi[zoom >= 13][class = 'aerialway'][subclass != 'tram_stop']::poi {
   @extend %poi;
 }
-#poi[zoom >= 13][class = 'ferry']::poi {
+#poi[zoom >= 13][class = 'ferry'][subclass != 'tram_stop']::poi {
   @extend %poi;
 }
-#poi[zoom >= 13][class = 'harbor']::poi {
+#poi[zoom >= 13][class = 'harbor'][subclass != 'tram_stop']::poi {
   @extend %poi;
 }
-#poi[zoom >= 13][class = 'lighthouse']::poi {
+#poi[zoom >= 13][class = 'lighthouse'][subclass != 'tram_stop']::poi {
   @extend %poi;
 }
-#poi[zoom >= 13][class = 'railway']::poi {
+#poi[zoom >= 13][class = 'railway'][subclass != 'tram_stop']::poi {
   @extend %poi;
 }
-#poi[zoom >= 13][class = 'railway_light']::poi {
+#poi[zoom >= 13][class = 'railway_light'][subclass != 'tram_stop']::poi {
   @extend %poi;
 }
-#poi[zoom >= 13][class = 'railway_metro']::poi {
+#poi[zoom >= 13][class = 'railway_metro'][subclass != 'tram_stop']::poi {
   @extend %poi;
 }
-#poi[zoom >= 12][class = 'airfield']::poi {
-  shield-placement-priority: 20600000;
+#poi[zoom >= 12][class = 'airfield'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (21200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 12][class = 'airport']::poi {
-  shield-placement-priority: 20600000;
+#poi[zoom >= 12][class = 'airport'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (21200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 12][class = 'heliport']::poi {
-  shield-placement-priority: 20600000;
+#poi[zoom >= 12][class = 'heliport'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (21200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_tram_minzoom][zoom < $poi_tram_label_minzoom][class = 'railway'][subclass = 'tram_stop']::poi {
+  shield-name: '';
+  shield-placement-priority: (21300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_tram_label_minzoom][class = 'railway'][subclass = 'tram_stop']::poi {
+  shield-placement-priority: (21400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 15][subclass = 'kindergarten']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: 20700000;
+  shield-placement-priority: (21500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
   shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'drinking_water']['param::highlight_drinking_water' = 1]::poi {
-  shield-placement-priority: 20800000;
+  shield-placement-priority: (21600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-image-scale: (((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))) / 2.0);
   shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))));
@@ -5035,7 +5094,7 @@ Map {
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'spring']['param::highlight_drinking_water' = 1]::poi {
-  shield-placement-priority: 20800000;
+  shield-placement-priority: (21600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-image-scale: (((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))) / 2.0);
   shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))));
@@ -5052,7 +5111,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 20900000;
+  text-placement-priority: 21700000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5070,7 +5129,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 20900000;
+  text-placement-priority: 21700000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5088,7 +5147,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21000000;
+  text-placement-priority: 21800000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5106,7 +5165,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21000000;
+  text-placement-priority: 21800000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5124,7 +5183,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21100000;
+  text-placement-priority: 21900000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5142,7 +5201,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21100000;
+  text-placement-priority: 21900000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5160,7 +5219,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21200000;
+  text-placement-priority: 22000000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5178,7 +5237,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21200000;
+  text-placement-priority: 22000000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5196,7 +5255,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21300000;
+  text-placement-priority: 22100000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5214,7 +5273,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21300000;
+  text-placement-priority: 22100000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5232,7 +5291,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21400000;
+  text-placement-priority: 22200000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5250,7 +5309,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21400000;
+  text-placement-priority: 22200000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5268,7 +5327,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21500000;
+  text-placement-priority: 22300000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5286,7 +5345,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21500000;
+  text-placement-priority: 22300000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5304,7 +5363,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21600000;
+  text-placement-priority: 22400000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5322,7 +5381,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21600000;
+  text-placement-priority: 22400000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5340,7 +5399,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21700000;
+  text-placement-priority: 22500000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5358,7 +5417,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21700000;
+  text-placement-priority: 22500000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5376,7 +5435,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21800000;
+  text-placement-priority: 22600000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5394,7 +5453,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21800000;
+  text-placement-priority: 22600000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5412,7 +5471,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21900000;
+  text-placement-priority: 22700000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5430,7 +5489,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21900000;
+  text-placement-priority: 22700000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5448,7 +5507,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22000000;
+  text-placement-priority: 22800000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5466,7 +5525,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22000000;
+  text-placement-priority: 22800000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5486,7 +5545,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22100000;
+  text-placement-priority: 22900000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5501,7 +5560,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22200000;
+  text-placement-priority: 23000000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5518,7 +5577,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22300000;
+  text-placement-priority: 23100000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5535,7 +5594,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22400000;
+  text-placement-priority: 23200000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5552,7 +5611,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22500000;
+  text-placement-priority: 23300000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5569,7 +5628,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22600000;
+  text-placement-priority: 23400000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5586,9 +5645,81 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22600000;
+  text-placement-priority: 23400000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
+}
+#mountain_peak[zoom >= 13][class != 'cliff'][name != null][rank > 3]['param::variant' != 'streets']['param::variant' != 'hybrid']::peak_outdoor_minor {
+  shield-placement: 'billboard';
+  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
+'), ('' + [ele])), ' m');
+  shield-face-name: @font_regular;
+  shield-size: @text_size;
+  shield-horizontal-alignment: 'middle';
+  shield-vertical-alignment: 'top';
+  shield-text-dx: 0;
+  shield-text-dy: 5.5;
+  shield-wrap-width: @text_wrap_width;
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
+  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
+  shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
+  shield-placement-priority: (23500000 + (([param::poi-boost-[class]]) ?? (0)));
+  shield-collision-padding: 2;
+  shield-wrap-before: true;
+  shield-file: url('icons/peak.png');
+  shield-unlock-image: true;
+  shield-image-scale: ((0.8) / 2.0);
+  shield-text-optional: true;
+  shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
+}
+#mountain_peak[zoom >= 9][class != 'cliff'][name != null][rank <= 3]['param::variant' != 'streets']['param::variant' != 'hybrid']::peak_outdoor {
+  shield-placement: 'billboard';
+  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
+'), ('' + [ele])), ' m');
+  shield-face-name: @font_regular;
+  shield-size: linear([view::zoom], (11, 10), (16, 12));
+  shield-horizontal-alignment: 'middle';
+  shield-vertical-alignment: 'top';
+  shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
+  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
+  shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
+  shield-placement-priority: (23600000 + (([param::poi-boost-[class]]) ?? (0)));
+  shield-collision-padding: 2;
+  shield-wrap-before: true;
+  shield-file: url('icons/peak.png');
+  shield-unlock-image: true;
+  shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
+  shield-text-optional: true;
+  shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
+}
+#mountain_peak[zoom >= 11][class != 'cliff'][name != null]['param::variant' != 'outdoor']['param::variant' != 'topo']['param::variant' != 'eink']::peak {
+  shield-placement: 'billboard';
+  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
+'), ('' + [ele])), ' m');
+  shield-face-name: @font_regular;
+  shield-size: linear([view::zoom], (11, 10), (16, 12));
+  shield-horizontal-alignment: 'middle';
+  shield-vertical-alignment: 'top';
+  shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_night)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
+  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-halo-radius: 1;
+  shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
+  shield-placement-priority: (23700000 + (([param::poi-boost-[class]]) ?? (0)));
+  shield-collision-padding: 2;
+  shield-wrap-before: true;
+  shield-file: url('icons/peak.png');
+  shield-unlock-image: true;
+  shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
+  shield-text-optional: true;
+  shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
 #place[zoom >= 13][zoom < 18][class = 'hamlet']::place_hamlet_b1 {
   text-placement: 'billboard';
@@ -5599,7 +5730,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 22700000;
+  text-placement-priority: 23800000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5613,7 +5744,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 22700000;
+  text-placement-priority: 23800000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5627,7 +5758,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 22700000;
+  text-placement-priority: 23800000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5643,7 +5774,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 22800000;
+  text-placement-priority: 23900000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5659,7 +5790,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 22800000;
+  text-placement-priority: 23900000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5675,7 +5806,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 22900000;
+  text-placement-priority: 24000000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5689,7 +5820,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23000000;
+  text-placement-priority: 24100000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5703,7 +5834,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23000000;
+  text-placement-priority: 24100000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5717,7 +5848,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23100000;
+  text-placement-priority: 24200000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5731,7 +5862,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23200000;
+  text-placement-priority: 24300000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5745,7 +5876,7 @@ Map {
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  shield-placement-priority: 23300000;
+  shield-placement-priority: 24400000;
   shield-collision-padding: 2;
   shield-wrap-before: true;
   shield-file: ([param::place-town-dot-t0-[capital]] ?? 'icons/dot.png');
@@ -5765,7 +5896,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23400000;
+  text-placement-priority: 24500000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5779,7 +5910,7 @@ Map {
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  shield-placement-priority: 23500000;
+  shield-placement-priority: 24600000;
   shield-collision-padding: 2;
   shield-wrap-before: true;
   shield-file: ([param::place-city-dot-t0-[capital]] ?? 'icons/dot.png');
@@ -5801,7 +5932,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23600000;
+  text-placement-priority: 24700000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5817,7 +5948,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23600000;
+  text-placement-priority: 24700000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5831,7 +5962,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23700000;
+  text-placement-priority: 24800000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5845,7 +5976,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23800000;
+  text-placement-priority: 24900000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);

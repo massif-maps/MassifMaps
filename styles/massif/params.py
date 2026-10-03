@@ -2,11 +2,14 @@
 state its own default (build.py's `Variant(params=...)`); a layer reads one through a
 `massif:minzoom-param` or `lib.gate`. The names follow Alpimaps' OSM style where it had one."""
 
+from layers.pois import BOOST_NAMES
+
 SWITCH = [0, 1]
 
 PARAMS = {
     'poiStyle': {'default': 'badge', 'values': ['badge', 'plain']},
     'building_opacity': {'default': 1},
+    'buildings': {'default': 2, 'values': [0, 1, 2]},
     'contour_opacity': {'default': 1},
     'emphasis_rails': {'default': 0, 'values': SWITCH},
     'show_tram': {'default': 1, 'values': SWITCH},
@@ -35,4 +38,5 @@ PARAMS = {
     'scrub_pattern_zoom': {'default': 12},
     'rock_pattern_zoom': {'default': 12},
     'wetland_pattern_zoom': {'default': 13},
+    **{'poi-boost-' + name: {'default': 0} for name in BOOST_NAMES},
 }

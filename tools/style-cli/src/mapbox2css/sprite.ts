@@ -152,6 +152,11 @@ function splitIconName(name: string): [string, string] {
     return colon === -1 ? ['default', name] : [name.slice(0, colon), name.slice(colon + 1)];
 }
 
+export function hasIcon(sprites: SpriteSet, name: string): boolean {
+    const [sheetId, iconName] = splitIconName(name);
+    return sprites.get(sheetId)?.index[iconName] !== undefined;
+}
+
 export interface ExtractedIcon {
     file: string;
     /** Logical pixels - the sheet's own texels divided by its pixelRatio. */

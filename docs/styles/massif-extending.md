@@ -43,15 +43,26 @@ own: `track_min_zoom: 24` hides Massif's tracks, a rule after `style.mss` draws 
 draws it where the base's rank ladder does not yet — or **narrows** one, with a rule of its own:
 
 ```css
-#poi[zoom >= 15][class = 'bakery']::poi { @extend %poi; shield-placement-priority: 30000000; }
+#poi[zoom >= 15][class = 'bakery']::poi {
+  @extend %poi;
+  shield-placement-priority: (30000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+}
 #poi[zoom < 17][class = 'pharmacy']::poi { display: none; }
 ```
 
-The bus stop's zooms are project **constants**, moved with no rule at all:
+The term after `30000000` is the one every base POI rule adds, so an app's `poi-boost-<class>` still
+reaches a rule that states its own priority. To only re-rank a class, set `poi-boost-<class>` instead
+of writing a rule ([style README](https://github.com/massif-maps/MassifMaps/blob/master/styles/massif/README.md#style-parameters-an-app-sets)).
+
+The bus and tram stops' zooms are project **constants**, moved with no rule at all:
 
 ```json
-"constants": { "poi_bus_minzoom": 15, "poi_bus_label_minzoom": 16 }
+"constants": { "poi_bus_minzoom": 15, "poi_bus_label_minzoom": 16, "poi_tram_minzoom": 16,
+               "poi_tram_label_minzoom": 16, "poi_pt_shelter_minzoom": 15 }
 ```
+
+So are the rank ladder's: `poi_rank10_minzoom` (14), `poi_rank30_minzoom` (15),
+`poi_rank30_label_minzoom` (16), `poi_rank70_minzoom` (16), `poi_rank_all_minzoom` (17).
 
 How the template, the attachment and `display` compile: [CartoCSS templates](../internals/cartocss-templates.md).
 
@@ -70,8 +81,8 @@ three files:
   the POIs above (bakeries early, pharmacies late).
 - **`osm.json`** — the defaults: POIs as bare glyphs (`poiStyle: plain`), Massif's tracks out of
   reach (`track_min_zoom: 24`), roads outlined and widened at low zoom as OSM Carto does
-  (`road_osm_low: 1`), tunnels plain until z13 (`tunnel_min_zoom: 13`), and bus stops from z15,
-  named from z16 (`constants`).
+  (`road_osm_low: 1`), tunnels plain until z13 (`tunnel_min_zoom: 13`), bus stops from z15,
+  named from z16, and public-transport shelters from z15 (`constants`).
 
 `custom.json` is the smaller example: two colours, one rule, a new parameter.
 

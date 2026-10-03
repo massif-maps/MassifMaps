@@ -206,6 +206,12 @@ test('a line label repeats at symbol-spacing, not at its text-padding', () => {
     assert.match(mss({ 'symbol-placement': 'line', 'text-padding': 10 }), /text-min-distance: 250;/);
 });
 
+test('a negated sort key is a boost added to the priority, read from a per-feature parameter name', () => {
+    const boost = ['coalesce', ['config', ['concat', 'poi-boost-', ['get', 'class']]], 0];
+    assert.match(mss({ 'symbol-sort-key': ['-', boost] }),
+        /text-placement-priority: \(0 \+ \(\(\[param::poi-boost-\[class\]\]\) \?\? \(0\)\)\);/);
+});
+
 test('a layer with no sort key still carries its order', () => {
     assert.match(mss({}), /text-placement-priority: 0;/);
 });

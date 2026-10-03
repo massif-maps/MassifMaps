@@ -372,6 +372,31 @@ test('--icon-font-size scales a glyph by icon-size, as the sprite it replaces', 
     assert.match(out, /shield-icon-size: \(\(0\.4\) \* 27\);/);
 });
 
+test('a font icon\'s plate is the disc\'s box, not the glyph\'s', () => {
+    // The glyph's box follows its outline, so a plate fitted to it drew a pill per icon.
+    const iconFont = { face: 'osm', glyphs: new Map([['poi', '']]), size: 27 };
+    const out = convert({ layers: [symbol(
+        {
+            'text-field': '{name}', 'icon-size': 0.4,
+            'icon-image': ['image', 'poi', { params: { background: '#ff0000', 'background-stroke': '#00ff00' } }],
+        },
+        {})] },
+    TABLE, { ...NO_PALETTE, iconFont, sprites: { sheets: compositeSheet(), outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(out, /shield-icon-name: '';/);
+    // the 12 px disc and its measured 1 px ring on each side
+    assert.match(out, /shield-icon-background-width: \(\(\(12 \+ 2 \* \(1\)\)\) \* \(0\.4\)\);/);
+    assert.match(out, /shield-icon-background-height: \(\(\(12 \+ 2 \* \(1\)\)\) \* \(0\.4\)\);/);
+});
+
+test('a sprite icon\'s plate keeps sizing by its field, which is the disc\'s box already', () => {
+    const out = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': ['image', ['get', 'maki'], { params: { background: '#ff0000' } }] },
+        {})] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: compositeSheet(), outDir: '/tmp/massif-style-test' } }).mss;
+    assert.ok(!out.includes('shield-icon-background-width'));
+});
+
 test('a per-feature icon name reaches the font through the same parameter table', () => {
     const iconFont = { face: 'osm', glyphs: new Map([['mountain', ''], ['cafe', '']]) };
     const { mss: out, project } = convert({ layers: [symbol(
@@ -394,6 +419,26 @@ test('an icon the face has no glyph for draws none, and the report says which', 
     assert.ok(!out.includes('shield-icon-name'));
     assert.match(out, /text-name: \[name\];/, 'the name is still drawn');
     assert.ok(coverage.report().includes('has no glyph in the "osm" icon face'));
+});
+
+test('a shield icon the face has no glyph for keeps its sprite: a peak, a town dot', () => {
+    const sprites = new Map([['default', {
+        index: Object.fromEntries(['peak', 'dot', 'dot-capital'].map((n) => [n, { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1 }])),
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const options = { ...NO_PALETTE, iconFont: { face: 'osm', glyphs: new Map([['cafe', '']]) },
+        sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } };
+    const peak = convert({ layers: [symbol({ 'text-field': '{name}', 'icon-image': 'peak' }, {})] }, TABLE, options).mss;
+    assert.match(peak, /shield-file: url\('icons\/peak.png'\);/);
+    assert.ok(!peak.includes('shield-icon-name'));
+
+    const dot = convert({ layers: [symbol({ 'text-field': '{name}',
+        'icon-image': ['match', ['get', 'capital'], 2, 'dot-capital', 'dot'] }, {})] }, TABLE, options).mss;
+    assert.ok(!dot.includes('shield-icon-name'), 'no empty glyph run');
+    assert.match(dot, /shield-file/);
+
+    const cafe = convert({ layers: [symbol({ 'text-field': '{name}', 'icon-image': 'cafe' }, {})] }, TABLE, options).mss;
+    assert.match(cafe, /shield-icon-name: '';/, 'a glyph the face has still wins');
 });
 
 test('a marker keeps its sprite under --icon-font: a oneway arrow has no glyph run', () => {

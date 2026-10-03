@@ -101,7 +101,9 @@ The facade reads a colour as `"#rrggbb"`, `"#rrggbbaa"` or an ARGB number; `hsl(
 CartoCSS slot reads any CSS colour.
 
 The DEM source must name its encoding with `dem_encoding`. Without it the tiles are read as Mapbox
-Terrain-RGB, and a Terrarium DEM (Mapterhorn, AWS) then shades 25.6 times too steep.
+Terrain-RGB, and a Terrarium DEM (Mapterhorn, AWS) then shades 25.6 times too steep. An MBTiles or
+PMTiles archive whose own metadata declares `"encoding": "terrarium"` (or `"mapbox"`) needs nothing:
+the source adopts it, and an explicit `dem_encoding` still wins.
 
 ## Shader contours
 

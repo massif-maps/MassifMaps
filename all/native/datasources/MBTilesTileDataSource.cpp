@@ -24,6 +24,7 @@ namespace massif {
         _cachedDataExtent(),
         _mutex()
     {
+        adoptContainerDemEncoding();
     }
 
     MBTilesTileDataSource::MBTilesTileDataSource(int minZoom, int maxZoom, const std::string& path) :
@@ -36,6 +37,7 @@ namespace massif {
         _mutex()
     {
         cacheDeclaredMaxZoom(maxZoom);
+        adoptContainerDemEncoding();
     }
     
     MBTilesTileDataSource::MBTilesTileDataSource(int minZoom, int maxZoom, const std::string& path, MBTilesScheme::MBTilesScheme scheme) :
@@ -48,6 +50,7 @@ namespace massif {
         _mutex()
     {
         cacheDeclaredMaxZoom(maxZoom);
+        adoptContainerDemEncoding();
     }
         
     MBTilesTileDataSource::~MBTilesTileDataSource() {

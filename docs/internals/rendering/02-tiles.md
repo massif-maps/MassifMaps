@@ -488,6 +488,13 @@ Standard sources (HTTP, MBTiles, PMTiles, assets) plus two of interest here:
   only what labels need; see [07-hillshade-contours.md](07-hillshade-contours.md).
 - **elevation sources** — decoded by `MapBoxElevationDataDecoder` / `TerrariumElevationDataDecoder`
   into `ElevationTileGrid`s held by `ElevationManager` ([04-terrain.md](04-terrain.md)).
+- **`MergedMBVTTileDataSource`** — concatenates two MVT sources' tiles. A merged tile holds one
+  zoom, so the layer cannot overzoom one source alone: past a source's max zoom its last tile is cut
+  into the requested one (`MBVTSubtile.h`). The cut stops at that source's `maxOverzoomLevel` when
+  one is set; past it the source answers nothing, so the other source's "replace with parent"
+  reaches the layer. Unset, it cuts at any zoom — which hides that answer: a z0-6 bathymetry
+  archive merged over a chain whose last tile is z7 drew empty tiles at z10 instead of the
+  overzoomed z7 one.
 
 ## Source meta data, and what a tile carries
 
@@ -514,7 +521,11 @@ Distinct from it, and deliberately so: **`getContainerMetaData(key)`** reads the
 metadata — the MBTiles metadata table, the PMTiles header JSON — returns a plain string, and is
 **not** attached to tiles, because an MBTiles `json` field is tens of kilobytes. `getMetaDataElement`
 falls back to it, so a tileset that already declares `dem_encoding` or `format` in its own table
-needs no application code. The wrapper sources (`Cache`, `Contour`, `Ordered`, `Combined`) forward
+needs no application code. Archives rarely do: they name it **`encoding`** (`{"encoding":"terrarium"}`
+in a PMTiles DEM), so `MBTiles` and `PMTiles` adopt an `encoding` of `terrarium` or `mapbox` into
+the map at construction, where it is stamped on every tile like an app-set one. Any other value is a
+vector archive's tile format and is left alone. `setMetaData` keeps the adopted entry unless the new
+map names `dem_encoding`. The wrapper sources (`Cache`, `Contour`, `Ordered`, `Combined`) forward
 both: own entries first, then the first child that declares any.
 
 ## Two binary formats: MVT and MLT

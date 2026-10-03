@@ -512,6 +512,17 @@
           "properties": {
             "class": "military"
           }
+        },
+        {
+          "id": "tree",
+          "label": "Tree",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "tree",
+            "name": "Chêne"
+          },
+          "zoom": 17
         }
       ]
     },
@@ -594,6 +605,67 @@
           "properties": {
             "class": "spring",
             "subclass": "spring"
+          }
+        }
+      ]
+    },
+    {
+      "id": "barriers",
+      "label": "Barriers",
+      "zoom": 17,
+      "items": [
+        {
+          "id": "gate",
+          "label": "Gate",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "gate"
+          }
+        },
+        {
+          "id": "lift_gate",
+          "label": "Lift gate",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "lift_gate"
+          }
+        },
+        {
+          "id": "bollard",
+          "label": "Bollard",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "bollard"
+          }
+        },
+        {
+          "id": "cycle_barrier",
+          "label": "Cycle barrier",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "cycle_barrier"
+          }
+        },
+        {
+          "id": "stile",
+          "label": "Stile",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "stile"
+          }
+        },
+        {
+          "id": "toll_booth",
+          "label": "Toll booth",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "toll_booth"
           }
         }
       ]

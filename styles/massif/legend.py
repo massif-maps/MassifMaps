@@ -26,6 +26,8 @@ POIS = [('food_and_drink', 'Food and drink', 'restaurant'), ('store_like', 'Shop
         ('medical', 'Health', 'pharmacy'), ('education', 'Education', 'school'),
         ('water', 'Drinking water', 'drinking_water'), ('transit', 'Transport', 'bus'),
         ('default', 'Other', 'place_of_worship')]
+BARRIERS = [('gate', 'Gate'), ('lift_gate', 'Lift gate'), ('bollard', 'Bollard'),
+            ('cycle_barrier', 'Cycle barrier'), ('stile', 'Stile'), ('toll_booth', 'Toll booth')]
 # (id, label, transportation_name fields): one per plate colour and sign
 SHIELDS = [
     ('shield-red', 'Motorway, national road (FR, NL)', {'class': 'motorway', 'ref': 'A 7', 'iso_a2': 'FR'}),
@@ -100,6 +102,8 @@ def spec():
             *[item(key, FILL_LABELS[key], 'landuse', 'polygon', {'class': cls})
               for key, cls in [('residential', 'residential'), ('commercial', 'commercial'),
                                ('industrial', 'industrial'), ('cemetery', 'cemetery'), ('military', 'military')]],
+            # named: hybrid draws no unnamed tree
+            item('tree', 'Tree', 'poi', 'point', {'class': 'tree', 'name': 'Chêne'}, zoom=17),
         ]},
         {'id': 'outdoor', 'label': 'Mountain', 'zoom': 14, 'items': [
             item('peak', 'Summit', 'mountain_peak', 'point', {'class': 'peak', 'name': 'Grand Veymont', 'ele': 2341, 'rank': 1}),
@@ -110,6 +114,8 @@ def spec():
             item('ruins', 'Ruins', 'poi', 'point', {'class': 'castle', 'subclass': 'ruins', 'name': 'Ruines'}),
             item('spring', 'Spring', 'poi', 'point', {'class': 'spring', 'subclass': 'spring'}),
         ]},
+        {'id': 'barriers', 'label': 'Barriers', 'zoom': 17, 'items': [
+            item(cls, label, 'poi', 'point', {'class': cls}) for cls, label in BARRIERS]},
         {'id': 'pois', 'label': 'Places of interest', 'zoom': 17, 'items': [
             item('poi-' + cat, label, 'poi', 'point', {'class': cls, 'subclass': cls, 'name': label, 'rank': 1})
             for cat, label, cls in POIS]},

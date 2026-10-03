@@ -260,8 +260,9 @@ POI ranking (SDK only; MapLibre ignores it):
   it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
   (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
   for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
-  set). A priority is the layer's position × 100000: the airport sits at 16.5M, POIs span 18.5M to
-  21.6M, road and trail names reach 23.4M, summits 23.5M–23.7M, place names 24.9M. So `100000` lifts a
+  set). A priority is the layer's position × 100000: trees sit at 8.6M–8.7M and point barriers at
+  8.8M–9.3M (their layer's less `TREE_SINK`), the airport at 16.5M, POIs span 19.4M to 22.5M, road
+  and trail names reach 24.3M, summits 24.4M–24.6M, place names 25.8M. So `100000` lifts a
   class one layer, `3000000` over every unboosted POI and most road and trail names (not a summit), and a negative value demotes. Whole numbers: the
   culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
   rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
@@ -395,6 +396,31 @@ The ladder excludes the classes those layers draw with a chain of `!=` rather th
 it keeps: a list is an `in`, a `when()` per feature, where the chain brackets. A class with no glyph
 draws its name, as on Liberty.
 
+**Trees yield to the other labels, as on MapTiler.** A tileset built with planetiler's `poi_trees`
+carries `class=tree` in `poi` from z14: the unnamed ones packed into ONE MultiPoint per tile holding
+only the class, the named ones points of their own. An unnamed tree is a light green dot in a white
+ring from z16, then the tree glyph from z18, growing with the zoom; a named one is the glyph and its
+name, small and italic, from z17. The glyph is Maki's `park` drawing, bare in nature's green (`tree`
+is street furniture, `NO_BACKGROUND`). Their layers (`pois.trees`) come right under the POIs', so
+every POI wins a collision with a tree; on the SDK their priority is also sunk 10M (`TREE_SINK`)
+under every other label, house numbers and shields included, which MapLibre, ordering by layer
+alone, cannot do. They cannot simply be the bottom labels: every POI layer shares `::poi`, and a
+source-layer drawn at two depths needs one attachment per depth. The dot is a circle, drawn
+whatever is around it and in nobody's way. The ladder excludes `tree`, so a named tree, which the
+tiles rank, is drawn once. Hybrid draws only the named ones: the imagery shows the rest.
+
+**Point barriers the same way, just over the trees.** Every class the fork emits for a point
+`barrier` (`gate`, `lift_gate`, `bollard`, `cycle_barrier`, `stile`, `toll_booth`, `border_control`,
+`sally_port`; the unnamed ones packed as the trees are) is a small bare glyph from z17, its name
+under it if it has one, in the `barrier` category: the landcover barrier line's grey-brown,
+darkened to read as a glyph, its night the line's own. Gate, lift gate and toll booth are Maki's,
+bollard, cycle barrier and stile (Temaki's `stile_squeezer`) Temaki's; border control and sally port
+share Maki's `barrier`. A white halo keeps the glyph readable over e-ink's patterns, and hybrid draws
+it in its light night colour on a dark halo. Bollards, then passages, then toll booths and border
+controls, a layer each and named over unnamed in each: one layer of eight classes would be eight
+rules at one priority, the most common value, and `%poi` would hand it to every child rule that
+states none. The ladder excludes every barrier class.
+
 **A child project moves any of it.** Every POI layer extends ONE template, `%poi`, and draws into
 ONE attachment, `::poi` (`massif:template`, `massif:attachment`), so a child widens a class with a
 rule of its own and the cascade merges it with the base's — see
@@ -412,7 +438,8 @@ with eight that do not line up mapped by hand — `rail` for `railway`, `toilet`
 rather than a ninety-branch table, which the converter resolves through one style parameter per
 sprite. A class with no drawing simply draws its label, which is what Liberty does too. Maki has
 no cave, adit, fort, archaeological site, fountain, bird hide or windmill: those glyphs are
-openstreetmap-carto's (an adit takes the cave), on the same disc.
+openstreetmap-carto's (an adit takes the cave), on the same disc. Bollard, cycle barrier and stile
+are [Temaki](https://github.com/rapideditor/temaki)'s, also CC0.
 
 The discs are Standard's day disc colours (park_like `hsl(110, 70%, 40%)`, a shade lighter than its
 text), the labels its text colours.
@@ -572,7 +599,8 @@ is MIT-0 (`LICENSE`): use it for anything, no notice required.
 
 `sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
-domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (seven glyphs openstreetmap-carto's), **CC0** — a public-domain
+domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (seven glyphs openstreetmap-carto's, three
+[Temaki](https://github.com/rapideditor/temaki)'s), **CC0** — a public-domain
 dedication, so it carries no attribution requirement and no share-alike; it is credited here because
 it is worth crediting, not because it must be. Most of `sprite-src/pattern/` is
 [openstreetmap-carto](https://github.com/gravitystorm/openstreetmap-carto)'s, also **CC0**, recoloured.
@@ -580,6 +608,11 @@ Everything else is drawn for this project. No
 MapTiler or Mapbox **style** is copied. The style itself is [MIT-0](LICENSE).
 
 ## Owed
+
+- **An unnamed tree's glyph (z18) or barrier's (z17) can go missing on the SDK.** The SDK gives each point of a
+  MultiPoint the label id `10 × feature id + part index`, the index counted after the overzoom clip,
+  so the same index in two clipped tiles is the same label and only one of the trees is placed
+  (`ShieldSymbolizer.cpp`, `MarkersSymbolizer.cpp`). The z16-18 dot is tile geometry and unaffected.
 
 - **No relief in streets.** Standard's calm at z7–z11 in the Alps is mostly its hillshade. On the
   SDK that is an app layer (`HillshadeRasterTileLayer`), so only outdoor and topo carry it, as

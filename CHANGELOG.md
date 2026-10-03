@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.1.2] - 2026-10-03
+### BREAKING CHANGES
+- due to [`333351a`](https://github.com/massif-maps/MassifMaps/commit/333351a3a4c3dab9541f4f1514fb8c4558c2e996) - show peak icons and keep flat buildings past z15 in the Massif styles *(PR [#312](https://github.com/massif-maps/MassifMaps/pull/312) by [@farfromrefug](https://github.com/farfromrefug))*:
+
+  the poi-rank-r1/r7/r20 layers are replaced by poi-rank-r10(-late), poi-rank-r30  
+  (-icon, -shop), poi-rank-r70 and poi-rank-all; a child rule naming the old zooms moves with them.  
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>  
+  * fix(styles): place Massif summits before every POI and road name, so a peak stays when zooming in  
+  The peak layers were among the labels that give way to everything (16.5M), so a hut or a ruin  
+  beside a summit won the collision. They are now their own part, after the POIs and the road and  
+  trail names and before the place names, as MapTiler outdoor orders them: 23.5M-23.7M, the boost  
+  term kept. The prominent summits are placed before the minor ones.  
+  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>  
+  ---------  
+  Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>  
+  ---------  
+  Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>  
+  ---------  
+  Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>  
+  ---------
+
+- due to [`23e2e70`](https://github.com/massif-maps/MassifMaps/commit/23e2e70998abbf5d2b8d650abba2aec7edea0ecd) - draw trees and point barriers in the Massif styles *(PR [#318](https://github.com/massif-maps/MassifMaps/pull/318) by [@farfromrefug](https://github.com/farfromrefug))*:
+
+  draw trees and point barriers in the Massif styles (#318)
+
+
+### New Features
+- [`23e2e70`](https://github.com/massif-maps/MassifMaps/commit/23e2e70998abbf5d2b8d650abba2aec7edea0ecd) - **styles**: draw trees and point barriers in the Massif styles *(PR [#318](https://github.com/massif-maps/MassifMaps/pull/318) by [@farfromrefug](https://github.com/farfromrefug))*
+
+### Bug Fixes
+- [`333351a`](https://github.com/massif-maps/MassifMaps/commit/333351a3a4c3dab9541f4f1514fb8c4558c2e996) - **styles**: show peak icons and keep flat buildings past z15 in the Massif styles *(PR [#312](https://github.com/massif-maps/MassifMaps/pull/312) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`f1d2d2a`](https://github.com/massif-maps/MassifMaps/commit/f1d2d2ac024693cd54e7c05d8931b252dee7df47) - **labels**: keep each point of a merged MultiPoint its own label past the source's max zoom *(PR [#317](https://github.com/massif-maps/MassifMaps/pull/317) by [@farfromrefug](https://github.com/farfromrefug))*
+- [`319526b`](https://github.com/massif-maps/MassifMaps/commit/319526bd4f16b38f429131c4a15dbbc7a45887ed) - **datasources**: read a DEM archive's encoding from its metadata and stop a merged source at its overzoom *(PR [#316](https://github.com/massif-maps/MassifMaps/pull/316) by [@farfromrefug](https://github.com/farfromrefug))*
+
+
 ## [v6.1.1] - 2026-10-02
 ### BREAKING CHANGES
 - due to [`aafed6f`](https://github.com/massif-maps/MassifMaps/commit/aafed6f52a0d8cf4a49e61d6734a718f599e2b51) - bring Massif POIs in by rank and let a child style widen, hide or re-zoom them *(PR [#303](https://github.com/massif-maps/MassifMaps/pull/303) by [@farfromrefug](https://github.com/farfromrefug))*:
@@ -4675,3 +4710,4 @@ Release notes for next releases can be found from [Releases section](https://git
 [v6.0.1]: https://github.com/massif-maps/MassifMaps/compare/v6.0.0...v6.0.1
 [v6.1.0]: https://github.com/massif-maps/MassifMaps/compare/v6.0.2...v6.1.0
 [v6.1.1]: https://github.com/massif-maps/MassifMaps/compare/v6.1.0...v6.1.1
+[v6.1.2]: https://github.com/massif-maps/MassifMaps/compare/v6.1.1...v6.1.2

@@ -123,7 +123,8 @@ deeper woods (`OUTDOOR` in the palette):
   archaeological sites, waterfalls and named parks and gardens (Standard shows park_like early too)
   from z14, parks over the sights and a viewpoint yielding to all of them, keeping its
   own glyph and nature's green at every zoom (OpenMapTiles files it under `attraction`); drinking water
-  and springs from `water_min_zoom` - each until its ordinary POI layer takes over. A spring is
+  and springs only from `water_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
+  each until its ordinary POI layer takes over. A spring is
   Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17; a drinking
   water glyph is a size down. Water points have their own
   category, in the water's blue. A hut draws the hut glyph, where
@@ -224,7 +225,7 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
   bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
-- `water_min_zoom` (17; 13 on outdoor, topo, e-ink) — drinking water and springs; 12 to plan a hike by its water.
+- `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water and springs; 12 to plan a hike by its water.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),

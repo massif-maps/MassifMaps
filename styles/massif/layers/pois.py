@@ -196,7 +196,7 @@ OTHER_SHELTER = ['all', ['==', get('class'), 'shelter'], ['!=', get('shelter_typ
                  *[['!=', get('shelter_type'), t] for t in OUTDOOR_SHELTERS]]
 # Drawn by a layer of their own at every zoom, so the ladder leaves them out. Excluded rather than
 # listed: a class list is a when() per feature, an exclusion a few prunable selectors.
-OWN_LAYER = sorted({'bus', 'campsite', 'shelter', 'spring', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
+OWN_LAYER = sorted({'bus', 'campsite', 'drinking_water', 'shelter', 'spring', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
 
 # a viewpoint is an attraction to OpenMapTiles: its own glyph at every zoom (a ruin keeps the castle, as Standard)
 ICON = ['match', get('subclass'), ['florist', 'furniture', 'viewpoint'], get('subclass'), get('class')]
@@ -315,7 +315,7 @@ MOUNTAIN_LAYERS = [
     ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], MOUNTAIN_ICON, None),
     ('poi-mountain-shelter', 13, None, ['all', ['==', get('class'), 'shelter'],
                                         ['in', get('shelter_type'), ['literal', OUTDOOR_SHELTERS]]], MOUNTAIN_ICON, None),
-    ('poi-mountain-water', 12, 18, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
+    ('poi-mountain-water', 12, None, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
     ('poi-mountain', 12, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
     # OpenMapTiles files a hut under lodging, whose glyph is a bed
     ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),

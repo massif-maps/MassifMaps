@@ -26,7 +26,8 @@
       }
     },
     "road_osm_low": 1,
-    "tunnel_min_zoom": 13
+    "tunnel_min_zoom": 13,
+    "water_min_zoom": 16
   },
   "constants": {
     "poi_bus_minzoom": 15,

@@ -21129,7 +21129,6 @@
       "source": "openmaptiles",
       "source-layer": "poi",
       "minzoom": 17,
-      "maxzoom": 18,
       "filter": [
         "==",
         [
@@ -31587,6 +31586,14 @@
               "get",
               "class"
             ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "ferry"
           ],
           [
@@ -33182,6 +33189,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
           ],
           [
             "!=",
@@ -34792,6 +34807,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
           ],
           [
             "!=",

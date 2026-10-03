@@ -89,7 +89,7 @@ HYBRID = [land.background, imagery.layers, outdoor.hillshade, outdoor.contours, 
           labels.places]
 
 # a walker's map brings the campsites in with the huts, and its water points early
-OUTDOOR_PARAMS = {'campsite_min_zoom': 13, 'water_min_zoom': 13}
+OUTDOOR_PARAMS = {'campsite_min_zoom': 13, 'water_min_zoom': 16}
 
 VARIANTS = {v.name: v for v in [
     Variant('streets', 'Massif Streets', STREETS, sources=('dem', 'contours')),

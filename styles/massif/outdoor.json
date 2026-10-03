@@ -22816,8 +22816,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 13,
-      "maxzoom": 18,
+      "minzoom": 16,
       "filter": [
         "==",
         [
@@ -24281,7 +24280,7 @@
       "type": "circle",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 13,
+      "minzoom": 16,
       "filter": [
         "==",
         [
@@ -33274,6 +33273,14 @@
               "get",
               "class"
             ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "ferry"
           ],
           [
@@ -34869,6 +34876,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
           ],
           [
             "!=",
@@ -36479,6 +36494,14 @@
               "class"
             ],
             "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
           ],
           [
             "!=",
@@ -55063,7 +55086,7 @@
       "default": 12
     },
     "water_min_zoom": {
-      "default": 13
+      "default": 16
     },
     "campsite_min_zoom": {
       "default": 13

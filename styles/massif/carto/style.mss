@@ -4961,7 +4961,7 @@ Map {
   shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   @extend %poi;
 }
-#poi[zoom >= 'param::water_min_zoom'][zoom >= 12][zoom < 18][class = 'drinking_water']['param::highlight_drinking_water' = 0]::poi {
+#poi[zoom >= 'param::water_min_zoom'][zoom >= 12][class = 'drinking_water']['param::highlight_drinking_water' = 0]::poi {
   shield-placement-priority: (19300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-image-scale: (((([param::variant] = 'eink') ? 0.30000000000000004 : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : 0.30000000000000004))) / 2.0);
@@ -5043,15 +5043,15 @@ Map {
   shield-placement-priority: (20200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 17][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 20]::poi {
+#poi[zoom >= 17][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 20]::poi {
   shield-placement-priority: (20300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 16][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 7][rank < 20]::poi {
+#poi[zoom >= 16][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 7][rank < 20]::poi {
   shield-placement-priority: (20400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 15][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 1][rank < 7]::poi {
+#poi[zoom >= 15][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank >= 1][rank < 7]::poi {
   shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }

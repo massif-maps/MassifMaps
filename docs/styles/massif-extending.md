@@ -61,6 +61,9 @@ The bus and tram stops' zooms are project **constants**, moved with no rule at a
                "poi_tram_label_minzoom": 16, "poi_pt_shelter_minzoom": 15 }
 ```
 
+So are the rank ladder's: `poi_rank10_minzoom` (14), `poi_rank30_minzoom` (15),
+`poi_rank30_label_minzoom` (16), `poi_rank70_minzoom` (16), `poi_rank_all_minzoom` (17).
+
 How the template, the attachment and `display` compile: [CartoCSS templates](../internals/cartocss-templates.md).
 
 ## The OpenStreetMap example

@@ -116,7 +116,8 @@ deeper woods (`OUTDOOR` in the palette):
   hybrid draw them too.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
-- **Peaks from z9**, the three most prominent per tile first.
+- **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
+  before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
   wilderness_hut: a roof-on-posts glyph on nature's green, named), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
@@ -259,9 +260,9 @@ POI ranking (SDK only; MapLibre ignores it):
   it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
   (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
   for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
-  set). A priority is the layer's position × 100000: POIs span 16.5M (peaks) to 21.0M (the rank
-  ladder's top), place names reach 24M. So `100000` lifts a class one layer, `5000000` over every
-  unboosted POI and past most road and trail names, and a negative value demotes. Whole numbers: the
+  set). A priority is the layer's position × 100000: the airport sits at 16.5M, POIs span 18.5M to
+  21.6M, road and trail names reach 23.4M, summits 23.5M–23.7M, place names 24.9M. So `100000` lifts a
+  class one layer, `3000000` over every unboosted POI and most road and trail names (not a summit), and a negative value demotes. Whole numbers: the
   culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
   rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
 
@@ -369,9 +370,14 @@ INSIDE its filter, which is the one thing not taken: a filter that reads the zoo
 same gate is **one layer per class**, ordered least important first so the motorway's name is placed
 first and wins the collision.
 
-**POIs come in by RANK, as Liberty draws them; stations and buses by MODE, as Standard does.**
+**POIs come in by RANK, on Alpimaps' OSM ladder; stations and buses by MODE, as Standard does.**
 OpenMapTiles' `rank` orders a tile's POIs by how much they matter where they stand, so the data
-decides: OpenFreeMap Liberty's ladder, rank 1–6 at z15, 7–19 at z16, the rest at z17. Standard's
+decides. It is an ordinal over the whole z14 tile (1–390 over central Grenoble, median 101), so
+Liberty's 1–6 / 7–19 / rest at z15 / 16 / 17 admitted 3% and 11% of a city's POIs at z15 and z16
+(about 18 drawn in an app's z17 view, against 84 for Standard). The ladder is Alpimaps' OSM one:
+rank ≤ 10 at z14 (eating, bars, parking and schools at z15), ≤ 30 at z15 as icons, named from z16
+(shops at z16), ≤ 70 at z16, all at z17 — project constants `poi_rank10_minzoom`,
+`poi_rank30_minzoom`, `poi_rank30_label_minzoom`, `poi_rank70_minzoom`, `poi_rank_all_minzoom`. Standard's
 `poi-label` is built on `filterrank` the same way — a density rank OpenMapTiles does not carry,
 `rank` is the nearest thing. The exceptions are layers of their own, gated by mode as Standard's
 `transit-label` gates them:
@@ -380,7 +386,7 @@ decides: OpenFreeMap Liberty's ladder, rank 1–6 at z15, 7–19 at z16, the res
 |---|---|
 | 12 | airport, airfield, heliport |
 | 13 | rail, metro, ferry, harbour, aerialway, lighthouse |
-| 15–17 | everything else, by rank |
+| 14–17 | everything else, by rank (above) |
 | 15 | public-transport shelter on outdoor, topo, e-ink, never named |
 | 16 | tram stop, named (Mapbox's tiles carry one from z16, Standard names it as it shows) |
 | 17 | bus stop, its badge; its name at 18. Public-transport shelter on streets and hybrid, and any shelter of another or no `shelter_type`: never named |

@@ -1221,9 +1221,10 @@ characters instead of file paths.
 
 Two things it does not cover, deliberately:
 
-- a name the face has no glyph for draws **no icon**, and the coverage report names it. Country
-  artwork — an RER roundel, a national motorway plate — has no font equivalent, and one font against
-  a sheet of several hundred PNGs is the trade the mode is for;
+- a name the face has no glyph for keeps its **sprite** when the sheet has it — every name a
+  `match`/`case` can resolve to, so Massif's peak and town dot stay bitmaps beside the font. One
+  in neither draws **no icon**, and the coverage report names it: country artwork — an RER roundel,
+  a national motorway plate — has no font equivalent;
 - a **marker** keeps its sprite. A oneway arrow or a crossing is not a label and has no glyph run.
 
 `--icon-font-size PX` is the height in **sprite** pixels a glyph fills at `icon-size` 1, so

@@ -6,7 +6,7 @@ import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
-import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
+import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate, hasIcon } from './sprite.js';
 import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
 import { narrowLayer } from './narrow.js';
 import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
@@ -3284,9 +3284,7 @@ function patternDeclarations(
  * about the label is unchanged. The face is resolved as a fallback of the label font, which is what
  * puts its glyphs in the label's own atlas.
  *
- * The face carries one glyph per icon NAME, so a name it has none for draws no icon: an artwork
- * shield (an RER roundel, a country's motorway plate) has no font equivalent and is lost here. That
- * is the trade the mode is for - one font against a sheet of several hundred PNGs.
+ * A name the face has no glyph for keeps its sprite (markerDeclarations), or draws no icon without one.
  */
 function fontShieldDeclarations(layer: MapboxLayer, image: Json, coverage: Coverage,
         options: ConvertOptions): string[] {
@@ -3352,6 +3350,24 @@ function fontPlateSample(options: ConvertOptions): ExtractedIcon | null {
     return fontPlates.get(options)!;
 }
 
+/** Every name an icon-image can resolve to, when it states them outright through `match`/`case`. */
+function statedIconNames(image: Json): string[] | null {
+    if (typeof image === 'string') return /\{[A-Za-z0-9_:-]+\}/.test(image) ? null : [image];
+    if (!Array.isArray(image)) return null;
+    const outputs = image[0] === 'match' ? image.filter((_, i) => i >= 3 && (i % 2 === 1 || i === image.length - 1))
+        : image[0] === 'case' ? image.filter((_, i) => i >= 2 && (i % 2 === 0 || i === image.length - 1))
+            : null;
+    if (!outputs) return null;
+    const names = outputs.map((o) => statedIconNames(o as Json));
+    return names.every((n) => n !== null) ? (names as string[][]).flat() : null;
+}
+
+function spriteOnlyIcon(image: Json, options: ConvertOptions): boolean {
+    const names = statedIconNames(image);
+    if (!names || !options.sprites) return false;
+    return names.every((n) => !options.iconFont!.glyphs.has(n)) && names.some((n) => hasIcon(options.sprites!.sheets, n));
+}
+
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
 function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
     const image = layer.layout?.['icon-image'];
@@ -3359,6 +3375,8 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     // --icon-font replaces a shield's ARTWORK with a glyph, and needs no sheet at all. Only a
     // shield: an icon-only layer is a marker (a oneway arrow, a crossing), which has no glyph run.
     if (options.iconFont && layer.layout?.['text-field'] !== undefined) {
+        // A map symbol the face has no glyph for (a peak, a town's dot) keeps its sprite.
+        if (spriteOnlyIcon(image, options)) return markerDeclarations(layer, coverage, { ...options, iconFont: undefined });
         return fontShieldDeclarations(layer, image, coverage, options);
     }
     if (!options.sprites) {

@@ -7,6 +7,7 @@
     "massif:live-config": [
       "poiStyle",
       "building_opacity",
+      "buildings",
       "contour_opacity",
       "emphasis_rails",
       "show_tram",
@@ -40042,6 +40043,14 @@
     },
     "building_opacity": {
       "default": 1
+    },
+    "buildings": {
+      "default": 2,
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "contour_opacity": {
       "default": 1

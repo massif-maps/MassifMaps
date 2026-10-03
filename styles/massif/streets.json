@@ -7,6 +7,7 @@
     "massif:live-config": [
       "poiStyle",
       "building_opacity",
+      "buildings",
       "contour_opacity",
       "emphasis_rails",
       "show_tram",
@@ -11845,6 +11846,34 @@
       },
       "metadata": {
         "massif:minzoom-param": "building_min_zoom"
+      }
+    },
+    {
+      "id": "building-z15",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-color": "hsl(40, 43%, 93%)",
+        "fill-outline-color": "hsl(40, 25%, 85%)"
+      },
+      "metadata": {
+        "massif:minzoom-param": "building_min_zoom",
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "buildings"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -45928,6 +45957,14 @@
     },
     "building_opacity": {
       "default": 1
+    },
+    "buildings": {
+      "default": 2,
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "contour_opacity": {
       "default": 1

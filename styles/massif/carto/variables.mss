@@ -217,9 +217,9 @@
 @wetland: hsl(115, 60%, 86%);
 @wood: hsla(115, 60%, 74%, 0.8);
 @wood_low: hsl(115, 60%, 84%);
+@building_stroke_width: 0.4;
 @cliff_teeth_stroke_opacity: 0.7;
 @label_spacing: 250;
-@line_stroke_width: 0.4;
 @oneway_opacity: 0.8;
 @oneway_spacing: 200;
 @park_outline_stroke_opacity: 0.6;

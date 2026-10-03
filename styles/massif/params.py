@@ -7,6 +7,7 @@ SWITCH = [0, 1]
 PARAMS = {
     'poiStyle': {'default': 'badge', 'values': ['badge', 'plain']},
     'building_opacity': {'default': 1},
+    'buildings': {'default': 2, 'values': [0, 1, 2]},
     'contour_opacity': {'default': 1},
     'emphasis_rails': {'default': 0, 'values': SWITCH},
     'show_tram': {'default': 1, 'values': SWITCH},

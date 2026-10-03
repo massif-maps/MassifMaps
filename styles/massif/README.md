@@ -179,7 +179,8 @@ colour's lightness mirrored past brightness 0.25-0.3, so the page goes black and
   a dark pattern or a road casing.
 - **Shields** are one white plate with a black ring, for every country.
 - **Buildings** are outlined grey footprints to z15, then grey 3D blocks as in the other variants
-  (`building_opacity` looking down, opaque once the camera leans in).
+  (`building_opacity` looking down, opaque once the camera leans in); footprints at every zoom with
+  `buildings` 1.
 - **POIs** are a black glyph on a white disc with a black ring, the same for every category; the
   MapLibre style names the neutral sprite rather than the colour-baked one.
 
@@ -205,9 +206,10 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
   tunnels under them show through, and so do the ground's shadows. They turn opaque as the camera
   leans in, between tilt 85 and 70. The MapLibre file draws them opaque: the ramp is over the camera angle,
   which only the SDK can read in paint.
-- `building_tilt_drop` (90), `building_ao` (1), `buildings` (2 = 3D, 1 = flat, 0 = off) — the
-  converter's own, the same in every converted style
-  ([style-tools](../../docs/contributing/style-tools.md)).
+- `buildings` (2) — 0 none, 1 flat footprints at every zoom, 2 footprints to z15 then 3D blocks.
+  The converter gates every building rule on it ([style-tools](../../docs/contributing/style-tools.md));
+  the style adds the footprints past z15 for 1.
+- `building_tilt_drop` (90), `building_ao` (1) — the converter's own, the same in every converted style.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger. It reads the class tables, so switching is a re-decode.
 All of them are in [`params.py`](params.py), named as in Alpimaps' OSM style where it had one. A

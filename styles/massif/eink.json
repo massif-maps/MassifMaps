@@ -7,6 +7,7 @@
     "massif:live-config": [
       "poiStyle",
       "building_opacity",
+      "buildings",
       "contour_opacity",
       "emphasis_rails",
       "show_tram",
@@ -16692,6 +16693,64 @@
       }
     },
     {
+      "id": "building-flat-z15",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-color": "hsl(0, 0%, 90%)",
+        "fill-outline-color": "hsl(0, 0%, 40%)"
+      },
+      "metadata": {
+        "massif:minzoom-param": "building_min_zoom",
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "buildings"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        },
+        "massif:paint": {
+          "fill-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 10%)",
+            0.3,
+            "hsl(0, 0%, 90%)"
+          ],
+          "fill-outline-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 60%)",
+            0.3,
+            "hsl(0, 0%, 40%)"
+          ]
+        }
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
       "id": "building-3d",
       "type": "fill-extrusion",
       "source": "openmaptiles",
@@ -33207,6 +33266,14 @@
     },
     "building_opacity": {
       "default": 1
+    },
+    "buildings": {
+      "default": 2,
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "contour_opacity": {
       "default": 1

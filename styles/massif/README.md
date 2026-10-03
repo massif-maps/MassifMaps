@@ -251,6 +251,18 @@ Switches (0/1):
 - `sac_scale_labels` (0; 1 on e-ink) — the SAC grade (T1..T6) on a small plate along each trail
   from z14, where a dash alone is hard to read. A path with no `sac_scale` gets none.
 
+POI ranking (SDK only; MapLibre ignores it):
+
+- `poi-boost-<name>` (0) — added to a POI's placement priority, so the culler keeps it over the labels
+  it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
+  (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
+  for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
+  set). A priority is the layer's position × 100000: POIs span 16.5M (peaks) to 21.0M (the rank
+  ladder's top), place names reach 24M. So `100000` lifts a class one layer, `5000000` over every
+  unboosted POI and past most road and trail names, and a negative value demotes. Whole numbers: the
+  culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
+  rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
+
 And `contour_opacity` (1), multiplied into the contour lines' own ramp — a redraw, not a re-decode.
 `_fontscale` needs no declaration: every style has it
 ([style parameters](../../docs/features/style-parameters.md)).

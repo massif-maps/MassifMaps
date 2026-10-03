@@ -6,7 +6,7 @@ key on per layer to fold it into one project.json table - see the style's README
 import json
 from collections import OrderedDict
 
-from lib import by_hour, gate, get, layer, zoom_ramp
+from lib import boosted, by_hour, gate, get, layer, zoom_ramp
 
 # Standard's poi-label text-color, read off mapbox/standard: night (brightness 0.25) and day (0.3).
 # disc: Standard's day disc, a shade lighter than its text (day); night: both at night
@@ -85,6 +85,12 @@ SHAPE = {
 DEFAULT_SHAPE = {'radius': 21, 'border': 3}
 
 CLASS_TO_CATEGORY = {c: cat for cat, cs in CLASSES.items() for c in cs}
+
+# every `poi-boost-<name>` an app may set (lib.boosted): the classes and subclasses a rule or a colour
+# names, the mountain_peak classes, and the airport label
+BOOST_NAMES = sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND) | {s for ss in SUBCLASS.values() for s in ss} |
+                     {'attraction', 'caravan_site', 'kindergarten', 'lodging', 'picnic_site', 'shelter',
+                      'peak', 'saddle', 'volcano'})
 
 
 def match_on_class(pairs, default):
@@ -271,7 +277,7 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
     massif_layout = {'icon-image': ['image', icon, {'params': mono_params() if mono else icon_params(category)}]}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
     massif_layout['icon-size'] = 0.4 * scale if mono else ['match', ['config', 'poiStyle'], 'plain', 0.6 * scale, 0.4 * scale]
-    return layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
+    return boosted(layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
                  paint={'text-color': MONO_INK if mono else night_color(category) if dark else day_color(category),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
                  # ONE template and ONE attachment for every POI: a child project's rule extends the one
@@ -283,7 +289,8 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
                                             # `plain`: a bare glyph needs the halo its disc gave it
                                             'icon-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
-                                            'icon-halo-width': 0 if mono else ['match', ['config', 'poiStyle'], 'plain', 1.5, 0]}})
+                                            'icon-halo-width': 0 if mono else ['match', ['config', 'poiStyle'], 'plain', 1.5, 0]}}),
+                   'subclass', 'class')
 
 
 # A walker's POIs, each until its category layer takes over, water from `water_min_zoom`.
@@ -327,7 +334,7 @@ def springs(v):
                  paint={'text-color': MONO_INK if mono else CATEGORY['water']['day'],
                         'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH})
     # `highlight_drinking_water` draws springs in water_highlight() instead
-    return [gate(dot, v, 'highlight_drinking_water', 0), gate(name, v, 'highlight_drinking_water', 0)]
+    return [gate(dot, v, 'highlight_drinking_water', 0), gate(boosted(name, 'class'), v, 'highlight_drinking_water', 0)]
 
 
 def mountain(v):

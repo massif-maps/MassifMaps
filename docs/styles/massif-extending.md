@@ -43,9 +43,16 @@ own: `track_min_zoom: 24` hides Massif's tracks, a rule after `style.mss` draws 
 draws it where the base's rank ladder does not yet — or **narrows** one, with a rule of its own:
 
 ```css
-#poi[zoom >= 15][class = 'bakery']::poi { @extend %poi; shield-placement-priority: 30000000; }
+#poi[zoom >= 15][class = 'bakery']::poi {
+  @extend %poi;
+  shield-placement-priority: (30000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+}
 #poi[zoom < 17][class = 'pharmacy']::poi { display: none; }
 ```
+
+The term after `30000000` is the one every base POI rule adds, so an app's `poi-boost-<class>` still
+reaches a rule that states its own priority. To only re-rank a class, set `poi-boost-<class>` instead
+of writing a rule ([style README](https://github.com/massif-maps/MassifMaps/blob/master/styles/massif/README.md#style-parameters-an-app-sets)).
 
 The bus stop's zooms are project **constants**, moved with no rule at all:
 

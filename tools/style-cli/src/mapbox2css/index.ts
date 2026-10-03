@@ -3579,6 +3579,11 @@ function placementPriority(layer: MapboxLayer, layerIndex: number, coverage: Cov
     const sortKey = layer.layout?.['symbol-sort-key'];
     if (sortKey === undefined) return String(base);
 
+    // a negated key is a boost: `base + boost` rather than `base - (0 - boost)`
+    if (Array.isArray(sortKey) && sortKey[0] === '-' && sortKey.length === 2) {
+        const boost = tryTranslate(sortKey[1] as Json, 'symbol-sort-key', layer.id, coverage);
+        return boost === null ? String(base) : `(${base} + ${boost})`;
+    }
     const translated = tryTranslate(sortKey, 'symbol-sort-key', layer.id, coverage);
     // MapBox places the LOWEST key first, and the culler takes the highest priority.
     return translated === null ? String(base) : `(${base} - ${translated})`;

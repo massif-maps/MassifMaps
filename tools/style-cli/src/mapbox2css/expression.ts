@@ -158,6 +158,13 @@ export function translateExpression(expr: Json, notes?: string[]): string {
         // parameter is the same idea: named, defaulted in the project, and set without a reload, so
         // day/night stays ONE style here as it is there. convert() declares what it finds.
         case 'config': {
+            // a name built from a feature field, `["concat", "poi-boost-", ["get", "class"]]`, is a
+            // per-feature parameter lookup the CartoCSS spells inside the name
+            const computed = args[0];
+            if (Array.isArray(computed) && computed.length === 3 && computed[0] === 'concat' && typeof computed[1] === 'string'
+                && Array.isArray(computed[2]) && computed[2][0] === 'get' && typeof computed[2][1] === 'string') {
+                return `[param::${computed[1]}[${computed[2][1]}]]`;
+            }
             if (typeof args[0] !== 'string') throw new Untranslatable('config with a computed name');
             // ["config", name, importId] scopes the lookup to one import; a converted project has a
             // single style, so the name alone identifies it.

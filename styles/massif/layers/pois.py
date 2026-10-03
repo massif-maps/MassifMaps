@@ -170,12 +170,20 @@ def flat_match(value_of, default, furniture=None, keep_furniture=False, fixed=No
     return out
 
 
-# The data decides when a POI appears: OpenMapTiles' `rank`, on OpenFreeMap Liberty's ladder. Least
-# important first, so a lower rank wins a collision.
-RANK_LAYERS = [
-    ('poi-rank-r20', 17, ['all', ['>=', get('rank'), 20]]),
-    ('poi-rank-r7', 16, ['all', ['>=', get('rank'), 7], ['<', get('rank'), 20]]),
-    ('poi-rank-r1', 15, ['all', ['>=', get('rank'), 1], ['<', get('rank'), 7]]),
+# The data decides when a POI appears: `rank`, ordinal in its z14 tile (1-390 over Grenoble), on
+# Alpimaps' OSM ladder: 10 from z14, 30 from 15 (named from 16), 70 from 16, all from 17; eating,
+# parking and schools a band later, shops two. Least important first: a lower rank wins a collision.
+RANK = get('rank')
+LATE = ['bar', 'college', 'parking', 'restaurant', 'school']
+RANK_LADDER = [
+    ('poi-rank-all', 17, ['>', RANK, 70], 'poi_rank_all_minzoom'),
+    ('poi-rank-r70', 16, ['all', ['>', RANK, 30], ['<=', RANK, 70]], 'poi_rank70_minzoom'),
+    ('poi-rank-r30-shop', 16, ['all', ['>', RANK, 10], ['<=', RANK, 30], ['==', get('class'), 'shop']], 'poi_rank70_minzoom'),
+]
+RANK30 = ['all', ['>', RANK, 10], ['<=', RANK, 30], ['!=', get('class'), 'shop']]
+RANK10 = [
+    ('poi-rank-r10-late', 15, ['all', ['<=', RANK, 10], ['in', get('class'), ['literal', LATE]]], 'poi_rank30_minzoom'),
+    ('poi-rank-r10', 14, ['all', ['<=', RANK, 10], *[['!=', get('class'), c] for c in LATE]], 'poi_rank10_minzoom'),
 ]
 # The exceptions, each its own layer: stations and airports before the ladder starts, as Standard
 # draws them; the bus stop after it, as Standard does - icon at 17, name at 18.
@@ -184,9 +192,19 @@ STATION_LAYERS = [
     ('poi-airport', 12, ['airfield', 'airport', 'heliport']),
 ]
 BUS = ('bus', 17, 18)
+# Mapbox's tiles carry a tram stop from z16, and Standard's transit-label names it as soon as it shows
+TRAM = (16, 16)
+TRAM_STOP = ['all', ['==', get('class'), 'railway'], ['==', get('subclass'), 'tram_stop']]
+# a bus shelter is a bus stop's furniture: icon only, as late as the stop in a city, from z15 on a walker's map
+PT_SHELTER = ['all', ['==', get('class'), 'shelter'], ['==', get('shelter_type'), 'public_transport']]
+# the shelter_type values Alpimaps' tiles carry for a walker's shelter: named, from z13. Any other (none,
+# sun_shelter, building...) is an icon from z17, as a public-transport one in a city
+OUTDOOR_SHELTERS = ['basic_hut', 'lean_to', 'picnic_shelter', 'rock_shelter', 'weather_shelter', 'wilderness_hut']
+OTHER_SHELTER = ['all', ['==', get('class'), 'shelter'], ['!=', get('shelter_type'), 'public_transport'],
+                 *[['!=', get('shelter_type'), t] for t in OUTDOOR_SHELTERS]]
 # Drawn by a layer of their own at every zoom, so the ladder leaves them out. Excluded rather than
 # listed: a class list is a when() per feature, an exclusion a few prunable selectors.
-OWN_LAYER = sorted({'bus', 'campsite', 'spring', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
+OWN_LAYER = sorted({'bus', 'campsite', 'drinking_water', 'shelter', 'spring', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
 
 # a viewpoint is an attraction to OpenMapTiles: its own glyph at every zoom (a ruin keeps the castle, as Standard)
 ICON = ['match', get('subclass'), ['florist', 'furniture', 'viewpoint'], get('subclass'), get('class')]
@@ -248,8 +266,6 @@ def mono_params():
 
 
 NAME = ['coalesce', get('name'), get('name_int')]
-# a bus shelter is named after its stop, which the stop's own POI already says; a hut's shelter is not
-SHELTER_NAME = ['case', ['==', get('shelter_type'), 'public_transport'], '', NAME]
 
 
 def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overlap=False, scale=1,
@@ -305,17 +321,13 @@ MOUNTAIN_LAYERS = [
     # a named park early and over the sights, as Standard gives park_like a wider filterrank
     ('poi-mountain-park', 14, 16, ['all', ['in', get('class'), ['literal', ['park', 'garden']]], ['has', 'name']], ICON, None),
     ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], MOUNTAIN_ICON, None),
-    ('poi-mountain-shelter', 13, 15, ['all', ['==', get('class'), 'shelter'],
-                                      ['!=', get('shelter_type'), 'public_transport']], MOUNTAIN_ICON, None),
-    ('poi-mountain-water', 12, 18, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
+    ('poi-mountain-shelter', 13, None, ['all', ['==', get('class'), 'shelter'],
+                                        ['in', get('shelter_type'), ['literal', OUTDOOR_SHELTERS]]], MOUNTAIN_ICON, None),
+    ('poi-mountain-water', 12, None, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
     ('poi-mountain', 12, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
     # OpenMapTiles files a hut under lodging, whose glyph is a bed
     ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),
 ]
-
-
-def shelter_text(id):
-    return SHELTER_NAME if id in ('poi-lodging', 'poi-mountain-shelter') else NAME
 
 
 def springs(v):
@@ -341,8 +353,8 @@ def mountain(v):
     out = []
     for id, minzoom, maxzoom, filter, icon, param in MOUNTAIN_LAYERS:
         # a water point's glyph a size down: they are many, and a walker needs the dot, not the badge
-        lay = poi_layer(id, minzoom, filter, v, icon=icon, maxzoom=maxzoom, text=shelter_text(id),
-                        category='park_like' if id == 'poi-mountain-viewpoint' else None,
+        lay = poi_layer(id, minzoom, filter, v, icon=icon, maxzoom=maxzoom,
+                        category='park_like' if id in ('poi-mountain-viewpoint', 'poi-mountain-shelter') else None,
                         scale=0.75 if id == 'poi-mountain-water' else 1)
         if param:
             lay['metadata']['massif:minzoom-param'] = param
@@ -388,25 +400,46 @@ def water_highlight(v):
     return [gate(lay, v, 'highlight_drinking_water')]
 
 
-def bus(v):
-    """The stop's icon from `poi_bus_minzoom`, its name from `poi_bus_label_minzoom`: project constants,
+def stop(id, filter, zooms, const, v):
+    """The icon from `poi_<const>_minzoom`, the name from `poi_<const>_label_minzoom`: project constants,
     so a child project moves either in its `constants`"""
-    cls, icon_zoom, name_zoom = BUS
-    stop = ['==', get('class'), cls]
-    icon = poi_layer('poi-bus-icon', icon_zoom, stop, v, maxzoom=name_zoom, text='')
-    icon['metadata'].update({'massif:minzoom-const': 'poi_bus_minzoom', 'massif:maxzoom-const': 'poi_bus_label_minzoom'})
-    named = poi_layer('poi-bus', name_zoom, stop, v)
-    named['metadata']['massif:minzoom-const'] = 'poi_bus_label_minzoom'
+    icon_zoom, name_zoom = zooms
+    icon = poi_layer(id + '-icon', icon_zoom, filter, v, maxzoom=name_zoom, text='')
+    icon['metadata'].update({'massif:minzoom-const': 'poi_%s_minzoom' % const,
+                             'massif:maxzoom-const': 'poi_%s_label_minzoom' % const})
+    named = poi_layer(id, name_zoom, filter, v)
+    named['metadata']['massif:minzoom-const'] = 'poi_%s_label_minzoom' % const
     return [icon, named]
+
+
+def ranked(rows, ladder, v):
+    out = []
+    for id, minzoom, filter, const in rows:
+        lay = poi_layer(id, minzoom, ['all', ladder, filter], v)
+        lay['metadata']['massif:minzoom-const'] = const
+        out.append(lay)
+    return out
+
+
+def pt_shelter(v):
+    """`poi_pt_shelter_minzoom` in a city (streets, hybrid), z15 on the walker's variants"""
+    if v.flags.get('trails'):
+        return [poi_layer('poi-pt-shelter-outdoor', 15, PT_SHELTER, v, text='')]
+    lay = poi_layer('poi-pt-shelter', 17, PT_SHELTER, v, text='')
+    lay['metadata']['massif:minzoom-const'] = 'poi_pt_shelter_minzoom'
+    return [lay]
 
 
 def layers(v):
     ladder = ['all', *[['!=', get('class'), c] for c in OWN_LAYER],
               ['!=', get('subclass'), 'kindergarten'], ['!=', get('subclass'), 'viewpoint']]
-    return (bus(v) + [poi_layer(id, minzoom, ['all', ladder, filter], v, text=shelter_text('poi-lodging'))
-                      for id, minzoom, filter in RANK_LAYERS] + campsites(v) +
-            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], v)
-             for id, minzoom, classes in STATION_LAYERS] + kindergarten(v) + water_highlight(v))
+    not_tram = ['!=', get('subclass'), 'tram_stop']
+    return (pt_shelter(v) + [poi_layer('poi-shelter', 17, OTHER_SHELTER, v, text='')] + stop('poi-bus', ['==', get('class'), BUS[0]], BUS[1:], 'bus', v) +
+            ranked(RANK_LADDER, ladder, v) + stop('poi-rank-r30', ['all', ladder, RANK30], (15, 16), 'rank30', v) +
+            ranked(RANK10, ladder, v) + campsites(v) +
+            [poi_layer(id, minzoom, ['all', ['in', get('class'), ['literal', classes]], not_tram], v)
+             for id, minzoom, classes in STATION_LAYERS] + stop('poi-tram', TRAM_STOP, TRAM, 'tram', v) +
+            kindergarten(v) + water_highlight(v))
 
 
 def write_sprite_palette(path):

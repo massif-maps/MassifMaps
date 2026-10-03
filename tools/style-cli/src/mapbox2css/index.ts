@@ -1892,7 +1892,7 @@ function layerDeclarations(
  * so they are evaluated per feature, which is what gets a POI its class colour back.
  */
 function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: string, coverage: Coverage,
-                               options: ConvertOptions): string[] {
+                               options: ConvertOptions, fixedBox = false): string[] {
     const params = layer.layout?.[ICON_PARAMS] as Record<string, Json> | undefined;
     if (!icon.plate || !params) return [];
     const out: string[] = [];
@@ -1902,6 +1902,7 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: s
     // Radius and ring are the artwork's pixels at icon-size 1, the plate's are the screen's: at
     // icon-size 0.4 a ring stated 3 drew 3 px where MapLibre draws 1.2, and the disc grew with it.
     const sizedBy = (value: string) => (sized === '1' ? value : `((${value}) * (${sized}))`);
+    const stated = new Map<string, string>();
     const colour = (name: string, target: string, gate = false, size = false): boolean => {
         if (params[name] === undefined) return false;
         // `"massif:params": ["icon-image"]` puts the icon's own palette in project.json too, so the
@@ -1912,6 +1913,7 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: s
         const value = size ? sizedBy(translated) : translated;
         out.push(`${target}: ${gate ? scoped(value) : value};`);
         coverage.emit(target);
+        stated.set(target, translated);
         return true;
     };
 
@@ -1941,6 +1943,17 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: s
         if (!colour('background-stroke-width', 'shield-icon-background-border-width', false, true)) {
             out.push(`shield-icon-background-border-width: ${sizedBy(String(round(icon.plate.borderWidth)))};`);
             coverage.emit('shield-icon-background-border-width');
+            stated.set('shield-icon-background-border-width', String(round(icon.plate.borderWidth)));
+        }
+    }
+    // A glyph's box is its own outline, so a plate fitted to it took each glyph's shape: the disc's box
+    // is stated instead, ring included (LabelPlateStyle::size is the outer size).
+    if (fixedBox) {
+        const ring = stated.get('shield-icon-background-border-width');
+        for (const [axis, side] of [['width', icon.width], ['height', icon.height]] as const) {
+            const outer = ring !== undefined ? `(${round(side)} + 2 * (${ring}))` : String(round(side));
+            out.push(`shield-icon-background-${axis}: ${sizedBy(outer)};`);
+            coverage.emit(`shield-icon-background-${axis}`);
         }
     }
     // MapBox's `icon-stroke` is the outline it draws UNDER the glyph, which is exactly what the
@@ -3326,7 +3339,7 @@ function fontShieldDeclarations(layer: MapboxLayer, image: Json, coverage: Cover
     emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
     // A recolourable badge keeps its disc: the plate measured off the sheet, as the sprite path does.
     const plate = layer.layout?.[ICON_PARAMS] !== undefined ? fontPlateSample(options) : null;
-    if (plate) out.push(...iconPlateDeclarations(layer, plate, sized, coverage, options));
+    if (plate) out.push(...iconPlateDeclarations(layer, plate, sized, coverage, options, true));
     out.push(...variableAnchorDeclarations(layer, coverage, options));
     return out;
 }

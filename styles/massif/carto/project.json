@@ -21,6 +21,9 @@
     "place::place_hamlet_b3",
     "place::place_hamlet_b2",
     "place::place_hamlet_b1",
+    "mountain_peak::peak",
+    "mountain_peak::peak_outdoor",
+    "mountain_peak::peak_outdoor_minor",
     "transportation_name::road_label_primary_b2",
     "transportation_name::road_label_primary_b1",
     "transportation_name::road_label_tertiary",
@@ -76,9 +79,6 @@
     "transportation_name::road_label_major_b2",
     "transportation_name::road_label_major_b1",
     "aerodrome_label",
-    "mountain_peak::peak",
-    "mountain_peak::peak_outdoor_minor",
-    "mountain_peak::peak_outdoor",
     "landcover_name",
     "park::park_label",
     "water_name",
@@ -1897,6 +1897,14 @@
   },
   "constants": {
     "poi_bus_label_minzoom": 18,
-    "poi_bus_minzoom": 17
+    "poi_bus_minzoom": 17,
+    "poi_pt_shelter_minzoom": 17,
+    "poi_rank10_minzoom": 14,
+    "poi_rank30_label_minzoom": 16,
+    "poi_rank30_minzoom": 15,
+    "poi_rank70_minzoom": 16,
+    "poi_rank_all_minzoom": 17,
+    "poi_tram_label_minzoom": 16,
+    "poi_tram_minzoom": 16
   }
 }

@@ -18521,470 +18521,6 @@
       }
     },
     {
-      "id": "peak-outdoor",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "mountain_peak",
-      "minzoom": 9,
-      "filter": [
-        "all",
-        [
-          "!=",
-          [
-            "get",
-            "class"
-          ],
-          "cliff"
-        ],
-        [
-          "has",
-          "name"
-        ],
-        [
-          "<=",
-          [
-            "get",
-            "rank"
-          ],
-          3
-        ]
-      ],
-      "layout": {
-        "icon-image": "peak",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          11,
-          0.7,
-          15,
-          1
-        ],
-        "text-field": [
-          "concat",
-          [
-            "coalesce",
-            [
-              "get",
-              "name"
-            ],
-            [
-              "get",
-              "name_int"
-            ]
-          ],
-          "\n",
-          [
-            "to-string",
-            [
-              "get",
-              "ele"
-            ]
-          ],
-          " m"
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          11,
-          10,
-          16,
-          12
-        ],
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          0.5
-        ],
-        "text-max-width": 8,
-        "text-optional": true
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 15%)",
-        "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 85%)"
-            ],
-            0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 15%)"
-            ]
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
-            0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
-          ],
-          "text-emissive-strength": [
-            "match",
-            [
-              "config",
-              "lighting"
-            ],
-            0,
-            1,
-            1
-          ],
-          "icon-emissive-strength": [
-            "match",
-            [
-              "config",
-              "lighting"
-            ],
-            0,
-            1,
-            1
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ],
-          "icon-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue, Roboto, sans-serif"
-          ],
-          "symbol-sort-key": [
-            "-",
-            [
-              "coalesce",
-              [
-                "config",
-                [
-                  "concat",
-                  "poi-boost-",
-                  [
-                    "get",
-                    "class"
-                  ]
-                ]
-              ],
-              0
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "id": "peak-outdoor-minor",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "mountain_peak",
-      "minzoom": 13,
-      "filter": [
-        "all",
-        [
-          "!=",
-          [
-            "get",
-            "class"
-          ],
-          "cliff"
-        ],
-        [
-          "has",
-          "name"
-        ],
-        [
-          ">",
-          [
-            "get",
-            "rank"
-          ],
-          3
-        ]
-      ],
-      "layout": {
-        "icon-image": "peak",
-        "icon-size": 0.8,
-        "text-field": [
-          "concat",
-          [
-            "coalesce",
-            [
-              "get",
-              "name"
-            ],
-            [
-              "get",
-              "name_int"
-            ]
-          ],
-          "\n",
-          [
-            "to-string",
-            [
-              "get",
-              "ele"
-            ]
-          ],
-          " m"
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": 11,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          0.5
-        ],
-        "text-max-width": 8,
-        "text-optional": true
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 15%)",
-        "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 85%)"
-            ],
-            0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 15%)"
-            ]
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
-            0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
-          ],
-          "text-emissive-strength": [
-            "match",
-            [
-              "config",
-              "lighting"
-            ],
-            0,
-            1,
-            1
-          ],
-          "icon-emissive-strength": [
-            "match",
-            [
-              "config",
-              "lighting"
-            ],
-            0,
-            1,
-            1
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ],
-          "icon-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue, Roboto, sans-serif"
-          ],
-          "symbol-sort-key": [
-            "-",
-            [
-              "coalesce",
-              [
-                "config",
-                [
-                  "concat",
-                  "poi-boost-",
-                  [
-                    "get",
-                    "class"
-                  ]
-                ]
-              ],
-              0
-            ]
-          ]
-        }
-      }
-    },
-    {
       "id": "airport-label",
       "type": "symbol",
       "source": "openmaptiles",
@@ -21918,7 +21454,6 @@
       "source": "openmaptiles",
       "source-layer": "poi",
       "minzoom": 13,
-      "maxzoom": 15,
       "filter": [
         "all",
         [
@@ -21930,12 +21465,22 @@
           "shelter"
         ],
         [
-          "!=",
+          "in",
           [
             "get",
             "shelter_type"
           ],
-          "public_transport"
+          [
+            "literal",
+            [
+              "basic_hut",
+              "lean_to",
+              "picnic_shelter",
+              "rock_shelter",
+              "weather_shelter",
+              "wilderness_hut"
+            ]
+          ]
         ]
       ],
       "layout": {
@@ -21959,26 +21504,14 @@
         ],
         "icon-size": 0.4,
         "text-field": [
-          "case",
+          "coalesce",
           [
-            "==",
-            [
-              "get",
-              "shelter_type"
-            ],
-            "public_transport"
+            "get",
+            "name"
           ],
-          "",
           [
-            "coalesce",
-            [
-              "get",
-              "name"
-            ],
-            [
-              "get",
-              "name_int"
-            ]
+            "get",
+            "name_int"
           ]
         ],
         "text-font": [
@@ -22380,8 +21913,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 13,
-      "maxzoom": 18,
+      "minzoom": 16,
       "filter": [
         "==",
         [
@@ -22831,7 +22363,7 @@
       "type": "circle",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 13,
+      "minzoom": 16,
       "filter": [
         "==",
         [
@@ -23575,6 +23107,942 @@
               "alpine_hut",
               "spring",
               "water",
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-pt-shelter-outdoor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "shelter"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "public_transport"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-shelter",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "shelter"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "public_transport"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "basic_hut"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "lean_to"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "picnic_shelter"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "rock_shelter"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "weather_shelter"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "shelter_type"
+          ],
+          "wilderness_hut"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
               [
                 "get",
                 "class"
@@ -24807,7 +25275,7 @@
       }
     },
     {
-      "id": "poi-rank-r20",
+      "id": "poi-rank-all",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
@@ -24862,6 +25330,14 @@
               "get",
               "class"
             ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "ferry"
           ],
           [
@@ -24918,6 +25394,14 @@
               "get",
               "class"
             ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "spring"
           ],
           [
@@ -24946,15 +25430,12 @@
           ]
         ],
         [
-          "all",
+          ">",
           [
-            ">=",
-            [
-              "get",
-              "rank"
-            ],
-            20
-          ]
+            "get",
+            "rank"
+          ],
+          70
         ]
       ],
       "layout": {
@@ -24980,26 +25461,14 @@
         ],
         "icon-size": 0.4,
         "text-field": [
-          "case",
+          "coalesce",
           [
-            "==",
-            [
-              "get",
-              "shelter_type"
-            ],
-            "public_transport"
+            "get",
+            "name"
           ],
-          "",
           [
-            "coalesce",
-            [
-              "get",
-              "name"
-            ],
-            [
-              "get",
-              "name_int"
-            ]
+            "get",
+            "name_int"
           ]
         ],
         "text-font": [
@@ -25395,11 +25864,12 @@
             1,
             0
           ]
-        }
+        },
+        "massif:minzoom-const": "poi_rank_all_minzoom"
       }
     },
     {
-      "id": "poi-rank-r7",
+      "id": "poi-rank-r70",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
@@ -25454,6 +25924,14 @@
               "get",
               "class"
             ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "ferry"
           ],
           [
@@ -25510,6 +25988,14 @@
               "get",
               "class"
             ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "spring"
           ],
           [
@@ -25540,20 +26026,20 @@
         [
           "all",
           [
-            ">=",
+            ">",
             [
               "get",
               "rank"
             ],
-            7
+            30
           ],
           [
-            "<",
+            "<=",
             [
               "get",
               "rank"
             ],
-            20
+            70
           ]
         ]
       ],
@@ -25580,26 +26066,14 @@
         ],
         "icon-size": 0.4,
         "text-field": [
-          "case",
+          "coalesce",
           [
-            "==",
-            [
-              "get",
-              "shelter_type"
-            ],
-            "public_transport"
+            "get",
+            "name"
           ],
-          "",
           [
-            "coalesce",
-            [
-              "get",
-              "name"
-            ],
-            [
-              "get",
-              "name_int"
-            ]
+            "get",
+            "name_int"
           ]
         ],
         "text-font": [
@@ -25995,11 +26469,1843 @@
             1,
             0
           ]
-        }
+        },
+        "massif:minzoom-const": "poi_rank70_minzoom"
       }
     },
     {
-      "id": "poi-rank-r1",
+      "id": "poi-rank-r30-shop",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "aerialway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airfield"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "ferry"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "harbor"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lighthouse"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_light"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_metro"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wilderness_hut"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "kindergarten"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "viewpoint"
+          ]
+        ],
+        [
+          "all",
+          [
+            ">",
+            [
+              "get",
+              "rank"
+            ],
+            10
+          ],
+          [
+            "<=",
+            [
+              "get",
+              "rank"
+            ],
+            30
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "shop"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_rank70_minzoom"
+      }
+    },
+    {
+      "id": "poi-rank-r30-icon",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "maxzoom": 16,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "aerialway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airfield"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "ferry"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "harbor"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lighthouse"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_light"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_metro"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wilderness_hut"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "kindergarten"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "viewpoint"
+          ]
+        ],
+        [
+          "all",
+          [
+            ">",
+            [
+              "get",
+              "rank"
+            ],
+            10
+          ],
+          [
+            "<=",
+            [
+              "get",
+              "rank"
+            ],
+            30
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shop"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_rank30_minzoom",
+        "massif:maxzoom-const": "poi_rank30_label_minzoom"
+      }
+    },
+    {
+      "id": "poi-rank-r30",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "aerialway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airfield"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "ferry"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "harbor"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lighthouse"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_light"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_metro"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wilderness_hut"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "kindergarten"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "viewpoint"
+          ]
+        ],
+        [
+          "all",
+          [
+            ">",
+            [
+              "get",
+              "rank"
+            ],
+            10
+          ],
+          [
+            "<=",
+            [
+              "get",
+              "rank"
+            ],
+            30
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shop"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_rank30_label_minzoom"
+      }
+    },
+    {
+      "id": "poi-rank-r10-late",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
@@ -26054,6 +28360,14 @@
               "get",
               "class"
             ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "ferry"
           ],
           [
@@ -26110,6 +28424,14 @@
               "get",
               "class"
             ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
             "spring"
           ],
           [
@@ -26140,20 +28462,29 @@
         [
           "all",
           [
-            ">=",
+            "<=",
             [
               "get",
               "rank"
             ],
-            1
+            10
           ],
           [
-            "<",
+            "in",
             [
               "get",
-              "rank"
+              "class"
             ],
-            7
+            [
+              "literal",
+              [
+                "bar",
+                "college",
+                "parking",
+                "restaurant",
+                "school"
+              ]
+            ]
           ]
         ]
       ],
@@ -26180,26 +28511,14 @@
         ],
         "icon-size": 0.4,
         "text-field": [
-          "case",
+          "coalesce",
           [
-            "==",
-            [
-              "get",
-              "shelter_type"
-            ],
-            "public_transport"
+            "get",
+            "name"
           ],
-          "",
           [
-            "coalesce",
-            [
-              "get",
-              "name"
-            ],
-            [
-              "get",
-              "name_int"
-            ]
+            "get",
+            "name_int"
           ]
         ],
         "text-font": [
@@ -26595,7 +28914,645 @@
             1,
             0
           ]
-        }
+        },
+        "massif:minzoom-const": "poi_rank30_minzoom"
+      }
+    },
+    {
+      "id": "poi-rank-r10",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "aerialway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airfield"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "ferry"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "harbor"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lighthouse"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_light"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_metro"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wilderness_hut"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "kindergarten"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "viewpoint"
+          ]
+        ],
+        [
+          "all",
+          [
+            "<=",
+            [
+              "get",
+              "rank"
+            ],
+            10
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bar"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "college"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "parking"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "restaurant"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "school"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_rank10_minzoom"
       }
     },
     {
@@ -28489,22 +31446,33 @@
       "source-layer": "poi",
       "minzoom": 13,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "aerialway",
+              "ferry",
+              "harbor",
+              "lighthouse",
+              "railway",
+              "railway_light",
+              "railway_metro"
+            ]
+          ]
         ],
         [
-          "literal",
+          "!=",
           [
-            "aerialway",
-            "ferry",
-            "harbor",
-            "lighthouse",
-            "railway",
-            "railway_light",
-            "railway_metro"
-          ]
+            "get",
+            "subclass"
+          ],
+          "tram_stop"
         ]
       ],
       "layout": {
@@ -28943,18 +31911,29 @@
       "source-layer": "poi",
       "minzoom": 12,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "airfield",
+              "airport",
+              "heliport"
+            ]
+          ]
         ],
         [
-          "literal",
+          "!=",
           [
-            "airfield",
-            "airport",
-            "heliport"
-          ]
+            "get",
+            "subclass"
+          ],
+          "tram_stop"
         ]
       ],
       "layout": {
@@ -29384,6 +32363,908 @@
             0
           ]
         }
+      }
+    },
+    {
+      "id": "poi-tram-icon",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "maxzoom": 16,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "railway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "tram_stop"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_tram_minzoom",
+        "massif:maxzoom-const": "poi_tram_label_minzoom"
+      }
+    },
+    {
+      "id": "poi-tram",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "railway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "tram_stop"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ]
+                ],
+                "background-stroke": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 100%)"
+                  ],
+                  0.3,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "bench",
+                      "drinking_water",
+                      "garden",
+                      "picnic_site",
+                      "shelter",
+                      "telephone",
+                      "toilets",
+                      "tree",
+                      "waste_basket"
+                    ],
+                    "transparent",
+                    "hsl(0, 0%, 0%)"
+                  ]
+                ],
+                "icon": [
+                  "interpolate",
+                  [
+                    "linear"
+                  ],
+                  [
+                    "measure-light",
+                    "brightness"
+                  ],
+                  0.25,
+                  "hsl(0, 0%, 100%)",
+                  0.3,
+                  "hsl(0, 0%, 0%)"
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "subclass"
+                    ]
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "config",
+                  [
+                    "concat",
+                    "poi-boost-",
+                    [
+                      "get",
+                      "class"
+                    ]
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 95%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 5%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "icon-halo-width": 0,
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_tram_label_minzoom"
       }
     },
     {
@@ -32543,6 +36424,470 @@
       }
     },
     {
+      "id": "peak-outdoor-minor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "mountain_peak",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "cliff"
+        ],
+        [
+          "has",
+          "name"
+        ],
+        [
+          ">",
+          [
+            "get",
+            "rank"
+          ],
+          3
+        ]
+      ],
+      "layout": {
+        "icon-image": "peak",
+        "icon-size": 0.8,
+        "text-field": [
+          "concat",
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
+          ],
+          "\n",
+          [
+            "to-string",
+            [
+              "get",
+              "ele"
+            ]
+          ],
+          " m"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.5
+        ],
+        "text-max-width": 8,
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 15%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 100%)",
+              0.3,
+              "hsl(0, 0%, 85%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 0%)",
+              0.3,
+              "hsl(0, 0%, 15%)"
+            ]
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 0%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 100%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "coalesce",
+              [
+                "config",
+                [
+                  "concat",
+                  "poi-boost-",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ]
+              ],
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "peak-outdoor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "mountain_peak",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "cliff"
+        ],
+        [
+          "has",
+          "name"
+        ],
+        [
+          "<=",
+          [
+            "get",
+            "rank"
+          ],
+          3
+        ]
+      ],
+      "layout": {
+        "icon-image": "peak",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0.7,
+          15,
+          1
+        ],
+        "text-field": [
+          "concat",
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
+          ],
+          "\n",
+          [
+            "to-string",
+            [
+              "get",
+              "ele"
+            ]
+          ],
+          " m"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          10,
+          16,
+          12
+        ],
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.5
+        ],
+        "text-max-width": 8,
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 15%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 100%)",
+              0.3,
+              "hsl(0, 0%, 85%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 0%)",
+              0.3,
+              "hsl(0, 0%, 15%)"
+            ]
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 0%)",
+              0.3,
+              "hsl(0, 0%, 0%)"
+            ],
+            0.3,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 100%)",
+              0.3,
+              "hsl(0, 0%, 100%)"
+            ]
+          ],
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "coalesce",
+              [
+                "config",
+                [
+                  "concat",
+                  "poi-boost-",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ]
+              ],
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
       "id": "place-hamlet",
       "type": "symbol",
       "source": "openmaptiles",
@@ -34741,7 +39086,7 @@
       "default": 12
     },
     "water_min_zoom": {
-      "default": 13
+      "default": 16
     },
     "campsite_min_zoom": {
       "default": 13

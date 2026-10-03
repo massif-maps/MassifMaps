@@ -69,7 +69,7 @@ SOURCES = {
 
 STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges,
-           rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
+           rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.trees, pois.mountain, pois.layers, road_labels.layers,
            labels.peaks, labels.places]
 
 # bottom to top; among the labels, the later a layer the higher its placement priority. The first
@@ -77,7 +77,7 @@ STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
 OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, outdoor.routes, roads.ground, rail.ground, roads.bridges,
            rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels,
-           labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, outdoor.sac_labels,
+           labels.low, road_labels.major, shields.layers, pois.trees, pois.mountain, pois.layers, outdoor.sac_labels,
            road_labels.layers, labels.peaks, labels.places]
 
 # e-ink carries everything outdoor does but the route bands, which grey into mud
@@ -85,7 +85,7 @@ EINK = [p for p in OUTDOOR if p is not outdoor.routes]
 
 HYBRID = [land.background, imagery.layers, outdoor.hillshade, outdoor.contours, rail.tunnels, roads.tunnels,
           roads.ground, rail.ground, roads.bridges, rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers,
-          outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
+          outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.trees, pois.mountain, pois.layers, road_labels.layers,
           labels.peaks, labels.places]
 
 # a walker's map brings the campsites in with the huts, and its water points early

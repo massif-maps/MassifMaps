@@ -36,7 +36,6 @@ per-country shields.
 
 | Layer or field | Buys |
 |---|---|
-| `tree` | canopy dots. Both MapTiler v4 and Mapbox Standard carry one |
 | `street_furniture` | benches, crossings, traffic signals, drinking water, picnic tables |
 | `place.iso_a2` | country-keyed place labels |
 | `building.colour` | a mapped building colour instead of one flat fill |
@@ -67,7 +66,9 @@ should use them where they are and cope where they are not.
 `transportation` carries `tracktype`, `sac_scale`, `surface_detail`, `difficulty`, `maxspeed`,
 `official`, `access`, `surface`, `oneway`, `toll`, `bicycle`, `foot`, `horse`, `mtb_scale`.
 `transportation_name` carries `network` (raw OSM, `FR:A-road`), `iso_a2`, and motorway exits as
-`subclass=junction` points. `poi` carries `shelter_type`, a transit stop's `network` and `agg_stop`.
+`subclass=junction` points. `poi` carries `shelter_type`, a transit stop's `network` and `agg_stop`,
+and with `poi_trees` `class=tree` from z14: the unnamed trees one MultiPoint per tile with the class
+alone, the named ones points of their own (Massif draws both).
 `tracktype` and `sac_scale` are written as their index in OSM's list (grade1 = 0, hiking = 0), where
 stock OpenMapTiles writes the name; the Massif styles accept both. `building.render_height` is left
 out when it is the 5 m default (stock writes 5), so a style reads it through a coalesce. There are `building_name`,

@@ -4329,7 +4329,7 @@ Map {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_italic;
-  text-size: @text_size;
+  text-size: @shield_size;
   text-wrap-width: @text_wrap_width;
   text-collision-padding: (1 * 4);
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
@@ -4758,6 +4758,13 @@ Map {
   text-background-padding-x: 2.5;
   text-background-padding-y: 0.5;
 }
+#poi[zoom >= 16][zoom < 18][class = 'tree'][name = null]['param::variant' != 'hybrid']::poi_tree_dot {
+  marker-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @poi_tree_dot_fill);
+  marker-width: (2 * linear([view::zoom], (16, 1.5), (18, 2.5)));
+  marker-allow-overlap: true;
+  marker-line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @glacier_low);
+  marker-line-width: @marker_stroke_width;
+}
 %poi {
   shield-placement: 'billboard';
   shield-name: (([name]) ?? ([name_int]));
@@ -4770,7 +4777,7 @@ Map {
   shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: (21100000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-wrap-before: true;
   shield-file: ([param::poi-t0-[subclass]] ?? [param::glyph-[class]]);
   shield-unlock-image: true;
@@ -4790,54 +4797,77 @@ Map {
   shield-text-radial-offset: 12;
   shield-text-horizontal-alignment: 'auto';
 }
+#poi[zoom >= 18][class = 'tree'][name = null]['param::variant' != 'hybrid']::poi {
+  shield-name: '';
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, (([param::poi-fill-b25-[class]]) ?? @poi_fill)), (0.3, (([param::poi-fill-[class]]) ?? @poi_fill_2))));
+  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-placement-priority: (18600000 + ((((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))) - 10000000));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, 0.4), (22, 0.8)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, 0.4), (22, 0.8))))) / 2.0);
+  shield-icon-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, 0.4), (22, 0.8)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, 0.4), (22, 0.8))))));
+  shield-icon-background-border-width: (((([param::poi-icon-background-border-width-[class]]) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, 0.4), (22, 0.8)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, 0.4), (22, 0.8))))));
+  @extend %poi;
+}
+#poi[zoom >= 17][class = 'tree'][name != null]::poi {
+  shield-face-name: @font_italic;
+  shield-size: @shield_size;
+  shield-wrap-width: 99;
+  shield-placement-priority: (18700000 + ((((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))) - 10000000));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, 0.4), (22, 0.8)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, 0.4), (22, 0.8))))) / 2.0);
+  shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, 0.4), (22, 0.8)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, 0.4), (22, 0.8))))));
+  shield-icon-background-border-width: (((([param::poi-icon-background-border-width-[class]]) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, 0.4), (22, 0.8)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, 0.4), (22, 0.8))))));
+  shield-anchors: 'bottom';
+  shield-text-radial-offset: 11;
+  @extend %poi;
+}
 #poi[zoom >= 14][subclass = 'viewpoint']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (18500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (18800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
   shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'adit']::poi {
-  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'archaeological_site']::poi {
-  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'castle']::poi {
-  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'cave_entrance']::poi {
-  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'fort']::poi {
-  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'waterfall']::poi {
-  shield-placement-priority: (18600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'park'][name != null]::poi {
-  shield-placement-priority: (18700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'garden'][name != null]::poi {
-  shield-placement-priority: (18700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][zoom < 15][class = 'picnic_site']::poi {
-  shield-placement-priority: (18800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19100000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'basic_hut']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
@@ -4846,7 +4876,7 @@ Map {
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'lean_to']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
@@ -4855,7 +4885,7 @@ Map {
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'picnic_shelter']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
@@ -4864,7 +4894,7 @@ Map {
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'rock_shelter']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
@@ -4873,7 +4903,7 @@ Map {
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'weather_shelter']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
@@ -4882,7 +4912,7 @@ Map {
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'wilderness_hut']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (18900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
@@ -4890,7 +4920,7 @@ Map {
   @extend %poi;
 }
 #poi[zoom >= 'param::water_min_zoom'][zoom >= 12][class = 'drinking_water']['param::highlight_drinking_water' = 0]::poi {
-  shield-placement-priority: (19000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-image-scale: (((([param::variant] = 'eink') ? 0.30000000000000004 : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : 0.30000000000000004))) / 2.0);
   shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? 0.30000000000000004 : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : 0.30000000000000004))));
@@ -4919,17 +4949,17 @@ Map {
   text-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @glacier_low);
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: (19200000 + (([param::poi-boost-[class]]) ?? (0)));
+  text-placement-priority: (19500000 + (([param::poi-boost-[class]]) ?? (0)));
   text-collision-padding: 2;
   text-wrap-before: true;
 }
 #poi[zoom >= 12][class = 'wilderness_hut']::poi {
-  shield-placement-priority: (19300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   @extend %poi;
 }
 #poi[zoom >= 12][zoom < 15][subclass = 'alpine_hut']::poi {
-  shield-placement-priority: (19400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   @extend %poi;
 }
@@ -4937,7 +4967,7 @@ Map {
   shield-name: '';
   shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, (([param::poi-fill-b25-[class]]) ?? @poi_fill)), (0.3, (([param::poi-fill-[class]]) ?? @poi_fill_2))));
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
-  shield-placement-priority: (19500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-icon-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   @extend %poi;
 }
@@ -4946,7 +4976,7 @@ Map {
   shield-fill: (([param::variant] = 'hybrid') ? (([param::poi-fill-hybrid-[class]]) ?? @poi_fill) : linear([view::brightness], (0.25, (([param::poi-fill-b25-[class]]) ?? @poi_fill)), (0.3, (([param::poi-fill-[class]]) ?? @poi_fill_2))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-halo-radius: 1.25;
-  shield-placement-priority: (19600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (19900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-image-scale: (((([param::poiStyle] = 'plain') ? 0.6 : 0.4)) / 2.0);
   shield-icon-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-icon-halo-radius: (([param::poiStyle] = 'plain') ? 1.5 : 0);
@@ -4959,78 +4989,78 @@ Map {
 }
 #poi[zoom >= 17][class = 'shelter'][shelter_type != 'public_transport'][shelter_type != 'basic_hut'][shelter_type != 'lean_to'][shelter_type != 'picnic_shelter'][shelter_type != 'rock_shelter'][shelter_type != 'weather_shelter'][shelter_type != 'wilderness_hut']::poi {
   shield-name: '';
-  shield-placement-priority: (19700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (20000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= $poi_bus_minzoom][zoom < $poi_bus_label_minzoom][class = 'bus']::poi {
   shield-name: '';
-  shield-placement-priority: (19800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
-  @extend %poi;
-}
-#poi[zoom >= $poi_bus_label_minzoom][class = 'bus']::poi {
-  shield-placement-priority: (19900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
-  @extend %poi;
-}
-#poi[zoom >= $poi_rank_all_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 70]::poi {
-  shield-placement-priority: (20000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
-  @extend %poi;
-}
-#poi[zoom >= $poi_rank70_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 30][rank <= 70]::poi {
   shield-placement-priority: (20100000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= $poi_rank70_minzoom][class = 'shop'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30]::poi {
+#poi[zoom >= $poi_bus_label_minzoom][class = 'bus']::poi {
   shield-placement-priority: (20200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= $poi_rank30_minzoom][zoom < $poi_rank30_label_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30][class != 'shop']::poi {
-  shield-name: '';
+#poi[zoom >= $poi_rank_all_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'tree'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 70]::poi {
   shield-placement-priority: (20300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= $poi_rank30_label_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30][class != 'shop']::poi {
+#poi[zoom >= $poi_rank70_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'tree'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 30][rank <= 70]::poi {
   shield-placement-priority: (20400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= $poi_rank30_minzoom][class = 'bar'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+#poi[zoom >= $poi_rank70_minzoom][class = 'shop'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30]::poi {
   shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= $poi_rank30_minzoom][class = 'college'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
-  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
-  @extend %poi;
-}
-#poi[zoom >= $poi_rank30_minzoom][class = 'parking'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
-  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
-  @extend %poi;
-}
-#poi[zoom >= $poi_rank30_minzoom][class = 'restaurant'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
-  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
-  @extend %poi;
-}
-#poi[zoom >= $poi_rank30_minzoom][class = 'school'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
-  shield-placement-priority: (20500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
-  @extend %poi;
-}
-#poi[zoom >= $poi_rank10_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10][class != 'bar'][class != 'college'][class != 'parking'][class != 'restaurant'][class != 'school']::poi {
+#poi[zoom >= $poi_rank30_minzoom][zoom < $poi_rank30_label_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'tree'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30][class != 'shop']::poi {
+  shield-name: '';
   shield-placement-priority: (20600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 0]::poi {
+#poi[zoom >= $poi_rank30_label_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'tree'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank > 10][rank <= 30][class != 'shop']::poi {
   shield-placement-priority: (20700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 1]::poi {
+#poi[zoom >= $poi_rank30_minzoom][class = 'bar'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
   shield-placement-priority: (20800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'college'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'parking'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'restaurant'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank30_minzoom][class = 'school'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10]::poi {
+  shield-placement-priority: (20800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= $poi_rank10_minzoom][class != 'aerialway'][class != 'airfield'][class != 'airport'][class != 'bus'][class != 'campsite'][class != 'drinking_water'][class != 'ferry'][class != 'harbor'][class != 'heliport'][class != 'lighthouse'][class != 'railway'][class != 'railway_light'][class != 'railway_metro'][class != 'shelter'][class != 'spring'][class != 'tree'][class != 'wilderness_hut'][subclass != 'kindergarten'][subclass != 'viewpoint'][rank <= 10][class != 'bar'][class != 'college'][class != 'parking'][class != 'restaurant'][class != 'school']::poi {
+  shield-placement-priority: (20900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 0]::poi {
+  shield-placement-priority: (21000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  @extend %poi;
+}
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 1]::poi {
+  shield-placement-priority: (21100000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-allow-overlap: true;
   @extend %poi;
 }
 #poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 0]['param::show_caravan_site' = 1]::poi {
-  shield-placement-priority: (20900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 'param::campsite_min_zoom'][zoom >= 12][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 1]['param::show_caravan_site' = 1]::poi {
-  shield-placement-priority: (21000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-allow-overlap: true;
   @extend %poi;
 }
@@ -5056,36 +5086,36 @@ Map {
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'airfield'][subclass != 'tram_stop']::poi {
-  shield-placement-priority: (21200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'airport'][subclass != 'tram_stop']::poi {
-  shield-placement-priority: (21200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'heliport'][subclass != 'tram_stop']::poi {
-  shield-placement-priority: (21200000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= $poi_tram_minzoom][zoom < $poi_tram_label_minzoom][class = 'railway'][subclass = 'tram_stop']::poi {
   shield-name: '';
-  shield-placement-priority: (21300000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= $poi_tram_label_minzoom][class = 'railway'][subclass = 'tram_stop']::poi {
-  shield-placement-priority: (21400000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21700000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 15][subclass = 'kindergarten']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_3 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_fill_4)));
-  shield-placement-priority: (21500000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21800000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-icon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-fill-eink-b25-[class]]) ?? @background)), (0.3, (([param::poi-icon-background-fill-eink-[class]]) ?? @glacier_low))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_3), (0.3, @poi_icon_fill_3))));
   shield-icon-background-border-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([param::poi-icon-background-border-fill-eink-b25-[class]]) ?? @glacier_low)), (0.3, (([param::poi-icon-background-border-fill-eink-[class]]) ?? @background))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'drinking_water']['param::highlight_drinking_water' = 1]::poi {
-  shield-placement-priority: (21600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-image-scale: (((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))) / 2.0);
   shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))));
@@ -5094,7 +5124,7 @@ Map {
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'spring']['param::highlight_drinking_water' = 1]::poi {
-  shield-placement-priority: (21600000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (21900000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
   shield-file: ([param::poi-t0-[class]] ?? [param::glyph-[class]]);
   shield-image-scale: (((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))) / 2.0);
   shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? 0.5599999999999999 : (([param::poiStyle] = 'plain') ? 0.84 : 0.5599999999999999))));
@@ -5111,7 +5141,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21700000;
+  text-placement-priority: 22000000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5129,7 +5159,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21700000;
+  text-placement-priority: 22000000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5147,7 +5177,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21800000;
+  text-placement-priority: 22100000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5165,7 +5195,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21800000;
+  text-placement-priority: 22100000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5183,7 +5213,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21900000;
+  text-placement-priority: 22200000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5201,7 +5231,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 21900000;
+  text-placement-priority: 22200000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5219,7 +5249,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22000000;
+  text-placement-priority: 22300000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5237,7 +5267,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22000000;
+  text-placement-priority: 22300000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5255,7 +5285,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22100000;
+  text-placement-priority: 22400000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5273,7 +5303,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22100000;
+  text-placement-priority: 22400000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5291,7 +5321,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22200000;
+  text-placement-priority: 22500000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5309,7 +5339,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22200000;
+  text-placement-priority: 22500000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5327,7 +5357,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22300000;
+  text-placement-priority: 22600000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5345,7 +5375,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22300000;
+  text-placement-priority: 22600000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5363,7 +5393,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22400000;
+  text-placement-priority: 22700000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5381,7 +5411,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22400000;
+  text-placement-priority: 22700000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5399,7 +5429,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22500000;
+  text-placement-priority: 22800000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5417,7 +5447,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22500000;
+  text-placement-priority: 22800000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5435,7 +5465,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22600000;
+  text-placement-priority: 22900000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5453,7 +5483,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22600000;
+  text-placement-priority: 22900000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5471,7 +5501,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22700000;
+  text-placement-priority: 23000000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5489,7 +5519,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22700000;
+  text-placement-priority: 23000000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5507,7 +5537,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22800000;
+  text-placement-priority: 23100000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5525,7 +5555,7 @@ Map {
   text-collision-padding: (1 * 2);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
-  text-placement-priority: 22800000;
+  text-placement-priority: 23100000;
   text-min-distance: @trail_spacing;
   text-background-fill: @road_background_fill;
   text-background-border-fill: @trail_background_border_fill;
@@ -5545,7 +5575,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 22900000;
+  text-placement-priority: 23200000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5560,7 +5590,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 23000000;
+  text-placement-priority: 23300000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5577,7 +5607,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 23100000;
+  text-placement-priority: 23400000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5594,7 +5624,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 23200000;
+  text-placement-priority: 23500000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5611,7 +5641,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 23300000;
+  text-placement-priority: 23600000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5628,7 +5658,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 23400000;
+  text-placement-priority: 23700000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5645,7 +5675,7 @@ Map {
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  text-placement-priority: 23400000;
+  text-placement-priority: 23700000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
@@ -5654,7 +5684,7 @@ Map {
   shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
 '), ('' + [ele])), ' m');
   shield-face-name: @font_regular;
-  shield-size: @text_size;
+  shield-size: @shield_size;
   shield-horizontal-alignment: 'middle';
   shield-vertical-alignment: 'top';
   shield-text-dx: 0;
@@ -5664,7 +5694,7 @@ Map {
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: (23500000 + (([param::poi-boost-[class]]) ?? (0)));
+  shield-placement-priority: (23800000 + (([param::poi-boost-[class]]) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
   shield-file: url('icons/peak.png');
@@ -5688,7 +5718,7 @@ Map {
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: (23600000 + (([param::poi-boost-[class]]) ?? (0)));
+  shield-placement-priority: (23900000 + (([param::poi-boost-[class]]) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
   shield-file: url('icons/peak.png');
@@ -5710,9 +5740,9 @@ Map {
   shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_night)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
-  shield-halo-radius: 1;
+  shield-halo-radius: @marker_stroke_width;
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: (23700000 + (([param::poi-boost-[class]]) ?? (0)));
+  shield-placement-priority: (24000000 + (([param::poi-boost-[class]]) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
   shield-file: url('icons/peak.png');
@@ -5730,7 +5760,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23800000;
+  text-placement-priority: 24100000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5744,7 +5774,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23800000;
+  text-placement-priority: 24100000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5758,7 +5788,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23800000;
+  text-placement-priority: 24100000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5774,7 +5804,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23900000;
+  text-placement-priority: 24200000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5790,7 +5820,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 23900000;
+  text-placement-priority: 24200000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5806,7 +5836,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24000000;
+  text-placement-priority: 24300000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5820,7 +5850,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24100000;
+  text-placement-priority: 24400000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5834,7 +5864,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24100000;
+  text-placement-priority: 24400000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5848,7 +5878,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24200000;
+  text-placement-priority: 24500000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5862,7 +5892,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24300000;
+  text-placement-priority: 24600000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5876,7 +5906,7 @@ Map {
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  shield-placement-priority: 24400000;
+  shield-placement-priority: 24700000;
   shield-collision-padding: 2;
   shield-wrap-before: true;
   shield-file: ([param::place-town-dot-t0-[capital]] ?? 'icons/dot.png');
@@ -5896,7 +5926,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24500000;
+  text-placement-priority: 24800000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5910,7 +5940,7 @@ Map {
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  shield-placement-priority: 24600000;
+  shield-placement-priority: 24900000;
   shield-collision-padding: 2;
   shield-wrap-before: true;
   shield-file: ([param::place-city-dot-t0-[capital]] ?? 'icons/dot.png');
@@ -5932,7 +5962,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24700000;
+  text-placement-priority: 25000000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5948,7 +5978,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24700000;
+  text-placement-priority: 25000000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5962,7 +5992,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24800000;
+  text-placement-priority: 25100000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
@@ -5976,7 +6006,7 @@ Map {
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
-  text-placement-priority: 24900000;
+  text-placement-priority: 25200000;
   text-collision-padding: 2;
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);

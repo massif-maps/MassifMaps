@@ -6,7 +6,7 @@ key on per layer to fold it into one project.json table - see the style's README
 import json
 from collections import OrderedDict
 
-from lib import boosted, by_hour, gate, get, layer, zoom_ramp
+from lib import boosted, by_hour, gate, get, layer, scaled, zoom_ramp
 
 # Standard's poi-label text-color, read off mapbox/standard: night (brightness 0.25) and day (0.3).
 # disc: Standard's day disc, a shade lighter than its text (day); night: both at night
@@ -41,7 +41,8 @@ CLASSES = {
                           'nightclub', 'pitch', 'skiing', 'soccer', 'stadium', 'swimming', 'tennis'],
     # adit, cave_entrance, fort...: Alpimaps' planetiler keeps OSM's value where OpenMapTiles has no class
     'park_like': ['adit', 'beach', 'bird_hide', 'campsite', 'cave_entrance', 'cemetery', 'dog_park', 'garden',
-                  'mountain', 'park', 'playground', 'ranger_station', 'viewpoint', 'volcano', 'waterfall', 'wetland'],
+                  'mountain', 'park', 'playground', 'ranger_station', 'tree', 'viewpoint', 'volcano', 'waterfall',
+                  'wetland'],
     'water': ['drinking_water', 'spring', 'water', 'water_point', 'watering_place'],
     'medical': ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary'],
     'education': ['college', 'library', 'school'],
@@ -204,7 +205,7 @@ OTHER_SHELTER = ['all', ['==', get('class'), 'shelter'], ['!=', get('shelter_typ
                  *[['!=', get('shelter_type'), t] for t in OUTDOOR_SHELTERS]]
 # Drawn by a layer of their own at every zoom, so the ladder leaves them out. Excluded rather than
 # listed: a class list is a when() per feature, an exclusion a few prunable selectors.
-OWN_LAYER = sorted({'bus', 'campsite', 'drinking_water', 'shelter', 'spring', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
+OWN_LAYER = sorted({'bus', 'campsite', 'drinking_water', 'shelter', 'spring', 'tree', 'wilderness_hut'} | {c for _, _, cs in STATION_LAYERS for c in cs})
 
 # a viewpoint is an attraction to OpenMapTiles: its own glyph at every zoom (a ruin keeps the castle, as Standard)
 ICON = ['match', get('subclass'), ['florist', 'furniture', 'viewpoint'], get('subclass'), get('class')]
@@ -269,12 +270,13 @@ NAME = ['coalesce', get('name'), get('name_int')]
 
 
 def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overlap=False, scale=1,
-              category=None):
+              category=None, extra=None):
+    """`scale` may be a zoom ramp; `extra` overrides the label's layout"""
     layout = {
         # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
         # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
         'icon-image': icon if v.flags.get('mono') else ['concat', icon, '-poi'],
-        'icon-size': 0.4,
+        'icon-size': scaled(scale, 0.4) if isinstance(scale, list) else 0.4,
         'text-field': text,
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
         'text-font': 'medium',
@@ -286,13 +288,15 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
         'text-justify': 'auto',
         'text-optional': True,
         **({'icon-allow-overlap': True} if overlap else {}),
+        **(extra or {}),
     }
     # on imagery the ground is dark by day as well, so the label keeps its night pair
     dark = v.flags.get('dark_ground', False)
     mono = v.flags.get('mono', False)
     massif_layout = {'icon-image': ['image', icon, {'params': mono_params() if mono else icon_params(category)}]}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
-    massif_layout['icon-size'] = 0.4 * scale if mono else ['match', ['config', 'poiStyle'], 'plain', 0.6 * scale, 0.4 * scale]
+    massif_layout['icon-size'] = scaled(scale, 0.4) if mono else \
+        ['match', ['config', 'poiStyle'], 'plain', scaled(scale, 0.6), scaled(scale, 0.4)]
     return boosted(layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
                  paint={'text-color': MONO_INK if mono else night_color(category) if dark else day_color(category),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
@@ -398,6 +402,37 @@ def water_highlight(v):
     lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], v,
                     icon=MOUNTAIN_ICON, overlap=True, scale=1.4)
     return [gate(lay, v, 'highlight_drinking_water')]
+
+
+TREE = ['==', get('class'), 'tree']
+TREE_DOT = 'hsl(100, 45%, 60%)'
+# a 0.4 badge's glyph at z17, growing with the zoom
+TREE_SCALE = zoom_ramp(17, 1, 22, 2)
+# under every label on the SDK: the layers must sit with the other POIs, `poi` cannot be split (README)
+TREE_SINK = 10000000
+
+
+def sunk(lay):
+    """the layer's placement priority TREE_SINK lower, an app's poi-boost still added (SDK only)"""
+    key = lay['metadata']['massif:layout']['symbol-sort-key']
+    lay['metadata']['massif:layout']['symbol-sort-key'] = ['-', ['-', key[1], TREE_SINK]]
+    return lay
+
+
+def trees(v):
+    """MapTiler's ladder: an unnamed tree (one MultiPoint per tile, `class` only) is a dot from z16 and
+    the glyph from z18, a named one the glyph and its name from z17, every other label winning over
+    them. Hybrid draws only the named ones: the imagery shows the rest."""
+    named = sunk(poi_layer('poi-tree-named', 17, ['all', TREE, ['has', 'name']], v, scale=TREE_SCALE,
+                           extra={'text-font': 'italic', 'text-size': 11, 'text-variable-anchor': ['top']}))
+    if v.flags.get('dark_ground'):
+        return [named]
+    unnamed = ['all', TREE, ['!', ['has', 'name']]]
+    dot = layer('poi-tree-dot', 'circle', 'poi', minzoom=16, maxzoom=18, filter=unnamed,
+                paint={'circle-color': MONO_INK if v.flags.get('mono') else TREE_DOT,
+                       'circle-radius': zoom_ramp(16, 1.5, 18, 2.5),
+                       'circle-stroke-color': HALO_DAY, 'circle-stroke-width': 1})
+    return [dot, sunk(poi_layer('poi-tree', 18, unnamed, v, text='', scale=TREE_SCALE)), named]
 
 
 def stop(id, filter, zooms, const, v):

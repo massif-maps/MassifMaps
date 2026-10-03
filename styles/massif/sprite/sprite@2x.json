@@ -1,6 +1,6 @@
 {
   "dot-capital": {
-    "x": 708,
+    "x": 904,
     "y": 2830,
     "width": 24,
     "height": 24,
@@ -8,7 +8,7 @@
     "visible": true
   },
   "dot": {
-    "x": 786,
+    "x": 982,
     "y": 2830,
     "width": 16,
     "height": 16,
@@ -16,39 +16,39 @@
     "visible": true
   },
   "oneway-reverse-ink": {
-    "x": 804,
-    "y": 2830,
+    "x": 0,
+    "y": 2928,
     "width": 32,
     "height": 16,
     "pixelRatio": 2,
     "visible": true
   },
   "oneway-reverse-dark": {
-    "x": 838,
-    "y": 2830,
+    "x": 34,
+    "y": 2928,
     "width": 32,
     "height": 16,
     "pixelRatio": 2,
     "visible": true
   },
   "oneway-ink": {
-    "x": 872,
-    "y": 2830,
+    "x": 68,
+    "y": 2928,
     "width": 32,
     "height": 16,
     "pixelRatio": 2,
     "visible": true
   },
   "oneway-dark": {
-    "x": 906,
-    "y": 2830,
+    "x": 102,
+    "y": 2928,
     "width": 32,
     "height": 16,
     "pixelRatio": 2,
     "visible": true
   },
   "peak": {
-    "x": 760,
+    "x": 956,
     "y": 2830,
     "width": 24,
     "height": 20,
@@ -56,7 +56,7 @@
     "visible": true
   },
   "pattern-cemetery": {
-    "x": 640,
+    "x": 836,
     "y": 2830,
     "width": 32,
     "height": 32,
@@ -72,7 +72,7 @@
     "visible": true
   },
   "pattern-grass": {
-    "x": 734,
+    "x": 930,
     "y": 2830,
     "width": 24,
     "height": 24,
@@ -80,7 +80,7 @@
     "visible": true
   },
   "pattern-military": {
-    "x": 674,
+    "x": 870,
     "y": 2830,
     "width": 32,
     "height": 32,
@@ -88,8 +88,8 @@
     "visible": true
   },
   "pattern-park": {
-    "x": 940,
-    "y": 2830,
+    "x": 136,
+    "y": 2928,
     "width": 16,
     "height": 16,
     "pixelRatio": 2,
@@ -1695,8 +1695,24 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "veterinary": {
+  "tree": {
     "x": 294,
+    "y": 2634,
+    "width": 96,
+    "height": 96,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "tree-poi": {
+    "x": 392,
+    "y": 2634,
+    "width": 96,
+    "height": 96,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "veterinary": {
+    "x": 490,
     "y": 2634,
     "width": 96,
     "height": 96,
@@ -1704,7 +1720,7 @@
     "visible": true
   },
   "veterinary-poi": {
-    "x": 392,
+    "x": 588,
     "y": 2634,
     "width": 96,
     "height": 96,
@@ -1712,7 +1728,7 @@
     "visible": true
   },
   "viewpoint": {
-    "x": 490,
+    "x": 686,
     "y": 2634,
     "width": 96,
     "height": 96,
@@ -1720,7 +1736,7 @@
     "visible": true
   },
   "viewpoint-poi": {
-    "x": 588,
+    "x": 784,
     "y": 2634,
     "width": 96,
     "height": 96,
@@ -1728,7 +1744,7 @@
     "visible": true
   },
   "volcano": {
-    "x": 686,
+    "x": 882,
     "y": 2634,
     "width": 96,
     "height": 96,
@@ -1736,22 +1752,6 @@
     "visible": true
   },
   "volcano-poi": {
-    "x": 784,
-    "y": 2634,
-    "width": 96,
-    "height": 96,
-    "pixelRatio": 2,
-    "visible": true
-  },
-  "waste_basket": {
-    "x": 882,
-    "y": 2634,
-    "width": 96,
-    "height": 96,
-    "pixelRatio": 2,
-    "visible": true
-  },
-  "waste_basket-poi": {
     "x": 0,
     "y": 2732,
     "width": 96,
@@ -1759,7 +1759,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "water": {
+  "waste_basket": {
     "x": 98,
     "y": 2732,
     "width": 96,
@@ -1767,7 +1767,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "water-poi": {
+  "waste_basket-poi": {
     "x": 196,
     "y": 2732,
     "width": 96,
@@ -1775,7 +1775,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "waterfall": {
+  "water": {
     "x": 294,
     "y": 2732,
     "width": 96,
@@ -1783,7 +1783,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "waterfall-poi": {
+  "water-poi": {
     "x": 392,
     "y": 2732,
     "width": 96,
@@ -1791,7 +1791,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "wetland": {
+  "waterfall": {
     "x": 490,
     "y": 2732,
     "width": 96,
@@ -1799,7 +1799,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "wetland-poi": {
+  "waterfall-poi": {
     "x": 588,
     "y": 2732,
     "width": 96,
@@ -1807,7 +1807,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "windmill": {
+  "wetland": {
     "x": 686,
     "y": 2732,
     "width": 96,
@@ -1815,7 +1815,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "windmill-poi": {
+  "wetland-poi": {
     "x": 784,
     "y": 2732,
     "width": 96,
@@ -1823,7 +1823,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "zoo": {
+  "windmill": {
     "x": 882,
     "y": 2732,
     "width": 96,
@@ -1831,7 +1831,7 @@
     "pixelRatio": 2,
     "visible": true
   },
-  "zoo-poi": {
+  "windmill-poi": {
     "x": 0,
     "y": 2830,
     "width": 96,
@@ -1839,8 +1839,24 @@
     "pixelRatio": 2,
     "visible": true
   },
+  "zoo": {
+    "x": 98,
+    "y": 2830,
+    "width": 96,
+    "height": 96,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "zoo-poi": {
+    "x": 196,
+    "y": 2830,
+    "width": 96,
+    "height": 96,
+    "pixelRatio": 2,
+    "visible": true
+  },
   "shield-exit": {
-    "x": 590,
+    "x": 786,
     "y": 2830,
     "width": 48,
     "height": 36,
@@ -1860,7 +1876,7 @@
     ]
   },
   "shield-plate-neutral": {
-    "x": 194,
+    "x": 390,
     "y": 2830,
     "width": 48,
     "height": 40,
@@ -1880,7 +1896,7 @@
     ]
   },
   "shield-plate-mono": {
-    "x": 244,
+    "x": 440,
     "y": 2830,
     "width": 48,
     "height": 40,
@@ -1900,7 +1916,7 @@
     ]
   },
   "shield-plate-red": {
-    "x": 294,
+    "x": 490,
     "y": 2830,
     "width": 48,
     "height": 40,
@@ -1920,7 +1936,7 @@
     ]
   },
   "shield-plate-yellow": {
-    "x": 344,
+    "x": 540,
     "y": 2830,
     "width": 48,
     "height": 40,
@@ -1940,7 +1956,7 @@
     ]
   },
   "shield-plate-blue": {
-    "x": 394,
+    "x": 590,
     "y": 2830,
     "width": 48,
     "height": 40,
@@ -1960,7 +1976,7 @@
     ]
   },
   "shield-plate-green": {
-    "x": 444,
+    "x": 640,
     "y": 2830,
     "width": 48,
     "height": 40,
@@ -1980,7 +1996,7 @@
     ]
   },
   "shield-us-highway-2": {
-    "x": 494,
+    "x": 690,
     "y": 2830,
     "width": 40,
     "height": 40,
@@ -1994,7 +2010,7 @@
     ]
   },
   "shield-us-highway-3": {
-    "x": 536,
+    "x": 732,
     "y": 2830,
     "width": 52,
     "height": 40,
@@ -2008,7 +2024,7 @@
     ]
   },
   "shield-us-interstate-2": {
-    "x": 98,
+    "x": 294,
     "y": 2830,
     "width": 40,
     "height": 44,
@@ -2022,7 +2038,7 @@
     ]
   },
   "shield-us-interstate-3": {
-    "x": 140,
+    "x": 336,
     "y": 2830,
     "width": 52,
     "height": 44,

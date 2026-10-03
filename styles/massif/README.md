@@ -260,8 +260,9 @@ POI ranking (SDK only; MapLibre ignores it):
   it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
   (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
   for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
-  set). A priority is the layer's position × 100000: the airport sits at 16.5M, POIs span 18.5M to
-  21.6M, road and trail names reach 23.4M, summits 23.5M–23.7M, place names 24.9M. So `100000` lifts a
+  set). A priority is the layer's position × 100000: trees sit at 8.6M–8.7M (their layer's less
+  `TREE_SINK`), the airport at 16.5M, POIs span 18.8M to 21.9M, road and trail names reach 23.7M,
+  summits 23.8M–24.0M, place names 25.2M. So `100000` lifts a
   class one layer, `3000000` over every unboosted POI and most road and trail names (not a summit), and a negative value demotes. Whole numbers: the
   culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
   rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
@@ -394,6 +395,19 @@ rank ≤ 10 at z14 (eating, bars, parking and schools at z15), ≤ 30 at z15 as 
 The ladder excludes the classes those layers draw with a chain of `!=` rather than listing the ones
 it keeps: a list is an `in`, a `when()` per feature, where the chain brackets. A class with no glyph
 draws its name, as on Liberty.
+
+**Trees yield to the other labels, as on MapTiler.** A tileset built with planetiler's `poi_trees`
+carries `class=tree` in `poi` from z14: the unnamed ones packed into ONE MultiPoint per tile holding
+only the class, the named ones points of their own. An unnamed tree is a light green dot in a white
+ring from z16, then the tree glyph from z18, growing with the zoom; a named one is the glyph and its
+name, small and italic, from z17. The glyph is Maki's `park` drawing, bare in nature's green (`tree`
+is street furniture, `NO_BACKGROUND`). Their layers (`pois.trees`) come right under the POIs', so
+every POI wins a collision with a tree; on the SDK their priority is also sunk 10M (`TREE_SINK`)
+under every other label, house numbers and shields included, which MapLibre, ordering by layer
+alone, cannot do. They cannot simply be the bottom labels: every POI layer shares `::poi`, and a
+source-layer drawn at two depths needs one attachment per depth. The dot is a circle, drawn
+whatever is around it and in nobody's way. The ladder excludes `tree`, so a named tree, which the
+tiles rank, is drawn once. Hybrid draws only the named ones: the imagery shows the rest.
 
 **A child project moves any of it.** Every POI layer extends ONE template, `%poi`, and draws into
 ONE attachment, `::poi` (`massif:template`, `massif:attachment`), so a child widens a class with a
@@ -580,6 +594,11 @@ Everything else is drawn for this project. No
 MapTiler or Mapbox **style** is copied. The style itself is [MIT-0](LICENSE).
 
 ## Owed
+
+- **An unnamed tree's glyph can go missing on the SDK from z18.** The SDK gives each point of a
+  MultiPoint the label id `10 × feature id + part index`, the index counted after the overzoom clip,
+  so the same index in two clipped tiles is the same label and only one of the trees is placed
+  (`ShieldSymbolizer.cpp`, `MarkersSymbolizer.cpp`). The z16-18 dot is tile geometry and unaffected.
 
 - **No relief in streets.** Standard's calm at z7–z11 in the Alps is mostly its hillshade. On the
   SDK that is an app layer (`HillshadeRasterTileLayer`), so only outdoor and topo carry it, as

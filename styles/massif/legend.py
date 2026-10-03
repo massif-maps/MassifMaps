@@ -100,6 +100,8 @@ def spec():
             *[item(key, FILL_LABELS[key], 'landuse', 'polygon', {'class': cls})
               for key, cls in [('residential', 'residential'), ('commercial', 'commercial'),
                                ('industrial', 'industrial'), ('cemetery', 'cemetery'), ('military', 'military')]],
+            # named: hybrid draws no unnamed tree
+            item('tree', 'Tree', 'poi', 'point', {'class': 'tree', 'name': 'Chêne'}, zoom=17),
         ]},
         {'id': 'outdoor', 'label': 'Mountain', 'zoom': 14, 'items': [
             item('peak', 'Summit', 'mountain_peak', 'point', {'class': 'peak', 'name': 'Grand Veymont', 'ele': 2341, 'rank': 1}),

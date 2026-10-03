@@ -17288,6 +17288,3061 @@
       }
     },
     {
+      "id": "poi-tree-dot",
+      "type": "circle",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "maxzoom": 18,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "tree"
+        ],
+        [
+          "!",
+          [
+            "has",
+            "name"
+          ]
+        ]
+      ],
+      "paint": {
+        "circle-color": "hsl(100, 45%, 60%)",
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          1.5,
+          18,
+          2.5
+        ],
+        "circle-stroke-color": "hsl(0, 0%, 100%)",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "poi-tree",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 18,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "tree"
+        ],
+        [
+          "!",
+          [
+            "has",
+            "name"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "concat",
+          [
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture",
+              "viewpoint"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
+          ],
+          "-poi"
+        ],
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          17,
+          0.4,
+          22,
+          0.8
+        ],
+        "text-field": "",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "alcohol_shop",
+            "bakery",
+            "bar",
+            "beer",
+            "butcher",
+            "cafe",
+            "fast_food",
+            "grocery",
+            "ice_cream",
+            "restaurant",
+            "sushi"
+          ],
+          "hsl(30, 100%, 48%)",
+          [
+            "clothing_store",
+            "florist",
+            "furniture",
+            "gift",
+            "hairdresser",
+            "laundry",
+            "shop"
+          ],
+          "hsl(210, 75%, 53%)",
+          [
+            "amusement_park",
+            "aquarium",
+            "archaeological_site",
+            "art_gallery",
+            "attraction",
+            "castle",
+            "cinema",
+            "fort",
+            "fountain",
+            "monument",
+            "museum",
+            "music",
+            "ruins",
+            "theatre",
+            "windmill",
+            "zoo"
+          ],
+          "hsl(320, 85%, 60%)",
+          [
+            "alpine_hut",
+            "atm",
+            "bank",
+            "bicycle",
+            "bicycle_rental",
+            "car",
+            "embassy",
+            "fire_station",
+            "fuel",
+            "lodging",
+            "parking",
+            "parking_garage",
+            "police",
+            "post",
+            "prison",
+            "town_hall",
+            "wilderness_hut"
+          ],
+          "hsl(250, 75%, 60%)",
+          [
+            "american_football",
+            "baseball",
+            "basketball",
+            "cricket",
+            "golf",
+            "nightclub",
+            "pitch",
+            "skiing",
+            "soccer",
+            "stadium",
+            "swimming",
+            "tennis"
+          ],
+          "hsl(190, 75%, 38%)",
+          [
+            "adit",
+            "beach",
+            "bird_hide",
+            "campsite",
+            "cave_entrance",
+            "cemetery",
+            "dog_park",
+            "mountain",
+            "park",
+            "playground",
+            "ranger_station",
+            "viewpoint",
+            "volcano",
+            "waterfall",
+            "wetland"
+          ],
+          "hsl(110, 70%, 28%)",
+          [
+            "dentist",
+            "doctors",
+            "hospital",
+            "pharmacy",
+            "veterinary"
+          ],
+          "hsl(0, 90%, 60%)",
+          [
+            "college",
+            "library",
+            "school"
+          ],
+          "hsl(30, 50%, 38%)",
+          [
+            "spring",
+            "water",
+            "water_point",
+            "watering_place"
+          ],
+          "hsl(200, 85%, 40%)",
+          [
+            "aerialway",
+            "airfield",
+            "airport",
+            "bus",
+            "ferry",
+            "harbor",
+            "heliport",
+            "lighthouse",
+            "railway",
+            "railway_light",
+            "railway_metro"
+          ],
+          "hsl(225, 60%, 48%)",
+          "place_of_worship",
+          "hsl(210, 20%, 43%)",
+          "hsl(210, 20%, 43%)"
+        ],
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 1.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "config",
+                    "poiStyle"
+                  ],
+                  "plain",
+                  "transparent",
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 55%, 65%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 55%, 78%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(40, 95%, 70%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(260, 70%, 75%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 60%, 70%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 70%, 75%)",
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 70%, 75%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 70%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 70%, 70%)",
+                      [
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 80%, 72%)",
+                      "hsl(210, 20%, 70%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 70%, 40%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 60%, 58%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(30, 100%, 60%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(250, 75%, 72%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 75%, 50%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 85%, 72%)",
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 75%, 65%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 50%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 94%, 72%)",
+                      [
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 85%, 45%)",
+                      "hsl(200, 20%, 55%)"
+                    ]
+                  ]
+                ],
+                "background-stroke": [
+                  "match",
+                  [
+                    "config",
+                    "poiStyle"
+                  ],
+                  "plain",
+                  "transparent",
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      "hsl(0, 0%, 12%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      "hsl(0, 0%, 100%)"
+                    ]
+                  ]
+                ],
+                "icon": [
+                  "match",
+                  [
+                    "config",
+                    "poiStyle"
+                  ],
+                  "plain",
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "garden",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "tree",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 55%, 65%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 55%, 78%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(40, 95%, 70%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(260, 70%, 75%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 60%, 70%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 70%, 75%)",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 70%, 75%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 70%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 70%, 70%)",
+                      [
+                        "drinking_water",
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 80%, 72%)",
+                      "hsl(210, 20%, 70%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "garden",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "tree",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 70%, 40%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 60%, 58%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(30, 100%, 60%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(250, 75%, 72%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 75%, 50%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 85%, 72%)",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 75%, 65%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 50%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 94%, 72%)",
+                      [
+                        "drinking_water",
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 85%, 45%)",
+                      "hsl(200, 20%, 55%)"
+                    ]
+                  ],
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "waste_basket"
+                      ],
+                      "hsl(210, 20%, 70%)",
+                      "drinking_water",
+                      "hsl(200, 80%, 72%)",
+                      [
+                        "garden",
+                        "tree"
+                      ],
+                      "hsl(110, 55%, 65%)",
+                      "hsl(0, 0%, 12%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "waste_basket"
+                      ],
+                      "hsl(200, 20%, 55%)",
+                      "drinking_water",
+                      "hsl(200, 85%, 45%)",
+                      [
+                        "garden",
+                        "tree"
+                      ],
+                      "hsl(110, 70%, 40%)",
+                      "hsl(0, 0%, 100%)"
+                    ]
+                  ]
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "zoom"
+              ],
+              17,
+              0.6,
+              22,
+              1.2
+            ],
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "zoom"
+              ],
+              17,
+              0.4,
+              22,
+              0.8
+            ]
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "alcohol_shop",
+                "bakery",
+                "bar",
+                "beer",
+                "butcher",
+                "cafe",
+                "fast_food",
+                "grocery",
+                "ice_cream",
+                "restaurant",
+                "sushi"
+              ],
+              "hsl(40, 95%, 70%)",
+              [
+                "clothing_store",
+                "florist",
+                "furniture",
+                "gift",
+                "hairdresser",
+                "laundry",
+                "shop"
+              ],
+              "hsl(210, 70%, 75%)",
+              [
+                "amusement_park",
+                "aquarium",
+                "archaeological_site",
+                "art_gallery",
+                "attraction",
+                "castle",
+                "cinema",
+                "fort",
+                "fountain",
+                "monument",
+                "museum",
+                "music",
+                "ruins",
+                "theatre",
+                "windmill",
+                "zoo"
+              ],
+              "hsl(320, 70%, 75%)",
+              [
+                "alpine_hut",
+                "atm",
+                "bank",
+                "bicycle",
+                "bicycle_rental",
+                "car",
+                "embassy",
+                "fire_station",
+                "fuel",
+                "lodging",
+                "parking",
+                "parking_garage",
+                "police",
+                "post",
+                "prison",
+                "town_hall",
+                "wilderness_hut"
+              ],
+              "hsl(260, 70%, 75%)",
+              [
+                "american_football",
+                "baseball",
+                "basketball",
+                "cricket",
+                "golf",
+                "nightclub",
+                "pitch",
+                "skiing",
+                "soccer",
+                "stadium",
+                "swimming",
+                "tennis"
+              ],
+              "hsl(190, 60%, 70%)",
+              [
+                "adit",
+                "beach",
+                "bird_hide",
+                "campsite",
+                "cave_entrance",
+                "cemetery",
+                "dog_park",
+                "mountain",
+                "park",
+                "playground",
+                "ranger_station",
+                "viewpoint",
+                "volcano",
+                "waterfall",
+                "wetland"
+              ],
+              "hsl(110, 55%, 65%)",
+              [
+                "dentist",
+                "doctors",
+                "hospital",
+                "pharmacy",
+                "veterinary"
+              ],
+              "hsl(0, 70%, 70%)",
+              [
+                "college",
+                "library",
+                "school"
+              ],
+              "hsl(30, 50%, 70%)",
+              [
+                "spring",
+                "water",
+                "water_point",
+                "watering_place"
+              ],
+              "hsl(200, 80%, 72%)",
+              [
+                "aerialway",
+                "airfield",
+                "airport",
+                "bus",
+                "ferry",
+                "harbor",
+                "heliport",
+                "lighthouse",
+                "railway",
+                "railway_light",
+                "railway_metro"
+              ],
+              "hsl(225, 55%, 78%)",
+              "place_of_worship",
+              "hsl(210, 20%, 70%)",
+              "hsl(210, 20%, 70%)"
+            ],
+            0.3,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "alcohol_shop",
+                "bakery",
+                "bar",
+                "beer",
+                "butcher",
+                "cafe",
+                "fast_food",
+                "grocery",
+                "ice_cream",
+                "restaurant",
+                "sushi"
+              ],
+              "hsl(30, 100%, 48%)",
+              [
+                "clothing_store",
+                "florist",
+                "furniture",
+                "gift",
+                "hairdresser",
+                "laundry",
+                "shop"
+              ],
+              "hsl(210, 75%, 53%)",
+              [
+                "amusement_park",
+                "aquarium",
+                "archaeological_site",
+                "art_gallery",
+                "attraction",
+                "castle",
+                "cinema",
+                "fort",
+                "fountain",
+                "monument",
+                "museum",
+                "music",
+                "ruins",
+                "theatre",
+                "windmill",
+                "zoo"
+              ],
+              "hsl(320, 85%, 60%)",
+              [
+                "alpine_hut",
+                "atm",
+                "bank",
+                "bicycle",
+                "bicycle_rental",
+                "car",
+                "embassy",
+                "fire_station",
+                "fuel",
+                "lodging",
+                "parking",
+                "parking_garage",
+                "police",
+                "post",
+                "prison",
+                "town_hall",
+                "wilderness_hut"
+              ],
+              "hsl(250, 75%, 60%)",
+              [
+                "american_football",
+                "baseball",
+                "basketball",
+                "cricket",
+                "golf",
+                "nightclub",
+                "pitch",
+                "skiing",
+                "soccer",
+                "stadium",
+                "swimming",
+                "tennis"
+              ],
+              "hsl(190, 75%, 38%)",
+              [
+                "adit",
+                "beach",
+                "bird_hide",
+                "campsite",
+                "cave_entrance",
+                "cemetery",
+                "dog_park",
+                "mountain",
+                "park",
+                "playground",
+                "ranger_station",
+                "viewpoint",
+                "volcano",
+                "waterfall",
+                "wetland"
+              ],
+              "hsl(110, 70%, 28%)",
+              [
+                "dentist",
+                "doctors",
+                "hospital",
+                "pharmacy",
+                "veterinary"
+              ],
+              "hsl(0, 90%, 60%)",
+              [
+                "college",
+                "library",
+                "school"
+              ],
+              "hsl(30, 50%, 38%)",
+              [
+                "spring",
+                "water",
+                "water_point",
+                "watering_place"
+              ],
+              "hsl(200, 85%, 40%)",
+              [
+                "aerialway",
+                "airfield",
+                "airport",
+                "bus",
+                "ferry",
+                "harbor",
+                "heliport",
+                "lighthouse",
+                "railway",
+                "railway_light",
+                "railway_metro"
+              ],
+              "hsl(225, 60%, 48%)",
+              "place_of_worship",
+              "hsl(210, 20%, 43%)",
+              "hsl(210, 20%, 43%)"
+            ]
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 5%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 5%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-tree-named",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "tree"
+        ],
+        [
+          "has",
+          "name"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "concat",
+          [
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture",
+              "viewpoint"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
+          ],
+          "-poi"
+        ],
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          17,
+          0.4,
+          22,
+          0.8
+        ],
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "alcohol_shop",
+            "bakery",
+            "bar",
+            "beer",
+            "butcher",
+            "cafe",
+            "fast_food",
+            "grocery",
+            "ice_cream",
+            "restaurant",
+            "sushi"
+          ],
+          "hsl(30, 100%, 48%)",
+          [
+            "clothing_store",
+            "florist",
+            "furniture",
+            "gift",
+            "hairdresser",
+            "laundry",
+            "shop"
+          ],
+          "hsl(210, 75%, 53%)",
+          [
+            "amusement_park",
+            "aquarium",
+            "archaeological_site",
+            "art_gallery",
+            "attraction",
+            "castle",
+            "cinema",
+            "fort",
+            "fountain",
+            "monument",
+            "museum",
+            "music",
+            "ruins",
+            "theatre",
+            "windmill",
+            "zoo"
+          ],
+          "hsl(320, 85%, 60%)",
+          [
+            "alpine_hut",
+            "atm",
+            "bank",
+            "bicycle",
+            "bicycle_rental",
+            "car",
+            "embassy",
+            "fire_station",
+            "fuel",
+            "lodging",
+            "parking",
+            "parking_garage",
+            "police",
+            "post",
+            "prison",
+            "town_hall",
+            "wilderness_hut"
+          ],
+          "hsl(250, 75%, 60%)",
+          [
+            "american_football",
+            "baseball",
+            "basketball",
+            "cricket",
+            "golf",
+            "nightclub",
+            "pitch",
+            "skiing",
+            "soccer",
+            "stadium",
+            "swimming",
+            "tennis"
+          ],
+          "hsl(190, 75%, 38%)",
+          [
+            "adit",
+            "beach",
+            "bird_hide",
+            "campsite",
+            "cave_entrance",
+            "cemetery",
+            "dog_park",
+            "mountain",
+            "park",
+            "playground",
+            "ranger_station",
+            "viewpoint",
+            "volcano",
+            "waterfall",
+            "wetland"
+          ],
+          "hsl(110, 70%, 28%)",
+          [
+            "dentist",
+            "doctors",
+            "hospital",
+            "pharmacy",
+            "veterinary"
+          ],
+          "hsl(0, 90%, 60%)",
+          [
+            "college",
+            "library",
+            "school"
+          ],
+          "hsl(30, 50%, 38%)",
+          [
+            "spring",
+            "water",
+            "water_point",
+            "watering_place"
+          ],
+          "hsl(200, 85%, 40%)",
+          [
+            "aerialway",
+            "airfield",
+            "airport",
+            "bus",
+            "ferry",
+            "harbor",
+            "heliport",
+            "lighthouse",
+            "railway",
+            "railway_light",
+            "railway_metro"
+          ],
+          "hsl(225, 60%, 48%)",
+          "place_of_worship",
+          "hsl(210, 20%, 43%)",
+          "hsl(210, 20%, 43%)"
+        ],
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 1.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "config",
+                    "poiStyle"
+                  ],
+                  "plain",
+                  "transparent",
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 55%, 65%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 55%, 78%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(40, 95%, 70%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(260, 70%, 75%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 60%, 70%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 70%, 75%)",
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 70%, 75%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 70%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 70%, 70%)",
+                      [
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 80%, 72%)",
+                      "hsl(210, 20%, 70%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 70%, 40%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 60%, 58%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(30, 100%, 60%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(250, 75%, 72%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 75%, 50%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 85%, 72%)",
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 75%, 65%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 50%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 94%, 72%)",
+                      [
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 85%, 45%)",
+                      "hsl(200, 20%, 55%)"
+                    ]
+                  ]
+                ],
+                "background-stroke": [
+                  "match",
+                  [
+                    "config",
+                    "poiStyle"
+                  ],
+                  "plain",
+                  "transparent",
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      "hsl(0, 0%, 12%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "drinking_water",
+                        "garden",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "tree",
+                        "waste_basket"
+                      ],
+                      "transparent",
+                      "hsl(0, 0%, 100%)"
+                    ]
+                  ]
+                ],
+                "icon": [
+                  "match",
+                  [
+                    "config",
+                    "poiStyle"
+                  ],
+                  "plain",
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "garden",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "tree",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 55%, 65%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 55%, 78%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(40, 95%, 70%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(260, 70%, 75%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 60%, 70%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 70%, 75%)",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 70%, 75%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 70%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 70%, 70%)",
+                      [
+                        "drinking_water",
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 80%, 72%)",
+                      "hsl(210, 20%, 70%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "adit",
+                        "beach",
+                        "bird_hide",
+                        "campsite",
+                        "cave_entrance",
+                        "cemetery",
+                        "dog_park",
+                        "garden",
+                        "mountain",
+                        "park",
+                        "playground",
+                        "ranger_station",
+                        "tree",
+                        "viewpoint",
+                        "volcano",
+                        "waterfall",
+                        "wetland"
+                      ],
+                      "hsl(110, 70%, 40%)",
+                      [
+                        "aerialway",
+                        "airfield",
+                        "airport",
+                        "bus",
+                        "ferry",
+                        "harbor",
+                        "heliport",
+                        "lighthouse",
+                        "railway",
+                        "railway_light",
+                        "railway_metro"
+                      ],
+                      "hsl(225, 60%, 58%)",
+                      [
+                        "alcohol_shop",
+                        "bakery",
+                        "bar",
+                        "beer",
+                        "butcher",
+                        "cafe",
+                        "fast_food",
+                        "grocery",
+                        "ice_cream",
+                        "restaurant",
+                        "sushi"
+                      ],
+                      "hsl(30, 100%, 60%)",
+                      [
+                        "alpine_hut",
+                        "atm",
+                        "bank",
+                        "bicycle",
+                        "bicycle_rental",
+                        "car",
+                        "embassy",
+                        "fire_station",
+                        "fuel",
+                        "lodging",
+                        "parking",
+                        "parking_garage",
+                        "police",
+                        "post",
+                        "prison",
+                        "town_hall",
+                        "wilderness_hut"
+                      ],
+                      "hsl(250, 75%, 72%)",
+                      [
+                        "american_football",
+                        "baseball",
+                        "basketball",
+                        "cricket",
+                        "golf",
+                        "nightclub",
+                        "pitch",
+                        "skiing",
+                        "soccer",
+                        "stadium",
+                        "swimming",
+                        "tennis"
+                      ],
+                      "hsl(190, 75%, 50%)",
+                      [
+                        "amusement_park",
+                        "aquarium",
+                        "archaeological_site",
+                        "art_gallery",
+                        "attraction",
+                        "castle",
+                        "cinema",
+                        "fort",
+                        "fountain",
+                        "monument",
+                        "museum",
+                        "music",
+                        "ruins",
+                        "theatre",
+                        "windmill",
+                        "zoo"
+                      ],
+                      "hsl(320, 85%, 72%)",
+                      [
+                        "clothing_store",
+                        "florist",
+                        "furniture",
+                        "gift",
+                        "hairdresser",
+                        "laundry",
+                        "shop"
+                      ],
+                      "hsl(210, 75%, 65%)",
+                      [
+                        "college",
+                        "library",
+                        "school"
+                      ],
+                      "hsl(30, 50%, 50%)",
+                      [
+                        "dentist",
+                        "doctors",
+                        "hospital",
+                        "pharmacy",
+                        "veterinary"
+                      ],
+                      "hsl(0, 94%, 72%)",
+                      [
+                        "drinking_water",
+                        "spring",
+                        "water",
+                        "water_point",
+                        "watering_place"
+                      ],
+                      "hsl(200, 85%, 45%)",
+                      "hsl(200, 20%, 55%)"
+                    ]
+                  ],
+                  [
+                    "interpolate",
+                    [
+                      "linear"
+                    ],
+                    [
+                      "measure-light",
+                      "brightness"
+                    ],
+                    0.25,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "waste_basket"
+                      ],
+                      "hsl(210, 20%, 70%)",
+                      "drinking_water",
+                      "hsl(200, 80%, 72%)",
+                      [
+                        "garden",
+                        "tree"
+                      ],
+                      "hsl(110, 55%, 65%)",
+                      "hsl(0, 0%, 12%)"
+                    ],
+                    0.3,
+                    [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      [
+                        "bench",
+                        "picnic_site",
+                        "shelter",
+                        "telephone",
+                        "toilets",
+                        "waste_basket"
+                      ],
+                      "hsl(200, 20%, 55%)",
+                      "drinking_water",
+                      "hsl(200, 85%, 45%)",
+                      [
+                        "garden",
+                        "tree"
+                      ],
+                      "hsl(110, 70%, 40%)",
+                      "hsl(0, 0%, 100%)"
+                    ]
+                  ]
+                ],
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "zoom"
+              ],
+              17,
+              0.6,
+              22,
+              1.2
+            ],
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "zoom"
+              ],
+              17,
+              0.4,
+              22,
+              0.8
+            ]
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "-",
+              [
+                "case",
+                [
+                  "!=",
+                  [
+                    "coalesce",
+                    [
+                      "config",
+                      [
+                        "concat",
+                        "poi-boost-",
+                        [
+                          "get",
+                          "subclass"
+                        ]
+                      ]
+                    ],
+                    0
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "subclass"
+                      ]
+                    ]
+                  ],
+                  0
+                ],
+                [
+                  "coalesce",
+                  [
+                    "config",
+                    [
+                      "concat",
+                      "poi-boost-",
+                      [
+                        "get",
+                        "class"
+                      ]
+                    ]
+                  ],
+                  0
+                ]
+              ],
+              10000000
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "alcohol_shop",
+                "bakery",
+                "bar",
+                "beer",
+                "butcher",
+                "cafe",
+                "fast_food",
+                "grocery",
+                "ice_cream",
+                "restaurant",
+                "sushi"
+              ],
+              "hsl(40, 95%, 70%)",
+              [
+                "clothing_store",
+                "florist",
+                "furniture",
+                "gift",
+                "hairdresser",
+                "laundry",
+                "shop"
+              ],
+              "hsl(210, 70%, 75%)",
+              [
+                "amusement_park",
+                "aquarium",
+                "archaeological_site",
+                "art_gallery",
+                "attraction",
+                "castle",
+                "cinema",
+                "fort",
+                "fountain",
+                "monument",
+                "museum",
+                "music",
+                "ruins",
+                "theatre",
+                "windmill",
+                "zoo"
+              ],
+              "hsl(320, 70%, 75%)",
+              [
+                "alpine_hut",
+                "atm",
+                "bank",
+                "bicycle",
+                "bicycle_rental",
+                "car",
+                "embassy",
+                "fire_station",
+                "fuel",
+                "lodging",
+                "parking",
+                "parking_garage",
+                "police",
+                "post",
+                "prison",
+                "town_hall",
+                "wilderness_hut"
+              ],
+              "hsl(260, 70%, 75%)",
+              [
+                "american_football",
+                "baseball",
+                "basketball",
+                "cricket",
+                "golf",
+                "nightclub",
+                "pitch",
+                "skiing",
+                "soccer",
+                "stadium",
+                "swimming",
+                "tennis"
+              ],
+              "hsl(190, 60%, 70%)",
+              [
+                "adit",
+                "beach",
+                "bird_hide",
+                "campsite",
+                "cave_entrance",
+                "cemetery",
+                "dog_park",
+                "mountain",
+                "park",
+                "playground",
+                "ranger_station",
+                "viewpoint",
+                "volcano",
+                "waterfall",
+                "wetland"
+              ],
+              "hsl(110, 55%, 65%)",
+              [
+                "dentist",
+                "doctors",
+                "hospital",
+                "pharmacy",
+                "veterinary"
+              ],
+              "hsl(0, 70%, 70%)",
+              [
+                "college",
+                "library",
+                "school"
+              ],
+              "hsl(30, 50%, 70%)",
+              [
+                "spring",
+                "water",
+                "water_point",
+                "watering_place"
+              ],
+              "hsl(200, 80%, 72%)",
+              [
+                "aerialway",
+                "airfield",
+                "airport",
+                "bus",
+                "ferry",
+                "harbor",
+                "heliport",
+                "lighthouse",
+                "railway",
+                "railway_light",
+                "railway_metro"
+              ],
+              "hsl(225, 55%, 78%)",
+              "place_of_worship",
+              "hsl(210, 20%, 70%)",
+              "hsl(210, 20%, 70%)"
+            ],
+            0.3,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "alcohol_shop",
+                "bakery",
+                "bar",
+                "beer",
+                "butcher",
+                "cafe",
+                "fast_food",
+                "grocery",
+                "ice_cream",
+                "restaurant",
+                "sushi"
+              ],
+              "hsl(30, 100%, 48%)",
+              [
+                "clothing_store",
+                "florist",
+                "furniture",
+                "gift",
+                "hairdresser",
+                "laundry",
+                "shop"
+              ],
+              "hsl(210, 75%, 53%)",
+              [
+                "amusement_park",
+                "aquarium",
+                "archaeological_site",
+                "art_gallery",
+                "attraction",
+                "castle",
+                "cinema",
+                "fort",
+                "fountain",
+                "monument",
+                "museum",
+                "music",
+                "ruins",
+                "theatre",
+                "windmill",
+                "zoo"
+              ],
+              "hsl(320, 85%, 60%)",
+              [
+                "alpine_hut",
+                "atm",
+                "bank",
+                "bicycle",
+                "bicycle_rental",
+                "car",
+                "embassy",
+                "fire_station",
+                "fuel",
+                "lodging",
+                "parking",
+                "parking_garage",
+                "police",
+                "post",
+                "prison",
+                "town_hall",
+                "wilderness_hut"
+              ],
+              "hsl(250, 75%, 60%)",
+              [
+                "american_football",
+                "baseball",
+                "basketball",
+                "cricket",
+                "golf",
+                "nightclub",
+                "pitch",
+                "skiing",
+                "soccer",
+                "stadium",
+                "swimming",
+                "tennis"
+              ],
+              "hsl(190, 75%, 38%)",
+              [
+                "adit",
+                "beach",
+                "bird_hide",
+                "campsite",
+                "cave_entrance",
+                "cemetery",
+                "dog_park",
+                "mountain",
+                "park",
+                "playground",
+                "ranger_station",
+                "viewpoint",
+                "volcano",
+                "waterfall",
+                "wetland"
+              ],
+              "hsl(110, 70%, 28%)",
+              [
+                "dentist",
+                "doctors",
+                "hospital",
+                "pharmacy",
+                "veterinary"
+              ],
+              "hsl(0, 90%, 60%)",
+              [
+                "college",
+                "library",
+                "school"
+              ],
+              "hsl(30, 50%, 38%)",
+              [
+                "spring",
+                "water",
+                "water_point",
+                "watering_place"
+              ],
+              "hsl(200, 85%, 40%)",
+              [
+                "aerialway",
+                "airfield",
+                "airport",
+                "bus",
+                "ferry",
+                "harbor",
+                "heliport",
+                "lighthouse",
+                "railway",
+                "railway_light",
+                "railway_metro"
+              ],
+              "hsl(225, 60%, 48%)",
+              "place_of_worship",
+              "hsl(210, 20%, 43%)",
+              "hsl(210, 20%, 43%)"
+            ]
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 5%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 5%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
       "id": "poi-mountain-viewpoint",
       "type": "symbol",
       "source": "openmaptiles",
@@ -18338,6 +21393,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -18480,6 +21536,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -18625,13 +21682,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -18648,13 +21707,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -19809,6 +22870,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -19951,6 +23013,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -20096,13 +23159,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -20119,13 +23184,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -21263,6 +24330,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -21405,6 +24473,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -21550,13 +24619,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -21573,13 +24644,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -23111,6 +26184,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -23253,6 +26327,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -23398,13 +26473,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -23421,13 +26498,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -24737,6 +27816,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -24879,6 +27959,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -25024,13 +28105,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -25047,13 +28130,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -26191,6 +29276,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -26333,6 +29419,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -26478,13 +29565,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -26501,13 +29590,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -27649,6 +30740,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -27791,6 +30883,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -27936,13 +31029,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -27959,13 +31054,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -29155,6 +32252,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -29297,6 +32395,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -29442,13 +32541,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -29465,13 +32566,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -30603,6 +33706,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -30745,6 +33849,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -30890,13 +33995,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -30913,13 +34020,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -32062,6 +35171,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -32204,6 +35314,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -32349,13 +35460,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -32372,13 +35485,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -32986,6 +36101,14 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
           ],
           [
             "!=",
@@ -33670,6 +36793,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -33812,6 +36936,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -33957,13 +37082,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -33980,13 +37107,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -34594,6 +37723,14 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
           ],
           [
             "!=",
@@ -35289,6 +38426,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -35431,6 +38569,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -35576,13 +38715,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -35599,13 +38740,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -36213,6 +39356,14 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
           ],
           [
             "!=",
@@ -36916,6 +40067,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -37058,6 +40210,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -37203,13 +40356,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -37226,13 +40381,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -37841,6 +40998,14 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
           ],
           [
             "!=",
@@ -38534,6 +41699,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -38676,6 +41842,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -38821,13 +41988,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -38844,13 +42013,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -39459,6 +42630,14 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
           ],
           [
             "!=",
@@ -40162,6 +43341,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -40304,6 +43484,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -40449,13 +43630,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -40472,13 +43655,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -41086,6 +44271,14 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
           ],
           [
             "!=",
@@ -41790,6 +44983,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -41932,6 +45126,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -42077,13 +45272,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -42100,13 +45297,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -42714,6 +45913,14 @@
               "class"
             ],
             "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
           ],
           [
             "!=",
@@ -43441,6 +46648,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -43583,6 +46791,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -43728,13 +46937,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -43751,13 +46962,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -44911,6 +48124,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -45053,6 +48267,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -45198,13 +48413,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -45221,13 +48438,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -46391,6 +49610,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -46533,6 +49753,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -46678,13 +49899,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -46701,13 +49924,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -47870,6 +51095,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -48012,6 +51238,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -48157,13 +51384,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -48180,13 +51409,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -49361,6 +52592,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -49503,6 +52735,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -49648,13 +52881,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -49671,13 +52906,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -50861,6 +54098,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -51003,6 +54241,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -51148,13 +54387,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -51171,13 +54412,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -52336,6 +55579,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -52478,6 +55722,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -52623,13 +55868,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -52646,13 +55893,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -53795,6 +57044,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -53937,6 +57187,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -54082,13 +57333,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -54105,13 +57358,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -55265,6 +58520,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -55407,6 +58663,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -55552,13 +58809,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -55575,13 +58834,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]
@@ -57104,6 +60365,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -57246,6 +60508,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "tree",
                         "viewpoint",
                         "volcano",
                         "waterfall",
@@ -57391,13 +60654,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(210, 20%, 70%)",
                       "drinking_water",
                       "hsl(200, 80%, 72%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 55%, 65%)",
                       "hsl(0, 0%, 12%)"
                     ],
@@ -57414,13 +60679,15 @@
                         "shelter",
                         "telephone",
                         "toilets",
-                        "tree",
                         "waste_basket"
                       ],
                       "hsl(200, 20%, 55%)",
                       "drinking_water",
                       "hsl(200, 85%, 45%)",
-                      "garden",
+                      [
+                        "garden",
+                        "tree"
+                      ],
                       "hsl(110, 70%, 40%)",
                       "hsl(0, 0%, 100%)"
                     ]

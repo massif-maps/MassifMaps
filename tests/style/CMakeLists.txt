@@ -27,6 +27,8 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/CartoCSSCompiler.cpp"
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Expression.cpp"
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Predicate.cpp"
+  # The MVT decoder, for a MultiPoint's part indices under overzoom. Needs zlib only.
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/MBVTFeatureDecoder.cpp"
   # No dependencies at all, so the font-name parser costs nothing to link here.
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/FontNames.cpp"
 )
@@ -54,6 +56,7 @@ add_executable(style_tests
   ZoomShiftTest.cpp
   DrawOnceTest.cpp
   CartoCSSTemplateTest.cpp
+  MultiPointPartIndexTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE
@@ -74,6 +77,9 @@ target_include_directories(style_tests PRIVATE
   # rapidjson, for the JSON a table style parameter is carried as (Value.cpp).
   "${SDK_BASE_DIR}/libs-external/rapidjson/include"
   "${SDK_BASE_DIR}/libs-external/tinyformat")
+
+find_package(ZLIB REQUIRED)
+target_link_libraries(style_tests PRIVATE ZLIB::ZLIB)
 
 add_test(NAME style COMMAND style_tests)
 # A parser that regresses to exponential backtracking does not fail the depth guard, it never

@@ -423,7 +423,9 @@ buffer (`LayerFeatureDecoder`'s clip box). Two things keep that copy small
   multi-line, ~250 buildings per multipolygon. The clip is per feature, so each z18 tile kept them
   whole: 2657 housenumber labels and 300 KB of paths in a tile showing ten. Overzoomed, points, line
   parts and polygons (outer ring) whose bounds miss the clip are dropped. A part that crosses the
-  tile is still kept whole; the per-vertex clip in the shaders handles the rest.
+  tile is still kept whole; the per-vertex clip in the shaders handles the rest. A kept point
+  carries its index in the source feature, which its label id is built from
+  ([06-labels.mdx](06-labels.mdx#building-the-label-set)).
 
 The unclipped pass the extrusion anchors read is untouched. Measured in
 [performance-log.md 37](../performance-log.md).

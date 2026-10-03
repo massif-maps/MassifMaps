@@ -30,6 +30,7 @@
   },
   "constants": {
     "poi_bus_minzoom": 15,
-    "poi_bus_label_minzoom": 16
+    "poi_bus_label_minzoom": 16,
+    "poi_pt_shelter_minzoom": 15
   }
 }

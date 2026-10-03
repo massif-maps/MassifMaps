@@ -117,8 +117,9 @@ deeper woods (`OUTDOOR` in the palette):
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
 - **Peaks from z9**, the three most prominent per tile first.
-- **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters (not a bus
-  stop's), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
+- **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
+  a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
+  wilderness_hut: a roof-on-posts glyph on nature's green, named), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
   archaeological sites, waterfalls and named parks and gardens (Standard shows park_like early too)
   from z14, parks over the sights and a viewpoint yielding to all of them, keeping its
   own glyph and nature's green at every zoom (OpenMapTiles files it under `attraction`); drinking water
@@ -377,9 +378,11 @@ decides: OpenFreeMap Liberty's ladder, rank 1–6 at z15, 7–19 at z16, the res
 | z | |
 |---|---|
 | 12 | airport, airfield, heliport |
-| 13 | rail, metro, tram, ferry, harbour, aerialway, lighthouse |
+| 13 | rail, metro, ferry, harbour, aerialway, lighthouse |
 | 15–17 | everything else, by rank |
-| 17 | bus stop, its badge; its name at 18 |
+| 15 | public-transport shelter on outdoor, topo, e-ink, never named |
+| 16 | tram stop, named (Mapbox's tiles carry one from z16, Standard names it as it shows) |
+| 17 | bus stop, its badge; its name at 18. Public-transport shelter on streets and hybrid, and any shelter of another or no `shelter_type`: never named |
 
 The ladder excludes the classes those layers draw with a chain of `!=` rather than listing the ones
 it keeps: a list is an `in`, a `when()` per feature, where the chain brackets. A class with no glyph
@@ -388,9 +391,9 @@ draws its name, as on Liberty.
 **A child project moves any of it.** Every POI layer extends ONE template, `%poi`, and draws into
 ONE attachment, `::poi` (`massif:template`, `massif:attachment`), so a child widens a class with a
 rule of its own and the cascade merges it with the base's — see
-[CartoCSS templates](../../docs/internals/cartocss-templates.md). The bus stop's two zooms are
-project `constants`, `poi_bus_minzoom` and `poi_bus_label_minzoom` (`massif:minzoom-const`), which
-a child overrides with no rule at all. `examples/osm/` does both.
+[CartoCSS templates](../../docs/internals/cartocss-templates.md). The bus and tram stops' zooms are
+project `constants`, `poi_bus_minzoom`/`poi_bus_label_minzoom`, `poi_tram_minzoom`/`poi_tram_label_minzoom`
+and `poi_pt_shelter_minzoom` (`massif:minzoom-const`), which a child overrides with no rule at all. `examples/osm/` does both.
 
 Liberty's italic face for them is taken as well — it is the one thing on the
 map that is not a road, and it should not read like one.
@@ -529,7 +532,7 @@ and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
 reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
 Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
 their rank and hides pharmacies before z17 (`display: none`), and `osm.json`'s `constants` bring the
-bus stops in at z15, named from z16.
+bus stops in at z15, named from z16, and public-transport shelters at z15 as on outdoor.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

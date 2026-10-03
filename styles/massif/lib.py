@@ -221,3 +221,17 @@ def halo(c, id, filter, width, param):
     return [layer(id, 'line', 'transportation', minzoom=12, filter=filter, layout={'line-join': 'round'},
                   paint={'line-color': c['line-halo'], 'line-width': padded(width, 2)},
                   metadata={'massif:minzoom-param': param})]
+
+
+def boosted(lay, *fields, name=None):
+    """An app's `poi-boost-<value>` added to the label's placement priority, SDK only: the first of
+    `fields` whose boost is non-zero (subclass before class), or the constant `poi-boost-<name>`."""
+    terms = [['coalesce', ['config', 'poi-boost-' + name], 0]] if name else \
+        [['coalesce', ['config', ['concat', 'poi-boost-', get(f)]], 0] for f in fields]
+    boost = terms[-1]
+    for term in reversed(terms[:-1]):
+        boost = ['case', ['!=', term, 0], term, boost]
+    meta = lay.setdefault('metadata', {})
+    # a negated sort key: the converter adds it to the layer's priority
+    meta['massif:layout'] = {**meta.get('massif:layout', {}), 'symbol-sort-key': ['-', boost]}
+    return lay

@@ -51,6 +51,7 @@ The ones an app usually sets:
 |---|---|---|
 | `variant` | `streets` | which of the five maps |
 | `poiStyle` | `badge` | `plain`: POI glyphs without their disc |
+| `poi-boost-<class>` | 0 | added to that POI class's placement priority: 100000 = one layer, negative demotes |
 | `buildings` | 2 | 0 none, 1 flat footprints at every zoom, 2 footprints then 3D blocks from z15 |
 | `building_opacity` | 1 | the 3D buildings' alpha looking straight down |
 | `track_min_zoom`, `path_min_zoom` | 12 | where tracks, paths and trails appear |

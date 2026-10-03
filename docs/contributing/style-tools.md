@@ -1556,6 +1556,9 @@ text-placement-priority: (11200000 - (0 + [rank]));
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
 
+A negated key, `["-", boost]`, is written as `(base + boost)`, and a `config` whose name is
+`["concat", "prefix-", ["get", field]]` reads `[param::prefix-[field]]`: Massif's `poi-boost-<class>`.
+
 ## Folding a casing and ordering roads do not mix
 
 `--fold-casings` puts the casing in the fill rule, which is right while the road is ONE rule: the

@@ -116,13 +116,16 @@ deeper woods (`OUTDOOR` in the palette):
   hybrid draw them too.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
-- **Peaks from z9**, the three most prominent per tile first.
-- **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters (not a bus
-  stop's), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
+- **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
+  before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
+- **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
+  a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
+  wilderness_hut: a roof-on-posts glyph on nature's green, named), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
   archaeological sites, waterfalls and named parks and gardens (Standard shows park_like early too)
   from z14, parks over the sights and a viewpoint yielding to all of them, keeping its
   own glyph and nature's green at every zoom (OpenMapTiles files it under `attraction`); drinking water
-  and springs from `water_min_zoom` - each until its ordinary POI layer takes over. A spring is
+  and springs only from `water_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
+  each until its ordinary POI layer takes over. A spring is
   Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17; a drinking
   water glyph is a size down. Water points have their own
   category, in the water's blue. A hut draws the hut glyph, where
@@ -223,7 +226,7 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
   bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
-- `water_min_zoom` (17; 13 on outdoor, topo, e-ink) — drinking water and springs; 12 to plan a hike by its water.
+- `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water and springs; 12 to plan a hike by its water.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
@@ -250,6 +253,18 @@ Switches (0/1):
   its wider lines below z12 and its outlines below z14 (the OSM example sets it).
 - `sac_scale_labels` (0; 1 on e-ink) — the SAC grade (T1..T6) on a small plate along each trail
   from z14, where a dash alone is hard to read. A path with no `sac_scale` gets none.
+
+POI ranking (SDK only; MapLibre ignores it):
+
+- `poi-boost-<name>` (0) — added to a POI's placement priority, so the culler keeps it over the labels
+  it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
+  (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
+  for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
+  set). A priority is the layer's position × 100000: the airport sits at 16.5M, POIs span 18.5M to
+  21.6M, road and trail names reach 23.4M, summits 23.5M–23.7M, place names 24.9M. So `100000` lifts a
+  class one layer, `3000000` over every unboosted POI and most road and trail names (not a summit), and a negative value demotes. Whole numbers: the
+  culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
+  rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
 
 And `contour_opacity` (1), multiplied into the contour lines' own ramp — a redraw, not a re-decode.
 `_fontscale` needs no declaration: every style has it
@@ -355,9 +370,14 @@ INSIDE its filter, which is the one thing not taken: a filter that reads the zoo
 same gate is **one layer per class**, ordered least important first so the motorway's name is placed
 first and wins the collision.
 
-**POIs come in by RANK, as Liberty draws them; stations and buses by MODE, as Standard does.**
+**POIs come in by RANK, on Alpimaps' OSM ladder; stations and buses by MODE, as Standard does.**
 OpenMapTiles' `rank` orders a tile's POIs by how much they matter where they stand, so the data
-decides: OpenFreeMap Liberty's ladder, rank 1–6 at z15, 7–19 at z16, the rest at z17. Standard's
+decides. It is an ordinal over the whole z14 tile (1–390 over central Grenoble, median 101), so
+Liberty's 1–6 / 7–19 / rest at z15 / 16 / 17 admitted 3% and 11% of a city's POIs at z15 and z16
+(about 18 drawn in an app's z17 view, against 84 for Standard). The ladder is Alpimaps' OSM one:
+rank ≤ 10 at z14 (eating, bars, parking and schools at z15), ≤ 30 at z15 as icons, named from z16
+(shops at z16), ≤ 70 at z16, all at z17 — project constants `poi_rank10_minzoom`,
+`poi_rank30_minzoom`, `poi_rank30_label_minzoom`, `poi_rank70_minzoom`, `poi_rank_all_minzoom`. Standard's
 `poi-label` is built on `filterrank` the same way — a density rank OpenMapTiles does not carry,
 `rank` is the nearest thing. The exceptions are layers of their own, gated by mode as Standard's
 `transit-label` gates them:
@@ -365,9 +385,11 @@ decides: OpenFreeMap Liberty's ladder, rank 1–6 at z15, 7–19 at z16, the res
 | z | |
 |---|---|
 | 12 | airport, airfield, heliport |
-| 13 | rail, metro, tram, ferry, harbour, aerialway, lighthouse |
-| 15–17 | everything else, by rank |
-| 17 | bus stop, its badge; its name at 18 |
+| 13 | rail, metro, ferry, harbour, aerialway, lighthouse |
+| 14–17 | everything else, by rank (above) |
+| 15 | public-transport shelter on outdoor, topo, e-ink, never named |
+| 16 | tram stop, named (Mapbox's tiles carry one from z16, Standard names it as it shows) |
+| 17 | bus stop, its badge; its name at 18. Public-transport shelter on streets and hybrid, and any shelter of another or no `shelter_type`: never named |
 
 The ladder excludes the classes those layers draw with a chain of `!=` rather than listing the ones
 it keeps: a list is an `in`, a `when()` per feature, where the chain brackets. A class with no glyph
@@ -376,9 +398,9 @@ draws its name, as on Liberty.
 **A child project moves any of it.** Every POI layer extends ONE template, `%poi`, and draws into
 ONE attachment, `::poi` (`massif:template`, `massif:attachment`), so a child widens a class with a
 rule of its own and the cascade merges it with the base's — see
-[CartoCSS templates](../../docs/internals/cartocss-templates.md). The bus stop's two zooms are
-project `constants`, `poi_bus_minzoom` and `poi_bus_label_minzoom` (`massif:minzoom-const`), which
-a child overrides with no rule at all. `examples/osm/` does both.
+[CartoCSS templates](../../docs/internals/cartocss-templates.md). The bus and tram stops' zooms are
+project `constants`, `poi_bus_minzoom`/`poi_bus_label_minzoom`, `poi_tram_minzoom`/`poi_tram_label_minzoom`
+and `poi_pt_shelter_minzoom` (`massif:minzoom-const`), which a child overrides with no rule at all. `examples/osm/` does both.
 
 Liberty's italic face for them is taken as well — it is the one thing on the
 map that is not a road, and it should not read like one.
@@ -517,7 +539,7 @@ and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
 reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
 Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
 their rank and hides pharmacies before z17 (`display: none`), and `osm.json`'s `constants` bring the
-bus stops in at z15, named from z16.
+bus stops in at z15, named from z16, and public-transport shelters at z15 as on outdoor.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

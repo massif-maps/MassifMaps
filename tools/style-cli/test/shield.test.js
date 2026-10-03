@@ -372,6 +372,31 @@ test('--icon-font-size scales a glyph by icon-size, as the sprite it replaces', 
     assert.match(out, /shield-icon-size: \(\(0\.4\) \* 27\);/);
 });
 
+test('a font icon\'s plate is the disc\'s box, not the glyph\'s', () => {
+    // The glyph's box follows its outline, so a plate fitted to it drew a pill per icon.
+    const iconFont = { face: 'osm', glyphs: new Map([['poi', '']]), size: 27 };
+    const out = convert({ layers: [symbol(
+        {
+            'text-field': '{name}', 'icon-size': 0.4,
+            'icon-image': ['image', 'poi', { params: { background: '#ff0000', 'background-stroke': '#00ff00' } }],
+        },
+        {})] },
+    TABLE, { ...NO_PALETTE, iconFont, sprites: { sheets: compositeSheet(), outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(out, /shield-icon-name: '';/);
+    // the 12 px disc and its measured 1 px ring on each side
+    assert.match(out, /shield-icon-background-width: \(\(\(12 \+ 2 \* \(1\)\)\) \* \(0\.4\)\);/);
+    assert.match(out, /shield-icon-background-height: \(\(\(12 \+ 2 \* \(1\)\)\) \* \(0\.4\)\);/);
+});
+
+test('a sprite icon\'s plate keeps sizing by its field, which is the disc\'s box already', () => {
+    const out = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': ['image', ['get', 'maki'], { params: { background: '#ff0000' } }] },
+        {})] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: compositeSheet(), outDir: '/tmp/massif-style-test' } }).mss;
+    assert.ok(!out.includes('shield-icon-background-width'));
+});
+
 test('a per-feature icon name reaches the font through the same parameter table', () => {
     const iconFont = { face: 'osm', glyphs: new Map([['mountain', ''], ['cafe', '']]) };
     const { mss: out, project } = convert({ layers: [symbol(

@@ -34,7 +34,7 @@ MTB = [
 def hillshade(v):
     c = v.palette
     # gone by z16 as in Standard: in a street the relief is noise, and on the SDK a raster over the
-    # vector layer would grey the whole city
+    # vector layer would grey the whole city. The SDK slot ends at `hillshade_max_zoom` instead.
     return [{'id': 'hillshade', 'type': 'hillshade', 'source': 'dem', 'maxzoom': 16,
              'paint': {'hillshade-exaggeration': zoom_ramp(6, c['relief'] + 0.1, 14, c['relief'], 16, 0),
                        'hillshade-shadow-color': c['hillshade-shadow'],
@@ -46,7 +46,8 @@ def hillshade(v):
                                                 'heightScale': 1, 'shadowColor': hex_color(c['hillshade-shadow']),
                                                 'highlightColor': hex_color(c['hillshade-highlight']),
                                                 'accentColor': hex_color(c['hillshade-accent']),
-                                                'visibleZoomRange': [0, 16]}}}]
+                                                'visibleZoomRange': [0, 16]},
+                          'massif:maxzoom-param': 'hillshade_max_zoom'}}]
 
 
 def faded(*stops):

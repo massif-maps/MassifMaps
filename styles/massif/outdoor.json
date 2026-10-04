@@ -36,6 +36,7 @@
       "scrub_pattern_zoom",
       "rock_pattern_zoom",
       "wetland_pattern_zoom",
+      "hillshade_max_zoom",
       "poi-boost-adit",
       "poi-boost-aerialway",
       "poi-boost-airfield",
@@ -2606,7 +2607,8 @@
             0,
             16
           ]
-        }
+        },
+        "massif:maxzoom-param": "hillshade_max_zoom"
       }
     },
     {
@@ -76963,6 +76965,9 @@
     },
     "wetland_pattern_zoom": {
       "default": 13
+    },
+    "hillshade_max_zoom": {
+      "default": 16
     },
     "poi-boost-adit": {
       "default": 0

@@ -474,6 +474,11 @@ beside the parameter), the lowest an app may go, and pays for decoding those til
 `["zoom"]` with `["config", …]` brackets the same way; both need 512 px tiles (no zoom offset), and
 were a `when()` over `[view::zoom]`, read per feature, before.
 
+`massif:maxzoom-param` is its counterpart for where a HILLSHADE slot ENDS (the only layer reading it):
+`#hillshade[zoom < 'param::hillshade_max_zoom']` replaces the `visibleZoomRange` top. The compiled
+rule has no zoom end of its own, only the test as its filter, so the composite's child is not capped and
+`resolveLayerConfig` hides the slot from the parameter on. MapLibre keeps the layer's `maxzoom`.
+
 `massif:minzoom-const` / `massif:maxzoom-const` name a project CONSTANT for the layer's start or
 end: the band tests `[zoom >= $name]` / `[zoom < $name]` instead of the literal, and `project.json`
 gets `"constants": { name: the layer's own minzoom/maxzoom }`. Resolved when the style compiles, so a

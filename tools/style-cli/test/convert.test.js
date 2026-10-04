@@ -568,6 +568,20 @@ test('a hillshade with SDK values becomes a composite slot at its own depth', ()
     assert.doesNotMatch(convert({ layers: [{ ...hillshade, metadata: {} }] }, table, NO_PALETTE).mss, /#hillshade/);
 });
 
+test('a hillshade slot ends at its massif:maxzoom-param rather than its visibleZoomRange', () => {
+    const hillshade = {
+        id: 'hillshade', type: 'hillshade', source: 'dem', maxzoom: 16,
+        metadata: { 'massif:sdk-layer': { type: 'hillshade', contrast: 0.35, visibleZoomRange: [0, 16] },
+            'massif:maxzoom-param': 'hillshade_max_zoom' },
+    };
+    const mss = convert({ layers: [hillshade] }, table, { ...NO_PALETTE, tileDrawSize: 512 }).mss;
+    assert.match(mss, /#hillshade\[zoom < 'param::hillshade_max_zoom'\] \{/);
+    // a zoom offset shifts every literal, which a parameter cannot follow: the static end stays
+    const shifted = convert({ layers: [hillshade] }, table, NO_PALETTE).mss;
+    assert.match(shifted, /#hillshade\[zoom < \d+\] \{/);
+    assert.doesNotMatch(shifted, /param::hillshade_max_zoom/);
+});
+
 test('a hillshade slot carries the settings that match the MapLibre paint', () => {
     const hillshade = {
         id: 'hillshade', type: 'hillshade', source: 'dem', maxzoom: 16,

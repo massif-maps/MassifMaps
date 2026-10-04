@@ -49,7 +49,7 @@ namespace massif::vt {
         void reserveInvisibleLineStyle();
         void endStyleVariant(int selectedSlot, bool selected);
 
-        using PointProcessor = std::function<void(long long id, const Vertex& vertex)>;
+        using PointProcessor = std::function<void(long long id, const Vertex& vertex, int geoPointIndex)>;
         using TextProcessor = std::function<void(long long id, const Vertex& vertex, const std::string& text, int geoPointIndex)>;
         using LineProcessor = std::function<void(long long id, const Vertices& vertices)>;
         using PolygonProcessor = std::function<void(long long id, const VerticesList& verticesList)>;

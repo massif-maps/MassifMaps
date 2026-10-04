@@ -44,6 +44,7 @@ add_executable(vt_tests
   LabelFadeTest.cpp
   LayerContentFlagsTest.cpp
   DrawOnceTest.cpp
+  PointGeoPosIndexTest.cpp
   ViewStateMatrixTest.cpp
   LabelNormalBuildTest.cpp
   NormalMapSlopeTest.cpp

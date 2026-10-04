@@ -1,5 +1,5 @@
-// Id-less features all get id 0, so point labels fold their anchor into the id: nearby points must
-// differ, one point read at two overzoom levels must agree (Symbolizer::combineAnchorId).
+// Id-less features all get id 0, and a MultiPoint's points share one, so point labels fold their
+// anchor into the id: nearby points must differ, one point read from any tile must agree.
 
 #include "TestCheck.h"
 
@@ -37,6 +37,10 @@ void testAnchorLabelId() {
     const TileId tile16(16, 33841, 23463);
     const Vertex anchor16(0.50390625f, 0.00390625f);
     TEST_CHECK(AnchorIdProbe::combineAnchorId(7, tile16, anchor16) == id, "overzoom levels of one point agree");
+
+    // A MultiPoint's point inside the buffer of the next tile: one label, not one per tile.
+    const TileId east14(14, 8461, 5865);
+    TEST_CHECK(AnchorIdProbe::combineAnchorId(7, east14, Vertex(anchor(0) - 1.0f, anchor(1))) == id, "a point read from a sibling tile's buffer agrees");
 
     // Deliberate: two labels within one cell are one label.
     Vertex sameCell(anchor(0) + CELL_Z14 / 4, anchor(1));

@@ -407,11 +407,12 @@ namespace massif::mvt {
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     auto verticesList = pointGeometry->getVerticesList();
+                    bool anchorPoints = anchorLabelId || pointGeometry->isMultiPoint();
                     for (std::size_t part = 0; part < verticesList.size(); part++) {
                         int index = pointGeometry->getPartIndex(part);
                         for (const auto &vertex: verticesList[part]) {
-                            long long pointLabelId = (anchorLabelId ? combineAnchorId(labelId, tileId, vertex) : labelId);
-                            textProcessor(localId, 10 * pointLabelId + index, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, false, false, index);
+                            long long pointLabelId = 10 * (anchorPoints ? combineAnchorId(labelId, tileId, vertex) : labelId);
+                            textProcessor(localId, pointLabelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, false, false, index);
                         }
                     }
                 }

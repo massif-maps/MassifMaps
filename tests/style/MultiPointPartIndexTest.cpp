@@ -1,9 +1,9 @@
-// Sources merge many points into one MultiPoint that keeps one feature id; each point's label id is
-// that id plus its part index. Overzoomed, the decoder drops the parts outside the target tile, so
-// the index has to stay the one in the source feature: a post-clip index gave different points of
-// sibling tiles one label id, and the renderer merged them into one label.
+// Sources merge many points into one MultiPoint that keeps one feature id. Overzoomed, the decoder
+// drops the parts outside the target tile, so a point's index stays the one in the source feature
+// (a click reports it), and the geometry still knows it came from a MultiPoint: each of its points
+// then keys its label id on its position, so sibling tiles never merge two of them into one label.
 // Not covered: the symbolizers that build the id (they link vt), and the MLT decoder (it links mlt);
-// both read the index through PointGeometry::getPartIndex and mbvtKeepPointParts, checked here.
+// both read through PointGeometry and mbvtKeepPointParts, checked here.
 
 #include "TestCheck.h"
 
@@ -68,6 +68,7 @@ namespace {
     struct Part {
         int sourcePoint; // which of POINTS the vertex is, -1 for none
         int partIndex;
+        bool multiPoint;
     };
 
     // The parts the decoder yields for child (x, y) one zoom under the source; identity when dz is 0.
@@ -96,7 +97,7 @@ namespace {
                             sourcePoint = static_cast<int>(i);
                         }
                     }
-                    parts.push_back(Part { sourcePoint, pointGeometry->getPartIndex(part) });
+                    parts.push_back(Part { sourcePoint, pointGeometry->getPartIndex(part), pointGeometry->isMultiPoint() });
                 }
             }
         }
@@ -132,7 +133,7 @@ void testMultiPointPartIndex() {
     TEST_CHECK(source.size() == POINTS.size() && indicesAreSource(source), "the source tile keeps every point, indexed in order");
     TEST_CHECK(topLeft.size() == 2 && topRight.size() == 2 && bottomRight.size() == 1, "an overzoomed tile keeps only the points its clip reaches");
     TEST_CHECK(sourceId == FEATURE_ID && topLeftId == FEATURE_ID && topRightId == FEATURE_ID && bottomRightId == FEATURE_ID,
-               "every tile reads the one feature id, so only the part index tells the points apart");
+               "every tile reads the one feature id, which cannot tell the points apart");
 
     TEST_CHECK(indicesAreSource(topLeft) && indicesAreSource(topRight) && indicesAreSource(bottomRight),
                "an overzoomed point keeps its index in the source feature");
@@ -146,4 +147,8 @@ void testMultiPointPartIndex() {
     TEST_CHECK(verticesList.size() == 2 && verticesList[1].front()(0) == 0.5f && partIndices == std::vector<int>({ 0, 2 }),
                "dropping a part moves the next one down and records where it came from");
     TEST_CHECK(mvt::mbvtKeepPointParts(verticesList, missesUnitBox).empty(), "nothing dropped, nothing recorded: a lone point pays no index");
+
+    TEST_CHECK(bottomRight.size() == 1 && bottomRight.front().multiPoint, "a MultiPoint clipped down to one point is still a MultiPoint");
+    TEST_CHECK(source.front().multiPoint && topLeft.front().multiPoint, "a MultiPoint is one in the source tile and when overzoomed");
+    TEST_CHECK(!mvt::PointGeometry({ { { 0.5f, 0.5f } } }).isMultiPoint(), "a lone point keeps its feature id as label id");
 }

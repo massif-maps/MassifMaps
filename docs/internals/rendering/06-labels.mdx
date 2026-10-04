@@ -71,24 +71,27 @@ point label in the layer lands on the same `globalId`, and the merge above colla
 single label — two POIs a few metres apart draw as one, with whichever the tile decoded first
 supplying the icon and text, and the winner flipping as tiles rebuild.
 
-For a **point** label with no feature id the anchor is folded in instead
-(`Symbolizer::combineAnchorId`, used by the markers, text and shield symbolizers): the anchor is
+For a **point** label with no feature id, and for every point of a MultiPoint, the anchor is
+folded in instead (`Symbolizer::combineAnchorId`, used by the markers, text and shield symbolizers): the anchor is
 quantised to 2^-28 of the world, ~0.15 m at the equator. That is bit-identical across overzoom
 levels of one source tile and across a tile-border duplicate, so a point still merges with itself,
 while two distinct POIs stay distinct. It does **not** survive a change of source zoom — a z13 and
 a z14 tile snap the same POI to different cells — so during the streaming overlap of a zoom step
 such a point can exist twice; both copies draw the same icon at the same place. Line and polygon
 labels are untouched: their cross-tile merge is what stitches a road name, and an anchor cannot key
-it. Tiles that do carry feature ids take none of this path.
+it. A single point with a feature id takes none of this path.
 
-**A point label's id also carries its part index** (`10 * id + index`), which is what keeps the
-points of one MultiPoint apart: sources merge every housenumber or tree of a tile into one feature,
-under one id. The index is the point's place in the **source** feature
-(`PointGeometry::getPartIndex`), not in the decoded copy. Overzoomed, the decoder drops the parts
-outside the target tile ([02-tiles.md](02-tiles.md#overzoom-one-source-tile-many-targets)); a
-post-clip index gave different points of sibling tiles the same id, and the merge above folded them
-into one label — most such labels vanished past the source's max zoom. The same index is the
-clicked point's `featurePosIndex`, read against the unclipped feature.
+**A MultiPoint keys each point on its anchor, even under a feature id**, because sources merge
+every housenumber or tree of a tile into one feature under one id. The part index used to tell them
+apart (`10 * id + index`), but it collided with the next feature's id from index 10 on, and a point
+in the buffer of two source tiles got two ids, so it drew twice. `PointGeometry::isMultiPoint` holds
+for the **source** feature: overzoomed, the decoder drops the parts outside the target tile
+([02-tiles.md](02-tiles.md#overzoom-one-source-tile-many-targets)), and a MultiPoint clipped to one
+point keeps its anchored id.
+
+The part index is still the clicked point's `featurePosIndex`, read against the unclipped feature
+(`PointGeometry::getPartIndex`), for labels and for points drawn as tile geometry (`marker-clip`,
+`point-*`) alike. It is stored as 16 bits: past 65535 points in one feature it wraps.
 
 **Placement stability invariant.** `snapPlacement` / `findSnappedPointPlacement` /
 `findSnappedLinePlacement` prefer the geometry copy with the same `(tileId, localId)` as the previous

@@ -171,9 +171,9 @@ namespace massif::mvt {
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         long long localId = featureCollection.getLocalId(featureIndex);
                         auto verticesList = pointGeometry->getVerticesList();
-                        for (const auto& vertices : verticesList) {
-                            for (const auto &vertex: vertices) {
-                                pointProcessor(localId, vertex);
+                        for (std::size_t part = 0; part < verticesList.size(); part++) {
+                            for (const auto &vertex: verticesList[part]) {
+                                pointProcessor(localId, vertex, pointGeometry->getPartIndex(part));
                             }
                         }
                     }
@@ -187,7 +187,7 @@ namespace massif::mvt {
                         }
                         
                         for (const auto& vertex : vertices) {
-                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex, 0);
                         }
                     }
                     else {
@@ -205,7 +205,7 @@ namespace massif::mvt {
                                 pointProcessor = layerBuilder.createPointProcessor(transformedStyle, glyphMap);
                                 if (pointProcessor) {
                                     for (const auto& vertex : transformedPoints.second) {
-                                        pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                                        pointProcessor(featureCollection.getLocalId(featureIndex), vertex, 0);
                                     }
                                     pointProcessor = vt::TileLayerBuilder::PointProcessor();
                                 }
@@ -244,11 +244,12 @@ namespace massif::mvt {
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     auto verticesList = pointGeometry->getVerticesList();
+                    bool anchorPoints = anchorLabelId || pointGeometry->isMultiPoint();
                     for (std::size_t part = 0; part < verticesList.size(); part++) {
                         int index = pointGeometry->getPartIndex(part);
                         for (const auto &vertex: verticesList[part]) {
-                            long long pointLabelId = (anchorLabelId ? combineAnchorId(labelId, tileId, vertex) : labelId);
-                            pointProcessor(localId, 10 * pointLabelId + index, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent, index);
+                            long long pointLabelId = 10 * (anchorPoints ? combineAnchorId(labelId, tileId, vertex) : labelId);
+                            pointProcessor(localId, pointLabelId, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent, index);
                         }
                     }
                 }

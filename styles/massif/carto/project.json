@@ -923,6 +923,7 @@
     "glyph-zoo": "icons-glyph/zoo.png",
     "glyph-zoo-poi": "icons-glyph/zoo-poi.png",
     "highlight_drinking_water": 0,
+    "hillshade_max_zoom": 16,
     "label_occlusion": 1,
     "lighting": 1,
     "path_min_zoom": 12,

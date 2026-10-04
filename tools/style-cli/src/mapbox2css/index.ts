@@ -713,9 +713,13 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             if (value !== null) declarations.push(`${property}: ${value};`);
         }
         const range = Array.isArray(sdk.visibleZoomRange) ? sdk.visibleZoomRange as number[] : [];
+        // `massif:maxzoom-param`: the slot ends where an app says, past the standalone layer's visibleZoomRange
+        const maxParam = (layer.metadata as Record<string, Json> | undefined)?.['massif:maxzoom-param'];
+        const hasMaxParam = typeof maxParam === 'string' && zoomOffsetLevels() === 0;
         let selector: string;
         try {
-            selector = `#${layer.id}${[...zoomPredicates(range[0] || layer.minzoom, range[1] ?? layer.maxzoom),
+            selector = `#${layer.id}${[...(hasMaxParam ? [`[zoom < 'param::${maxParam}']`] : []),
+                ...zoomPredicates(range[0] || layer.minzoom, hasMaxParam ? undefined : range[1] ?? layer.maxzoom),
                 ...translateFilter(layer.filter ?? null)].join('')}`;
         } catch (error) {
             coverage.drop(`filter on "${layer.id}"`, describe(error), layer.id);

@@ -38,5 +38,6 @@ PARAMS = {
     'scrub_pattern_zoom': {'default': 12},
     'rock_pattern_zoom': {'default': 12},
     'wetland_pattern_zoom': {'default': 13},
+    'hillshade_max_zoom': {'default': 16},
     **{'poi-boost-' + name: {'default': 0} for name in BOOST_NAMES},
 }

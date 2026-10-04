@@ -14,8 +14,10 @@
 #include "mapnikvt/Predicate.h"
 #include "mapnikvt/Rule.h"
 #include "mapnikvt/Style.h"
+#include "mapnikvt/StyleParameterStore.h"
 #include "mapnikvt/Symbolizer.h"
 
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -163,6 +165,32 @@ void testLayerConfig() {
                    "so the slot is not visible below the zoom the style asked for");
         TEST_CHECK(resolveLayerConfig(map, "contour", 12.0f, nullptr).visible,
                    "and is visible at it");
+    }
+
+    // Massif's `#hillshade[zoom < 'param::hillshade_max_zoom']`: compiled as an open rule plus a filter,
+    // so the child is not capped and the parameter alone decides where the relief ends.
+    {
+        Map map { Map::Settings() };
+        auto configSymbolizer = std::make_shared<ContourConfigSymbolizer>(logger);
+        configSymbolizer->getProperty("visible")->setExpression(Expression(Value(true)));
+        Predicate belowParam = std::make_shared<ComparisonPredicate>(ComparisonPredicate::Op::LT,
+            Expression(std::make_shared<VariableExpression>(std::string("zoom"))),
+            Expression(std::make_shared<VariableExpression>(std::string("param::hillshade_max_zoom"))));
+        auto configRule = std::make_shared<Rule>("config", 0, 24,
+            std::make_shared<Filter>(Filter::Type::FILTER, std::optional<Predicate>(belowParam)),
+            std::vector<std::shared_ptr<const Symbolizer>> { configSymbolizer });
+        addLayer(map, makeStyle("hillshade", { configRule }));
+
+        std::pair<int, int> range = resolveLayerZoomRange(map, "hillshade");
+        TEST_CHECK(range.first == 0 && range.second == 24, "a parameter end leaves the layer's zoom range open");
+
+        auto at = [](long long maxZoom) {
+            return std::make_shared<const StyleParameterStore>(std::map<std::string, Value> { { "hillshade_max_zoom", Value(maxZoom) } });
+        };
+        TEST_CHECK(resolveLayerConfig(map, "hillshade", 15.5f, at(16)).visible, "visible below the parameter");
+        TEST_CHECK(!resolveLayerConfig(map, "hillshade", 16.0f, at(16)).visible, "and not from it, 16 by default");
+        TEST_CHECK(resolveLayerConfig(map, "hillshade", 17.5f, at(18)).visible, "raising it draws past z16");
+        TEST_CHECK(!resolveLayerConfig(map, "hillshade", 18.0f, at(18)).visible, "up to the new end");
     }
 
     // A mapnik:: variable with no feature under it is undefined, not a crash - the same

@@ -101,7 +101,9 @@ deeper woods (`OUTDOOR` in the palette):
   `massif:sdk-layer` metadata says how to set it up to draw what the MapLibre paint draws
   (`STANDARD`, contrast = the paint's exaggeration, heightScale 1, the same colours, visible to z16;
   [Matching MapLibre](../../docs/features/hillshade.md#matching-maplibre)), and the preview builds
-  exactly that, reading the DEM to the source's `maxzoom` in its `encoding`.
+  exactly that, reading the DEM to the source's `maxzoom` in its `encoding`. In the converted
+  project the `#hillshade` slot ends at `hillshade_max_zoom` instead (16 by default), at the same
+  flat contrast: the SDK has no exaggeration fade, so raising it keeps the full relief past z16.
 - **Contours** from the optional `contours` source (layer `contour`, `ele` and `div`: the prebaked
   archive or `ContourTileDataSource`, same schema): 10 m lines from z12, index lines (`div >= 100`)
   from z11, labelled from z13.
@@ -231,6 +233,10 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
   `wetland_pattern_zoom` (13) — where e-ink's textures start.
+- `hillshade_max_zoom` (16) — where the relief ENDS: the `#hillshade` slot draws while
+  `zoom < hillshade_max_zoom` (a `massif:maxzoom-param`). SDK only, through the composite slot:
+  MapLibre's `maxzoom` and its exaggeration fade stay at 16, and a standalone
+  `HillshadeRasterTileLayer` built from `massif:sdk-layer` keeps its `visibleZoomRange` [0, 16].
 
 Switches (0/1):
 

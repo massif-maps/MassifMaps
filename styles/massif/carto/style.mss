@@ -566,7 +566,7 @@ Map {
   polygon-opacity: linear([view::zoom], (6, 0.35), (8, 0));
   polygon-emissive-strength: 0;
 }
-#hillshade[zoom < 16] {
+#hillshade[zoom < 'param::hillshade_max_zoom'] {
   hillshade-contrast: (([param::variant] = 'topo') ? 0.5 : 0.35);
   hillshade-height-scale: 1;
   hillshade-method: 'standard';

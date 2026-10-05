@@ -2,8 +2,6 @@
 state its own default (build.py's `Variant(params=...)`); a layer reads one through a
 `massif:minzoom-param` or `lib.gate`. The names follow Alpimaps' OSM style where it had one."""
 
-from layers.pois import BOOST_NAMES
-
 SWITCH = [0, 1]
 
 PARAMS = {
@@ -40,5 +38,7 @@ PARAMS = {
     'rock_pattern_zoom': {'default': 12},
     'wetland_pattern_zoom': {'default': 13},
     'hillshade_max_zoom': {'default': 16},
-    **{'poi-boost-' + name: {'default': 0} for name in BOOST_NAMES},
+    # tables an app sets one entry of as `poi-boost.<class>`; the converter fills `glyph` (KNOWN_SDK)
+    'poi-boost': {'default': {}},
+    'glyph': {'default': {}},
 }

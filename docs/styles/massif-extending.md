@@ -35,7 +35,7 @@ Three things it can do:
   (`#landcover[class = 'wood']::mine_pattern { … }`) draws with its layer, over the base, without
   touching it.
 - **Defaults** — `styleparameters` merge key by key: set a parameter's default, or declare a new one
-  for your own rules. `styles` does not merge; it is restated whole.
+  for your own rules. `table.key` sets one entry of a table (`poi-fill.cafe`) and keeps the rest. `styles` does not merge; it is restated whole.
 
 A layer is **replaced** by moving the base one out of reach through its parameter and drawing your
 own: `track_min_zoom: 24` hides Massif's tracks, a rule after `style.mss` draws them your way.
@@ -45,13 +45,13 @@ draws it where the base's rank ladder does not yet — or **narrows** one, with 
 ```css
 #poi[zoom >= 15][class = 'bakery']::poi {
   @extend %poi;
-  shield-placement-priority: (30000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
+  shield-placement-priority: (30000000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
 }
 #poi[zoom < 17][class = 'pharmacy']::poi { display: none; }
 ```
 
-The term after `30000000` is the one every base POI rule adds, so an app's `poi-boost-<class>` still
-reaches a rule that states its own priority. To only re-rank a class, set `poi-boost-<class>` instead
+The term after `30000000` is the one every base POI rule adds, so an app's `poi-boost.<class>` still
+reaches a rule that states its own priority. To only re-rank a class, set `poi-boost.<class>` instead
 of writing a rule ([style README](https://github.com/massif-maps/MassifMaps/blob/master/styles/massif/README.md#style-parameters-an-app-sets)).
 
 The bus and tram stops' zooms are project **constants**, moved with no rule at all:
@@ -67,11 +67,12 @@ So are the rank ladder's: `poi_rank10_minzoom` (14), `poi_rank30_minzoom` (15),
 How the template, the attachment and `display` compile: [CartoCSS templates](../internals/cartocss-templates.md).
 
 **POI icons** resolve by name: the POI's `subclass`, else its `class`, else `default` (a small bare
-dot). Each name is a style parameter, `glyph-<name>`, so a child adds an icon in its
-`styleparameters` and the POIs of that class or subclass draw it, on the disc of their category:
+dot). Each name is an entry of the `glyph` table, so a child adds an icon in its
+`styleparameters` as `glyph.<name>` (merged into the base table) and the POIs of that class or
+subclass draw it, on the disc of their category:
 
 ```json
-"styleparameters": { "glyph-sports_centre": "mine/sports_centre.png" }
+"styleparameters": { "glyph.sports_centre": "mine/sports_centre.png" }
 ```
 
 In the sprite flavour the value is a file: the glyph as a distance field, which is what the style

@@ -1642,6 +1642,10 @@ carrying `network` no road shield drew at all, while the same style was fine on 
 
 A coalesce is therefore parenthesised WHOLE, not just per operand.
 
+`??` is mapbox's `coalesce`: only null falls through (and, as before, the empty string). A `0` or a
+`false` is a value - a table entry of `0` taken for missing picked the fallback instead, which drew an
+icon halo round every Massif badge whose table said `0`.
+
 ## A prefix is a regex, in a match as well as an ==
 
 A style picks a road shield's colour from the first letter of its ref - `A` is an autoroute, `D` a

@@ -93,6 +93,14 @@ namespace {
     struct CondEvaluator {
         template <typename T> bool operator() (T val) const { return val != T(); }
     };
+
+    // mapbox's coalesce, which mapbox2css writes as `??`: a 0 or a false is a value, or a table's 0 fell
+    // through to the fallback (every Massif badge took the bare glyph's halo). An empty string still does.
+    struct NullishEvaluator {
+        bool operator() (std::monostate) const { return false; }
+        bool operator() (const std::string& val) const { return !val.empty(); }
+        template <typename T> bool operator() (const T&) const { return true; }
+    };
 }
 
 namespace massif::mvt {
@@ -165,7 +173,7 @@ namespace massif::mvt {
         case Op::MAX:
             return Value(std::max(ValueConverter<float>::convert(val1), ValueConverter<float>::convert(val2)));
         case Op::NULLISH_COALESCING:
-            return std::visit(CondEvaluator(), val1) ? val1 : val2;
+            return std::visit(NullishEvaluator(), val1) ? val1 : val2;
         }
         throw std::invalid_argument("Illegal operator");
     }

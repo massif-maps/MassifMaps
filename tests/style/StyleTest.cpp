@@ -29,6 +29,7 @@ void testDrawOnce();
 void testCartoCSSTemplate();
 void testMultiPointPartIndex();
 void testFieldValuePrefilter();
+void testNullishCoalescing();
 
 int main() {
     testLayerConfig();
@@ -54,6 +55,7 @@ int main() {
     testCartoCSSTemplate();
     testMultiPointPartIndex();
     testFieldValuePrefilter();
+    testNullishCoalescing();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

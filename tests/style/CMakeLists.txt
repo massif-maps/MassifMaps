@@ -58,6 +58,7 @@ add_executable(style_tests
   CartoCSSTemplateTest.cpp
   MultiPointPartIndexTest.cpp
   FieldValuePrefilterTest.cpp
+  NullishCoalescingTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

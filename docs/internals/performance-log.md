@@ -2480,3 +2480,20 @@ Decode was not it: 90-120 ms a tile for Massif against 83-94 for Alpimaps, and �
 Massif's. The fold is in [10-performance.md](rendering/10-performance.md#and-every-other-parameter-is-folded-into-the-tile).
 What is left is draw submission: Massif issues twice Alpimaps' draws, one per attachment per tile.
 
+## 40. One draw call per attachment per tile (2026-10-05)
+
+Same camera and method as §39 (Crosscall, Massif e-ink, Grenoble z15 + pan, 3 interleaved rounds),
+with §39's fold in both builds; consecutive flat styles of one source layer now share a tile layer
+([10-performance.md](rendering/10-performance.md#one-tile-layer-for-a-run-of-flat-styles)).
+
+| | frame | `layers` | draws / frame |
+|---|---|---|---|
+| Massif e-ink, one tile layer per style | 51.6 ms | 28.1 ms | 1016 |
+| Massif e-ink, shared | 41.1 ms | 13.1 ms | 290 |
+| Alpimaps e-ink (§39) | 42.7 ms | 17.6 ms | 543 |
+
+Static frames at the same camera (`devtap diff`, 70 s settle): the map below the labels is pixel
+identical; the 0.6-0.7% of pixels that moved are labels, and a second run of the shared build moved as much against the first.
+Host: every tile of the five Massif variants, its two examples and both Alpimaps styles draws the
+same triangles and slots (`bench-decode` `content`), but for slots that drew nothing in the tile.
+

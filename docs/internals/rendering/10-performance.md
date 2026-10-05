@@ -446,6 +446,27 @@ build/bench/bench-decode styles/massif/carto/streets.json tiles/ /System/Library
 `-DNO_SIZE_FLAGS=ON` keeps the symbols for `sample`. The numbers are in the
 [performance log](../performance-log.md#38-a-converted-style-walked-every-source-layer-once-per-attachment-2026-10-05).
 
+### One tile layer for a run of flat styles
+
+A tile layer is at least one draw call per tile per frame, and `readTile` used to build one per
+style: a converted style (an attachment per MapLibre layer) handed the Crosscall ~1000 draws a
+frame for Massif e-ink at Grenoble z15, against ~540 for Alpimaps' hand-written e-ink. Consecutive
+styles of **one source layer** that draw only flat lines and fills (`LineSymbolizer`,
+`LinePatternSymbolizer`, `PolygonSymbolizer`, `PolygonPatternSymbolizer`) at opacity 1, with no
+comp-op, no draw-once group and no elevation mode, now share one `TileLayerBuilder`. It appends in
+style order and packs whatever its 16 style slots allow into one batch, so draw order is unchanged:
+a z14 Grenoble tile goes from 82 tile layers and 74 batches to 20 and 15.
+
+What stays one tile layer per style: labels (their rank reads the tile layer's index), extrusions,
+anything translucent or blended, and everything on terrain, where tiles are not stencil-clipped and
+layer-major order is what keeps one tile's casing under the next tile's fill. A shared tile layer
+carries its first style's name and index, so a renderer layer filter or a click handler naming a
+later style of the run sees the first one's.
+
+`bench-decode`'s `content` hash is built to survive this: per kind (flat, 3D...) it counts the
+triangles drawn and the set of slots, a slot carrying the fill pattern it samples and its dash,
+because a plain fill rides in a line batch or a patterned one.
+
 ### Flattening the cascade is exponential in INDEPENDENT filter fields
 
 Every round above tuned the constant factor. The shape underneath is worse than linear, and it is

@@ -2502,3 +2502,18 @@ went 34.2 -> 30.9 ms a frame, `layers` 5.0 -> 1.6 ms. With `--es drapeLines fals
 drawn live, unclipped, and sharing drew casing nicks along tile borders (a frame diff shows rows of
 dots on the tile edges), so it stays off there.
 
+
+## 41. A palette as one table parameter costs nothing (2026-10-05)
+
+Martin: could Massif's per-class parameters (`poi-fill-<class>`, `glyph-<class>`, `poi-boost-<class>`)
+be objects read with `get`, if that is free? Same harness as §38 (`bench-decode`, 21 rhone-alpes
+tiles at z15/z16, Release, best of 3 decodes, median of 9 interleaved rounds).
+
+| | parameters | decode, streets | decode, e-ink | load, streets |
+|---|---|---|---|---|
+| one parameter per class | 2009 | 150.1 ms | 159.1 ms | 42.2 ms |
+| one table per palette | 57 | 148.3 ms | 156.7 ms | 41.7 ms |
+
+Every tile and label of the five variants is identical (`content` plus a label hash over priority,
+colours, plates and glyph pixels), and a boost moves the same labels in both shapes. The per-frame
+style functions are the same count, so the tables add nothing to a frame either.

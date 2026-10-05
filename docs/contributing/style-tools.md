@@ -1489,10 +1489,11 @@ topo-v4 went 142 → **239** before the gate, 134 after.
 ### A palette in project.json, not in the rule
 
 `"metadata": { "massif:params": ["text-color"] }` on a layer turns that property's `match` on one
-field into a style-parameter LOOKUP — `[param::poi-fill-[class]]`, one parameter per label, the
-`match`'s fallback left in the rule for `??` to land on. The palette is then editable in
-`project.json` without touching the generated stylesheet, and a sixty-branch ternary the decoder
-walked per feature becomes one lookup.
+field into a style-parameter LOOKUP — `get([param::poi-fill], [class])`, one table parameter per
+palette, the `match`'s fallback left in the rule for `??` to land on. The palette is then editable in
+`project.json` without touching the generated stylesheet, an app changes one entry as
+`poi-fill.cafe`, and a sixty-branch ternary the decoder walked per feature becomes one lookup. The
+sprite and icon-font lookups are tables the same way (`icon`, `glyph`).
 
 **Opt-in per property**, because only the author knows which is which: a table is worth it for a
 palette meant to be tuned and not for the two-branch colour ramp on a road. `metadata` is ignored by
@@ -1502,13 +1503,13 @@ ring and the glyph — so an icon palette lands in the same place as the label's
 
 A palette that follows the hour folds too: `["interpolate", …, ["measure-light", "brightness"], …]`
 whose every stop is such a `match` becomes one table per stop, read inside
-`linear([view::brightness], …)` — `poi-fill-b25-*` for the stop at 0.25, the last stop keeping the
+`linear([view::brightness], …)` — `poi-fill-b25` for the stop at 0.25, the last stop keeping the
 plain name. Keep the ramp OUTSIDE and the match inside; a match whose branches are ramps has no
 constant to tabulate and stays a ternary chain.
 
 A palette per VARIANT folds the same way: a `match` on a live config (`["config", "variant"]`, kept
 live through `massif:live-config`) whose every branch folds - a table, a brightness pair of tables
-or a constant - becomes one set of tables per branch (`poi-fill-eink-*`), picked by a
+or a constant - becomes one set of tables per branch (`poi-fill-eink`), picked by a
 `[param::variant]` test that costs one comparison per draw, then one lookup per feature.
 
 ### A set test's labels are constants, and a geometry name is a NUMBER
@@ -1584,8 +1585,9 @@ text-placement-priority: (11200000 - (0 + [rank]));
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
 
-A negated key, `["-", boost]`, is written as `(base + boost)`, and a `config` whose name is
-`["concat", "prefix-", ["get", field]]` reads `[param::prefix-[field]]`: Massif's `poi-boost-<class>`.
+A negated key, `["-", boost]`, is written as `(base + boost)`, and `["get", ["get", field],
+["config", "table"]]` reads `get([param::table], [field])`: Massif's `poi-boost` table. A `config`
+whose name is `["concat", "prefix-", ["get", field]]` still reads `[param::prefix-[field]]`.
 
 ## Folding a casing and ordering roads do not mix
 

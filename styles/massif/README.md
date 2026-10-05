@@ -272,11 +272,10 @@ Switches (0/1):
 
 POI ranking (SDK only; MapLibre ignores it):
 
-- `poi-boost-<name>` (0) — added to a POI's placement priority, so the culler keeps it over the labels
+- `poi-boost.<name>` (0) — added to a POI's placement priority, so the culler keeps it over the labels
   it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
-  (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
-  for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
-  set). A priority is the layer's position × 100000: trees sit at 9.3M–9.4M, viewpoints at 9.5M,
+  (`poi-boost.alpine_hut`, then `poi-boost.lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
+  for the airport label. `poi-boost` is one table, empty by default: any name can be set. A priority is the layer's position × 100000: trees sit at 9.3M–9.4M, viewpoints at 9.5M,
   landmarks at 9.6M–9.9M and point barriers at 10.0M–10.5M (their layer's less `TREE_SINK`), the airport
   at 17.2M, POIs span 20.6M to 23.5M, road and trail names reach 25.3M, summits 25.4M–25.6M, place
   names 25.7M–26.8M. So `100000` lifts a
@@ -416,7 +415,7 @@ drawing (`sports_centre`, `office`, a shop type Maki lacks: a sixth of a z14 til
 Alps), so it would otherwise stand as a bare name from its rank's zoom. Below z17 the ladder's layers
 draw it nothing; from z17 it is `default`, a small bare dot in the default category's grey, with its
 name. "No glyph" is tested against the sprite on MapLibre (the class list `pois.KNOWN`, read from
-`sprite-src/poi/` at build time) and against the converter's `glyph-<name>` table on the SDK, so an
+`sprite-src/poi/` at build time) and against the converter's `glyph` table on the SDK, so an
 icon added to either makes its class known with no other edit. The test is a `step` over zoom, which
 the converter splits into a rule per band.
 
@@ -502,8 +501,8 @@ at 19 px — the disc is the thing with area.
 
 **The palette lives in `project.json`, not in the rules.** Every POI layer states the same `match` on
 `class` and names `icon-image` in `metadata.massif:params`, so the converter turns it into one shared
-table — `poi-icon-background-fill-railway_metro`, 48 entries — and every rule reads
-`[param::poi-icon-background-fill-[class]]`. Retinting the map is editing the project file. The match
+table — `poi-icon-background-fill`, 48 entries — and every rule reads
+`get([param::poi-icon-background-fill], [class])`. Retinting the map is editing the project file. The match
 is stated per layer and identical on all of them on purpose: a table needs a field to key on, and a
 constant per layer has none.
 

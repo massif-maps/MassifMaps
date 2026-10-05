@@ -361,10 +361,8 @@ test('a palette the style asks for becomes a parameter table, read per feature',
 
     // The fallback stays in the rule: a class the table does not name still draws, and `??` is what
     // a parameter miss falls through on.
-    assert.match(mss, /text-fill: \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\);/);
-    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
-    assert.equal(styleParams.get('poi-fill-railway'), '#2e5a80');
-    assert.equal(styleParams.get('poi-fill-park'), '#4a7a3a');
+    assert.match(mss, /text-fill: \(\(get\(\[param::poi-fill\], \[class\]\)\) \?\? #666666\);/);
+    assert.deepEqual(styleParams.get('poi-fill'), { default: { bus: '#2e5a80', railway: '#2e5a80', park: '#4a7a3a' } });
 });
 
 test('a parameter colour goes in as hex, because that is what the decoder can parse', () => {
@@ -383,8 +381,7 @@ test('a parameter colour goes in as hex, because that is what the decoder can pa
         }],
     }, table, { ...NO_PALETTE, styleParams });
 
-    assert.equal(styleParams.get('poi-fill-bus'), '#3370cc');
-    assert.equal(styleParams.get('poi-fill-park'), '#3b9144');
+    assert.deepEqual(styleParams.get('poi-fill').default, { bus: '#3370cc', park: '#3b9144' });
 });
 
 test('a palette that follows the hour is one table per brightness stop', () => {
@@ -404,9 +401,9 @@ test('a palette that follows the hour is one table per brightness stop', () => {
         }],
     }, table, { ...NO_PALETTE, styleParams });
 
-    assert.match(mss, /text-fill: linear\(\[view::brightness\], \(0\.25, \(\(\[param::poi-fill-b25-\[class\]\]\) \?\? #eeeeee\)\), \(0\.3, \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\)\)\);/);
-    assert.equal(styleParams.get('poi-fill-b25-bus'), '#aabbcc');
-    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+    assert.match(mss, /text-fill: linear\(\[view::brightness\], \(0\.25, \(\(get\(\[param::poi-fill-b25\], \[class\]\)\) \?\? #eeeeee\)\), \(0\.3, \(\(get\(\[param::poi-fill\], \[class\]\)\) \?\? #666666\)\)\);/);
+    assert.equal(styleParams.get('poi-fill-b25').default.bus, '#aabbcc');
+    assert.equal(styleParams.get('poi-fill').default.bus, '#2e5a80');
 });
 
 test('a palette per variant is one set of tables per variant, picked by the parameter', () => {
@@ -428,8 +425,8 @@ test('a palette per variant is one set of tables per variant, picked by the para
         }],
     }, table, { ...NO_PALETTE, styleParams });
 
-    assert.match(mss, /text-fill: \(\(\[param::variant\] = 'eink'\) \? #000000 : \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\)\);/);
-    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+    assert.match(mss, /text-fill: \(\(\[param::variant\] = 'eink'\) \? #000000 : \(\(get\(\[param::poi-fill\], \[class\]\)\) \?\? #666666\)\);/);
+    assert.equal(styleParams.get('poi-fill').default.bus, '#2e5a80');
 });
 
 test('a day/night palette under a config branch keeps that branch its own tables', () => {
@@ -448,11 +445,11 @@ test('a day/night palette under a config branch keeps that branch its own tables
         }],
     }, table, { ...NO_PALETTE, styleParams, liveLight: true });
 
-    assert.equal(styleParams.get('poi-fill-plain-bus'), '#222222');
-    assert.equal(styleParams.get('poi-fill-plain-b25-bus'), '#111111');
-    assert.equal(styleParams.get('poi-fill-bus'), '#444444');
-    assert.equal(styleParams.get('poi-fill-b25-bus'), '#333333');
-    assert.match(mss, /\[param::poi-fill-plain-\[class\]\]/);
+    assert.equal(styleParams.get('poi-fill-plain').default.bus, '#222222');
+    assert.equal(styleParams.get('poi-fill-plain-b25').default.bus, '#111111');
+    assert.equal(styleParams.get('poi-fill').default.bus, '#444444');
+    assert.equal(styleParams.get('poi-fill-b25').default.bus, '#333333');
+    assert.match(mss, /get\(\[param::poi-fill-plain\], \[class\]\)/);
 });
 
 test('a property the style does not ask for keeps its ternary', () => {

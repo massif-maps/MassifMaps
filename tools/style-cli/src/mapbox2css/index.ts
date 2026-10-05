@@ -383,7 +383,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             continue;
         }
         configValues.delete(name);
-        options.styleParams!.set(name, spec.values ? { default: spec.default, values: spec.values } : spec.default);
+        // a bare object or array would read as a declaration or an enum, so a table keeps its `default`
+        const table = typeof spec.default === 'object' && spec.default !== null;
+        options.styleParams!.set(name, spec.values || table ? { default: spec.default, ...(spec.values ? { values: spec.values } : {}) } : spec.default);
         coverage.note(`config "${name}" stays a style parameter, settable on a running map`);
     }
     if (configValues.size > 0) {
@@ -1023,7 +1025,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const presetOverrides = new Map<string, Record<string, Json>>();
     for (const [preset, params] of presetParams) {
         if (preset === '') continue;
-        const differing = [...params].filter(([name, value]) => shared.get(name) !== value);
+        const differing = [...params].filter(([name, value]) => JSON.stringify(shared.get(name)) !== JSON.stringify(value));
         if (differing.length > 0) presetOverrides.set(preset, Object.fromEntries(differing.sort()));
     }
 
@@ -2792,8 +2794,8 @@ function dynamicIconField(image: Json): { fields: string[]; fallback: string | n
  *   match(get(class), ['bed_and_breakfast', …], get(class), 'apartment', 'lodging', 'lodging')
  *   case(get(cuisine) == 'turkish', 'kebab', …, match(get(class), …))
  *
- * A style parameter per label IS that lookup - `[param::t-<label>]` is null when the label has no
- * entry, so `??` falls through exactly as coalesce and the fallback branch do. The alternative was
+ * A parameter table keyed by label IS that lookup - `get([param::t], [class])` is null when the label
+ * has no entry, so `??` falls through exactly as coalesce and the fallback branch do. The alternative was
  * one attachment per branch, which cost a rule each and ran into MAX_VARIANTS: MapTiler's
  * accommodation table has nine branches, so it did not split at all and every hotel lost its icon.
  */
@@ -2802,11 +2804,11 @@ function dynamicIconField(image: Json): { fields: string[]; fallback: string | n
  * the field's value at draw time, so a class OpenMapTiles spells `town_hall` cannot be rewritten in
  * the style - only answered for. See ICON_ALIASES.
  */
-function aliasSprites(names: string[], file: Map<string, string>, prefix: string, options: ConvertOptions): void {
+function aliasSprites(names: string[], file: Map<string, string>, table: string, options: ConvertOptions): void {
     if (!options.schema) return;
     const have = new Set(names);
     for (const [alias, sprite] of Object.entries(ICON_ALIASES[options.sourceSchema ?? 'maptiler'])) {
-        if (have.has(sprite) && !have.has(alias)) options.styleParams!.set(`${prefix}${alias}`, file.get(sprite)!);
+        if (have.has(sprite) && !have.has(alias)) setTableEntry(options, table, alias, file.get(sprite)!);
     }
 }
 
@@ -2822,7 +2824,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
     // the style's colours reach it per feature (extractIconPlate). Its own parameter table, because
     // the two halves live under the same NAME and a rule must not pick up the other one's file.
     const plateMode = layer.layout?.[ICON_PARAMS] !== undefined;
-    const paramPrefix = plateMode ? GLYPH_PARAM_PREFIX : ICON_PARAM_PREFIX;
+    const paramTable = plateMode ? GLYPH_TABLE : ICON_TABLE;
     // The params may cover only some of the layer's features (see IconParamScope). The rest keep
     // the sheet's own artwork, so the rule has to pick per feature between a field and a raster -
     // which `shield-sdf` allows, being read with an expression context like every other property.
@@ -2910,8 +2912,8 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
         const all = ensureEverySprite();
         const matching = all.names.filter((n) => n.startsWith(prefix));
         if (matching.length === 0) return null;
-        for (const name of matching) options.styleParams!.set(`${paramPrefix}${name}`, all.file.get(name)!);
-        return `[param::${paramPrefix}${prefix}[${field}]]`;
+        for (const name of matching) setTableEntry(options, paramTable, name, all.file.get(name)!);
+        return tableRead(paramTable, `concat('${prefix}', [${field}])`);
     };
 
     /** Every sprite written out, each under the file the rule should name it by. */
@@ -3052,18 +3054,18 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             // Named after the value itself - the global one-parameter-per-sprite table covers it,
             // and the table is what gives `??` a miss to fall through on.
             const all = ensureEverySprite();
-            for (const name of all.names) options.styleParams!.set(`${paramPrefix}${name}`, all.file.get(name)!);
-            aliasSprites(all.names, all.file, paramPrefix, options);
-            const field = `[param::${paramPrefix}[${node[1]}]]`;
+            for (const name of all.names) setTableEntry(options, paramTable, name, all.file.get(name)!);
+            aliasSprites(all.names, all.file, paramTable, options);
+            const field = tableRead(paramTable, `[${node[1]}]`);
             if (glyphs || !plateWhen || node[1] !== scope!.field) return field;
             // The features the params do NOT cover: their own artwork, from the raster table, and
             // `shield-sdf` false for them (see plateWhen in shieldImageDeclarations).
             const raster = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
             for (const name of raster.names) {
-                options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
+                setTableEntry(options, ICON_TABLE, name, `icons/${name}.png`);
             }
-            aliasSprites(raster.names, new Map(raster.names.map((n) => [n, `icons/${n}.png`])), ICON_PARAM_PREFIX, options);
-            return `(${plateWhen} ? ${field} : [param::${ICON_PARAM_PREFIX}[${node[1]}]])`;
+            aliasSprites(raster.names, new Map(raster.names.map((n) => [n, `icons/${n}.png`])), ICON_TABLE, options);
+            return `(${plateWhen} ? ${field} : ${tableRead(ICON_TABLE, `[${node[1]}]`)})`;
         }
         if (Array.isArray(node) && node[0] === 'coalesce') {
             const parts = (node as Json[]).slice(1).map((b) => build(b as Json)).filter((x): x is string => x !== null);
@@ -3107,14 +3109,14 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
                 if (name === null) continue;
                 const file = named(name);
                 if (!file) continue;
-                options.styleParams!.set(`${table}-${label}`, file);
+                setTableEntry(options, table, label, file);
                 wrote++;
             }
         }
         const rest = fallback === null ? null : build(fallback);
         const tail = rest && rest !== `''` ? ` ?? ${rest}` : '';
         if (wrote === 0) return rest;
-        return `[param::${table}-[${field}]]${tail}`;
+        return `${tableRead(table, `[${field}]`)}${tail}`;
     };
 
     const expr = build(image);
@@ -3256,12 +3258,12 @@ function paramiseValues(layer: MapboxLayer, options: ConvertOptions, coverage: C
 
         const prefix = `${safeParamName(layer.id)}-${safeParamName(property)}`;
         for (const [labels, result] of asHex) {
-            for (const label of labels) options.styleParams!.set(`${prefix}-${label}`, result as Json);
+            for (const label of labels) setTableEntry(options, prefix, label, result as Json);
         }
         const fallback = tryTranslate(found.fallback, property, layer.id, coverage);
         if (fallback === null) continue;
         const sentinel = `@@param${subs.size}@@`;
-        subs.set(`'${sentinel}'`, `([param::${prefix}-[${found.field}]] ?? ${fallback})`);
+        subs.set(`'${sentinel}'`, `(${tableRead(prefix, `[${found.field}]`)} ?? ${fallback})`);
 
         if (whole) {
             paint[property] = sentinel as unknown as Json;
@@ -3647,10 +3649,24 @@ const DEFAULT_SYMBOL_SPACING = 250;
  * from 2x up, which is every phone.
  */
 const FILL_OUTLINE_WIDTH = 0.4;
-/** One style parameter per sprite name, so a per-feature lookup can fall through when it misses. */
-const ICON_PARAM_PREFIX = 'icon-';
+/** One table entry per sprite name, so a per-feature lookup can fall through when it misses. */
+const ICON_TABLE = 'icon';
 /** The glyph FIELD of a recolourable icon, a different file under the same name. */
-const GLYPH_PARAM_PREFIX = 'glyph-';
+const GLYPH_TABLE = 'glyph';
+
+/**
+ * One entry of a parameter TABLE: an object parameter read with `get([param::table], key)`, unset
+ * for a key it does not name so `??` falls through. An app changes one entry as `table.key`.
+ */
+function setTableEntry(options: ConvertOptions, table: string, key: string, value: Json): void {
+    let spec = options.styleParams!.get(table) as { default: Record<string, Json> } | undefined;
+    if (!spec) options.styleParams!.set(table, spec = { default: {} });
+    spec.default[key] = value;
+}
+
+function tableRead(table: string, key: string): string {
+    return `get([param::${table}], ${key})`;
+}
 
 /** A value in ems of the layer's own text-size, as the pixels CartoCSS wants. */
 function ems(value: Json, layer: MapboxLayer, coverage: Coverage, from: string): string | null {
@@ -3700,7 +3716,7 @@ function emitTranslated(
 /** The translated form of a layer property, counting the drop itself when it has none. */
 /**
  * A `match` on ONE field whose branches are all constants, written as a style-parameter LOOKUP keyed
- * by that field - `[param::poi-fill-bus]`, one parameter per label - instead of the ternary chain
+ * by that field - `get([param::poi-fill], [class])`, one table per palette - instead of the ternary chain
  * the decoder would otherwise walk per feature.
  *
  * Two things come with it. A category palette becomes EDITABLE in project.json without touching the
@@ -3776,10 +3792,10 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
     if (fallback === null) return null;
 
     const slug = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}${suffix}`;
-    for (const [label, branch] of entries) options.styleParams.set(`${slug}-${label}`, paramValue(branch));
+    for (const [label, branch] of entries) setTableEntry(options, slug, label, paramValue(branch));
     coverage.note(`"${layer.id}": ${property} is a ${entries.length}-entry table in project.json ` +
-        `(${slug}-*), read per feature by [${field}]`);
-    return `(([param::${slug}-[${field}]]) ?? ${fallback})`;
+        `(${slug}), read per feature by [${field}]`);
+    return `((${tableRead(slug, `[${field}]`)}) ?? ${fallback})`;
 }
 
 /** A branch of a variant or brightness split: a table where it folds, a plain value where it is one. */

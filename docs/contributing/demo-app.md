@@ -129,7 +129,9 @@ activity is `singleTop` and `BenchActivity.onNewIntent` feeds its extras back th
 
 The gallery has the same channel through `ExampleLive` (same short keys), plus `--es styleParam
 name=value`, a style parameter on the example's `basemap` layer (`buildings=1` turns Mapbox Standard's
-extrusions into footprints). Two traps:
+extrusions into footprints). A light, fog or sky knob on an example that never set one builds a
+default object first (as `tools/style-preview/massif-pane.html` does); a terrain knob needs the
+example's own elevation source and is ignored with a warning. Two traps:
 
 - `ExampleLive` applies the writes on its own worker thread: a receiver runs on the main thread with
   a deadline, and a write blocks on whatever the render thread holds, so writing inline ANRed the app.

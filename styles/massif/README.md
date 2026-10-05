@@ -33,7 +33,8 @@ The converter runs with `--fold-casings --tile-draw-size 512 --live-light`.
 One module per layer family under [`layers/`](layers/), stacked bottom to top in
 `build.py`: land, water, rail and road tunnels, the roads on the ground, rail, bridges, lifts and
 ferries (a cable car or a ski lift in black, `aerialway-lift`, a zip line in the aerialway blue; hybrid
-keeps the blue on imagery), boundaries, buildings, then the labels. Colours are **named** in
+keeps the blue on imagery; a hairline at z12 growing to 1 px by z15), power lines (thin grey, from
+z14, where Alpimaps' tiles carry their `power` layer), boundaries, buildings, then the labels. Colours are **named** in
 [`palette.py`](palette.py) and the rules only name them, so a variant is a
 palette plus the modules it adds.
 
@@ -129,12 +130,12 @@ deeper woods (`OUTDOOR` in the palette):
   before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, rock_shelter, weather_shelter, wilderness_hut: a
-  badge on nature's green at a POI's size, named), campsites and picnic sites from z13 (a picnic
+  badge on nature's green at a POI's size, named), campsites (a smaller glyph until z14, named from z14) and picnic sites from z13 (a picnic
   shelter, the same badge, from z16 and under the huts); caves (named from
-  z15), adits, ruins, castles, forts, archaeological sites, waterfalls (in the water's blue) and named parks and
-  gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z14 under every POI
+  z16), adits, ruins, castles, forts, archaeological sites, waterfalls (in the water's blue) and named parks and
+  gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z16 under every POI
   (below); drinking water
-  and springs only from `water_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
+  and springs only from `water_min_zoom` and `spring_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
   each until its ordinary POI layer takes over. A spring is
   Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17. Water points have their own
   category, in the water's blue. A hut draws the hut glyph, where
@@ -244,7 +245,8 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
   bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
-- `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water and springs; 12 to plan a hike by its water.
+- `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water; 12 to plan a hike by its water.
+- `spring_min_zoom` (17; 16 on outdoor, topo, e-ink; 12 in the osm example, the old OSM style's) — springs.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink; 10 at the lowest, the OSM example's), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
@@ -273,6 +275,9 @@ Switches (0/1):
   OSM example's look.
 - `road_osm_low` (0) — motorway to tertiary drawn as OSM Carto (Alpimaps) draws them at low zoom:
   its wider lines below z12 and its outlines below z14 (the OSM example sets it).
+- `trails` (0; 1 on outdoor, topo, e-ink) — outdoor's paths by difficulty, MTB and SAC detail
+  instead of streets' plain paths; the layers are gated on it rather than on the variant's name, so a
+  child keeping streets' look (`examples/osm`) takes them with `trails: 1`.
 - `sac_scale_labels` (0; 1 on e-ink) — the SAC grade (T1..T6) on a small plate along each trail
   from z14, where a dash alone is hard to read. A path with no `sac_scale` gets none.
 
@@ -617,7 +622,8 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
 Alpimaps' OSM style has them (`?project=osm`): the palette redeclared (each road class its own casing,
 footways red, road colours ramped over zoom as Alpimaps ramps them, tertiaries white), Massif's
 widths kept, POIs as bare glyphs (`poiStyle: plain`), Alpimaps' textures on woods, scrub, wetland
-and rock. Its tracks are Massif's - grades, SAC and MTB details - in OSM's brown (`@track`).
+and rock. Its tracks and trails are Massif's outdoor ones (`trails: 1`) - grades, SAC and MTB
+details - in OSM's brown (`@track`); springs come in at z12 (`spring_min_zoom`).
 Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
 their rank and hides pharmacies before z17 (`display: none`), `osm.json` brings campsites in at z10
 (`campsite_min_zoom`) and its `constants` bring the bus stops in at z15, named from z16, and

@@ -70,6 +70,7 @@
     "boundary",
     "mountain_peak::cliff_teeth",
     "mountain_peak::cliff",
+    "power",
     "transportation::aerialway",
     "transportation::ferry",
     "transportation::bridge_tram_tracks",
@@ -3166,8 +3167,10 @@
     "show_caravan_site": 1,
     "show_tram": 1,
     "show_underground": 1,
+    "spring_min_zoom": 17,
     "sub_boundaries": 1,
     "track_min_zoom": 12,
+    "trails": 0,
     "tunnel_min_zoom": 12,
     "variant": {
       "default": "streets",

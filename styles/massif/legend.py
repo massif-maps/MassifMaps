@@ -91,6 +91,7 @@ def spec():
             line('aerialway', 'Cable car, ski lift', road('aerialway', subclass='cable_car')),
             line('ferry', 'Ferry', road('ferry')),
             line('via-ferrata', 'Via ferrata', road('via_ferrata')),
+            line('power-line', 'Power line', {'class': 'line'}, layer='power'),
         ]},
         {'id': 'water', 'label': 'Water', 'zoom': 14, 'items': [
             item('water', 'Lake, river', 'water', 'polygon', {'class': 'lake'}),

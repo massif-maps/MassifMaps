@@ -38,6 +38,7 @@
 @cliff_stroke: hsla(0, 0%, 90%, 0.8);
 @commercial: hsla(24, 100%, 94%, 1);
 @contour: hsl(35, 35%, 52%);
+@contour_halo: hsla(0, 0%, 100%, 0.8);
 @contour_index: hsl(35, 38%, 42%);
 @contour_index_stroke: hsl(22, 35%, 48%);
 @contour_index_stroke_2: hsla(0, 0%, 100%, 0.65);
@@ -103,9 +104,10 @@
 @line_stroke_3: hsl(0, 0%, 60%);
 @line_stroke_4: hsl(0, 0%, 40%);
 @line_stroke_5: hsla(0, 0%, 0%, 0.2);
-@line_stroke_6: hsl(0, 0%, 20%);
-@line_stroke_7: hsl(0, 0%, 80%);
-@line_stroke_8: hsl(0, 0%, 58%);
+@line_stroke_6: hsl(0, 0%, 45%);
+@line_stroke_7: hsl(0, 0%, 20%);
+@line_stroke_8: hsl(0, 0%, 80%);
+@line_stroke_9: hsl(0, 0%, 58%);
 @lowzoom_built: hsl(20, 12%, 91%);
 @lowzoom_fill: hsl(0, 0%, 6%);
 @military: hsl(0, 40%, 92%);
@@ -120,9 +122,7 @@
 @national_park: hsl(115, 30%, 84%);
 @national_park_line: hsl(115, 35%, 60%);
 @no_access: hsla(0, 70%, 65%, 0.7);
-@outline_stroke: hsl(0, 0%, 55%);
-@outline_stroke_2: hsl(0, 0%, 45%);
-@outline_stroke_3: hsl(0, 0%, 50%);
+@outline_stroke: hsl(0, 0%, 50%);
 @park: hsl(115, 60%, 80%);
 @park_fill: hsl(79, 35%, 78%);
 @parking: hsl(20, 3%, 93%);
@@ -151,6 +151,8 @@
 @polygon_fill_6: hsl(0, 0%, 97%);
 @polygon_fill_7: hsl(105, 42%, 78%);
 @polygon_fill_8: hsl(74, 31%, 80%);
+@power: hsl(0, 0%, 55%);
+@power_line_stroke: hsla(0, 0%, 90%, 0.6);
 @primary: hsl(224, 26%, 74%);
 @primary_case: hsl(224, 22%, 71%);
 @rail: hsl(0, 0%, 65%);

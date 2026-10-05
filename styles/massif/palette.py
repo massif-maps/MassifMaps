@@ -63,6 +63,8 @@ STREETS = {
     'label-park': 'hsl(115, 45%, 28%)',
     'label-airport': 'hsl(225, 60%, 50%)',
     'halo': 'hsl(0, 0%, 100%)',
+    # MapTiler outdoor's: a contour number reads over the relief without a white smear round it
+    'contour-halo': 'hsla(0, 0%, 100%, 0.8)',
     'halo-night': 'hsl(0, 0%, 5%)',
     'cliff': 'hsl(15, 10%, 45%)',
     'label-night': 'hsl(0, 0%, 92%)',
@@ -99,6 +101,7 @@ STREETS = {
     'aerialway': 'hsl(225, 60%, 58%)',
     # a cable car or a ski lift in rail's ink; a zip line keeps the aerialway blue
     'aerialway-lift': 'hsl(0, 0%, 15%)',
+    'power': 'hsl(0, 0%, 55%)',
     'rail': 'hsl(0, 0%, 65%)',
     'rail-night': 'hsl(0, 0%, 30%)',
     'rail-emphasis': 'hsl(0, 0%, 35%)',
@@ -182,6 +185,7 @@ HYBRID = {
     'land': 'transparent',
     # black vanishes on imagery: lifts keep the aerialway blue
     'aerialway-lift': 'hsl(225, 60%, 58%)',
+    'power': 'hsla(0, 0%, 90%, 0.6)',
     'cliff': 'hsla(0, 0%, 90%, 0.8)',
     'motorway': 'hsla(38, 95%, 70%, 0.85)', 'motorway-case': 'hsla(30, 60%, 25%, 0.5)',
     'motorway-bridge-case': 'hsla(30, 60%, 20%, 0.6)',
@@ -198,7 +202,7 @@ HYBRID = {
     'boundary-country': 'hsl(345, 100%, 80%)', 'boundary-state': 'hsl(345, 80%, 85%)',
     'boundary-minor': 'hsla(345, 40%, 85%, 0.8)', 'boundary-halo': 'hsla(0, 0%, 0%, 0.4)',
     'road-label': _WHITE, 'road-label-halo': _DARK, 'road-label-night': _WHITE, 'road-label-halo-night': _DARK,
-    'label': _WHITE, 'label-night': _WHITE, 'halo': _DARK, 'halo-night': _DARK, 'water-halo': _DARK,
+    'label': _WHITE, 'label-night': _WHITE, 'halo': _DARK, 'halo-night': _DARK, 'contour-halo': _DARK, 'water-halo': _DARK,
     'label-soft': 'hsl(0, 0%, 90%)', 'label-natural': 'hsl(0, 0%, 92%)', 'label-park': 'hsl(100, 60%, 85%)',
     'label-airport': 'hsl(225, 80%, 88%)', 'water-label': 'hsl(200, 80%, 85%)', 'housenumber': 'hsl(0, 0%, 88%)',
     'oneway': 'hsl(0, 0%, 90%)',
@@ -244,11 +248,11 @@ EINK.update({
     'path': _W, 'path-z16': _W, 'path-case': 'hsl(0, 0%, 25%)', 'cycleway': 'hsl(0, 0%, 25%)',
     'bridleway': 'hsl(0, 0%, 35%)', 'track': _K, 'track-fill': _W, 'via-ferrata': _W, 'via-ferrata-case': _K,
     'no-access': 'hsla(0, 0%, 0%, 0.6)', 'construction': 'hsl(0, 0%, 60%)', 'ferry': 'hsl(0, 0%, 30%)',
-    'aerialway': _K, 'aerialway-lift': _K, 'rail': 'hsl(0, 0%, 15%)', 'rail-night': 'hsl(0, 0%, 15%)',
+    'aerialway': _K, 'aerialway-lift': _K, 'power': 'hsl(0, 0%, 45%)', 'rail': 'hsl(0, 0%, 15%)', 'rail-night': 'hsl(0, 0%, 15%)',
     'boundary-country': _K, 'boundary-state': 'hsl(0, 0%, 25%)', 'boundary-minor': 'hsl(0, 0%, 45%)',
     'boundary-halo': 'hsl(0, 0%, 85%)', 'building': 'hsl(0, 0%, 90%)', 'building-outline': 'hsl(0, 0%, 40%)',
     'road-label': _K, 'road-label-halo': _W, 'road-label-night': _K, 'road-label-halo-night': _W,
-    'label': _K, 'label-night': _K, 'halo': _W, 'halo-night': _W, 'water-halo': _W, 'label-soft': 'hsl(0, 0%, 25%)',
+    'label': _K, 'label-night': _K, 'halo': _W, 'halo-night': _W, 'contour-halo': _W, 'water-halo': _W, 'label-soft': 'hsl(0, 0%, 25%)',
     'label-natural': 'hsl(0, 0%, 15%)', 'label-park': 'hsl(0, 0%, 15%)', 'label-airport': _K,
     'housenumber': 'hsl(0, 0%, 35%)', 'oneway': _K, 'oneway-arrow': 'dark',
 })

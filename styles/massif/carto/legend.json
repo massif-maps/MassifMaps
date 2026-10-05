@@ -342,6 +342,15 @@
           "properties": {
             "class": "via_ferrata"
           }
+        },
+        {
+          "id": "power-line",
+          "label": "Power line",
+          "layer": "power",
+          "geometry": "line",
+          "properties": {
+            "class": "line"
+          }
         }
       ]
     },

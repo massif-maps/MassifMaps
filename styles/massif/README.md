@@ -33,8 +33,8 @@ The converter runs with `--fold-casings --tile-draw-size 512 --live-light`.
 One module per layer family under [`layers/`](layers/), stacked bottom to top in
 `build.py`: land, water, rail and road tunnels, the roads on the ground, rail, bridges, lifts and
 ferries (a cable car or a ski lift in black, `aerialway-lift`, a zip line in the aerialway blue; hybrid
-keeps the blue on imagery; a hairline at z12 growing to 1 px by z15), power lines (thin grey, from
-z14, where Alpimaps' tiles carry their `power` layer), boundaries, buildings, then the labels. Colours are **named** in
+keeps the blue on imagery; a hairline at z12 growing to 1 px by z15), power lines (thin grey from z13, though Alpimaps' tiles carry their `power` layer from z14 only:
+an app on 256-px tiles reads those at its own z14, maplibre's z13), boundaries, buildings, then the labels. Colours are **named** in
 [`palette.py`](palette.py) and the rules only name them, so a variant is a
 palette plus the modules it adds.
 
@@ -130,10 +130,10 @@ deeper woods (`OUTDOOR` in the palette):
   before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, rock_shelter, weather_shelter, wilderness_hut: a
-  badge on nature's green at a POI's size, named), campsites (a smaller glyph until z14, named from z14) and picnic sites from z13 (a picnic
+  badge on nature's green at a POI's size, named), campsites (a smaller glyph until z13, named from z13) and picnic sites from z13 (a picnic
   shelter, the same badge, from z16 and under the huts); caves (named from
-  z16), adits, ruins, castles, forts, archaeological sites, waterfalls (in the water's blue) and named parks and
-  gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z16 under every POI
+  z15), adits, ruins, castles, forts, archaeological sites, waterfalls (in the water's blue) and named parks and
+  gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z15 under every POI
   (below); drinking water
   and springs only from `water_min_zoom` and `spring_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
   each until its ordinary POI layer takes over. A spring is
@@ -244,10 +244,10 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
-  bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
+  bridge is drawn as the road it carries (the OSM example sets 12, OSM Carto's 13).
 - `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water; 12 to plan a hike by its water.
-- `spring_min_zoom` (17; 16 on outdoor, topo, e-ink; 12 in the osm example, the old OSM style's) — springs.
-- `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink; 10 at the lowest, the OSM example's), `building_min_zoom` (14), `city_min_zoom`
+- `spring_min_zoom` (17; 16 on outdoor, topo, e-ink; 11 in the osm example, the old OSM style's 12) — springs.
+- `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink; 9 at the lowest, the OSM example's), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
   `wetland_pattern_zoom` (13) — where e-ink's textures start.
@@ -623,11 +623,13 @@ Alpimaps' OSM style has them (`?project=osm`): the palette redeclared (each road
 footways red, road colours ramped over zoom as Alpimaps ramps them, tertiaries white), Massif's
 widths kept, POIs as bare glyphs (`poiStyle: plain`), Alpimaps' textures on woods, scrub, wetland
 and rock. Its tracks and trails are Massif's outdoor ones (`trails: 1`) - grades, SAC and MTB
-details - in OSM's brown (`@track`); springs come in at z12 (`spring_min_zoom`).
-Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
-their rank and hides pharmacies before z17 (`display: none`), `osm.json` brings campsites in at z10
-(`campsite_min_zoom`) and its `constants` bring the bus stops in at z15, named from z16, and
-public-transport shelters at z15.
+details - in OSM's brown (`@track`); springs come in at z11 (`spring_min_zoom`).
+Its zooms are the old OSM style's less one: Massif counts zooms as maplibre does (512-px tiles), the
+SDK and that style on 256-px tiles, so the same view is numbered one lower here.
+Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z14 whatever
+their rank and hides pharmacies before z16 (`display: none`), `osm.json` brings campsites in at z9
+(`campsite_min_zoom`) and its `constants` bring the bus stops in at z14, named from z15, and
+public-transport shelters at z14.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

@@ -2653,9 +2653,9 @@ Map {
   line-width: exponential(1.5, [view::zoom], (12, 0.4), (15, 1), (20, 2));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#power[zoom >= 14]::power_line {
+#power[zoom >= 13]::power_line {
   line-color: (([param::variant] = 'hybrid') ? @power_line_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @power));
-  line-width: exponential(1.5, [view::zoom], (14, 0.8), (16, 1), (20, 1.5));
+  line-width: exponential(1.5, [view::zoom], (13, 0.8), (16, 1), (20, 1.5));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #mountain_peak[zoom >= 13][class = 'cliff']['mapnik::geometry_type' = 2]::cliff {
@@ -3885,7 +3885,7 @@ Map {
   shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+  shield-placement-priority: (22100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   shield-wrap-before: true;
   shield-file: (get([param::glyph], [subclass]) ?? get([param::poi-t0], [class]) ?? get([param::glyph], [class]) ?? 'icons-glyph/default.png');
   shield-unlock-image: true;
@@ -3928,7 +3928,7 @@ Map {
   shield-text-radial-offset: 11;
   @extend %poi;
 }
-#poi[zoom >= 16][subclass = 'viewpoint']::poi {
+#poi[zoom >= 15][subclass = 'viewpoint']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (21000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
@@ -4272,29 +4272,41 @@ Map {
   shield-text-radial-offset: 11;
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'adit']::poi {
-  shield-placement-priority: (22100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 14][zoom < 15][class = 'adit']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'archaeological_site']::poi {
-  shield-placement-priority: (22100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 15][zoom < 16][class = 'adit']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'castle']::poi {
-  shield-placement-priority: (22100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 14][zoom < 15][class = 'archaeological_site']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'cave_entrance']::poi {
+#poi[zoom >= 15][zoom < 16][class = 'archaeological_site']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 14][zoom < 15][class = 'castle']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 15][zoom < 16][class = 'castle']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 14][zoom < 15][class = 'cave_entrance']::poi {
   shield-name: '';
-  shield-placement-priority: (22100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'fort']::poi {
-  shield-placement-priority: (22100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 15][zoom < 16][class = 'cave_entrance']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'waterfall']::poi {
-  shield-placement-priority: (22100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 14][zoom < 15][class = 'fort']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 15][zoom < 16][class = 'fort']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 14][zoom < 15][class = 'waterfall']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 15][zoom < 16][class = 'waterfall']::poi {
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'park'][name != null]::poi {
@@ -4379,7 +4391,7 @@ Map {
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   @extend %poi;
 }
-#poi[zoom >= 'param::spring_min_zoom'][zoom >= 12][class = 'spring']['param::highlight_drinking_water' = 0]::poi_spring {
+#poi[zoom >= 'param::spring_min_zoom'][zoom >= 11][class = 'spring']['param::highlight_drinking_water' = 0]::poi_spring {
   marker-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @poi_spring_fill);
   marker-width: (2 * linear([view::zoom], (12, 1.5), (14, 2), (16, 5)));
   marker-allow-overlap: true;
@@ -4526,89 +4538,96 @@ Map {
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * (([class] = 'barrier' || [class] = 'bench' || [class] = 'garden' || [class] = 'picnic_site' || [class] = 'telephone' || [class] = 'toilets' || [class] = 'viewpoint' || [class] = 'waste_basket') ? [param::bare_icon_scale] : 1)) : (([param::poiStyle] = 'plain') ? (([class] = 'barrier' || [class] = 'bench' || [class] = 'garden' || [class] = 'picnic_site' || [class] = 'telephone' || [class] = 'toilets' || [class] = 'viewpoint' || [class] = 'waste_basket') ? (0.4 * [param::bare_icon_scale]) : 0.6) : (0.4 * (([class] = 'barrier' || [class] = 'bench' || [class] = 'garden' || [class] = 'picnic_site' || [class] = 'telephone' || [class] = 'toilets' || [class] = 'viewpoint' || [class] = 'waste_basket') ? [param::bare_icon_scale] : 1))))));
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 10][zoom < 14][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 0]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 9][zoom < 13][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 0]::poi {
   shield-name: '';
   shield-placement-priority: (24200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 14][zoom < 24][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 0]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 13][zoom < 24][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 0]::poi {
   shield-placement-priority: (24200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 10][zoom < 14][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 1]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 9][zoom < 13][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 1]::poi {
   shield-name: '';
   shield-placement-priority: (24300000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   shield-allow-overlap: true;
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 14][zoom < 24][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 1]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 13][zoom < 24][class = 'campsite'][subclass != 'caravan_site']['param::campsite_allow_overlap' = 1]::poi {
   shield-placement-priority: (24300000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   shield-allow-overlap: true;
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 10][zoom < 14][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 0]['param::show_caravan_site' = 1]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 9][zoom < 13][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 0]['param::show_caravan_site' = 1]::poi {
   shield-name: '';
   shield-placement-priority: (24400000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 14][zoom < 24][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 0]['param::show_caravan_site' = 1]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 13][zoom < 24][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 0]['param::show_caravan_site' = 1]::poi {
   shield-placement-priority: (24400000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 10][zoom < 14][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 1]['param::show_caravan_site' = 1]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 9][zoom < 13][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 1]['param::show_caravan_site' = 1]::poi {
   shield-name: '';
   shield-placement-priority: (24500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   shield-allow-overlap: true;
   @extend %poi;
 }
-#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 14][zoom < 24][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 1]['param::show_caravan_site' = 1]::poi {
+#poi[zoom >= 'param::campsite_min_zoom'][zoom >= 13][zoom < 24][class = 'campsite'][subclass = 'caravan_site']['param::campsite_allow_overlap' = 1]['param::show_caravan_site' = 1]::poi {
   shield-placement-priority: (24500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (11, 0.24), (14, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (11, (0.6 * 0.6)), (14, (1 * 0.6))) : linear([view::zoom], (11, 0.24), (14, 0.4))))));
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (10, 0.24), (13, 0.4)) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (10, (0.6 * 0.6)), (13, (1 * 0.6))) : linear([view::zoom], (10, 0.24), (13, 0.4))))));
   shield-allow-overlap: true;
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'aerialway'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'ferry'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'harbor'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'lighthouse'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'railway'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'railway_light'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'railway_metro'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (24600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'airfield'][subclass != 'tram_stop']::poi {

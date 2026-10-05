@@ -501,7 +501,7 @@ def springs(v):
     never hidden by another label; named from z17"""
     mono = v.flags.get('mono', False)
     spring = ['==', get('class'), 'spring']
-    dot = layer('poi-spring', 'circle', 'poi', minzoom=12, filter=spring,
+    dot = layer('poi-spring', 'circle', 'poi', minzoom=11, filter=spring,
                 paint={'circle-color': MONO_INK if mono else CATEGORY['water']['disc'],
                        'circle-radius': zoom_ramp(12, 1.5, 14, 2, 16, 5),
                        'circle-stroke-color': HALO_DAY, 'circle-stroke-width': zoom_ramp(13.5, 0, 14, 1)},
@@ -515,8 +515,8 @@ def springs(v):
     return [gate(dot, v, 'highlight_drinking_water', 0), gate(boosted(name, 'class'), v, 'highlight_drinking_water', 0)]
 
 
-# a cave's name waits for z16: the entrance alone says where it is
-CAVE_NAME = ['step', ['zoom'], ['match', get('class'), 'cave_entrance', '', NAME], 16, NAME]
+# a cave's name waits for z15: the entrance alone says where it is
+CAVE_NAME = ['step', ['zoom'], ['match', get('class'), 'cave_entrance', '', NAME], 15, NAME]
 
 
 def mountain(v):
@@ -536,9 +536,9 @@ def mountain(v):
     return out
 
 
-# a campsite seen from z10 is a small glyph, at a POI's size by z14 where its name joins it
-CAMPSITE_SCALE = zoom_ramp(11, 0.6, 14, 1)
-CAMPSITE_NAME = ['step', ['zoom'], '', 14, NAME]
+# a campsite seen from afar is a small glyph, at a POI's size by z13 where its name joins it
+CAMPSITE_SCALE = zoom_ramp(10, 0.6, 13, 1)
+CAMPSITE_NAME = ['step', ['zoom'], '', 13, NAME]
 
 
 def campsites(v):
@@ -550,8 +550,8 @@ def campsites(v):
                                ('poi-caravan-site', ['all', camp, ['==', get('subclass'), 'caravan_site']],
                                 'show_caravan_site')):
         for overlap in (0, 1):
-            # z10, where the tiles start carrying campsites: the floor an app may lower `campsite_min_zoom` to
-            lay = poi_layer(id + ('-overlap' if overlap else ''), 10, filter, v, overlap=bool(overlap),
+            # z9: the tiles carry campsites from z10, which an app on 256-px tiles reads at maplibre's z9 scale
+            lay = poi_layer(id + ('-overlap' if overlap else ''), 9, filter, v, overlap=bool(overlap),
                             text=CAMPSITE_NAME, scale=CAMPSITE_SCALE)
             lay['metadata']['massif:minzoom-param'] = 'campsite_min_zoom'
             gate(lay, v, 'campsite_allow_overlap', overlap)
@@ -647,7 +647,7 @@ LANDMARK_TIERS = [(17, ['guidepost']),
 def landmarks(v):
     """a viewpoint, then what marks a spot on the ground rather than names one (Alpimaps' `poi_landmarks`,
     `poi_guideposts`): bare glyphs over the trees and under the barriers, so they never hide a POI"""
-    out = [reference(poi_layer('poi-viewpoint', 16, ['==', get('subclass'), 'viewpoint'], v, category='park_like',
+    out = [reference(poi_layer('poi-viewpoint', 15, ['==', get('subclass'), 'viewpoint'], v, category='park_like',
                                bare=True), v, 'park_like')]
     for minzoom, classes in LANDMARK_TIERS:
         cls = ['==', get('class'), classes[0]] if len(classes) == 1 else ['in', get('class'), ['literal', classes]]

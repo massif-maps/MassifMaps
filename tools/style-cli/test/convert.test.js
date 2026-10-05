@@ -159,26 +159,26 @@ test('the generated CartoCSS compiles with massif-style', (t) => {
 });
 
 test('a dash ramped over zoom still dashes, at the LAST stop that dashes', () => {
-    // CartoCSS takes ONE dash pattern. MapTiler ramps its footway dash with `step`, and taking
-    // nothing left every path drawn solid; its disputed border ramps FROM a solid `[1, 0]`, so the
-    // base is not the answer either. Between two stops that both dash, the last one is the one
-    // whose line is widest - and a dash is a multiple of that width.
+    // MapTiler ramps its footway dash with `step`, and taking nothing left every path drawn solid;
+    // its disputed border ramps FROM a solid `[1, 0]`, which draws no dash below the step. An
+    // interpolated ramp has no step to switch at: it takes the last stop that dashes, the one whose
+    // line is widest - and a dash is a multiple of that width.
     const line = (dash) => ({ id: 'l', type: 'line', 'source-layer': 'pathway',
         paint: { 'line-dasharray': dash, 'line-width': 2 } });
     const mss = (dash) => convert({ layers: [line(dash)] }, table, NO_PALETTE).mss;
 
     assert.match(mss(['step', ['zoom'], ['literal', [1, 1]], 22, ['literal', [1, 1.5]]]),
-        /line-dasharray: 2,3;/);
+        /line-dasharray: step\(\[zoom\], \(1, '2,2'\), \(23, '2,3'\)\);/);
     assert.match(mss({ stops: [[14, [0.5, 0.5]], [18, [0.3, 0.1]]] }), /line-dasharray: 0.6,0.2;/);
     // [1, 0] has no gap - it IS a solid line - so the pattern below it is the one to draw.
     assert.match(mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [3, 2, 0.1, 2]]]),
-        /line-dasharray: 6,4,1,3.2;/);
+        /line-dasharray: step\(\[zoom\], \(1, ''\), \(6, '6,4,1,3.2'\)\);/);
     // ...and a ramp that only ever states a solid pattern writes no dash at all, rather than a
     // "dash" as long as the line width scaled it.
     assert.ok(!mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [1, 0]]]).includes('dasharray'));
 });
 
-test('a PLAIN dash over a ramped width becomes one rule per zoom band', () => {
+test('a PLAIN dash over a ramped width steps its pattern over zoom bands, in one rule', () => {
     // Liberty's rail hatching: [0.2, 8] over a width running 3 px at z15 to 8 px at z20. One scale
     // cannot serve that - at 5.5 the dash drew 1.8x too long at the bottom of the range - and a
     // plain literal has no stop zoom of its own to be read at, the way a ramped dash does.
@@ -187,32 +187,35 @@ test('a PLAIN dash over a ramped width becomes one rule per zoom band', () => {
         'line-dasharray': [0.2, 8],
     } };
     const out = convert({ layers: [hatching] }, table, NO_PALETTE).mss;
-    const dashes = [...out.matchAll(/line-dasharray: ([\d.]+),/g)].map((m) => Number(m[1]));
+    const frames = dashFrames(out);
 
-    assert.equal(dashes.length, 2, 'a 2.7x width range is two bands, cut where the width doubles');
-    assert.ok(dashes[0] < dashes[1], 'the lower band scales by the narrower line');
+    assert.equal(frames.length, 2, 'a 2.7x width range is two bands, cut where the width doubles');
+    assert.ok(Number(frames[0][1].split(',')[0]) < Number(frames[1][1].split(',')[0]), 'the lower band scales by the narrower line');
     // Measured from the first POSITIVE stop: the ramp starts at width 0, and below that there is
     // nothing for the dash to be in proportion to.
-    assert.match(out, /#road\[zoom < 19\]::l_b1 \{/);
-    assert.match(out, /#road\[zoom >= 19\]::l_b2 \{/);
+    assert.equal(frames[1][0], 19);
+    assert.deepEqual(dashRules(out).map(([sel]) => sel), ['#road::l'], 'one rule, one attachment: a band each was a style each');
 });
 
 // Each rule of a converted layer, as [selector, dasharray or null].
 const dashRules = (mss) => [...mss.matchAll(/^(#[^{]+)\{([^}]*)\}/gm)]
     .map((m) => [m[1].trim(), (m[2].match(/line-dasharray: ([^;]+);/) ?? [])[1] ?? null]);
+// The bands of a `step([zoom], ...)` dash, as [zoom, pattern or null where the band is solid].
+const dashFrames = (mss) => [...(mss.match(/line-dasharray: step\(\[zoom\], (.*)\);/) ?? [, ''])[1].matchAll(/\((\d+), '([^']*)'\)/g)]
+    .map((m) => [Number(m[1]), m[2] === '' ? null : m[2]]);
 
-test('a dash a style STEPS over zoom is a rule per step, solid where the step is', () => {
+test('a dash a style STEPS over zoom is a pattern per step, solid where the step is', () => {
     // Standard's stair treads: solid below z19, then a 0.1 dash. One rule drew the treads at every
     // zoom; below the step the line is solid, so that band carries no dash at all.
     const steps = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
         'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 0, 18, 6, 22, 80],
         'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 19, ['literal', [0.1, 0.1]]],
     } };
-    const rules = dashRules(convert({ layers: [steps] }, table, NO_PALETTE).mss);
+    const frames = dashFrames(convert({ layers: [steps] }, table, NO_PALETTE).mss);
     // the SDK's zoom is mapbox's + 1, so z19 is written 20
-    assert.ok(rules.filter(([sel]) => /zoom < 20\]/.test(sel)).every(([, dash]) => dash === null), 'solid below the step');
-    const dashed = rules.filter(([, dash]) => dash !== null);
-    assert.ok(dashed.length >= 1 && dashed.every(([sel]) => /zoom >= (2[0-9])\]/.test(sel)), 'dashed from the step on');
+    assert.ok(frames.filter(([zoom]) => zoom < 20).every(([, dash]) => dash === null), 'solid below the step');
+    const dashed = frames.filter(([, dash]) => dash !== null);
+    assert.ok(dashed.length >= 1 && dashed.every(([zoom]) => zoom >= 20), 'dashed from the step on');
 });
 
 test('a stepped dash takes each step pattern, scaled by the width inside its own band', () => {
@@ -223,11 +226,11 @@ test('a stepped dash takes each step pattern, scaled by the width inside its own
         'line-dasharray': ['step', ['zoom'], ['literal', [0.1, 15]], 16, ['literal', [0.1, 1]],
             18, ['literal', [0.05, 0.5]]],
     } };
-    const rules = dashRules(convert({ layers: [tracks] }, table, NO_PALETTE).mss);
-    const gaps = rules.map(([, dash]) => Number(dash.split(',')[1]));
+    const frames = dashFrames(convert({ layers: [tracks] }, table, NO_PALETTE).mss);
+    const gaps = frames.map(([, dash]) => Number(dash.split(',')[1]));
     // 0.1 x 2 px is a 0.2 px sleeper, widened to 1 px out of its 30 px gap
     assert.equal(gaps[0], 29.2, 'below z16 the width is 2, so 15 widths is 30 px, less the pixel the sleeper takes');
-    assert.ok(rules.every(([, dash]) => Number(dash.split(',')[0]) >= 1), 'and no sleeper is drawn under a pixel');
+    assert.ok(frames.every(([, dash]) => Number(dash.split(',')[0]) >= 1), 'and no sleeper is drawn under a pixel');
     assert.ok(gaps.length >= 3, 'a band per step');
     for (let i = 2; i < gaps.length; i++) assert.ok(gaps[i] > gaps[i - 1], 'and the gap grows with the line past the steps');
     assert.ok(gaps[gaps.length - 1] > 8, 'at z20+ a sleeper is metres apart, not a hatch');
@@ -245,10 +248,10 @@ test('a width whose stops are data-driven still scales the dash at that zoom', (
             22, ['match', ['get', 'type'], ['piste'], 40, 20]],
         'line-dasharray': ['step', ['zoom'], ['literal', [1]], 16, ['literal', [1, 1]]],
     } };
-    const rules = dashRules(convert({ layers: [cycleway] }, table, NO_PALETTE).mss);
-    assert.equal(rules[0][1], null, 'solid below z16');
+    const frames = dashFrames(convert({ layers: [cycleway] }, table, NO_PALETTE).mss);
+    assert.equal(frames[0][1], null, 'solid below z16');
     // the band from z16 reads the fallback branch in its middle: 0 + (17.5-12)/6 * 2 = 1.83
-    assert.equal(rules[1][1], '1.83,1.83');
+    assert.deepEqual(frames[1], [17, '1.83,1.83']);
 });
 
 test('a width chosen per config value scales the dash by its fallback ramp', () => {

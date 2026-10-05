@@ -53,7 +53,7 @@ test('a branch that pins a field drops the set test and the negations it was spl
     assert.ok(mss.includes('line-color: #ff0000;'), mss);
 });
 
-test('a set filter becomes one attachment per value when the paint branches on it', () => {
+test('a set filter becomes one rule per value when the paint branches on it', () => {
     const mss = mssOf([roadLayer({
         filter: ['in', ['get', 'class'], ['literal', ['wood', 'grass']]],
         paint: { 'line-color': ['match', ['get', 'class'], 'wood', '#0f0', '#ff0'] },
@@ -61,9 +61,9 @@ test('a set filter becomes one attachment per value when the paint branches on i
 
     assert.ok(!mss.includes('when('), mss);
     assert.deepEqual(selectors(mss), [
-        "#transportation[class = 'wood']::road_b1 {",
-        "#transportation[class = 'grass']::road_b2 {",
-    ]);
+        "#transportation[class = 'wood']::road {",
+        "#transportation[class = 'grass']::road {",
+    ], 'rules of the ONE attachment: an attachment is a pass over the whole layer per tile');
 });
 
 test('a set filter that is the whole filter splits even with nothing to fold', () => {

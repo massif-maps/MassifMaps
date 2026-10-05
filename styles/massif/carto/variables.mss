@@ -99,9 +99,9 @@
 @landuse_residential_fill: hsl(35, 15%, 91%);
 @landuse_residential_fill_2: hsl(45, 10%, 86%);
 @line_stroke: hsl(0, 0%, 75%);
-@line_stroke_2: hsl(0, 0%, 60%);
-@line_stroke_3: hsl(0, 0%, 40%);
-@line_stroke_4: hsl(0, 0%, 85%);
+@line_stroke_2: hsl(0, 0%, 85%);
+@line_stroke_3: hsl(0, 0%, 60%);
+@line_stroke_4: hsl(0, 0%, 40%);
 @line_stroke_5: hsla(0, 0%, 0%, 0.2);
 @line_stroke_6: hsl(0, 0%, 20%);
 @line_stroke_7: hsl(0, 0%, 80%);
@@ -201,8 +201,8 @@
 @track_label: hsl(30, 50%, 30%);
 @track_stroke: hsla(35, 70%, 75%, 0.8);
 @trail_background_border_fill: #000000;
+@trail_fill: hsl(5, 72%, 45%);
 @trail_stroke: hsl(215, 70%, 42%);
-@trail_stroke_2: hsl(5, 72%, 45%);
 @trunk: hsl(235, 20%, 70%);
 @trunk_bridge_case: hsl(235, 20%, 50%);
 @trunk_case: hsl(235, 20%, 60%);
@@ -221,12 +221,10 @@
 @wood: hsla(115, 60%, 74%, 0.8);
 @wood_low: hsl(115, 60%, 84%);
 @building_stroke_width: 0.4;
-@cliff_teeth_stroke_opacity: 0.7;
 @label_spacing: 250;
 @marker_stroke_width: 1;
 @oneway_opacity: 0.8;
 @oneway_spacing: 200;
-@park_outline_stroke_opacity: 0.6;
 @poi_size: 12;
 @poi_size_2: 11;
 @poi_wrap_width: 108;

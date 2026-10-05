@@ -375,8 +375,8 @@ test('an icon chain stepped over zoom is one band per step, and a zoom constant 
         minzoom: 14, metadata: { 'massif:minzoom-const': 'rank10_minzoom' },
     }] }, TABLE, { ...NO_PALETTE, iconFont, tileDrawSize: 512 });
 
-    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom < 17\]::shield_b1 \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\]\);/);
-    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom >= 17\]\[zoom < 24\]::shield_b2 \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\] \?\? '\ue002'\);/);
+    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom < 17\]::shield \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\]\);/);
+    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom >= 17\]\[zoom < 24\]::shield \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\] \?\? '\ue002'\);/);
     assert.equal(JSON.parse(out.project).constants.rank10_minzoom, 14, 'the late band does not restate it');
 });
 

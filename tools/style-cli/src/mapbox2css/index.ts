@@ -557,18 +557,21 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
             // A field-driven paint value becomes one attachment per branch, and a line-sort-key one
             // per key value in draw order - see split.ts.
-            const variants = expandSortKey(isContourLayer(layer) ? retargeted : schemaLayer, coverage)
-                .flatMap(expandSetFilter)
-                .flatMap((ordered) => splitLayer(ordered, coverage))
-                .flatMap((ordered) => splitDashByZoom(ordered, coverage))
-                .map(narrowLayer);
+            // An attachment per sort key, lowest first - the only split that has to ORDER its parts.
+            // The rest have exclusive filters, so they are rules of that one attachment: an
+            // attachment walks the whole source layer per tile, and its features keep the tile's
+            // order, as MapBox draws one layer.
+            const ordered = expandSortKey(isContourLayer(layer) ? retargeted : schemaLayer, coverage);
             // `massif:attachment`: layers drawing into ONE attachment, so a child project's rule on it
             // merges with whichever of them matches instead of drawing the feature a second time.
             const sharedAttachment = (layer.metadata as Record<string, Json> | undefined)?.['massif:attachment'];
-            variants.forEach((variant, branch) => {
-                const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
+            ordered.forEach((sortKeyed, branch) => {
+                const suffix = ordered.length > 1 ? `_b${branch + 1}` : '';
                 const attachment = typeof sharedAttachment === 'string' ? attachmentName(sharedAttachment) : `${attachmentName(layer.id)}${suffix}`;
-                emitLayer(variant, attachment, target, symbolizer, index);
+                expandSetFilter(sortKeyed)
+                    .flatMap((variant) => splitLayer(variant, coverage))
+                    .map((variant) => narrowLayer(bandDashByZoom(variant, coverage)))
+                    .forEach((variant) => emitLayer(variant, attachment, target, symbolizer, index));
             });
         }
     });
@@ -1697,29 +1700,40 @@ function layerDeclarations(
                 continue;
             }
             const zoom = dash.zoom;
-            const pattern = (layer.dashZoom === undefined ? null : dashPatternAt(value as Json, layer.dashZoom)) ?? dash.pattern;
+            const width = dashWidth(layer.paint?.['line-width']);
             // `[1, 0]` is MapBox's spelling of SOLID. Scaled by a line width it became a 430 px
             // "dash", which is a 430 px bitmap rasterized to draw an unbroken line.
-            if (!pattern.some((v, i) => i % 2 === 1 && v > 0)) {
+            const gaps = (pattern: number[]) => pattern.some((v, i) => i % 2 === 1 && v > 0);
+            if (layer.dashBands !== undefined) {
+                // A banded dash reads the width in the middle of its OWN band; see bandDashByZoom.
+                const frames = layer.dashBands.map(({ from, dashZoom }) => {
+                    const pattern = dashPatternAt(value as Json, dashZoom) ?? dash.pattern;
+                    const scale = rampAt(width, dashZoom) ?? (zoom === null ? null : rampAt(width, zoom))
+                        ?? representativeScale(width, 1);
+                    const pixels = gaps(pattern) ? pixelDashes(pattern.map((v) => v * scale)).map(round).join(',') : '';
+                    return `(${Math.floor(from) + zoomOffsetLevels()}, '${pixels}')`;
+                });
+                out.push(`line-dasharray: step([zoom], ${frames.join(', ')});`);
+                coverage.emit('line-dasharray');
+                continue;
+            }
+            const pattern = dash.pattern;
+            if (!gaps(pattern)) {
                 coverage.drop(name, 'the pattern has no gap, so the line is solid', layer.id);
                 continue;
             }
-            if (pattern !== value && layer.dashZoom === undefined) {
+            if (pattern !== value) {
                 // MapTiler ramps its path dashes over zoom and CartoCSS takes ONE pattern. The
                 // base (the widest band, and every stop below the first) is what is on screen at
                 // nearly every zoom; taking nothing left every footway drawn solid.
                 coverage.approximate(`line-dasharray taken at one stop, ${pattern.join(',')}: ` +
                     'CartoCSS takes one dash pattern, not a ramp');
             }
-            const width = dashWidth(layer.paint?.['line-width']);
             // At the zoom the pattern is CHOSEN at, not the mean of the width's stops: Standard's
             // steps ramp to 80 px by z22, so the mean is 43 and its 0.2 dash came out at 8.6 px
             // where gl-js draws under 2 - coarse bands instead of fine treads.
-            // A banded attachment reads the width in the middle of its OWN band; see splitDashByZoom.
-            const banded = layer.dashZoom === undefined ? null : rampAt(width, layer.dashZoom);
-            const scale = banded ?? (zoom === null ? null : rampAt(width, zoom))
-                ?? representativeScale(width, 1);
-            if (typeof width !== 'number' && banded === null) {
+            const scale = (zoom === null ? null : rampAt(width, zoom)) ?? representativeScale(width, 1);
+            if (typeof width !== 'number') {
                 coverage.approximate(`line-dasharray scaled by ${round(scale)}, a zoom-driven ` +
                     'line-width read at one zoom: CartoCSS takes one dash pattern, not a ramp');
             }
@@ -2262,25 +2276,25 @@ function dashPattern(value: Json): { pattern: number[]; zoom: number | null } | 
 }
 
 /**
- * A dashed line whose WIDTH ramps over zoom, as one attachment per zoom band.
+ * A dashed line whose WIDTH ramps over zoom, as one `step([zoom], ...)` dash over zoom bands.
  *
- * A MapBox dash length is a multiple of the line width, and CartoCSS takes ONE pattern of PIXELS per
- * rule - the decoder rasterises it into a bitmap keyed by the literal string, so it cannot be a
- * function of anything. A single rule is therefore only right at one zoom: Liberty's rail hatching
+ * A MapBox dash length is a multiple of the line width, and CartoCSS takes a pattern of PIXELS - the
+ * decoder rasterises it into a bitmap per tile, keyed by the string, so it can follow the TILE's zoom
+ * but not the view's. One pattern is therefore only right at one zoom: Liberty's rail hatching
  * ramps its width 3 -> 8 between z15 and z20, and the one scale we could pick drew the dash 1.8x too
  * long at the bottom of that range and 0.7x too short at the top.
  *
- * Banded, each attachment scales its dash by the width in the MIDDLE of its own band, and the bands
- * are cut where the width DOUBLES - so the worst error inside one is a factor of sqrt(2) instead of
- * the whole ramp. The outer edges keep the layer's own zoom range, so nothing stops being drawn.
+ * Banded, each band scales its dash by the width in the MIDDLE of its own band, and the bands are
+ * cut where the width DOUBLES - so the worst error inside one is a factor of sqrt(2) instead of the
+ * whole ramp. One rule carries them all: a band per attachment was a style each, ~200 in Massif.
  *
  * It lives here rather than in split.ts because it needs `dashPattern` and `rampAt`, and moving
  * those would cost an import cycle for one caller.
  */
-function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
+function bandDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer {
     const dash = layer.paint?.['line-dasharray'];
     const width = dashWidth(layer.paint?.['line-width']);
-    if (dash === undefined || layer.dashZoom !== undefined || dashPattern(dash as Json) === null) return [layer];
+    if (dash === undefined || layer.dashBands !== undefined || dashPattern(dash as Json) === null) return layer;
     const zmin = layer.minzoom ?? 0;
     const zmax = Math.min(layer.maxzoom ?? 24, 24);
     // A dash the style STEPS over zoom is a rule per step: one pattern for all of them drew Standard's
@@ -2303,10 +2317,10 @@ function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] 
         const step = Math.max(1, Math.round((hi - lo) / bandCount));
         for (let at = lo + step; bandCount >= 2 && at < hi; at += step) cuts.add(at);
     }
-    if (!cuts.size) return [layer];
+    if (!cuts.size) return layer;
 
     const edges = [zmin, ...[...cuts].sort((a, b) => a - b), zmax];
-    const bands: MapboxLayer[] = [];
+    const bands: Array<{ from: number; dashZoom: number }> = [];
     for (let i = 0; i + 1 < edges.length; i++) {
         const from = edges[i], to = edges[i + 1];
         // The width is read in the middle of the band up to the ramp's last stop, past a stretch where
@@ -2316,27 +2330,18 @@ function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] 
         if (stops.length && !((rampAt(width as Json, dashZoom) ?? 0) > 0) && Math.max(from, lo) < b) {
             dashZoom = (Math.max(from, lo) + b) / 2;
         }
-        bands.push({
-            ...layer,
-            // The ends keep whatever the layer stated, so banding never narrows what it draws.
-            minzoom: i === 0 ? layer.minzoom : from,
-            maxzoom: i + 2 === edges.length ? layer.maxzoom : to,
-            dashZoom,
-        });
+        bands.push({ from, dashZoom });
     }
     // Two solid bands in a row are one: a width cut means nothing where no dash is drawn.
-    const solid = (band: MapboxLayer) => !(dashPatternAt(dash as Json, band.dashZoom as number) ?? [0, 1]).some((v, i) => i % 2 === 1 && v > 0);
+    const solid = (band: { dashZoom: number }) => !(dashPatternAt(dash as Json, band.dashZoom) ?? [0, 1]).some((v, i) => i % 2 === 1 && v > 0);
     for (let i = bands.length - 1; i > 0; i--) {
-        if (solid(bands[i]) && solid(bands[i - 1])) {
-            bands[i - 1] = { ...bands[i - 1], maxzoom: bands[i].maxzoom };
-            bands.splice(i, 1);
-        }
+        if (solid(bands[i]) && solid(bands[i - 1])) bands.splice(i, 1);
     }
-    if (bands.length < 2) return [layer];
-    coverage.approximate(`line-dasharray on "${layer.id}" split into ${bands.length} zoom bands: a `
-        + 'dash is a multiple of the line width and CartoCSS takes one pattern per rule, so a '
-        + 'ramped width or a stepped dash needs a rule per band');
-    return bands;
+    if (bands.length < 2) return layer;
+    coverage.approximate(`line-dasharray on "${layer.id}" stepped over ${bands.length} zoom bands: a `
+        + 'dash is a multiple of the line width and the decoder rasterises one pattern per tile, so a '
+        + 'ramped width or a stepped dash takes a pattern per band');
+    return { ...layer, dashBands: bands };
 }
 
 /**
@@ -3920,7 +3925,9 @@ export function projectEntries(drawOrder: DrawOrderEntry[]): string[] {
     const runs: Array<{ sourceLayer: string; attachments: string[] }> = [];
     for (const { sourceLayer, attachment } of sorted) {
         const last = runs[runs.length - 1];
-        if (last && last.sourceLayer === sourceLayer) last.attachments.push(attachment);
+        if (last && last.sourceLayer === sourceLayer) {
+            if (!last.attachments.includes(attachment)) last.attachments.push(attachment);
+        }
         else runs.push({ sourceLayer, attachments: [attachment] });
     }
 

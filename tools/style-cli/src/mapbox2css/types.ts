@@ -17,10 +17,11 @@ export interface MapboxLayer {
      */
     metadata?: Json;
     /**
-     * Converter-internal, not a MapBox property: the zoom a banded dash reads its line width at.
-     * Set by splitDashByZoom, read where `line-dasharray` is emitted.
+     * Converter-internal, not a MapBox property: the zoom bands a dash is drawn in, each from its
+     * start zoom with the line width read at `dashZoom`. Set by bandDashByZoom, read where
+     * `line-dasharray` is emitted as one `step` over them.
      */
-    dashZoom?: number;
+    dashBands?: Array<{ from: number; dashZoom: number }>;
 }
 
 export interface MapboxStyle {

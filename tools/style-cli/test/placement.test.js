@@ -212,6 +212,17 @@ test('a negated sort key is a boost added to the priority, read from a per-featu
         /text-placement-priority: \(0 \+ \(\(\[param::poi-boost-\[class\]\]\) \?\? \(0\)\)\);/);
 });
 
+test('a boost read from a table parameter is one lookup keyed by the field', () => {
+    const boost = ['coalesce', ['get', ['get', 'class'], ['config', 'poi-boost']], 0];
+    const { mss: out, project } = convert({
+        metadata: { 'massif:live-config': ['poi-boost'] },
+        schema: { 'poi-boost': { default: {} } },
+        layers: [symbolLayer({ 'symbol-sort-key': ['-', boost] })],
+    }, TABLE, NO_PALETTE);
+    assert.match(out, /text-placement-priority: \(0 \+ \(\(get\(\[param::poi-boost\], \[class\]\)\) \?\? \(0\)\)\);/);
+    assert.deepEqual(JSON.parse(project).styleparameters['poi-boost'], { default: {} }, 'a table keeps its default key');
+});
+
 test('a layer with no sort key still carries its order', () => {
     assert.match(mss({}), /text-placement-priority: 0;/);
 });

@@ -375,8 +375,8 @@ test('an icon chain stepped over zoom is one band per step, and a zoom constant 
         minzoom: 14, metadata: { 'massif:minzoom-const': 'rank10_minzoom' },
     }] }, TABLE, { ...NO_PALETTE, iconFont, tileDrawSize: 512 });
 
-    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom < 17\]::shield \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\]\);/);
-    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom >= 17\]\[zoom < 24\]::shield \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\] \?\? '\ue002'\);/);
+    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom < 17\]::shield \{[^}]*shield-icon-name: \(get\(\[param::icon\], \[class\]\)\);/);
+    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom >= 17\]\[zoom < 24\]::shield \{[^}]*shield-icon-name: \(get\(\[param::icon\], \[class\]\) \?\? '\ue002'\);/);
     assert.equal(JSON.parse(out.project).constants.rank10_minzoom, 14, 'the late band does not restate it');
 });
 
@@ -413,16 +413,26 @@ test('a sprite icon\'s plate keeps sizing by its field, which is the disc\'s box
     assert.ok(!out.includes('shield-icon-background-width'));
 });
 
+test('a name spelled from a prefix and one field is a table key built the same way', () => {
+    const iconFont = { face: 'osm', glyphs: new Map([['road_1', 'a'], ['road_2', 'b'], ['cafe', 'c']]) };
+    const { mss: out, project } = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'road_{ref_length}' }, {})] },
+    TABLE, { ...NO_PALETTE, iconFont });
+
+    assert.match(out, /shield-icon-name: \(?get\(\[param::icon\], concat\('road_', \[ref_length\]\)\)\)?;/);
+    assert.deepEqual(Object.keys(JSON.parse(project).styleparameters.icon.default).sort(), ['road_1', 'road_2']);
+});
+
 test('a per-feature icon name reaches the font through the same parameter table', () => {
     const iconFont = { face: 'osm', glyphs: new Map([['mountain', ''], ['cafe', '']]) };
     const { mss: out, project } = convert({ layers: [symbol(
         { 'text-field': '{name}', 'icon-image': ['get', 'maki'] }, {})] },
     TABLE, { ...NO_PALETTE, iconFont });
 
-    assert.match(out, /shield-icon-name: \(\[param::icon-\[maki\]\]\);/);
+    assert.match(out, /shield-icon-name: \(get\(\[param::icon\], \[maki\]\)\);/);
     const params = JSON.parse(project).styleparameters;
-    assert.equal(params['icon-mountain'], '', 'the table holds characters, not paths');
-    assert.equal(params['icon-cafe'], '');
+    assert.equal(params.icon.default.mountain, '', 'the table holds characters, not paths');
+    assert.equal(params.icon.default.cafe, '');
 });
 
 test('an icon the face has no glyph for draws none, and the report says which', () => {

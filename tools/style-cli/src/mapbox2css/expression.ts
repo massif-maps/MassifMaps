@@ -131,6 +131,11 @@ export function translateExpression(expr: Json, notes?: string[]): string {
             return literal(args[0] as Json);
 
         case 'get': {
+            // a member of a table style parameter, `["get", ["get", "class"], ["config", "poi-boost"]]`
+            const table = args[1];
+            if (args.length === 2 && Array.isArray(table) && table[0] === 'config' && table.length === 2 && typeof table[1] === 'string') {
+                return `get([param::${table[1]}], ${translateExpression(args[0] as Json)})`;
+            }
             if (args.length !== 1 || typeof args[0] !== 'string') {
                 throw new Untranslatable('get with a computed or scoped key');
             }

@@ -57,6 +57,28 @@ namespace massif::mvt {
         const ExpressionContext& _context;
     };
 
+    // False only when no feature of a tile layer can satisfy the predicate: an equality on a field
+    // whose value the layer does not carry at all. Lets a style skip a tile layer without a pass.
+    struct PredicateFieldValueEvaluator {
+        using FieldValueTest = std::function<bool(const std::string& field, const Value& value)>;
+
+        explicit PredicateFieldValueEvaluator(FieldValueTest mayHaveFieldValue) : _mayHaveFieldValue(std::move(mayHaveFieldValue)) { }
+
+        bool operator() (bool val) const { return val; }
+        bool operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const { return true; }
+        bool operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const;
+        bool operator() (const std::shared_ptr<NotPredicate>& notPred) const { return true; }
+        bool operator() (const std::shared_ptr<OrPredicate>& orPred) const {
+            return std::visit(*this, orPred->getPredicate1()) || std::visit(*this, orPred->getPredicate2());
+        }
+        bool operator() (const std::shared_ptr<AndPredicate>& andPred) const {
+            return std::visit(*this, andPred->getPredicate1()) && std::visit(*this, andPred->getPredicate2());
+        }
+
+    private:
+        FieldValueTest _mayHaveFieldValue;
+    };
+
     struct PredicateVariableVisitor {
         explicit PredicateVariableVisitor(std::function<void(const std::shared_ptr<VariableExpression>&)> visitor) : _visitor(std::move(visitor)) { }
 

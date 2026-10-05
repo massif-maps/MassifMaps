@@ -34,6 +34,8 @@ namespace massif::mvt {
 
         virtual bool findFeature(long long localId, std::string& layerName, Feature& feature) const override;
 
+        virtual bool mayHaveFieldValue(const std::string& layerName, const std::string& field, const Value& value) const override;
+
     protected:
         virtual void invalidateGeometryCache() override;
 
@@ -46,8 +48,9 @@ namespace massif::mvt {
         std::map<std::string, int> _layerMap;
 
         mutable std::pair<std::string, std::shared_ptr<GeometryCache>> _layerGeometryCache;
-        mutable std::pair<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCache;
+        mutable std::map<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCaches;
         mutable std::map<int, std::shared_ptr<const std::vector<cglib::bbox2<float>>>> _layerFeatureBounds;
+        mutable std::map<std::pair<int, std::string>, std::vector<Value>> _layerFieldValues;
         mutable std::mutex _layerCacheMutex;
     };
 }

@@ -29,6 +29,8 @@ namespace massif::mvt {
 
         virtual bool hasLayer(const std::shared_ptr<const Layer>& layer) const override;
 
+        virtual bool mayHaveFieldValue(const std::shared_ptr<const Layer>& layer, const std::string& field, const Value& value) const override;
+
         std::string resolveLayerName(const std::shared_ptr<const Layer>& layer) const;
 
         const LayerFeatureDecoder& _featureDecoder;

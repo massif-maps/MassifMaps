@@ -46,6 +46,41 @@ namespace massif::mvt {
         return ComparisonPredicate::applyOp(compPred->getOp(), val1, val2);
     }
 
+    bool PredicateFieldValueEvaluator::operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const {
+        if (compPred->getOp() != ComparisonPredicate::Op::EQ) {
+            return true;
+        }
+        auto fieldName = [](const Expression& expr, std::string& name) -> bool {
+            if (auto varExpr = std::get_if<std::shared_ptr<VariableExpression>>(&expr)) {
+                if (auto var = std::get_if<Value>(&(*varExpr)->getVariableExpression())) {
+                    name = ValueConverter<std::string>::convert(*var);
+                    return !(ExpressionContext::isStyleParameterVariable(name) || ExpressionContext::isZoomVariable(name) || ExpressionContext::isRenderVariable(name) || ExpressionContext::isViewStateVariable(name) || ExpressionContext::isMapnikVariable(name));
+                }
+            }
+            return false;
+        };
+        // A literal only: a field compared with a style parameter is how a selection is drawn, and
+        // that has to survive the parameter changing without the tile being decoded again
+        auto constantValue = [](const Expression& expr, Value& value) -> bool {
+            auto val = std::get_if<Value>(&expr);
+            if (!val || std::holds_alternative<std::monostate>(*val)) {
+                return false; // a field the feature lacks reads as null, so a test for null can hold
+            }
+            value = *val;
+            return true;
+        };
+
+        std::string name;
+        Value value;
+        if (fieldName(compPred->getExpression1(), name) && constantValue(compPred->getExpression2(), value)) {
+            return _mayHaveFieldValue(name, value);
+        }
+        if (fieldName(compPred->getExpression2(), name) && constantValue(compPred->getExpression1(), value)) {
+            return _mayHaveFieldValue(name, value);
+        }
+        return true;
+    }
+
     void PredicateVariableVisitor::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
         std::visit(ExpressionVariableVisitor(_visitor), exprPred->getExpression());
     }

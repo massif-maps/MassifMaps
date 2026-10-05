@@ -53,7 +53,7 @@ namespace massif::mvt {
         // can give it, so a change to the parameter is a repaint - see SelectionParameter.
         std::shared_ptr<Symbolizer::FeatureProcessor> createSelectionFeatureProcessor(const std::shared_ptr<const Symbolizer>& symbolizer, const SelectionParameter& selectionParameter, std::uint64_t stateKey, ExpressionContext& exprContext) const;
 
-        std::vector<std::shared_ptr<const Rule>> preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext) const;
+        std::vector<std::shared_ptr<const Rule>> preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext, const std::shared_ptr<const Layer>& presentLayer) const;
 
         virtual std::shared_ptr<vt::TileBackground> createTileBackground(const vt::TileId& tileId, const ExpressionContext& exprContext) const = 0;
 
@@ -66,6 +66,9 @@ namespace massif::mvt {
 
         // The box this tile's data was cut at, in feature coordinates; the unit square unless the
         // tile is overzoomed from an ancestor.
+        // False only when no feature of the layer carries the field with a value equal to this one
+        virtual bool mayHaveFieldValue(const std::shared_ptr<const Layer>& layer, const std::string& field, const Value& value) const { return true; }
+
         virtual cglib::bbox2<float> getSourceBox() const { return cglib::bbox2<float>(cglib::vec2<float>(0, 0), cglib::vec2<float>(1, 1)); }
 
         // Whether the tile carries this layer at all - readTile skips everything it can for a layer

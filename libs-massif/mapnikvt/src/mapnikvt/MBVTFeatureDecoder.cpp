@@ -1,6 +1,7 @@
 #include "MBVTFeatureDecoder.h"
 #include "MBVTGeometryBounds.h"
 #include "CompressionUtils.h"
+#include "Predicate.h"
 #include "Logger.h"
 
 #include "mbvtpackage/MBVTPackage.pb.h"
@@ -22,6 +23,8 @@
 
 namespace massif::mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public massif::mvt::FeatureDecoder::FeatureIterator {
+        friend class MBVTFeatureDecoder;
+
     public:
         explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache, const std::shared_ptr<const std::vector<cglib::bbox2<float>>>& featureBounds = std::shared_ptr<const std::vector<cglib::bbox2<float>>>()) :
             _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureDataCache(featureDataCache), _featureBounds(featureBounds)
@@ -114,18 +117,14 @@ namespace massif::mvt {
                 }
             }
 
-            std::vector<int> tags(_fieldKeys.size() + 1, -1);
+            const std::vector<int>& keyFieldMap = fieldKeyFieldMap(fields);
+            std::vector<int>& tags = _tags;
+            tags.assign(_fieldKeys.size() + 1, -1);
             tags.back() = static_cast<int>(feature.type());
             for (int k = 0; k + 1 < feature.tags_size(); k += 2) {
                 int keyIdx = feature.tags(k);
-                if (keyIdx >= 0 && keyIdx < _layer->keys_size()) {
-                    if (_keyFieldMap[keyIdx] >= 0) {
-                        const std::string& key = _layer->keys(feature.tags(k));
-                        if (fields && fields->find(key) == fields->end()) {
-                            continue;
-                        }
-                        tags[_keyFieldMap[keyIdx]] = feature.tags(k + 1);
-                    }
+                if (keyIdx >= 0 && keyIdx < _layer->keys_size() && keyFieldMap[keyIdx] >= 0) {
+                    tags[keyFieldMap[keyIdx]] = feature.tags(k + 1);
                 }
             }
 
@@ -141,17 +140,13 @@ namespace massif::mvt {
             for (std::size_t i = 0; i < _fieldKeys.size(); i++) {
                 int valueIdx = tags[i];
                 if (valueIdx >= 0 && valueIdx < _layer->values_size()) {
-                    const std::string& key = _layer->keys(_fieldKeys[i]);
-                    if (fields && fields->find(key) == fields->end()) {
-                        continue;
-                    }
-                    dataMap.emplace_back(key, convertValue(_layer->values(valueIdx)));
+                    dataMap.emplace_back(_layer->keys(_fieldKeys[i]), convertValue(_layer->values(valueIdx)));
                 }
             }
 
             auto featureData = std::make_shared<FeatureData>(explicitFeatureId ? getFeatureId() : 0, geomType, std::move(dataMap));
             if (!explicitFeatureId) {
-                _featureDataCache->put(std::move(tags), featureData);
+                _featureDataCache->put(tags, featureData);
             }
             return featureData;
         }
@@ -342,6 +337,27 @@ namespace massif::mvt {
             }
         }
 
+        // _keyFieldMap narrowed to the requested fields. Keyed by the set's address: processLayer asks
+        // with the same two sets for every feature, and they outlive the iterator.
+        const std::vector<int>& fieldKeyFieldMap(const std::set<std::string>* fields) const {
+            if (!fields) {
+                return _keyFieldMap;
+            }
+            for (const std::pair<const std::set<std::string>*, std::vector<int>>& fieldMap : _fieldKeyFieldMaps) {
+                if (fieldMap.first == fields) {
+                    return fieldMap.second;
+                }
+            }
+            std::vector<int> keyFieldMap(_keyFieldMap);
+            for (int i = 0; i < _layer->keys_size(); i++) {
+                if (keyFieldMap[i] >= 0 && fields->find(_layer->keys(i)) == fields->end()) {
+                    keyFieldMap[i] = -1;
+                }
+            }
+            _fieldKeyFieldMaps.emplace_back(fields, std::move(keyFieldMap));
+            return _fieldKeyFieldMaps.back().second;
+        }
+
         static bool isRingCCW(const std::vector<cglib::vec2<float>>& vertices) {
             double area = 0;
             if (!vertices.empty()) {
@@ -358,6 +374,8 @@ namespace massif::mvt {
         long long _layerIndexOffset = 0;
         std::vector<int> _fieldKeys;
         std::vector<int> _keyFieldMap;
+        mutable std::list<std::pair<const std::set<std::string>*, std::vector<int>>> _fieldKeyFieldMaps;
+        mutable std::vector<int> _tags;
         std::shared_ptr<const vector_tile::Tile> _tile;
         const vector_tile::Tile::Layer* _layer;
         const cglib::mat3x3<float> _transform;
@@ -446,11 +464,9 @@ namespace massif::mvt {
                 key.append(1, 0).append(field);
             }
         }
-        if (_layerFeatureDataCache.first != key) {
-            _layerFeatureDataCache.first = key;
-            _layerFeatureDataCache.second.reset();
-        }
-        std::shared_ptr<FeatureDataCache<std::vector<int>>>& featureDataCache = _layerFeatureDataCache.second;
+        // One per field set, kept for the whole tile: the styles of a layer alternate between a few
+        // field sets, and a single slot rebuilt every feature's data on each pass
+        std::shared_ptr<FeatureDataCache<std::vector<int>>>& featureDataCache = _layerFeatureDataCaches[key];
         if (!featureDataCache) {
             featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
             featureDataCache->reserve(_tile->layers(layerIndex).features_size());
@@ -473,6 +489,45 @@ namespace massif::mvt {
             featureBounds = layerBounds;
         }
         return std::make_shared<MBVTFeatureIterator>(_tile, layerIndex, fields, _transform, _clipBox, _featureIdOverride, _tileIdOffset, geometryCache, featureDataCache, featureBounds);
+    }
+
+    bool MBVTFeatureDecoder::mayHaveFieldValue(const std::string& layerName, const std::string& field, const Value& value) const {
+        auto layerIt = _layerMap.find(layerName);
+        if (layerIt == _layerMap.end()) {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(_layerCacheMutex);
+        auto valuesIt = _layerFieldValues.find(std::make_pair(layerIt->second, field));
+        if (valuesIt == _layerFieldValues.end()) {
+            const vector_tile::Tile::Layer& layer = _tile->layers(layerIt->second);
+            std::vector<bool> keyMatches(layer.keys_size(), false);
+            for (int i = 0; i < layer.keys_size(); i++) {
+                keyMatches[i] = layer.keys(i) == field;
+            }
+            std::vector<bool> valueSeen(layer.values_size(), false);
+            for (int i = 0; i < layer.features_size(); i++) {
+                const vector_tile::Tile::Feature& feature = layer.features(i);
+                for (int k = 0; k + 1 < feature.tags_size(); k += 2) {
+                    int keyIdx = feature.tags(k), valueIdx = feature.tags(k + 1);
+                    if (keyIdx >= 0 && keyIdx < layer.keys_size() && keyMatches[keyIdx] && valueIdx >= 0 && valueIdx < layer.values_size()) {
+                        valueSeen[valueIdx] = true;
+                    }
+                }
+            }
+            std::vector<Value> values;
+            for (int i = 0; i < layer.values_size(); i++) {
+                if (valueSeen[i]) {
+                    values.push_back(MBVTFeatureIterator::convertValue(layer.values(i)));
+                }
+            }
+            valuesIt = _layerFieldValues.emplace(std::make_pair(layerIt->second, field), std::move(values)).first;
+        }
+        for (const Value& fieldValue : valuesIt->second) {
+            if (ComparisonPredicate::applyOp(ComparisonPredicate::Op::EQ, fieldValue, value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     bool MBVTFeatureDecoder::findFeature(long long localId, std::string& layerName, Feature& feature) const {

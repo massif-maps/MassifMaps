@@ -288,20 +288,34 @@ function readsField(value: Json, field: string): boolean {
  * dot back under a town name up to the zoom the style drops it at.
  */
 function splitIconByZoom(layer: MapboxLayer): MapboxLayer[] {
+    let variants = [layer];
     for (const name of ZOOM_BANDED) {
-        const bands = zoomBandsOf(layer.layout?.[name] as Json, name === 'icon-image');
-        if (!bands) continue;
-        return bands
-            .map(({ from, to, value }) => ({
-                ...layer,
-                minzoom: Math.max(from, layer.minzoom ?? 0),
-                maxzoom: Math.min(to, layer.maxzoom ?? 24),
-                layout: { ...layer.layout, [name]: value },
-            }))
-            .filter((variant) => variant.minzoom < variant.maxzoom);
+        variants = variants.flatMap((variant) => {
+            const bands = zoomBandsOf(variant.layout?.[name] as Json, name === 'icon-image');
+            if (!bands) return [variant];
+            return bands
+                .map(({ from, to, value }) => banded(variant, from, to, { ...variant.layout, [name]: value }))
+                .filter((band) => band.minzoom! < band.maxzoom!);
+        });
     }
-    return [layer];
+    return variants;
 }
+
+/**
+ * A band cut out of the layer's range. A band that starts above the layer's own start keeps its own
+ * zoom test beside the layer's `massif:minzoom-const` (BAND_MINZOOM), and does not state the constant.
+ */
+function banded(layer: MapboxLayer, from: number, to: number, layout: Record<string, Json>): MapboxLayer {
+    const minzoom = Math.max(from, layer.minzoom ?? 0);
+    const maxzoom = Math.min(to, layer.maxzoom ?? 24);
+    const metadata = { ...(layer.metadata as Record<string, Json> | undefined) };
+    if (minzoom > (layer.minzoom ?? 0)) metadata[BAND_MINZOOM] = minzoom;
+    if (maxzoom < (layer.maxzoom ?? 24)) metadata[BAND_MAXZOOM] = maxzoom;
+    return { ...layer, minzoom, maxzoom, layout, metadata };
+}
+
+export const BAND_MINZOOM = 'massif:band-minzoom';
+export const BAND_MAXZOOM = 'massif:band-maxzoom';
 
 /**
  * Properties whose value is a NAME or a TEXT rather than a number, and which a style may still
@@ -331,7 +345,8 @@ function zoomBandsOf(value: Json, requireString: boolean): ZoomBand[] | null {
     }
 
     if (!stops.every(([z]) => typeof z === 'number')) return null;
-    if (requireString && !stops.every(([, v]) => typeof v === 'string')) return null;
+    // an icon is banded when each band names one sprite or reads its own from the feature (iconExpression)
+    if (requireString && !stops.every(([, v]) => typeof v === 'string' || Array.isArray(v))) return null;
     return stops.map(([from, value], i) => ({ from, to: stops[i + 1]?.[0] ?? 24, value }));
 }
 

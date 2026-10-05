@@ -9,7 +9,7 @@ import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './sh
 import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate, hasIcon } from './sprite.js';
 import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
 import { narrowLayer } from './narrow.js';
-import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
+import { BAND_MAXZOOM, BAND_MINZOOM, collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, liveConfig, presetsOf, resolveConfig, sceneBrightness } from './config.js';
 import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer, isPitch, toHsla } from './fold.js';
@@ -789,14 +789,17 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             // when the style compiles - a child project overrides it in its `constants`, at no runtime cost.
             const minConst = (layer.metadata as Record<string, Json> | undefined)?.['massif:minzoom-const'];
             const maxConst = (layer.metadata as Record<string, Json> | undefined)?.['massif:maxzoom-const'];
-            if (typeof minConst === 'string' && typeof layer.minzoom === 'number') constants.set(minConst, Math.floor(layer.minzoom) + zoomOffsetLevels());
-            if (typeof maxConst === 'string' && typeof layer.maxzoom === 'number') constants.set(maxConst, Math.ceil(layer.maxzoom) + zoomOffsetLevels());
+            // a zoom band of a split layer (splitIconByZoom) tests its own edge beside the constant
+            const bandMin = (layer.metadata as Record<string, Json> | undefined)?.[BAND_MINZOOM] as number | undefined;
+            const bandMax = (layer.metadata as Record<string, Json> | undefined)?.[BAND_MAXZOOM] as number | undefined;
+            if (typeof minConst === 'string' && typeof layer.minzoom === 'number' && bandMin === undefined) constants.set(minConst, Math.floor(layer.minzoom) + zoomOffsetLevels());
+            if (typeof maxConst === 'string' && typeof layer.maxzoom === 'number' && bandMax === undefined) constants.set(maxConst, Math.ceil(layer.maxzoom) + zoomOffsetLevels());
             const predicates = [
                 ...(hasParam ? [`[zoom >= 'param::${minParam}']`] : []),
                 ...(typeof minConst === 'string' ? [`[zoom >= $${minConst}]`] : []),
                 ...(typeof maxConst === 'string' ? [`[zoom < $${maxConst}]`] : []),
-                ...zoomPredicates(paramStart || typeof minConst === 'string' ? undefined : layer.minzoom,
-                    typeof maxConst === 'string' ? undefined : layer.maxzoom),
+                ...zoomPredicates(paramStart || (typeof minConst === 'string' && bandMin === undefined) ? undefined : layer.minzoom,
+                    typeof maxConst === 'string' && bandMax === undefined ? undefined : layer.maxzoom),
                 ...(buildings ? [buildings] : []),
                 ...translateFilter(filter),
             ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));

@@ -66,7 +66,7 @@ namespace massif {
             double _tileScaleMeters; // tile-local length to metres, at the equator
         };
 
-        TerrainTileTransformer(std::shared_ptr<const vt::TileTransformer> base, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines);
+        TerrainTileTransformer(std::shared_ptr<const vt::TileTransformer> base, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines, bool flatContentDraped);
         virtual ~TerrainTileTransformer() = default;
 
         const std::shared_ptr<const vt::TileTransformer>& getBase() const { return _base; }
@@ -75,6 +75,7 @@ namespace massif {
         int getMinZoom() const { return _minZoom; }
 
         virtual bool isElevationBased() const override { return true; }
+        virtual bool isFlatContentDraped() const override { return _flatContentDraped; }
         virtual bool isSpherical() const override { return _base->isSpherical(); }
 
         virtual cglib::vec3<double> calculateTileOrigin(const vt::TileId& tileId) const override;
@@ -107,6 +108,7 @@ namespace massif {
         const int _minZoom; // tiles below this zoom level are rendered flat
         const bool _sourceDensity; // source-density (tangram) mode: do not subdivide draped fills; GPU-displace at source density + lifting depth slack
         const bool _sourceDensityLines; // also skip line subdivision (draped lines are baked flat)
+        const bool _flatContentDraped;
     };
 }
 

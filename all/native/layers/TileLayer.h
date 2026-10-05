@@ -632,6 +632,7 @@ class ProjectionSurface;
         int _terrainMinZoom = 0;
         bool _terrainSourceDensity = false;
         bool _terrainSourceDensityLines = false;
+        bool _terrainFlatContentDraped = false;
         float _terrainViewDistanceFactor = 0.0f; // last TerrainOptions view distance factor a cull ran with
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with

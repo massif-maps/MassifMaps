@@ -49,6 +49,10 @@ namespace massif::vt {
         // the terrain is switched, and the tile caches are dropped with it.
         virtual bool isElevationBased() const { return false; }
 
+        // True when the renderer bakes flat lines and fills into a per-tile drape texture, which clips
+        // them to the tile the way the stencil masks do on a flat map.
+        virtual bool isFlatContentDraped() const { return false; }
+
         // True when the tile surface is a SPHERE rather than the Mercator plane. The terrain
         // displacement needs it: a height is radial and carries no Mercator stretch, and tile-local
         // xy is no longer the tile's unit square, so the DEM lookup cannot use it.

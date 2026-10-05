@@ -2497,3 +2497,8 @@ identical; the 0.6-0.7% of pixels that moved are labels, and a second run of the
 Host: every tile of the five Massif variants, its two examples and both Alpimaps styles draws the
 same triangles and slots (`bench-decode` `content`), but for slots that drew nothing in the tile.
 
+On terrain (`--es terrain true --es tilt 50`, default drape, 2 interleaved rounds) the shared build
+went 34.2 -> 30.9 ms a frame, `layers` 5.0 -> 1.6 ms. With `--es drapeLines false` the lines are
+drawn live, unclipped, and sharing drew casing nicks along tile borders (a frame diff shows rows of
+dots on the tile edges), so it stays off there.
+

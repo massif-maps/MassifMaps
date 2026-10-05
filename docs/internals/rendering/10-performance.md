@@ -458,8 +458,13 @@ style order and packs whatever its 16 style slots allow into one batch, so draw 
 a z14 Grenoble tile goes from 82 tile layers and 74 batches to 20 and 15.
 
 What stays one tile layer per style: labels (their rank reads the tile layer's index), extrusions,
-anything translucent or blended, and everything on terrain, where tiles are not stencil-clipped and
-layer-major order is what keeps one tile's casing under the next tile's fill. A shared tile layer
+anything translucent or blended, and terrain content drawn live rather than baked into the drape
+(`DrapeLinesEnabled` or `DrapeFillsEnabled` off): unclipped, layer-major order is what keeps one
+tile's casing under the next tile's fill, and sharing there drew casing nicks along every tile
+border on the Crosscall. Baked, a drape texture clips its tile like the stencil masks do, so the
+default terrain shares too (`TileTransformer::isFlatContentDraped`, which re-decodes on a switch):
+Grenoble z15 tilt 50, frame 34.2 -> 30.9 ms, `layers` 5.0 -> 1.6 ms. A `NoDrapeLayerFilter` that
+matches only part of one source layer's styles would draw a shared run by its first style's name. A shared tile layer
 carries its first style's name and index, so a renderer layer filter or a click handler naming a
 later style of the run sees the first one's.
 

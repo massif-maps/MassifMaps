@@ -244,7 +244,7 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
-  bridge is drawn as the road it carries (the OSM example sets 12, OSM Carto's 13).
+  bridge is drawn as the road it carries (OSM Carto's 13 is Massif's 12, the default).
 - `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water; 12 to plan a hike by its water.
 - `spring_min_zoom` (17; 16 on outdoor, topo, e-ink; 11 in the osm example, the old OSM style's 12) — springs.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink; 9 at the lowest, the OSM example's), `building_min_zoom` (14), `city_min_zoom`
@@ -274,7 +274,8 @@ Switches (0/1):
 - `lighting` (1; 0 on e-ink) — 0 draws every colour as stated, lit by no hour: a flat page, the
   OSM example's look.
 - `road_osm_low` (0) — motorway to tertiary drawn as OSM Carto (Alpimaps) draws them at low zoom:
-  its wider lines below z12 and its outlines below z14 (the OSM example sets it).
+  its wider lines below z11 and its outlines below z14, from z8 (the OSM example sets it); OSM
+  Carto's zooms, one above Massif's.
 - `trails` (0; 1 on outdoor, topo, e-ink) — outdoor's paths by difficulty, MTB and SAC detail
   instead of streets' plain paths; the layers are gated on it rather than on the variant's name, so a
   child keeping streets' look (`examples/osm`) takes them with `trails: 1`.

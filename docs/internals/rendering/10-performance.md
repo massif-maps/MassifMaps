@@ -434,7 +434,8 @@ the cost. Two things now keep a pass from costing a walk:
 
 **How to measure it:** `libs-massif/cartocss/util/bench-decode` decodes a folder of `z_x_y.pbf`
 tiles through a project and prints, per tile, the best of N decodes, the passes (and how many the
-value test saved), and two hashes of what the tile draws — `hash` per batch, `content` with the
+value test saved), what one frame evaluates for it (`frame functions`, see below), and two hashes
+of what the tile draws — `hash` per batch, `content` with the
 batching taken out, so a style change that moves features between attachments still compares equal.
 
 ```sh
@@ -444,6 +445,27 @@ build/bench/bench-decode styles/massif/carto/streets.json tiles/ /System/Library
 
 `-DNO_SIZE_FLAGS=ON` keeps the symbols for `sample`. The numbers are in the
 [performance log](../performance-log.md#38-a-converted-style-walked-every-source-layer-once-per-attachment-2026-10-05).
+
+### One tile layer for a run of flat styles
+
+A tile layer is at least one draw call per tile per frame, and `readTile` used to build one per
+style: a converted style (an attachment per MapLibre layer) handed the Crosscall ~1000 draws a
+frame for Massif e-ink at Grenoble z15, against ~540 for Alpimaps' hand-written e-ink. Consecutive
+styles of **one source layer** that draw only flat lines and fills (`LineSymbolizer`,
+`LinePatternSymbolizer`, `PolygonSymbolizer`, `PolygonPatternSymbolizer`) at opacity 1, with no
+comp-op, no draw-once group and no elevation mode, now share one `TileLayerBuilder`. It appends in
+style order and packs whatever its 16 style slots allow into one batch, so draw order is unchanged:
+a z14 Grenoble tile goes from 82 tile layers and 74 batches to 20 and 15.
+
+What stays one tile layer per style: labels (their rank reads the tile layer's index), extrusions,
+anything translucent or blended, and everything on terrain, where tiles are not stencil-clipped and
+layer-major order is what keeps one tile's casing under the next tile's fill. A shared tile layer
+carries its first style's name and index, so a renderer layer filter or a click handler naming a
+later style of the run sees the first one's.
+
+`bench-decode`'s `content` hash is built to survive this: per kind (flat, 3D...) it counts the
+triangles drawn and the set of slots, a slot carrying the fill pattern it samples and its dash,
+because a plain fill rides in a line batch or a patterned one.
 
 ### Flattening the cascade is exponential in INDEPENDENT filter fields
 
@@ -751,6 +773,30 @@ sit in filters, text or marker sizes — so this pays only for styles written wi
 which is the point of the feature.
 
 Classification costs ~37 ms once per style load on that style (a walk over every rule and property).
+
+#### …and every other parameter is folded into the tile
+
+The flip side: a parameter that is **not** live re-decodes on a change, so a decoded tile may treat
+it like a feature field. `MBVectorTileDecoder` hands the store its live names
+(`StyleParameterStore::setLiveNames`, the selecting parameter included), and a colour or width
+property folds every other parameter at decode (`foldContextExpressions`, `readsLiveStyleParameters`):
+a ternary it decides keeps one branch, and a property that folds to a constant is no function at all.
+
+Converted styles are where it pays. Massif writes each variant's colour as
+`(([param::variant] = 'eink') ? linear([view::brightness], …) : @road_low)`, and with no live
+parameter (its POI tables compute their names per feature, which makes none live) every such
+property used to be a per-frame closure re-reading the 1476-entry store, re-testing the variant and
+rebuilding its curve: on a Crosscall at Grenoble z15, ~535 function evaluations a frame at 11.5 µs,
+~6 ms. Host, `bench-decode`'s `frame functions`, a Massif e-ink z14 tile: 175-230 functions in
+60-66 µs, now 122-163 in 3.3-4.3 µs (Alpimaps e-ink: 66-83 in 1.7-2.1 µs). On the Crosscall the
+evaluations went 529 -> 263 a frame at 12.0 -> 3.4 µs
+([performance log](../performance-log.md#39-every-frame-re-read-massifs-style-parameters-2026-10-05)). Tiles draw the same, but
+for a geometry whose colour folds to `transparent` (hybrid's rail bridge decks), which is no longer
+built at all.
+
+Not covered and unchanged: a `linear([view::zoom], …)` used as a stop of another view ramp is
+evaluated at the zoom of the tile that built the cached function, not the frame's - the OSM example's
+`@trunk` inside a road's `step([view::zoom], …)`. Folding changes which tile that is.
 
 ### Selection: the appearance half, without a decode
 

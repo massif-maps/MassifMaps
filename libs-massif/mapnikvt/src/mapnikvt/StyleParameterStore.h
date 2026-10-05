@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 
 namespace massif::mvt {
@@ -35,9 +36,28 @@ namespace massif::mvt {
             _values = std::move(newValues);
         }
 
+        // The parameters a change repaints instead of re-decoding. Any other one may be folded into a
+        // decoded tile; unset, every parameter counts as live.
+        void setLiveNames(std::shared_ptr<const std::set<std::string>> liveNames) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _liveNames = std::move(liveNames);
+        }
+
+        bool isLive(const std::string& name) const {
+            std::lock_guard<std::mutex> lock(_mutex);
+            return !_liveNames || _liveNames->count(name) > 0;
+        }
+
+        // For a parameter whose name is computed per feature
+        bool anyLive() const {
+            std::lock_guard<std::mutex> lock(_mutex);
+            return !_liveNames || !_liveNames->empty();
+        }
+
     private:
         mutable std::mutex _mutex;
         std::shared_ptr<const std::map<std::string, Value>> _values;
+        std::shared_ptr<const std::set<std::string>> _liveNames;
     };
 }
 

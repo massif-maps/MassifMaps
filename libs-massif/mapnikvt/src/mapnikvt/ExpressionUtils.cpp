@@ -15,22 +15,18 @@ namespace massif::mvt {
     }
 
     namespace {
-        bool readsLiveVariables(const Expression& expr) {
-            bool live = false;
-            std::visit(ExpressionVariableVisitor([&live](const std::shared_ptr<VariableExpression>& varExpr) {
-                auto val = std::get_if<Value>(&varExpr->getVariableExpression());
-                if (!val) {
-                    live = true;
-                    return;
-                }
-                std::string name = ValueConverter<std::string>::convert(*val);
-                live = live || ExpressionContext::isViewStateVariable(name) || ExpressionContext::isStyleParameterVariable(name);
-            }), expr);
-            return live;
-        }
-
         struct ContextFolder {
             explicit ContextFolder(const ExpressionContext& context) : _context(context) { }
+
+            // A style parameter a change re-decodes for is as fixed as a feature field
+            bool readsLiveVariables(const Expression& expr) const {
+                bool view = false;
+                std::visit(ExpressionVariableVisitor([&view](const std::shared_ptr<VariableExpression>& varExpr) {
+                    auto val = std::get_if<Value>(&varExpr->getVariableExpression());
+                    view = view || (val && ExpressionContext::isViewStateVariable(ValueConverter<std::string>::convert(*val)));
+                }), expr);
+                return view || readsLiveStyleParameters(expr, _context);
+            }
 
             Expression fold(const Expression& expr) const {
                 if (!readsLiveVariables(expr)) {
@@ -54,7 +50,15 @@ namespace massif::mvt {
                 return std::make_shared<BinaryExpression>(expr->getOp(), fold(expr->getExpression1()), fold(expr->getExpression2()));
             }
             Expression operator() (const std::shared_ptr<TertiaryExpression>& expr) const {
-                return std::make_shared<TertiaryExpression>(expr->getOp(), fold(expr->getExpression1()), fold(expr->getExpression2()), fold(expr->getExpression3()));
+                Expression expr1 = fold(expr->getExpression1());
+                // A condition that folded to a constant leaves one branch; the other is never drawn
+                if (expr->getOp() == TertiaryExpression::Op::CONDITIONAL) {
+                    if (auto cond = std::get_if<Value>(&expr1)) {
+                        Value branch = TertiaryExpression::applyOp(TertiaryExpression::Op::CONDITIONAL, *cond, Value(true), Value(false));
+                        return fold(std::get<bool>(branch) ? expr->getExpression2() : expr->getExpression3());
+                    }
+                }
+                return std::make_shared<TertiaryExpression>(expr->getOp(), expr1, fold(expr->getExpression2()), fold(expr->getExpression3()));
             }
             Expression operator() (const std::shared_ptr<InterpolateExpression>& expr) const {
                 std::vector<Expression> keyFrames;
@@ -81,5 +85,19 @@ namespace massif::mvt {
 
     Expression foldContextExpressions(const Expression& expr, const ExpressionContext& context) {
         return ContextFolder(context).fold(expr);
+    }
+
+    bool readsLiveStyleParameters(const Expression& expr, const ExpressionContext& context) {
+        bool live = false;
+        std::visit(ExpressionVariableVisitor([&context, &live](const std::shared_ptr<VariableExpression>& varExpr) {
+            auto val = std::get_if<Value>(&varExpr->getVariableExpression());
+            if (!val) {
+                live = live || context.isLiveStyleParameter(std::string()); // a name computed per feature
+                return;
+            }
+            std::string name = ValueConverter<std::string>::convert(*val);
+            live = live || (ExpressionContext::isStyleParameterVariable(name) && context.isLiveStyleParameter(name));
+        }), expr);
+        return live;
     }
 }

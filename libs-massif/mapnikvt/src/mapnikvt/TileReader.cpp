@@ -9,9 +9,26 @@
 #include "Filter.h"
 #include "Symbolizer.h"
 #include "Map.h"
+#include "LineSymbolizer.h"
+#include "LinePatternSymbolizer.h"
+#include "PolygonSymbolizer.h"
+#include "PolygonPatternSymbolizer.h"
 
 namespace massif::mvt {
     namespace {
+        // Flat lines and fills only: no label, whose rank reads the tile layer's index, and no extrusion
+        bool drawsFlatGeometry(const std::vector<std::shared_ptr<const Rule>>& rules) {
+            for (const std::shared_ptr<const Rule>& rule : rules) {
+                for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
+                    const Symbolizer* sym = symbolizer.get();
+                    if (!dynamic_cast<const LineSymbolizer*>(sym) && !dynamic_cast<const LinePatternSymbolizer*>(sym) && !dynamic_cast<const PolygonSymbolizer*>(sym) && !dynamic_cast<const PolygonPatternSymbolizer*>(sym)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         bool hasElevationMode(const Style& style) {
             for (const std::shared_ptr<const Rule>& rule : style.getRules()) {
                 for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
@@ -66,6 +83,19 @@ namespace massif::mvt {
             tileLayers.push_back(std::move(tileLayer));
         }
 
+        auto addTileLayer = [&tileLayers](std::shared_ptr<vt::TileLayer> tileLayer) {
+            if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !tileLayer->getCompOp())) {
+                tileLayers.push_back(std::move(tileLayer));
+            }
+        };
+        bool elevationBased = _transformer && _transformer->isElevationBased();
+        std::unique_ptr<vt::TileLayerBuilder> sharedBuilder;
+        std::string sharedLayer;
+        auto flushSharedBuilder = [&]() {
+            addTileLayer(sharedBuilder->buildTileLayer());
+            sharedBuilder.reset();
+        };
+
         int layerIdx = 0;
         for (const std::shared_ptr<Layer>& layer : _map->getLayers()) {
             bool layerPresent = hasLayer(layer);
@@ -100,32 +130,53 @@ namespace massif::mvt {
                     continue;
                 }
 
-                vt::TileLayerBuilder tileLayerBuilder(styleName, styleLayerIdx, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
-                tileLayerBuilder.setStyleState(_symbolizerContext.getSettings().getStyleState(), selectionStateKey);
+                // Consecutive styles of one source layer drawing flat geometry share a tile layer, so
+                // their lines and fills pack into a few draw calls; the builder keeps their order.
+                // On terrain the tiles are not stencil-clipped, and layer-major order is what keeps a
+                // casing under the fill of the tile next to it.
+                std::string drawOnceGroup = ValueConverter<std::string>::convert(std::visit(ExpressionEvaluator(exprContext, nullptr), style->getDrawOnce()));
+                bool shareable = layerPresent && !elevationBased && style->getOpacity() == 1.0f && !style->getCompOp() && drawOnceGroup.empty() && !hasElevationMode(*style) && drawsFlatGeometry(rules);
+                if (sharedBuilder && !(shareable && sharedLayer == layer->getName())) {
+                    flushSharedBuilder();
+                }
+                if (sharedBuilder) {
+                    processLayer(layer, style, rules, exprContext, selectionStateKey, *sharedBuilder);
+                    styleIdx++;
+                    continue;
+                }
+
+                auto tileLayerBuilder = std::make_unique<vt::TileLayerBuilder>(styleName, styleLayerIdx, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+                tileLayerBuilder->setStyleState(_symbolizerContext.getSettings().getStyleState(), selectionStateKey);
                 // The tile's own zoom, not the render zoom: this decides GEOMETRY, so it has to be
                 // fixed when the tile is built. A zoom-dependent reach is therefore sampled once
                 // per tile, which is as close as a decode-time split can get.
                 vt::ViewState tileViewState;
                 tileViewState.zoom = static_cast<float>(tileId.zoom);
                 tileViewState.styleZoomShift = static_cast<float>(zoomShift);
-                tileLayerBuilder.setPolygon3DGradientHeight((_map->getSettings().buildingVerticalGradientHeight.getFunction(exprContext))(tileViewState));
-                tileLayerBuilder.setPolygon3DGroundRadius((_map->getSettings().buildingAoGroundRadius.getFunction(exprContext))(tileViewState));
-                tileLayerBuilder.setPolygon3DGroundStep((_map->getSettings().buildingAoGroundStep.getFunction(exprContext))(tileViewState));
-                tileLayerBuilder.setPolygon3DEdgeRadius((_map->getSettings().buildingEdgeRadius.getFunction(exprContext))(tileViewState));
-                tileLayerBuilder.setPolygon3DRoundedRoof((_map->getSettings().buildingRoundedRoof.getFunction(exprContext))(tileViewState) != 0.0f);
-                tileLayerBuilder.setPolygon3DEdgeCorners((_map->getSettings().buildingEdgeCorners.getFunction(exprContext))(tileViewState) != 0.0f);
-                tileLayerBuilder.setOpacityFunc(vt::FloatFunction(style->getOpacity()));
-                tileLayerBuilder.setCompOp(style->getCompOp());
-                tileLayerBuilder.setDrawOnceGroup(ValueConverter<std::string>::convert(std::visit(ExpressionEvaluator(exprContext, nullptr), style->getDrawOnce())));
-                processLayer(layer, style, rules, exprContext, selectionStateKey, tileLayerBuilder);
+                tileLayerBuilder->setPolygon3DGradientHeight((_map->getSettings().buildingVerticalGradientHeight.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder->setPolygon3DGroundRadius((_map->getSettings().buildingAoGroundRadius.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder->setPolygon3DGroundStep((_map->getSettings().buildingAoGroundStep.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder->setPolygon3DEdgeRadius((_map->getSettings().buildingEdgeRadius.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder->setPolygon3DRoundedRoof((_map->getSettings().buildingRoundedRoof.getFunction(exprContext))(tileViewState) != 0.0f);
+                tileLayerBuilder->setPolygon3DEdgeCorners((_map->getSettings().buildingEdgeCorners.getFunction(exprContext))(tileViewState) != 0.0f);
+                tileLayerBuilder->setOpacityFunc(vt::FloatFunction(style->getOpacity()));
+                tileLayerBuilder->setCompOp(style->getCompOp());
+                tileLayerBuilder->setDrawOnceGroup(drawOnceGroup);
+                processLayer(layer, style, rules, exprContext, selectionStateKey, *tileLayerBuilder);
 
-                std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();
-                if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !tileLayer->getCompOp())) {
-                    tileLayers.push_back(std::move(tileLayer));
+                if (shareable) {
+                    sharedBuilder = std::move(tileLayerBuilder);
+                    sharedLayer = layer->getName();
+                }
+                else {
+                    addTileLayer(tileLayerBuilder->buildTileLayer());
                 }
                 styleIdx++;
             }
             layerIdx++;
+        }
+        if (sharedBuilder) {
+            flushSharedBuilder();
         }
         return std::make_shared<vt::Tile>(tileId, _symbolizerContext.getSettings().getTileSize(), std::move(tileLayers));
     }

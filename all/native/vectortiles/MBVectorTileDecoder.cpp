@@ -975,7 +975,6 @@ namespace massif {
         // fallback font changed, and the map is the same one there.
         _liveParameters = mvt::resolveLiveStyleParameters(*_map);
         _selectionParameter = _map->getSelectionParameter() ? _map->getSelectionParameter()->name : std::string();
-
         updateSymbolizerContext();
     }
 
@@ -1103,6 +1102,11 @@ namespace massif {
         if (!_parameterStore) {
             _parameterStore = std::make_shared<mvt::StyleParameterStore>();
         }
+        auto liveNames = std::make_shared<std::set<std::string>>(_liveParameters);
+        if (!_selectionParameter.empty()) {
+            liveNames->insert(_selectionParameter);
+        }
+        _parameterStore->setLiveNames(std::move(liveNames));
         updateParameterStore();
         updateSelectionState();
 

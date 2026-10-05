@@ -6,9 +6,12 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.massifmaps.api.MassifException;
 import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.PropertyGroup;
 import com.massifmaps.api.Position;
+import com.massifmaps.api.Spec;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -144,28 +147,40 @@ public final class ExampleLive extends BroadcastReceiver {
             // Everything arrives as a string (--es), and the facade coerces to the property's own
             // type - so "true", "1.6" and "64" all land correctly with no per-knob parsing here.
             String value = String.valueOf(extras.get(key));
-            if ("options".equals(knob[0])) {
-                map.options().set(knob[1], value); // Options is the map's own object, not a group
-            } else {
-                group(knob[0]).set(knob[1], value);
+            try {
+                if ("options".equals(knob[0])) {
+                    map.options().set(knob[1], value); // Options is the map's own object, not a group
+                } else {
+                    PropertyGroup group = group(knob[0]);
+                    if (group == null) {
+                        Log.w(TAG, "no " + knob[0] + " on this example, " + key + " ignored");
+                        continue;
+                    }
+                    group.set(knob[1], value);
+                }
+                Log.i(TAG, knob[0] + "." + knob[1] + " = " + value);
+            } catch (MassifException e) {
+                Log.e(TAG, key + " = " + value + ": " + e.getMessage());
             }
-            Log.i(TAG, knob[0] + "." + knob[1] + " = " + value);
         }
         applyCamera(extras);
     }
 
     /**
-     * An example that never asked for terrain has an EMPTY TerrainOptions, and writing through it
-     * does nothing - Options starts with these unset. Nothing is built here on purpose: a knob
-     * silently doing nothing on an example that has no terrain is the honest answer, and the
-     * example that wants one says so in its own source.
+     * Options starts with these EMPTY and a write through an empty one throws, so light/fog/sky are
+     * built on first use, as tools/style-preview/massif-pane.html does. Terrain needs a source: null.
      */
     private PropertyGroup group(String kind) {
+        MassifObject current = map.options().child(kind + "Options");
+        if (current != null) {
+            current.close();
+            return map.group(kind + "Options");
+        }
         switch (kind) {
-        case "light": return map.light();
-        case "fog":   return map.fog();
-        case "sky":   return map.sky();
-        default:      return map.terrain();
+        case "light": return map.light(Spec.of("light"));
+        case "fog":   return map.fog(Spec.of("fog"));
+        case "sky":   return map.sky(Spec.of("sky"));
+        default:      return null;
         }
     }
 

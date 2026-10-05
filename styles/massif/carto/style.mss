@@ -404,13 +404,13 @@ Map {
   polygon-pattern-emissive-strength: 0;
 }
 #landcover[zoom >= 12]['mapnik::geometry_type' = 3]['param::polygons_border' = 1]['param::variant' != 'hybrid']::landcover_outline {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @power), (0.3, @line_stroke_6)) : @landcover_outline);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @landcover_outline);
   line-width: linear([view::zoom], (12, 0.6), (16, 1));
   line-dasharray: 1,1.4;
   line-emissive-strength: 0;
 }
 #landuse[zoom >= 13]['mapnik::geometry_type' = 3][class != 'residential'][class != 'suburb'][class != 'quarter'][class != 'neighbourhood']['param::polygons_border' = 1]['param::variant' != 'hybrid']::landuse_outline {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @power), (0.3, @line_stroke_6)) : @landcover_outline);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @landcover_outline);
   line-width: linear([view::zoom], (13, 0.4), (16, 0.8));
   line-emissive-strength: 0;
 }
@@ -483,12 +483,12 @@ Map {
   line-emissive-strength: 0;
 }
 #aeroway[zoom >= 11]['mapnik::geometry_type' = 3]['param::variant' != 'hybrid']::aeroway_area {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_8)) : @aeroway);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @line_stroke_9)) : @aeroway);
   polygon-opacity: linear([view::zoom], (10, 0), (11, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
 #aeroway[zoom >= 9]['mapnik::geometry_type' = 2]['param::variant' != 'hybrid']::aeroway_line {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_8)) : @aeroway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @line_stroke_9)) : @aeroway);
   line-width: exponential(1.5, [view::zoom], (9, (([class] = 'runway') ? 1 : 0.5)), (18, (([class] = 'runway') ? 80 : 20)));
   line-opacity: linear([view::zoom], (10, 0), (11, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
@@ -523,7 +523,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #contour[zoom >= 11][div >= 100]::contour_index {
-  line-color: (([param::variant] = 'topo') ? @contour_index_stroke : (([param::variant] = 'hybrid') ? @contour_index_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_index_stroke_3), (0.3, @line_stroke_9)) : @contour_index)));
+  line-color: (([param::variant] = 'topo') ? @contour_index_stroke : (([param::variant] = 'hybrid') ? @contour_index_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_index_stroke_3), (0.3, @line_stroke_10)) : @contour_index)));
   line-width: linear([view::zoom], (11, 0.6), (16, 1.4));
   line-opacity: linear([view::zoom], (11, (0.35 * [param::contour_opacity])), (14, (0.6 * [param::contour_opacity])));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
@@ -2654,18 +2654,18 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
 #power[zoom >= 14]::power_line {
-  line-color: (([param::variant] = 'hybrid') ? @power_line_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @power), (0.3, @line_stroke_6)) : @power));
-  line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (20, 1.5));
+  line-color: (([param::variant] = 'hybrid') ? @power_line_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @power));
+  line-width: exponential(1.5, [view::zoom], (14, 0.8), (16, 1), (20, 1.5));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #mountain_peak[zoom >= 13][class = 'cliff']['mapnik::geometry_type' = 2]::cliff {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @line_stroke_7)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_9), (0.3, @line_stroke_8)) : @cliff));
   line-width: linear([view::zoom], (13, 0.6), (18, 1.6));
   line-opacity: linear([view::zoom], (13, 0.5), (16, 0.9));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #mountain_peak[zoom >= 15][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @line_stroke_7)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_9), (0.3, @line_stroke_8)) : @cliff));
   line-width: linear([view::zoom], (15, 2), (20, 6));
   line-offset: (0 - (linear([view::zoom], (15, 1.2), (20, 3.5))));
   line-dasharray: step([zoom], (15, '1,2.84'), (18, '1.04,5.2'));
@@ -2680,14 +2680,14 @@ Map {
   line-emissive-strength: 0;
 }
 #boundary[zoom >= 10][admin_level = 6][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @power), (0.3, @line_stroke_6)) : @boundary_minor));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.6), (16, 1.5));
   line-dasharray: step([zoom], (10, '2.47,1.65'), (13, '3.83,2.55'));
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #boundary[zoom >= 10][admin_level = 8][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @power), (0.3, @line_stroke_6)) : @boundary_minor));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.4), (16, 1));
   line-dasharray: step([zoom], (10, '1.65,1.1'), (13, '2.55,1.7'));
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
@@ -2740,7 +2740,7 @@ Map {
   line-emissive-strength: 0;
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>1]['param::variant' != 'hybrid']::building_3d {
-  building-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night)) : linear([view::brightness], (0.25, @line_stroke_9), (0.3, @building_3d_fill)));
+  building-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night)) : linear([view::brightness], (0.25, @line_stroke_10), (0.3, @building_3d_fill)));
   building-height: (([render_height]) ?? (5));
   building-min-height: (([render_min_height]) ?? (0));
   building-fill-opacity: linear([view::tilt], (70, 1), (85, [param::building_opacity]));

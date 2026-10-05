@@ -125,24 +125,30 @@ namespace {
     }
 
     // tileHash with the batching taken out, so two styles drawing the same features from different
-    // attachments compare equal.
+    // attachments compare equal: per kind (flat 2D, 3D...) the triangles drawn and the set of slots.
+    // Flat lines and fills share batches (a plain fill joins a line or a patterned batch), so a
+    // slot carries the fill pattern it samples, and a line its dash.
     std::uint64_t contentHash(const vt::Tile& tile) {
         vt::ViewState viewState;
         viewState.zoom = static_cast<float>(tile.getTileId().zoom) + 0.5f;
-        std::map<std::pair<int, std::uint64_t>, std::tuple<std::size_t, std::size_t, std::set<std::pair<unsigned, float>>>> groups;
+        std::map<int, std::pair<std::size_t, std::set<std::tuple<unsigned, float, float, std::uint64_t>>>> groups;
         std::multiset<std::u32string> labels;
         for (const std::shared_ptr<vt::TileLayer>& layer : tile.getLayers()) {
             for (const std::shared_ptr<vt::TileGeometry>& geometry : layer->getGeometries()) {
                 const vt::TileGeometry::StyleParameters& params = geometry->getStyleParameters();
+                vt::TileGeometry::Type type = geometry->getType();
                 Hasher pattern;
-                if (params.pattern) {
+                if (params.pattern && type != vt::TileGeometry::Type::LINE) {
                     pattern.add(params.pattern->bitmap->data.data(), params.pattern->bitmap->data.size() * sizeof(std::uint32_t));
                 }
-                auto& group = groups[std::make_pair(static_cast<int>(geometry->getType()), pattern.value)];
-                std::get<0>(group) += geometry->getVertexGeometry().size() / std::max(1, static_cast<int>(geometry->getVertexGeometryLayoutParameters().vertexSize));
-                std::get<1>(group) += geometry->getIndicesCount();
+                if (type == vt::TileGeometry::Type::POLYGON) {
+                    type = vt::TileGeometry::Type::LINE;
+                }
+                auto& group = groups[static_cast<int>(type)];
+                group.first += geometry->getIndicesCount();
                 for (int i = 0; i < params.parameterCount; i++) {
-                    std::get<2>(group).emplace(params.colorFuncs[i](viewState).value(), params.widthFuncs[i](viewState));
+                    std::uint64_t slotPattern = (params.patternScales[i] > 0 ? pattern.value : 0);
+                    group.second.emplace(params.colorFuncs[i](viewState).value(), params.widthFuncs[i](viewState), params.strokeScales[i], slotPattern);
                 }
             }
             for (const std::shared_ptr<vt::TileLabel>& label : layer->getLabels()) {
@@ -156,10 +162,12 @@ namespace {
         Hasher hasher;
         for (const auto& group : groups) {
             hasher.add(group.first);
-            hasher.add(std::get<0>(group.second));
-            hasher.add(std::get<1>(group.second));
-            for (const auto& slot : std::get<2>(group.second)) {
-                hasher.add(slot);
+            hasher.add(group.second.first);
+            for (const auto& slot : group.second.second) {
+                hasher.add(std::get<0>(slot));
+                hasher.add(std::get<1>(slot));
+                hasher.add(std::get<2>(slot));
+                hasher.add(std::get<3>(slot));
             }
         }
         for (const std::u32string& text : labels) {

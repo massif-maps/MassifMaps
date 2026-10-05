@@ -2228,7 +2228,7 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
         // white one round a POI glyph, and it is NOT the text halo - the two are separate in
         // mapbox and now separate here.
         emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
-        emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
+        emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false, options);
         out.push(...iconPlateDeclarations(layer, icon, sized, coverage, options));
     } else if (layer.layout?.[RECOLOURABLE_ICON] === true) {
         // A recolourable sprite whose artwork is NOT a disc with a glyph on it (extractIconPlate
@@ -3361,7 +3361,7 @@ function fontShieldDeclarations(layer: MapboxLayer, image: Json, coverage: Cover
     emitTranslated(out, coverage, layer, 'icon-color', 'shield-icon-fill', undefined, false);
     emitTranslated(out, coverage, layer, 'icon-opacity', 'shield-icon-opacity', undefined, false);
     emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
-    emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
+    emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false, options);
     // A recolourable badge keeps its disc: the plate measured off the sheet, as the sprite path does.
     const plate = layer.layout?.[ICON_PARAMS] !== undefined ? fontPlateSample(options) : null;
     if (plate) out.push(...iconPlateDeclarations(layer, plate, sized, coverage, options, true));
@@ -3693,6 +3693,7 @@ function emitTranslated(
     to: string,
     fallback: string | undefined,
     constantOnly: boolean,
+    options?: ConvertOptions,
 ): void {
     const value = layer.paint?.[from] ?? layer.layout?.[from];
     if (value === undefined) {
@@ -3706,7 +3707,8 @@ function emitTranslated(
         coverage.drop(from, `a flattened bitmap needs a constant ${from}`, layer.id);
         return;
     }
-    const translated = name(from, layer, coverage);
+    // `options`: the property may be one the style asks to keep as a project.json table (massif:params)
+    const translated = (options && fieldParamTable(value as Json, layer, from, to, coverage, options)) ?? name(from, layer, coverage);
     if (translated !== null) {
         out.push(`${to}: ${translated};`);
         coverage.emit(to);
@@ -3786,12 +3788,18 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
         }
     }
 
+    // The fallback may be a table on ANOTHER field (subclass, then class): a chain of lookups, the
+    // last table keeping the plain name. Same field twice is not a chain, and keeps the ternary.
     const rest = value[value.length - 1] as Json;
-    if (typeof rest !== 'string' && typeof rest !== 'number') return null;
-    const fallback = tryTranslate(rest, property, layer.id, coverage);
+    const chained = Array.isArray(rest) && rest[0] === 'match' && Array.isArray(rest[1]) && rest[1][0] === 'get'
+        && rest[1][1] !== field;
+    const fallback = chained
+        ? fieldParamTable(rest, layer, property, target, coverage, options, suffix)
+        : typeof rest === 'string' || typeof rest === 'number' ? tryTranslate(rest, property, layer.id, coverage) : null;
     if (fallback === null) return null;
 
-    const slug = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}${suffix}`;
+    const base = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}${suffix}`;
+    const slug = chained ? `${base}-${field}` : base;
     for (const [label, branch] of entries) setTableEntry(options, slug, label, paramValue(branch));
     coverage.note(`"${layer.id}": ${property} is a ${entries.length}-entry table in project.json ` +
         `(${slug}), read per feature by [${field}]`);

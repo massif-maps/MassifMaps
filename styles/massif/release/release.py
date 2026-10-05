@@ -79,13 +79,17 @@ def maplibre(out, version, base_url):
 
 def iconfont(tmp):
     """The font iconotype builds from the committed project, and the name -> character map, every name
-    twice (`restaurant`, `restaurant-poi`) as the sprite has both"""
+    as each sprite the sheet bakes from it (`restaurant`, `restaurant-poi`, `restaurant-mono`, and a
+    palette alias such as `shelter-basic_hut-poi`)"""
     os.makedirs(tmp)
     project = shutil.copy(ICON_PROJECT, tmp)
     subprocess.run(['npx', '--yes', '@iconotype/cli@0.3.0', 'build', '--input', project, '--lock',
                     os.path.join(tmp, 'codepoints.lock')], cwd=SPRITE_TOOLS, check=True)
     codes = json.load(open(os.path.join(tmp, FACE + '.json')))
-    json.dump({**codes, **{name + '-poi': code for name, code in codes.items()}}, open(os.path.join(tmp, 'map.json'), 'w'))
+    aliases = json.load(open(os.path.join(HERE, 'sprite-src', 'poi-palette.json')))['aliases']
+    names = {**codes, **{alias: codes[look['from']] for alias, look in aliases.items()}}
+    json.dump({**codes, **{name + suffix: code for name, code in names.items() for suffix in ('-poi', '-mono')}},
+              open(os.path.join(tmp, 'map.json'), 'w'))
     # 27: the glyph's height in the 48 px badge (iconotype-project.mjs --badge), so icon-size scales it as the sprite
     return ['--icon-font', FACE, '--icon-font-map', os.path.join(tmp, 'map.json'), '--icon-font-size', '27',
             '--fonts', tmp]

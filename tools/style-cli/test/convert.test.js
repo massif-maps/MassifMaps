@@ -365,6 +365,27 @@ test('a palette the style asks for becomes a parameter table, read per feature',
     assert.deepEqual(styleParams.get('poi-fill'), { default: { bus: '#2e5a80', railway: '#2e5a80', park: '#4a7a3a' } });
 });
 
+test('a table falling back to a table on another field is a chain of lookups, subclass before class', () => {
+    // A viewpoint is a subclass of `attraction`: its colour has to be found by the subclass first, in
+    // the template every child rule extends, or a child's rule draws it in the attraction's.
+    const styleParams = new Map();
+    const { mss } = convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['match', ['get', 'subclass'], 'viewpoint', '#4a7a3a',
+                    ['match', ['get', 'class'], 'attraction', '#c0407a', '#666666']],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.match(mss, /text-fill: \(\(get\(\[param::poi-fill-subclass\], \[subclass\]\)\) \?\? \(\(get\(\[param::poi-fill\], \[class\]\)\) \?\? #666666\)\);/);
+    assert.deepEqual(styleParams.get('poi-fill-subclass'), { default: { viewpoint: '#4a7a3a' } });
+    assert.deepEqual(styleParams.get('poi-fill'), { default: { attraction: '#c0407a' } });
+});
+
 test('a parameter colour goes in as hex, because that is what the decoder can parse', () => {
     // A rule's hsl() is read by the CartoCSS compiler; a PARAMETER is a plain string parseColor has
     // to read at runtime, and its grammar knows #rrggbb, rgb() and the CSS names but not hsl().

@@ -1501,6 +1501,11 @@ every renderer, so a layer asking for it stays a valid MapLibre style, and every
 style is byte-identical. `["icon-image"]` covers a recolourable icon's own params — the disc, its
 ring and the glyph — so an icon palette lands in the same place as the label's.
 
+A `match` whose fallback is a `match` on ANOTHER field is a chain of tables, read in that order:
+`get([param::poi-fill-subclass], [subclass]) ?? get([param::poi-fill], [class]) ?? <fallback>`, the last table
+keeping the plain name. Massif keys a POI's look by `subclass`, then `shelter_type`, then `class` this
+way, so a viewpoint (an `attraction`) is found by its subclass. `icon-halo-width` takes a table too.
+
 A palette that follows the hour folds too: `["interpolate", …, ["measure-light", "brightness"], …]`
 whose every stop is such a `match` becomes one table per stop, read inside
 `linear([view::brightness], …)` — `poi-fill-b25` for the stop at 0.25, the last stop keeping the

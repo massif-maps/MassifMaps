@@ -66,8 +66,8 @@ and one `massif-<flavour>-<version>.zip` per flavour, `dist/npm/` (the npm packa
   (`@iconotype/cli build`) from the committed project `sprite-src/MassifIcons.iconotype.json`, which
   `tools/style-sprite/iconotype-project.mjs` writes from `sprite-src/poi/`: each badge SVG loses its
   plate (the first `<circle>`), its glyph box (`--badge 10.5,10.5,27,27` of the 48 px badge) becomes
-  the em, and iconotype's own fixer (`init`) makes the paths font-ready. Every name is mapped twice
-  (`restaurant`, `restaurant-poi`). 27 is that box's height, so `icon-size` scales a glyph exactly as
+  the em, and iconotype's own fixer (`init`) makes the paths font-ready. Every name is mapped as each sprite
+  the sheet bakes from it (`restaurant`, `restaurant-poi`, `restaurant-mono`). 27 is that box's height, so `icon-size` scales a glyph exactly as
   it scaled the sprite; the converter still measures the sheet's disc once for the plate the SDK
   draws under the glyph. **A codepoint is a contract**: FNV-1a of the name into U+E000–U+F8FF, the
   next free slot on a collision, and the existing project's codes kept first, so adding or removing

@@ -46,19 +46,35 @@ function boldGlyph(svg, colour) {
  * and a disc under a park bench. The palette is written by styles/massif/build.py from the same
  * table that states those params - one table, so the two rows cannot drift.
  *
- * It is a SECOND sprite, `<class>-poi`, and the neutral drawing stays. mapbox2css splits the
- * neutral one into a glyph field and the plate the SDK recolours, and that split needs a flat
- * neutral disc to measure: baking the colour in place cost every POI its plate.
+ * It is a SECOND sprite, `<class>-poi` (and `<class>-mono`, e-ink's), and the neutral drawing stays.
+ * mapbox2css splits the neutral one into a glyph field and the plate the SDK recolours, and that split
+ * needs a flat neutral disc to measure: baking the colour in place cost every POI its plate.
  */
-function bakePoi(id, svg, palette) {
-    const p = palette.classes[id] ?? palette.default;
+function bakePoi(id, svg, palette, look = palette.classes[id] ?? palette.default) {
+    const p = look;
     if (!POI_DISC.test(svg)) throw new Error(`${id}: no disc to bake - has the artwork changed?`);
     // Radius 21 is the full circle the drawing already is, and less is a rounded square of the same
     // box: one number spells every badge, exactly as it does on the SDK side.
     const rx = ((p.radius / 21) * 22.5).toFixed(2).replace(/\.?0+$/, '');
     const disc = p.disc === null ? '' : `<rect x="1.5" y="1.5" width="45" height="45" rx="${rx}" `
         + `fill="${p.disc}" stroke="${palette.ring}" stroke-width="${p.border}"/>\n  `;
-    return boldGlyph(svg.replace(POI_DISC, disc), p.glyph);
+    return haloGlyph(boldGlyph(svg.replace(POI_DISC, disc), p.glyph), p.halo, palette.halo);
+}
+
+/**
+ * A bare glyph's halo, which MapLibre cannot draw round a sprite that is not SDF: the glyph group
+ * again, stroked in the halo colour, behind it. `width` is in the sprite's 48 units, each side.
+ */
+function haloGlyph(svg, width, colour) {
+    if (!width) return svg;
+    const start = svg.indexOf('<g transform=');
+    const end = svg.lastIndexOf('</svg>');
+    const glyph = svg.slice(start, end);
+    const scale = Number(/scale\(([\d.]+)\)/.exec(glyph)?.[1] ?? 1);
+    const stroke = (POI_GLYPH_BOLD + (2 * width) / scale).toFixed(3);
+    const halo = glyph.replace(/fill="[^"]*" stroke="[^"]*" stroke-width="[^"]*"/,
+        `fill="${colour}" stroke="${colour}" stroke-width="${stroke}"`);
+    return svg.slice(0, start) + halo + glyph + svg.slice(end);
 }
 
 /** One drawing, one sprite per colour: `<id>-<variant>`, with `__TOKEN__` replaced in the SVG. */
@@ -131,7 +147,11 @@ function build(srcDir, outDir, name) {
             const source = basename(f, '.svg');
             const svg = readFileSync(join(srcDir, f), 'utf8');
             const drawings = palette && f.startsWith('poi/')
-                ? [{ id: source, svg: boldGlyph(svg, '#333333') }, { id: `${source}-poi`, svg: bakePoi(source, svg, palette), from: source }]
+                ? [{ id: source, svg: boldGlyph(svg, '#333333') },
+                    ...[['poi', palette], ['mono', palette.mono]].flatMap(([suffix, section]) => [
+                        { id: `${source}-${suffix}`, svg: bakePoi(source, svg, section), from: source },
+                        ...Object.entries(section.aliases ?? {}).filter(([, a]) => a.from === source)
+                            .map(([alias, look]) => ({ id: `${alias}-${suffix}`, svg: bakePoi(source, svg, section, look), from: source }))])]
                 : expand(source, svg, manifest);
             return drawings.map((v) => ({
                 id: v.id,

@@ -81,6 +81,11 @@ style whose sprite carries your drawing writes one). In the icon-font flavour it
 character in `MassifIcons`. A class with no icon waits for z17 under the rank ladder; one that gets an icon this
 way is drawn from its rank's zoom, as the base's own classes are.
 
+A rule extending `%poi` draws a POI with Massif's look whatever selects it: colours, disc and halo are
+tables read by the POI's `subclass`, then its `shelter_type`, then its `class`, so a viewpoint brought
+in early is bare and green and a walker's shelter a green badge. They are editable like any palette:
+`poi-icon-background-fill-subclass-viewpoint`, `poi-icon-background-fill-shelter_type-basic_hut`, …
+
 ## The OpenStreetMap example
 
 `osm.json` ships in both CartoCSS flavours: Massif re-skinned with OpenStreetMap Carto's colours, as

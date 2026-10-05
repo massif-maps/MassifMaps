@@ -839,6 +839,12 @@ no feature meets two of them, and the features keep the tile's order — as MapB
 Only `line-sort-key` gets one attachment per key value (`_b1`, `_b2`…, lowest first), because its
 whole point is the order between them.
 
+Adjacent MapLibre layers of one source layer whose every rule paints the same opaque lines or fills,
+in every preset, are folded into the first one's attachment as well (`mergeIdenticalPaint`): their
+order cannot show, and a feature both match is drawn once with the same pixels. Anything
+translucent, blended or textured keeps its own. Massif: 8 attachments (trail grades, construction),
+279 -> 271 project entries.
+
 A dash whose pattern depends on the zoom is one stepped pattern, scaled per band
 (`bandDashByZoom`): the decoder rasterises the pattern per tile, so it follows the tile's zoom.
 

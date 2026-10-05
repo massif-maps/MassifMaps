@@ -147,6 +147,25 @@ test('only the sort key splits attachments: a set split and dash bands are rules
     assert.deepEqual(layers.filter((entry) => entry.startsWith('transportation::road')).sort(), ['transportation::road_b1', 'transportation::road_b2'], 'and the project names each attachment once');
 });
 
+test('adjacent layers of one source layer painting the same opaque lines share one attachment', () => {
+    // Their order cannot show, so they are one pass over the layer. Anything that could make it show -
+    // another paint, a translucent one, a layer of another source between them - keeps them apart.
+    const line = (id, cls, paint = { 'line-color': '#ff0000', 'line-width': 2 }) => ({
+        id, type: 'line', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], cls], paint,
+    });
+    const attachments = (layers) => [...new Set(convert({ layers }, TABLE, NO_PALETTE).mss.split('\n')
+        .filter((l) => l.startsWith('#transportation')).map((l) => l.match(/::(\w+)/)[1]))];
+
+    assert.deepEqual(attachments([line('t1', 'path'), line('t2', 'track')]), ['t1'], 'same paint: one attachment');
+    assert.deepEqual(attachments([line('t1', 'path'), line('t2', 'track', { 'line-color': '#00ff00', 'line-width': 2 })]),
+        ['t1', 't2'], 'another colour: two');
+    assert.deepEqual(attachments([line('t1', 'path', { 'line-color': '#ff0000', 'line-opacity': 0.5 }),
+        line('t2', 'track', { 'line-color': '#ff0000', 'line-opacity': 0.5 })]), ['t1', 't2'], 'translucent: where both match, drawn once is not drawn twice');
+    assert.deepEqual(attachments([line('t1', 'path'),
+        { id: 'w', type: 'line', 'source-layer': 'waterway', paint: { 'line-color': '#0000ff' } },
+        line('t2', 'track')]), ['t1', 't2'], 'a layer of another source between them: two');
+});
+
 test('a sort key that is not a match over the feature leaves the layer whole', () => {
     const blocks = convert({ layers: [{
         id: 'road', type: 'line', source: 'osm', 'source-layer': 'transportation',

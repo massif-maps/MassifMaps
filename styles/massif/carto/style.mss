@@ -775,7 +775,7 @@ Map {
   line-dasharray: step([zoom], (12, '3.2,1.6'), (14, '5.6,2.8'), (16, '8.37,4.18'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
@@ -796,14 +796,14 @@ Map {
   line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
@@ -824,14 +824,14 @@ Map {
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
@@ -852,14 +852,14 @@ Map {
   line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
@@ -880,42 +880,42 @@ Map {
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
@@ -1168,43 +1168,43 @@ Map {
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][class = 'motorway_construction']::road_construction_omt {
+#transportation[zoom >= 14][class = 'motorway_construction']::road_construction {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][class = 'trunk_construction']::road_construction_omt {
+#transportation[zoom >= 14][class = 'trunk_construction']::road_construction {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][class = 'primary_construction']::road_construction_omt {
+#transportation[zoom >= 14][class = 'primary_construction']::road_construction {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][class = 'secondary_construction']::road_construction_omt {
+#transportation[zoom >= 14][class = 'secondary_construction']::road_construction {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][class = 'tertiary_construction']::road_construction_omt {
+#transportation[zoom >= 14][class = 'tertiary_construction']::road_construction {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][class = 'minor_construction']::road_construction_omt {
+#transportation[zoom >= 14][class = 'minor_construction']::road_construction {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][class = 'service_construction']::road_construction_omt {
+#transportation[zoom >= 14][class = 'service_construction']::road_construction {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
@@ -2713,7 +2713,7 @@ Map {
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
-#building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' = 'eink']::building_flat_z15 {
+#building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' = 'eink']::building_flat {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
   line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: @building_stroke_width;
@@ -2727,7 +2727,7 @@ Map {
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
-#building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' != 'hybrid']['param::variant' != 'eink']::building_z15 {
+#building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' != 'hybrid']['param::variant' != 'eink']::building {
   polygon-fill: @building_fill;
   line-color: @building_stroke_2;
   line-width: @building_stroke_width;

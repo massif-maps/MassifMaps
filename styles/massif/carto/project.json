@@ -690,6 +690,7 @@
     "global_landcover"
   ],
   "styleparameters": {
+    "bare_icon_scale": 1.3,
     "building_ao": 1,
     "building_min_zoom": 14,
     "building_opacity": 1,

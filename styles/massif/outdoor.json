@@ -6,6 +6,7 @@
     "massif:variant": "outdoor",
     "massif:live-config": [
       "poiStyle",
+      "bare_icon_scale",
       "building_opacity",
       "buildings",
       "contour_opacity",
@@ -17743,9 +17744,17 @@
             "zoom"
           ],
           17,
-          0.4,
+          [
+            "*",
+            0.4,
+            1.3
+          ],
           22,
-          0.8
+          [
+            "*",
+            0.8,
+            1.3
+          ]
         ],
         "text-field": "",
         "text-font": [
@@ -19233,9 +19242,23 @@
                 "zoom"
               ],
               17,
-              0.4,
+              [
+                "*",
+                0.4,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ],
               22,
-              0.8
+              [
+                "*",
+                0.8,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ]
             ]
           ],
           "text-font": [
@@ -19739,9 +19762,17 @@
             "zoom"
           ],
           17,
-          0.4,
+          [
+            "*",
+            0.4,
+            1.3
+          ],
           22,
-          0.8
+          [
+            "*",
+            0.8,
+            1.3
+          ]
         ],
         "text-field": [
           "coalesce",
@@ -21237,9 +21268,23 @@
                 "zoom"
               ],
               17,
-              0.4,
+              [
+                "*",
+                0.4,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ],
               22,
-              0.8
+              [
+                "*",
+                0.8,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ]
             ]
           ],
           "text-font": [
@@ -21727,7 +21772,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          1.3
+        ],
         "text-field": [
           "coalesce",
           [
@@ -21934,7 +21983,14 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -22143,9 +22199,17 @@
             "zoom"
           ],
           17,
-          0.4,
+          [
+            "*",
+            0.4,
+            1.3
+          ],
           22,
-          0.8
+          [
+            "*",
+            0.8,
+            1.3
+          ]
         ],
         "text-field": [
           "coalesce",
@@ -23641,9 +23705,23 @@
                 "zoom"
               ],
               17,
-              0.4,
+              [
+                "*",
+                0.4,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ],
               22,
-              0.8
+              [
+                "*",
+                0.8,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ]
             ]
           ],
           "text-font": [
@@ -24140,9 +24218,17 @@
             "zoom"
           ],
           17,
-          0.4,
+          [
+            "*",
+            0.4,
+            1.3
+          ],
           22,
-          0.8
+          [
+            "*",
+            0.8,
+            1.3
+          ]
         ],
         "text-field": [
           "coalesce",
@@ -25638,9 +25724,23 @@
                 "zoom"
               ],
               17,
-              0.4,
+              [
+                "*",
+                0.4,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ],
               22,
-              0.8
+              [
+                "*",
+                0.8,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ]
             ]
           ],
           "text-font": [
@@ -26135,9 +26235,17 @@
             "zoom"
           ],
           17,
-          0.4,
+          [
+            "*",
+            0.4,
+            1.3
+          ],
           22,
-          0.8
+          [
+            "*",
+            0.8,
+            1.3
+          ]
         ],
         "text-field": [
           "coalesce",
@@ -27633,9 +27741,23 @@
                 "zoom"
               ],
               17,
-              0.4,
+              [
+                "*",
+                0.4,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ],
               22,
-              0.8
+              [
+                "*",
+                0.8,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ]
             ]
           ],
           "text-font": [
@@ -28129,9 +28251,17 @@
             "zoom"
           ],
           17,
-          0.4,
+          [
+            "*",
+            0.4,
+            1.3
+          ],
           22,
-          0.8
+          [
+            "*",
+            0.8,
+            1.3
+          ]
         ],
         "text-field": [
           "coalesce",
@@ -29627,9 +29757,23 @@
                 "zoom"
               ],
               17,
-              0.4,
+              [
+                "*",
+                0.4,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ],
               22,
-              0.8
+              [
+                "*",
+                0.8,
+                [
+                  "config",
+                  "bare_icon_scale"
+                ]
+              ]
             ]
           ],
           "text-font": [
@@ -30118,7 +30262,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.30000000000000004,
+          1.3
+        ],
         "text-field": "",
         "text-font": [
           "Noto Sans Regular"
@@ -31582,7 +31730,14 @@
             ],
             "plain",
             0.44999999999999996,
-            0.30000000000000004
+            [
+              "*",
+              0.30000000000000004,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -32067,7 +32222,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.30000000000000004,
+          1.3
+        ],
         "text-field": [
           "coalesce",
           [
@@ -33541,7 +33700,14 @@
             ],
             "plain",
             0.44999999999999996,
-            0.30000000000000004
+            [
+              "*",
+              0.30000000000000004,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -34038,7 +34204,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.30000000000000004,
+          1.3
+        ],
         "text-field": "",
         "text-font": [
           "Noto Sans Regular"
@@ -35502,7 +35672,14 @@
             ],
             "plain",
             0.44999999999999996,
-            0.30000000000000004
+            [
+              "*",
+              0.30000000000000004,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -35996,7 +36173,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.30000000000000004,
+          1.3
+        ],
         "text-field": [
           "coalesce",
           [
@@ -37470,7 +37651,14 @@
             ],
             "plain",
             0.44999999999999996,
-            0.30000000000000004
+            [
+              "*",
+              0.30000000000000004,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -37964,7 +38152,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.30000000000000004,
+          1.3
+        ],
         "text-field": "",
         "text-font": [
           "Noto Sans Regular"
@@ -39428,7 +39620,14 @@
             ],
             "plain",
             0.44999999999999996,
-            0.30000000000000004
+            [
+              "*",
+              0.30000000000000004,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -39919,7 +40118,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.30000000000000004,
+          1.3
+        ],
         "text-field": [
           "coalesce",
           [
@@ -41393,7 +41596,14 @@
             ],
             "plain",
             0.44999999999999996,
-            0.30000000000000004
+            [
+              "*",
+              0.30000000000000004,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -43855,7 +44065,22 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "garden"
+            ],
+            1.3,
+            1
+          ]
+        ],
         "text-field": [
           "coalesce",
           [
@@ -45331,7 +45556,25 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "garden"
+                ],
+                [
+                  "config",
+                  "bare_icon_scale"
+                ],
+                1
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -45818,7 +46061,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          1.3
+        ],
         "text-field": [
           "coalesce",
           [
@@ -47297,7 +47544,14 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -47804,7 +48058,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          1.3
+        ],
         "text-field": [
           "coalesce",
           [
@@ -48014,7 +48272,14 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -48222,7 +48487,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.30000000000000004,
+          1.3
+        ],
         "text-field": [
           "coalesce",
           [
@@ -49702,7 +49971,14 @@
             ],
             "plain",
             0.44999999999999996,
-            0.30000000000000004
+            [
+              "*",
+              0.30000000000000004,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -54300,7 +54576,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          1.3
+        ],
         "text-field": "",
         "text-font": [
           "Noto Sans Regular"
@@ -55766,7 +56046,14 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -56308,7 +56595,11 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          1.3
+        ],
         "text-field": "",
         "text-font": [
           "Noto Sans Regular"
@@ -57774,7 +58065,14 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "config",
+                "bare_icon_scale"
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -62479,7 +62777,29 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "barrier",
+              "bench",
+              "garden",
+              "picnic_site",
+              "telephone",
+              "toilets",
+              "viewpoint",
+              "waste_basket"
+            ],
+            1.3,
+            1
+          ]
+        ],
         "text-field": [
           "coalesce",
           [
@@ -63966,7 +64286,32 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "barrier",
+                  "bench",
+                  "garden",
+                  "picnic_site",
+                  "telephone",
+                  "toilets",
+                  "viewpoint",
+                  "waste_basket"
+                ],
+                [
+                  "config",
+                  "bare_icon_scale"
+                ],
+                1
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -64819,7 +65164,29 @@
             ]
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "barrier",
+              "bench",
+              "garden",
+              "picnic_site",
+              "telephone",
+              "toilets",
+              "viewpoint",
+              "waste_basket"
+            ],
+            1.3,
+            1
+          ]
+        ],
         "text-field": [
           "step",
           [
@@ -66705,7 +67072,32 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "barrier",
+                  "bench",
+                  "garden",
+                  "picnic_site",
+                  "telephone",
+                  "toilets",
+                  "viewpoint",
+                  "waste_basket"
+                ],
+                [
+                  "config",
+                  "bare_icon_scale"
+                ],
+                1
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -69804,7 +70196,29 @@
             ]
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "barrier",
+              "bench",
+              "garden",
+              "picnic_site",
+              "telephone",
+              "toilets",
+              "viewpoint",
+              "waste_basket"
+            ],
+            1.3,
+            1
+          ]
+        ],
         "text-field": "",
         "text-font": [
           "Noto Sans Regular"
@@ -71267,7 +71681,32 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "barrier",
+                  "bench",
+                  "garden",
+                  "picnic_site",
+                  "telephone",
+                  "toilets",
+                  "viewpoint",
+                  "waste_basket"
+                ],
+                [
+                  "config",
+                  "bare_icon_scale"
+                ],
+                1
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -72129,7 +72568,29 @@
             ]
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "barrier",
+              "bench",
+              "garden",
+              "picnic_site",
+              "telephone",
+              "toilets",
+              "viewpoint",
+              "waste_basket"
+            ],
+            1.3,
+            1
+          ]
+        ],
         "text-field": [
           "step",
           [
@@ -74015,7 +74476,32 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "barrier",
+                  "bench",
+                  "garden",
+                  "picnic_site",
+                  "telephone",
+                  "toilets",
+                  "viewpoint",
+                  "waste_basket"
+                ],
+                [
+                  "config",
+                  "bare_icon_scale"
+                ],
+                1
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -77190,7 +77676,29 @@
             ]
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.4,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "barrier",
+              "bench",
+              "garden",
+              "picnic_site",
+              "telephone",
+              "toilets",
+              "viewpoint",
+              "waste_basket"
+            ],
+            1.3,
+            1
+          ]
+        ],
         "text-field": [
           "step",
           [
@@ -79076,7 +79584,32 @@
             ],
             "plain",
             0.6,
-            0.4
+            [
+              "*",
+              0.4,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "barrier",
+                  "bench",
+                  "garden",
+                  "picnic_site",
+                  "telephone",
+                  "toilets",
+                  "viewpoint",
+                  "waste_basket"
+                ],
+                [
+                  "config",
+                  "bare_icon_scale"
+                ],
+                1
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -95821,7 +96354,22 @@
             "default-poi"
           ]
         ],
-        "icon-size": 0.4,
+        "icon-size": [
+          "*",
+          0.5599999999999999,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "drinking_water"
+            ],
+            1.3,
+            1
+          ]
+        ],
         "text-field": [
           "coalesce",
           [
@@ -97302,7 +97850,25 @@
             ],
             "plain",
             0.84,
-            0.5599999999999999
+            [
+              "*",
+              0.5599999999999999,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "drinking_water"
+                ],
+                [
+                  "config",
+                  "bare_icon_scale"
+                ],
+                1
+              ]
+            ]
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -101316,6 +101882,9 @@
         "badge",
         "plain"
       ]
+    },
+    "bare_icon_scale": {
+      "default": 1.3
     },
     "building_opacity": {
       "default": 1

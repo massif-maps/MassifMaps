@@ -333,6 +333,42 @@ def mono_params(fixed_bare=None):
 NAME = ['coalesce', get('name'), get('name_int')]
 
 
+def bare_scale(filter, bare):
+    """`bare_icon_scale` for a glyph that is not a place (furniture, landmarks), 1 for a badge: tested
+    only on the bare classes the filter lets through, so a ladder layer pays a few compares, not thirty"""
+    scale = ['config', 'bare_icon_scale']
+    flat = lambda f: [c for sub in f[1:] for c in flat(sub)] if f[0] == 'all' else [f]
+    clauses = flat(filter) if filter else []
+    reach, excluded, pinned = set(NO_BACKGROUND), set(), None
+    for c in clauses:
+        if c[0] == '==' and c[1] == get('class'):
+            pinned = {c[2]}
+        elif c[0] == 'in' and c[1] == get('class'):
+            pinned = set(c[2][1])
+        elif c[0] == '!=' and c[1] == get('class'):
+            excluded.add(c[2])
+        elif c[0] == '==' and c[1] == get('subclass'):
+            bare = bare or c[2] in NO_BACKGROUND
+            reach = set()
+    if pinned is not None:
+        bare = bare or pinned <= set(NO_BACKGROUND)
+        reach &= pinned
+    reach -= excluded
+    if bare:
+        return scale
+    return ['match', get('class'), sorted(reach), scale, 1] if reach else 1
+
+
+def times(size, factor):
+    """`size` (a number or a zoom ramp) times a per-feature `factor`: inside the ramp's outputs, where
+    MapLibre wants the zoom on top"""
+    if factor == 1:
+        return size
+    if isinstance(size, list) and size[0] == 'interpolate':
+        return size[:3] + [x if i % 2 == 0 else ['*', x, factor] for i, x in enumerate(size[3:])]
+    return ['*', size, factor]
+
+
 def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overlap=False, scale=1,
               category=None, extra=None, bare=False, unknown=False):
     """`scale` may be a zoom ramp; `extra` overrides the label's layout; `bare`: no disc whatever the
@@ -345,10 +381,11 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
     neutral = lambda name: ['image', name]
     chain = lambda image: until_known(icon_chain(icon, image, fallback=False), icon_chain(icon, image),
                                       minzoom, maxzoom) if unknown else icon_chain(icon, image)
+    bare_size = bare_scale(filter, bare)
     gated = lambda known: until_known(['case', known, text, ''], text, minzoom, maxzoom) if unknown and text else text
     layout = {
         'icon-image': chain(baked),
-        'icon-size': scaled(scale, 0.4) if isinstance(scale, list) else 0.4,
+        'icon-size': times(scaled(scale, 0.4), bare_size),
         'text-field': gated(KNOWN_MAPLIBRE),
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
         'text-font': 'medium',
@@ -369,8 +406,8 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
     (massif_icon[2] if massif_icon[0] == 'step' else massif_icon)[1].append(params)
     massif_layout = {'icon-image': massif_icon, **({'text-field': gated(KNOWN_SDK)} if unknown else {})}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
-    massif_layout['icon-size'] = scaled(scale, 0.4) if mono else \
-        ['match', ['config', 'poiStyle'], 'plain', scaled(scale, 0.6), scaled(scale, 0.4)]
+    massif_layout['icon-size'] = times(scaled(scale, 0.4), bare_size) if mono else \
+        ['match', ['config', 'poiStyle'], 'plain', scaled(scale, 0.6), times(scaled(scale, 0.4), bare_size)]
     return boosted(layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
                  paint={'text-color': MONO_INK if mono else night_color(category) if dark else day_color(category),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},

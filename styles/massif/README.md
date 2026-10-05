@@ -225,6 +225,9 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
 - `building_tilt_drop` (90), `building_ao` (1) — the converter's own, the same in every converted style.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger. It reads the class tables, so switching is a re-decode.
+- `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
+  drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
+  e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`).
 All of them are in [`params.py`](params.py), named as in Alpimaps' OSM style where it had one. A
 variant may state its own default (`Variant(params=...)`), written into `carto/<variant>.json` and,
 for a zoom, into the MapLibre file as the layer's `minzoom`. A switch is `lib.gate`: a selector the

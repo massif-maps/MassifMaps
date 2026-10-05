@@ -3334,7 +3334,7 @@ export interface PropertyTypes {
     readonly "projection.name": string;
   };
   "massif::MBVectorTileDecoder": {
-    /** Returns the value of the specified style parameter: its default, or the value last set. */
+    /** Returns the value of the specified style parameter: its default, or the value last set. "table.key" returns one member of an object parameter. */
     [key: `params.${string}`]: string;
     /** Returns the current CartoCSS style set used by the decoder. If decoder uses non-CartoCSS style set, null is returned. */
     "cartoCSSStyle": Handle<"massif::CartoCSSStyleSet">;
@@ -3356,7 +3356,7 @@ export interface PropertyTypes {
     "featureIdOverride": boolean;
     readonly "maxZoom": number;
     readonly "minZoom": number;
-    /** Returns the value of the specified style parameter: its default, or the value last set. */
+    /** Returns the value of the specified style parameter: its default, or the value last set. "table.key" returns one member of an object parameter. */
     "params": Record<string, string>;
     /** (read-only) Returns the ordered style layer names as declared by the style (project JSON "layers", or Mapnik XML Layers), i.e. the draw order. CompositeVectorTileLayer places external sources by it: a source whose name is not in this list is not drawn. */
     readonly "styleLayerNames": string[];
@@ -8255,7 +8255,7 @@ export interface StyleSpec_mbvt {
   compiledStyle?: Handle<"massif::CompiledStyleSet">;
   /** Returns the value of feature id override flag. This is intended for cases when feature ids in tile are not globally unique. */
   featureIdOverride?: boolean;
-  /** Returns the value of the specified style parameter: its default, or the value last set. */
+  /** Returns the value of the specified style parameter: its default, or the value last set. "table.key" returns one member of an object parameter. */
   params?: Record<string, string>;
   project?: StylesetSpec | string;
   /** Returns the binary format the tiles are decoded as. */

@@ -118,6 +118,19 @@ namespace massif {
             return picojson::value();
         }
 
+        // A value with no declared type to read it by: JSON, else the text itself
+        mvt::Value parseUntypedValue(const std::string& value) {
+            picojson::value jsonValue;
+            std::string err;
+            bool json = picojson::parse(jsonValue, value.begin(), value.end(), &err) == value.end() && err.empty();
+            return json ? convertJSONValue(jsonValue) : mvt::Value(value);
+        }
+
+        std::string formatUntypedValue(const mvt::Value& value) {
+            const std::string* str = std::get_if<std::string>(&value);
+            return str ? *str : convertValueToJSON(value).serialize();
+        }
+
         // Compiled maps, shared between decoders: compiling a style is 0.5-0.7 s for a 23-layer
         // project, paid again by every layer built from it. A compiled map is read-only and a
         // decoder's own values live in its parameter store, so sharing one is safe.
@@ -265,6 +278,18 @@ namespace massif {
     std::string MBVectorTileDecoder::getStyleParameter(const std::string& param) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
+        std::string table, key;
+        if (splitTableEntry(param, table, key)) {
+            auto obj = std::get<std::shared_ptr<const mvt::ValueObject>>(getParameterValue(table));
+            if (obj) {
+                auto member = obj->members.find(key);
+                if (member != obj->members.end()) {
+                    return formatUntypedValue(member->second);
+                }
+            }
+            throw InvalidArgumentException("Could not find parameter");
+        }
+
         auto it = _map->getStyleParameterMap().find(param);
         if (it == _map->getStyleParameterMap().end()) {
             // a scale every style has, declared or not
@@ -275,8 +300,7 @@ namespace massif {
                 if (it2 == _parameterValueMap.end()) {
                     throw InvalidArgumentException("Could not find parameter");
                 }
-                const std::string* str = std::get_if<std::string>(&it2->second);
-                return str ? *str : convertValueToJSON(it2->second).serialize();
+                return formatUntypedValue(it2->second);
             }
             const double* set = (it2 != _parameterValueMap.end() ? std::get_if<double>(&it2->second) : nullptr);
             return boost::lexical_cast<std::string>(set ? *set : builtin->second);
@@ -409,7 +433,43 @@ namespace massif {
         return true;
     }
 
+    bool MBVectorTileDecoder::splitTableEntry(const std::string& param, std::string& table, std::string& key) const {
+        std::size_t dot = param.find('.');
+        if (dot == std::string::npos || _map->getStyleParameterMap().count(param) > 0) {
+            return false;
+        }
+        auto it = _map->getStyleParameterMap().find(param.substr(0, dot));
+        if (it == _map->getStyleParameterMap().end() || !std::holds_alternative<std::shared_ptr<const mvt::ValueObject>>(it->second.getDefaultValue())) {
+            return false;
+        }
+        table = it->first;
+        key = param.substr(dot + 1);
+        return true;
+    }
+
+    std::string MBVectorTileDecoder::tableName(const std::string& param) const {
+        std::string table, key;
+        return splitTableEntry(param, table, key) ? table : param;
+    }
+
+    mvt::Value MBVectorTileDecoder::getParameterValue(const std::string& param) const {
+        auto it = _parameterValueMap.find(param);
+        return it != _parameterValueMap.end() ? it->second : _map->getStyleParameterMap().at(param).getDefaultValue();
+    }
+
     bool MBVectorTileDecoder::setStyleParameterInternal(const std::string& param, const std::string& value) {
+        std::string table, key;
+        if (splitTableEntry(param, table, key)) {
+            auto obj = std::get<std::shared_ptr<const mvt::ValueObject>>(getParameterValue(table));
+            std::map<std::string, mvt::Value> members;
+            if (obj) {
+                members = obj->members;
+            }
+            members[key] = parseUntypedValue(value);
+            _parameterValueMap[table] = mvt::Value(std::make_shared<const mvt::ValueObject>(std::move(members)));
+            return true;
+        }
+
         auto it = _map->getStyleParameterMap().find(param);
         if (it == _map->getStyleParameterMap().end()) {
             if (mvt::SymbolizerContext::Settings::getBuiltinParameters().count(param) > 0) {
@@ -423,10 +483,7 @@ namespace massif {
                 }
             }
             // Not declared: a style may still read it by a computed name ([param::poi-boost-[class]])
-            picojson::value jsonValue;
-            std::string err;
-            bool json = picojson::parse(jsonValue, value.begin(), value.end(), &err) == value.end() && err.empty();
-            _parameterValueMap[param] = json ? convertJSONValue(jsonValue) : mvt::Value(value);
+            _parameterValueMap[param] = parseUntypedValue(value);
             return true;
         }
         const mvt::StyleParameter& styleParam = it->second;
@@ -489,7 +546,7 @@ namespace massif {
 
             set = setStyleParameterInternal(param, value);
 
-            live = areParametersRepaintable({ param });
+            live = areParametersRepaintable({ tableName(param) });
             if (live) {
                 updateParameterStore();
                 updateSelectionState();
@@ -522,7 +579,7 @@ namespace massif {
                 std::vector<std::string> params;
                 for (auto it = jsonValues.begin(); it != jsonValues.end(); it++) {
                     setStyleParameterInternal(it->first, it->second.get<std::string>());
-                    params.push_back(it->first);
+                    params.push_back(tableName(it->first));
                 }
                 live = areParametersRepaintable(params);
                 if (live) {
@@ -552,7 +609,7 @@ namespace massif {
             std::vector<std::string> paramNames;
             for (auto p = params.begin(); p != params.end(); ++p)  {
                 setStyleParameterInternal(p->first, p->second);
-                paramNames.push_back(p->first);
+                paramNames.push_back(tableName(p->first));
             }
             live = areParametersRepaintable(paramNames);
             if (live) {

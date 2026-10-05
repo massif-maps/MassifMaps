@@ -258,6 +258,15 @@ namespace massif::css {
                     picojson::value& subObj = mapDoc.get(it->first);
                     const picojson::object& subOverrideObj = it->second.get<picojson::object>();
                     for (auto it2 = subOverrideObj.begin(); it2 != subOverrideObj.end(); it2++) {
+                        // "table.key" sets one entry of a table the base declares, as setStyleParameter does
+                        std::size_t dot = it2->first.find('.');
+                        if (it->first == "styleparameters" && dot != std::string::npos && subObj.contains(it2->first.substr(0, dot))) {
+                            picojson::value& table = subObj.get(it2->first.substr(0, dot));
+                            if (table.is<picojson::object>() && table.contains("default") && table.get("default").is<picojson::object>()) {
+                                table.get("default").set(it2->first.substr(dot + 1), it2->second);
+                                continue;
+                            }
+                        }
                         subObj.set(it2->first, it2->second);
                     }
                 } else {

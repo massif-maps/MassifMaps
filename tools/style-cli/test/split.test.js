@@ -120,6 +120,33 @@ test('line-sort-key becomes one attachment per value, lowest drawn first', () =>
     assert.match(blocks[2], /\[class = 'motorway'\]/);
 });
 
+test('only the sort key splits attachments: a set split and dash bands are rules of each one', () => {
+    // An attachment is a pass over the whole source layer per tile, so the splits that need no
+    // ORDER - a value per rule, a dash pattern per zoom band - stay inside the sort key's attachment.
+    const { mss, project } = convert({ layers: [
+        {
+            id: 'road', type: 'line', source: 'osm', 'source-layer': 'transportation',
+            filter: ['in', ['get', 'class'], ['literal', ['motorway', 'path', 'track']]],
+            layout: { 'line-sort-key': ['match', ['get', 'class'], 'motorway', 2, 1] },
+            paint: {
+                'line-color': ['match', ['get', 'class'], 'path', '#ff0000', '#ffffff'],
+                'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 18, 8],
+                'line-dasharray': [2, 2],
+            },
+        },
+        // Water between the roads and their names draws transportation at two depths, so the
+        // project names its attachments one by one
+        { id: 'water', type: 'fill', 'source-layer': 'water', paint: { 'fill-color': '#0000ff' } },
+        { id: 'name', type: 'symbol', 'source-layer': 'transportation', layout: { 'text-field': ['get', 'name'] } },
+    ] }, TABLE, NO_PALETTE);
+    const attachments = mss.split('\n').filter((l) => l.startsWith('#transportation')).map((l) => l.match(/::(\w+)/)[1]).filter((name) => name !== 'name');
+    assert.ok(attachments.length > 2, 'the set and the dash still split into several rules');
+    assert.deepEqual([...new Set(attachments)], ['road_b1', 'road_b2'], 'one attachment per sort key, lowest first');
+    assert.ok(mss.includes('line-dasharray: step([zoom], '), 'the dash bands are one stepped pattern');
+    const layers = JSON.parse(project).layers;
+    assert.deepEqual(layers.filter((entry) => entry.startsWith('transportation::road')).sort(), ['transportation::road_b1', 'transportation::road_b2'], 'and the project names each attachment once');
+});
+
 test('a sort key that is not a match over the feature leaves the layer whole', () => {
     const blocks = convert({ layers: [{
         id: 'road', type: 'line', source: 'osm', 'source-layer': 'transportation',

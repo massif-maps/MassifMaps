@@ -821,14 +821,35 @@ dedups them into one of the geometry's 16 style slots. A field-driven colour cos
 batches.
 
 [`split.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/split.ts)
-turns a `case`/`match` over a field into **one attachment per branch**, each with a constant value
-and the branch's condition added to the filter. Later branches exclude the earlier ones, because
-MapBox takes the first match. On topo-v4 that is 17 layers and **+24 attachments**.
+turns a `case`/`match` over a field into **one rule per branch**, each with a constant value and the
+branch's condition added to the filter. Later branches exclude the earlier ones, because MapBox
+takes the first match. On topo-v4 that is 17 layers and +24 rules.
 
 It was written for the wrong reason above and **the decoder no longer requires it** — a field-driven
 value renders, and a missing field takes the default instead of losing the feature. It has not been
-removed: whether emitting the field expression beats 24 extra attachments is unmeasured, and the
-branch cap below is what a review of that should start from.
+removed: whether emitting the field expression beats the extra rules is unmeasured, and the branch
+cap below is what a review of that should start from.
+
+### Only a sort key is an attachment of its own
+
+An attachment is a **pass over its whole source layer, per tile** (`TileReader::processLayer`), so the
+splits whose parts need no ORDER stay rules of the layer's one attachment: a branch, a set value
+(`expandSetFilter`), an icon's zoom band, a dash's zoom band. Their filters exclude each other, so
+no feature meets two of them, and the features keep the tile's order — as MapBox draws one layer.
+Only `line-sort-key` gets one attachment per key value (`_b1`, `_b2`…, lowest first), because its
+whole point is the order between them.
+
+A dash whose pattern depends on the zoom is one stepped pattern, scaled per band
+(`bandDashByZoom`): the decoder rasterises the pattern per tile, so it follows the tile's zoom.
+
+```css
+line-dasharray: step([zoom], (12, '1,1.58'), (15, '1.78,3.56'), (18, '3.15,6.3'));
+```
+
+Massif streets went from 684 project entries and 718 styles to 307 and 334, drawing the same
+tiles (`bench-decode`'s content hash, 21 rhone-alpes tiles, every variant). On the host: style load
+74 -> 45 ms, decode of the 21 tiles 220 -> 206 ms, and a Grenoble z14 tile 95 -> 82 tile layers,
+87 -> 74 geometry batches - each batch a draw call per frame.
 
 - A `match` over a plain `["get", f]` uses the **legacy** filter spelling, which lands in brackets
   (`[class = 'motorway']`) instead of a `when()`.

@@ -76,22 +76,22 @@ Map {
   polygon-opacity: linear([view::zoom], (7.8, 1), (8, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landuse[zoom >= 6][class = 'residential']['param::variant' != 'hybrid']::landuse_residential_b1 {
+#landuse[zoom >= 6][class = 'residential']['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (6, 0), (9, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 6][class = 'suburb']['param::variant' != 'hybrid']::landuse_residential_b2 {
+#landuse[zoom >= 6][class = 'suburb']['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (6, 0), (9, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 6][class = 'quarter']['param::variant' != 'hybrid']::landuse_residential_b3 {
+#landuse[zoom >= 6][class = 'quarter']['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (6, 0), (9, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 6][class = 'neighbourhood']['param::variant' != 'hybrid']::landuse_residential_b4 {
+#landuse[zoom >= 6][class = 'neighbourhood']['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (6, 0), (9, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -146,66 +146,66 @@ Map {
   polygon-pattern-file: url('icons/pattern-glacier.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landcover[zoom >= 10][subclass = 'scrub']['param::variant' != 'hybrid']::landcover_scrub_sub_b1 {
+#landcover[zoom >= 10][subclass = 'scrub']['param::variant' != 'hybrid']::landcover_scrub_sub {
   polygon-fill: (([param::variant] = 'outdoor') ? @landcover_scrub_sub_fill : (([param::variant] = 'topo') ? @landcover_scrub_sub_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @lowzoom_fill), (0.3, @background_2)) : @scrub)));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (10, 1), (11, 1), (12, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landcover[zoom >= 10][subclass = 'heath']['param::variant' != 'hybrid']::landcover_scrub_sub_b2 {
+#landcover[zoom >= 10][subclass = 'heath']['param::variant' != 'hybrid']::landcover_scrub_sub {
   polygon-fill: (([param::variant] = 'outdoor') ? @landcover_scrub_sub_fill : (([param::variant] = 'topo') ? @landcover_scrub_sub_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @lowzoom_fill), (0.3, @background_2)) : @scrub)));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (10, 1), (11, 1), (12, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landcover[zoom >= 'param::scrub_pattern_zoom'][zoom >= 10][subclass = 'scrub']['param::variant' = 'eink']::landcover_scrub_sub_pattern_b1 {
+#landcover[zoom >= 'param::scrub_pattern_zoom'][zoom >= 10][subclass = 'scrub']['param::variant' = 'eink']::landcover_scrub_sub_pattern {
   polygon-pattern-file: url('icons/pattern-scrub.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landcover[zoom >= 'param::scrub_pattern_zoom'][zoom >= 10][subclass = 'heath']['param::variant' = 'eink']::landcover_scrub_sub_pattern_b2 {
+#landcover[zoom >= 'param::scrub_pattern_zoom'][zoom >= 10][subclass = 'heath']['param::variant' = 'eink']::landcover_scrub_sub_pattern {
   polygon-pattern-file: url('icons/pattern-scrub.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landcover[zoom >= 10][subclass = 'park']['param::variant' != 'hybrid']::landcover_park_sub_b1 {
+#landcover[zoom >= 10][subclass = 'park']['param::variant' != 'hybrid']::landcover_park_sub {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landcover[zoom >= 10][subclass = 'garden']['param::variant' != 'hybrid']::landcover_park_sub_b2 {
+#landcover[zoom >= 10][subclass = 'garden']['param::variant' != 'hybrid']::landcover_park_sub {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landcover[zoom >= 10][subclass = 'village_green']['param::variant' != 'hybrid']::landcover_park_sub_b3 {
+#landcover[zoom >= 10][subclass = 'village_green']['param::variant' != 'hybrid']::landcover_park_sub {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landcover[zoom >= 10][subclass = 'recreation_ground']['param::variant' != 'hybrid']::landcover_park_sub_b4 {
+#landcover[zoom >= 10][subclass = 'recreation_ground']['param::variant' != 'hybrid']::landcover_park_sub {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landcover[zoom >= 10][subclass = 'allotments']['param::variant' != 'hybrid']::landcover_park_sub_b5 {
+#landcover[zoom >= 10][subclass = 'allotments']['param::variant' != 'hybrid']::landcover_park_sub {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landcover[zoom >= 14][subclass = 'park']['param::variant' = 'eink']::landcover_park_sub_pattern_b1 {
+#landcover[zoom >= 14][subclass = 'park']['param::variant' = 'eink']::landcover_park_sub_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landcover[zoom >= 14][subclass = 'garden']['param::variant' = 'eink']::landcover_park_sub_pattern_b2 {
+#landcover[zoom >= 14][subclass = 'garden']['param::variant' = 'eink']::landcover_park_sub_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landcover[zoom >= 14][subclass = 'village_green']['param::variant' = 'eink']::landcover_park_sub_pattern_b3 {
+#landcover[zoom >= 14][subclass = 'village_green']['param::variant' = 'eink']::landcover_park_sub_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landcover[zoom >= 14][subclass = 'recreation_ground']['param::variant' = 'eink']::landcover_park_sub_pattern_b4 {
+#landcover[zoom >= 14][subclass = 'recreation_ground']['param::variant' = 'eink']::landcover_park_sub_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landcover[zoom >= 14][subclass = 'allotments']['param::variant' = 'eink']::landcover_park_sub_pattern_b5 {
+#landcover[zoom >= 14][subclass = 'allotments']['param::variant' = 'eink']::landcover_park_sub_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
@@ -219,86 +219,79 @@ Map {
   polygon-opacity: linear([view::zoom], (5, 0), (6, 0.5), (13, 0.3));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#park[zoom >= 9][zoom < 12]['param::variant' != 'hybrid']::park_outline_b1 {
+#park[zoom >= 9]['param::variant' != 'hybrid']::park_outline {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @rail), (0.3, @rail_emphasis)) : @national_park_line);
   line-width: linear([view::zoom], (9, 0.5), (14, 1.5));
-  line-dasharray: 2.4,1.6;
-  line-opacity: @park_outline_stroke_opacity;
+  line-dasharray: step([zoom], (9, '2.4,1.6'), (12, '3.9,2.6'));
+  line-opacity: 0.6;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#park[zoom >= 12]['param::variant' != 'hybrid']::park_outline_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @rail), (0.3, @rail_emphasis)) : @national_park_line);
-  line-width: linear([view::zoom], (9, 0.5), (14, 1.5));
-  line-dasharray: 3.9,2.6;
-  line-opacity: @park_outline_stroke_opacity;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
-}
-#landuse[zoom >= 9][class = 'commercial']['param::variant' != 'hybrid']::landuse_commercial_b1 {
+#landuse[zoom >= 9][class = 'commercial']['param::variant' != 'hybrid']::landuse_commercial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_commercial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @commercial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'retail']['param::variant' != 'hybrid']::landuse_commercial_b2 {
+#landuse[zoom >= 9][class = 'retail']['param::variant' != 'hybrid']::landuse_commercial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_commercial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @commercial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'industrial']['param::variant' != 'hybrid']::landuse_industrial_b1 {
+#landuse[zoom >= 9][class = 'industrial']['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'garages']['param::variant' != 'hybrid']::landuse_industrial_b2 {
+#landuse[zoom >= 9][class = 'garages']['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'railway']['param::variant' != 'hybrid']::landuse_industrial_b3 {
+#landuse[zoom >= 9][class = 'railway']['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'quarry']['param::variant' != 'hybrid']::landuse_industrial_b4 {
+#landuse[zoom >= 9][class = 'quarry']['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'dam']['param::variant' != 'hybrid']::landuse_industrial_b5 {
+#landuse[zoom >= 9][class = 'dam']['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'bus_station']['param::variant' != 'hybrid']::landuse_industrial_b6 {
+#landuse[zoom >= 9][class = 'bus_station']['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'school']['param::variant' != 'hybrid']::landuse_education_b1 {
+#landuse[zoom >= 9][class = 'school']['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'university']['param::variant' != 'hybrid']::landuse_education_b2 {
+#landuse[zoom >= 9][class = 'university']['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'kindergarten']['param::variant' != 'hybrid']::landuse_education_b3 {
+#landuse[zoom >= 9][class = 'kindergarten']['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'college']['param::variant' != 'hybrid']::landuse_education_b4 {
+#landuse[zoom >= 9][class = 'college']['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'library']['param::variant' != 'hybrid']::landuse_education_b5 {
+#landuse[zoom >= 9][class = 'library']['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'education']['param::variant' != 'hybrid']::landuse_education_b6 {
+#landuse[zoom >= 9][class = 'education']['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -317,77 +310,77 @@ Map {
   polygon-pattern-file: url('icons/pattern-cemetery.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 9][class = 'park']['param::variant' != 'hybrid']::landuse_park_b1 {
+#landuse[zoom >= 9][class = 'park']['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (9, 0), (10, 1), (13, 1), (14, 0)) : linear([view::zoom], (9, 0), (10, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'garden']['param::variant' != 'hybrid']::landuse_park_b2 {
+#landuse[zoom >= 9][class = 'garden']['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (9, 0), (10, 1), (13, 1), (14, 0)) : linear([view::zoom], (9, 0), (10, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'stadium']['param::variant' != 'hybrid']::landuse_park_b3 {
+#landuse[zoom >= 9][class = 'stadium']['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (9, 0), (10, 1), (13, 1), (14, 0)) : linear([view::zoom], (9, 0), (10, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'theme_park']['param::variant' != 'hybrid']::landuse_park_b4 {
+#landuse[zoom >= 9][class = 'theme_park']['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (9, 0), (10, 1), (13, 1), (14, 0)) : linear([view::zoom], (9, 0), (10, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'zoo']['param::variant' != 'hybrid']::landuse_park_b5 {
+#landuse[zoom >= 9][class = 'zoo']['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (9, 0), (10, 1), (13, 1), (14, 0)) : linear([view::zoom], (9, 0), (10, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 14][class = 'park']['param::variant' = 'eink']::landuse_park_pattern_b1 {
+#landuse[zoom >= 14][class = 'park']['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'garden']['param::variant' = 'eink']::landuse_park_pattern_b2 {
+#landuse[zoom >= 14][class = 'garden']['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'stadium']['param::variant' = 'eink']::landuse_park_pattern_b3 {
+#landuse[zoom >= 14][class = 'stadium']['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'theme_park']['param::variant' = 'eink']::landuse_park_pattern_b4 {
+#landuse[zoom >= 14][class = 'theme_park']['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'zoo']['param::variant' = 'eink']::landuse_park_pattern_b5 {
+#landuse[zoom >= 14][class = 'zoo']['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 9][class = 'pitch']['param::variant' != 'hybrid']::landuse_pitch_b1 {
+#landuse[zoom >= 9][class = 'pitch']['param::variant' != 'hybrid']::landuse_pitch {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @pitch);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'track']['param::variant' != 'hybrid']::landuse_pitch_b2 {
+#landuse[zoom >= 9][class = 'track']['param::variant' != 'hybrid']::landuse_pitch {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @pitch);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'playground']['param::variant' != 'hybrid']::landuse_pitch_b3 {
+#landuse[zoom >= 9][class = 'playground']['param::variant' != 'hybrid']::landuse_pitch {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @pitch);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'parking']['param::variant' != 'hybrid']::landuse_parking_b1 {
+#landuse[zoom >= 9][class = 'parking']['param::variant' != 'hybrid']::landuse_parking {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @parking);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'pedestrian']['param::variant' != 'hybrid']::landuse_parking_b2 {
+#landuse[zoom >= 9][class = 'pedestrian']['param::variant' != 'hybrid']::landuse_parking {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @parking);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'square']['param::variant' != 'hybrid']::landuse_parking_b3 {
+#landuse[zoom >= 9][class = 'square']['param::variant' != 'hybrid']::landuse_parking {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @parking);
   polygon-opacity: linear([view::zoom], (9, 0), (10, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -427,16 +420,16 @@ Map {
   line-dasharray: 4,2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 15][class = 'pitch']['param::variant' != 'hybrid']::pitch_outline_b1 {
+#landuse[zoom >= 15][class = 'pitch']['param::variant' != 'hybrid']::pitch_outline {
   line-color: (([param::variant] = 'eink') ? @outline_stroke_3 : @pitch_line);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
-#landuse[zoom >= 15][class = 'playground']['param::variant' != 'hybrid']::pitch_outline_b2 {
+#landuse[zoom >= 15][class = 'playground']['param::variant' != 'hybrid']::pitch_outline {
   line-color: (([param::variant] = 'eink') ? @outline_stroke_3 : @pitch_line);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
 #landcover[zoom >= 15][class = 'barrier']['param::variant' != 'hybrid']::barrier {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3)) : @barrier);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4)) : @barrier);
   line-width: linear([view::zoom], (15, 0.5), (18, 1.5));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
@@ -447,58 +440,19 @@ Map {
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 3 : 2.5)), (9, (([class] = 'river' || [class] = 'canal') ? 3.3 : 2.6)), (12, (([class] = 'river' || [class] = 'canal') ? 4.1 : 3.1)), (16, (([class] = 'river' || [class] = 'canal') ? 6 : 4.1)), (20, (([class] = 'river' || [class] = 'canal') ? 10.5 : 6.5)));
   line-emissive-strength: 0;
 }
-#waterway[zoom >= 8][zoom < 12][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b1 {
+#waterway[zoom >= 8][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono {
   line-cap: 'round';
   line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
-  line-dasharray: 1.13,0.45;
+  line-dasharray: step([zoom], (8, '1.13,0.45'), (12, '4.3,1.72'), (15, '8.91,3.56'), (18, '15.74,6.3'));
   line-emissive-strength: 0;
 }
-#waterway[zoom >= 12][zoom < 15][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b2 {
-  line-cap: 'round';
-  line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
+#waterway[zoom >= 12][intermittent = 1][brunnel != 'tunnel']['param::variant' = 'eink']::waterway_intermittent_mono {
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
-  line-dasharray: 4.3,1.72;
-  line-emissive-strength: 0;
-}
-#waterway[zoom >= 15][zoom < 18][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b3 {
-  line-cap: 'round';
-  line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
-  line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
-  line-dasharray: 8.91,3.56;
-  line-emissive-strength: 0;
-}
-#waterway[zoom >= 18][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b4 {
-  line-cap: 'round';
-  line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
-  line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
-  line-dasharray: 15.74,6.3;
-  line-emissive-strength: 0;
-}
-#waterway[zoom >= 12][zoom < 15][intermittent = 1][brunnel != 'tunnel']['param::variant' = 'eink']::waterway_intermittent_mono_b1 {
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
-  line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-dasharray: 1,1.58;
-  line-emissive-strength: 0;
-}
-#waterway[zoom >= 15][zoom < 18][intermittent = 1][brunnel != 'tunnel']['param::variant' = 'eink']::waterway_intermittent_mono_b2 {
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
-  line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-dasharray: 1.78,3.56;
-  line-emissive-strength: 0;
-}
-#waterway[zoom >= 18][intermittent = 1][brunnel != 'tunnel']['param::variant' = 'eink']::waterway_intermittent_mono_b3 {
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
-  line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-dasharray: 3.15,6.3;
+  line-dasharray: step([zoom], (12, '1,1.58'), (15, '1.78,3.56'), (18, '3.15,6.3'));
   line-emissive-strength: 0;
 }
 #waterway[zoom >= 8][brunnel != 'tunnel'][intermittent != 1]['param::variant' != 'hybrid']['param::variant' != 'eink']::waterway {
@@ -509,22 +463,10 @@ Map {
   line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
   line-emissive-strength: 0;
 }
-#waterway[zoom >= 12][zoom < 15][intermittent = 1][brunnel != 'tunnel']['param::variant' != 'hybrid']['param::variant' != 'eink']::waterway_intermittent_b1 {
+#waterway[zoom >= 12][intermittent = 1][brunnel != 'tunnel']['param::variant' != 'hybrid']['param::variant' != 'eink']::waterway_intermittent {
   line-color: (([param::variant] = 'topo') ? @waterway_stroke : @waterway);
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-dasharray: 2.58,1.72;
-  line-emissive-strength: 0;
-}
-#waterway[zoom >= 15][zoom < 18][intermittent = 1][brunnel != 'tunnel']['param::variant' != 'hybrid']['param::variant' != 'eink']::waterway_intermittent_b2 {
-  line-color: (([param::variant] = 'topo') ? @waterway_stroke : @waterway);
-  line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-dasharray: 5.34,3.56;
-  line-emissive-strength: 0;
-}
-#waterway[zoom >= 18][intermittent = 1][brunnel != 'tunnel']['param::variant' != 'hybrid']['param::variant' != 'eink']::waterway_intermittent_b3 {
-  line-color: (([param::variant] = 'topo') ? @waterway_stroke : @waterway);
-  line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
-  line-dasharray: 9.44,6.3;
+  line-dasharray: step([zoom], (12, '2.58,1.72'), (15, '5.34,3.56'), (18, '9.44,6.3'));
   line-emissive-strength: 0;
 }
 #water[brunnel != 'tunnel']['param::variant' != 'hybrid']::water {
@@ -586,31 +528,17 @@ Map {
   line-opacity: linear([view::zoom], (11, (0.35 * [param::contour_opacity])), (14, (0.6 * [param::contour_opacity])));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
-#transportation[zoom >= 13][zoom < 16][brunnel = 'tunnel'][class = 'rail']['param::show_underground' = 1]::rail_tunnel_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : @rail));
+#transportation[zoom >= 13][brunnel = 'tunnel'][class = 'rail']['param::show_underground' = 1]::rail_tunnel {
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
-  line-dasharray: 1.38,1.38;
+  line-dasharray: step([zoom], (13, '1.38,1.38'), (16, '2.85,2.85'));
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 16][brunnel = 'tunnel'][class = 'rail']['param::show_underground' = 1]::rail_tunnel_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : @rail));
+#transportation[zoom >= 13][brunnel = 'tunnel'][class = 'transit']['param::show_underground' = 1]::rail_tunnel {
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
-  line-dasharray: 2.85,2.85;
-  line-opacity: @tunnel_stroke_opacity;
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 13][zoom < 16][brunnel = 'tunnel'][class = 'transit']['param::show_underground' = 1]::rail_tunnel_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : @rail));
-  line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
-  line-dasharray: 1.38,1.38;
-  line-opacity: @tunnel_stroke_opacity;
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 16][brunnel = 'tunnel'][class = 'transit']['param::show_underground' = 1]::rail_tunnel_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : @rail));
-  line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
-  line-dasharray: 2.85,2.85;
+  line-dasharray: step([zoom], (13, '1.38,1.38'), (16, '2.85,2.85'));
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
@@ -630,200 +558,86 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'tunnel-path' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 14][zoom < 17][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b1 {
+#transportation[zoom >= 14][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps {
   line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
+  line-dasharray: step([zoom], (14, ''), (17, '1.2,1.2'), (19, '2.88,2.88'), (21, '6.31,6.31'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 1.2,1.2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 2.88,2.88;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 21][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 6.31,6.31;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 13][zoom < 16][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b1 {
+#transportation[zoom >= 13][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
+  line-dasharray: step([zoom], (13, ''), (16, '1.64,1.64'), (17, '2,2'), (19, '11,11'), (21, '17.75,17.75'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 16][zoom < 17][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 1.64,1.64;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 2,2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 11,11;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 21][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 17.75,17.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom < 18][brunnel = 'tunnel'][class = 'service']::road_tunnel_casing_b1 {
+#transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'service']::road_tunnel_casing_b1 {
   line-join: 'miter';
   line-cap: 'butt';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @road_case));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.47,2.47;
+  line-dasharray: step([zoom], (12, '2.47,2.47'), (18, '3.92,3.92'));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom >= 18][brunnel = 'tunnel'][class = 'service']::road_tunnel_casing_b2 {
-  line-join: 'miter';
-  line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @road_case));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 3.92,3.92;
-  draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom < 18][brunnel = 'tunnel'][class = 'minor']::road_tunnel_casing_b3 {
+#transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'minor']::road_tunnel_casing_b2 {
   line-join: 'miter';
   line-cap: 'butt';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @road_case));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.47,2.47;
+  line-dasharray: step([zoom], (12, '2.47,2.47'), (18, '3.92,3.92'));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom >= 18][brunnel = 'tunnel'][class = 'minor']::road_tunnel_casing_b4 {
-  line-join: 'miter';
-  line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @road_case));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 3.92,3.92;
-  draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom < 18][brunnel = 'tunnel'][class = 'tertiary']::road_tunnel_casing_b5 {
+#transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'tertiary']::road_tunnel_casing_b3 {
   line-join: 'miter';
   line-cap: 'butt';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @tertiary_case));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.47,2.47;
+  line-dasharray: step([zoom], (12, '2.47,2.47'), (18, '3.92,3.92'));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom >= 18][brunnel = 'tunnel'][class = 'tertiary']::road_tunnel_casing_b6 {
-  line-join: 'miter';
-  line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @tertiary_case));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 3.92,3.92;
-  draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom < 18][brunnel = 'tunnel'][class = 'secondary']::road_tunnel_casing_b7 {
+#transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'secondary']::road_tunnel_casing_b4 {
   line-join: 'miter';
   line-cap: 'butt';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @secondary_case));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.47,2.47;
+  line-dasharray: step([zoom], (12, '2.47,2.47'), (18, '3.92,3.92'));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom >= 18][brunnel = 'tunnel'][class = 'secondary']::road_tunnel_casing_b8 {
-  line-join: 'miter';
-  line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @secondary_case));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 3.92,3.92;
-  draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom < 18][brunnel = 'tunnel'][class = 'primary']::road_tunnel_casing_b9 {
+#transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'primary']::road_tunnel_casing_b5 {
   line-join: 'miter';
   line-cap: 'butt';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @primary_case));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0.27), (8, 0.54), (9, 0.81), (12, 1.4400000000000002), (14, 1.8), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 1), (22, 2)));
-  line-dasharray: 3.06,3.06;
+  line-dasharray: step([zoom], (12, '3.06,3.06'), (18, '4.27,4.27'));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom >= 18][brunnel = 'tunnel'][class = 'primary']::road_tunnel_casing_b10 {
-  line-join: 'miter';
-  line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @primary_case));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0.27), (8, 0.54), (9, 0.81), (12, 1.4400000000000002), (14, 1.8), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 1), (22, 2)));
-  line-dasharray: 4.27,4.27;
-  draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom < 18][brunnel = 'tunnel'][class = 'trunk']::road_tunnel_casing_b11 {
+#transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'trunk']::road_tunnel_casing_b6 {
   line-join: 'miter';
   line-cap: 'butt';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_7 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trunk_case));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0.45), (6, 0.45), (8, 0.54), (9, 0.81), (12, 1.4400000000000002), (14, 1.8), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 1), (22, 2)));
-  line-dasharray: 3.06,3.06;
+  line-dasharray: step([zoom], (12, '3.06,3.06'), (18, '4.27,4.27'));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom >= 18][brunnel = 'tunnel'][class = 'trunk']::road_tunnel_casing_b12 {
-  line-join: 'miter';
-  line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? @road_stroke_7 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trunk_case));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0.45), (6, 0.45), (8, 0.54), (9, 0.81), (12, 1.4400000000000002), (14, 1.8), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 1), (22, 2)));
-  line-dasharray: 4.27,4.27;
-  draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom < 18][brunnel = 'tunnel'][class = 'motorway']::road_tunnel_casing_b13 {
+#transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'motorway']::road_tunnel_casing_b7 {
   line-join: 'miter';
   line-cap: 'butt';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_8 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @motorway_case));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0.45), (6, 0.45), (8, 0.54), (9, 0.81), (12, 1.4400000000000002), (14, 1.8), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 1), (22, 2)));
-  line-dasharray: 3.06,3.06;
-  draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
-}
-#transportation[zoom >= 'param::tunnel_min_zoom'][zoom >= 18][brunnel = 'tunnel'][class = 'motorway']::road_tunnel_casing_b14 {
-  line-join: 'miter';
-  line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? @road_stroke_8 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @motorway_case));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0.45), (6, 0.45), (8, 0.54), (9, 0.81), (12, 1.4400000000000002), (14, 1.8), (22, 3.6)) : exponential(1.5, [view::zoom], (13, 0), (14, 1), (22, 2)));
-  line-dasharray: 4.27,4.27;
+  line-dasharray: step([zoom], (12, '3.06,3.06'), (18, '4.27,4.27'));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
@@ -936,501 +750,176 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'path' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 14][zoom < 17][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b1 {
+#transportation[zoom >= 14][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps {
   line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
+  line-dasharray: step([zoom], (14, ''), (17, '1.2,1.2'), (19, '2.88,2.88'), (21, '6.31,6.31'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 1.2,1.2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 2.88,2.88;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 21][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 6.31,6.31;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::path_min_zoom'][class = 'path'][subclass = 'path'][brunnel != 'tunnel']['param::variant' = 'eink']::trail_halo_b1 {
+#transportation[zoom >= 'param::path_min_zoom'][class = 'path'][subclass = 'path'][brunnel != 'tunnel']['param::variant' = 'eink']::trail_halo {
   line-join: 'round';
   line-color: linear([view::brightness], (0.25, @background), (0.3, @glacier_low));
   line-width: exponential(1.3, [view::zoom], (12, 2.96), (15, 4.24), (18, 6.16));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 'param::path_min_zoom'][class = 'path'][subclass = 'bridleway'][brunnel != 'tunnel']['param::variant' = 'eink']::trail_halo_b2 {
+#transportation[zoom >= 'param::path_min_zoom'][class = 'path'][subclass = 'bridleway'][brunnel != 'tunnel']['param::variant' = 'eink']::trail_halo {
   line-join: 'round';
   line-color: linear([view::brightness], (0.25, @background), (0.3, @glacier_low));
   line-width: exponential(1.3, [view::zoom], (12, 2.96), (15, 4.24), (18, 6.16));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_b1 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.2,1.6;
+  line-dasharray: step([zoom], (12, '3.2,1.6'), (14, '5.6,2.8'), (16, '8.37,4.18'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_b2 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.6,2.8;
+  line-dasharray: step([zoom], (12, '3.2,1.6'), (14, '5.6,2.8'), (16, '8.37,4.18'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_b3 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 8.37,4.18;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway_b1 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.2,1.6;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway_b2 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.6,2.8;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway_b3 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 8.37,4.18;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b1 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b2 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b3 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b4 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b1 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b2 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b3 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b4 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
+  line-dasharray: step([zoom], (12, '2,1.2'), (14, '3.5,2.1'), (16, '5.23,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b5 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b6 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b1 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b2 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b3 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b4 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6 {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2,1.2;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b5 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 3.5,2.1;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b6 {
+#transportation[zoom >= 'param::path_min_zoom'][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway {
   line-join: 'round';
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 5.23,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1,1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 1.4,2.1;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
-  line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
-  line-dasharray: 2.09,3.14;
+  line-dasharray: step([zoom], (12, '1,1'), (14, '1.4,2.1'), (16, '2.09,3.14'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::track_min_zoom'][class = 'track'][brunnel != 'tunnel']['param::variant' = 'eink']::track_halo {
@@ -1439,356 +928,92 @@ Map {
   line-width: exponential(1.5, [view::zoom], (12, 5.84), (15, 9.36), (18, 15.760000000000002), (22, 43.6));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 'grade1'][brunnel != 'tunnel']::track_grade1_casing_b1 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 'grade1'][brunnel != 'tunnel']::track_grade1_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 7.01,1.75;
+  line-dasharray: step([zoom], (12, '7.01,1.75'), (15, '11.29,2.82'), (18, '16.38,4.09'), (21, '21.8,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 'grade1'][brunnel != 'tunnel']::track_grade1_casing_b2 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 0][brunnel != 'tunnel']::track_grade1_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 11.29,2.82;
+  line-dasharray: step([zoom], (12, '7.01,1.75'), (15, '11.29,2.82'), (18, '16.38,4.09'), (21, '21.8,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 'grade1'][brunnel != 'tunnel']::track_grade1_casing_b3 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 'grade2'][brunnel != 'tunnel']::track_grade2_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 16.38,4.09;
+  line-dasharray: step([zoom], (12, '4.38,1.75'), (15, '7.06,2.82'), (18, '10.24,4.09'), (21, '13.63,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 'grade1'][brunnel != 'tunnel']::track_grade1_casing_b4 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 1][brunnel != 'tunnel']::track_grade2_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 21.8,5.45;
+  line-dasharray: step([zoom], (12, '4.38,1.75'), (15, '7.06,2.82'), (18, '10.24,4.09'), (21, '13.63,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 0][brunnel != 'tunnel']::track_grade1_casing_b5 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 'grade3'][brunnel != 'tunnel']::track_grade3_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 7.01,1.75;
+  line-dasharray: step([zoom], (12, '2.63,1.75'), (15, '4.23,2.82'), (18, '6.14,4.09'), (21, '8.18,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 0][brunnel != 'tunnel']::track_grade1_casing_b6 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 2][brunnel != 'tunnel']::track_grade3_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 11.29,2.82;
+  line-dasharray: step([zoom], (12, '2.63,1.75'), (15, '4.23,2.82'), (18, '6.14,4.09'), (21, '8.18,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 0][brunnel != 'tunnel']::track_grade1_casing_b7 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 'grade4'][brunnel != 'tunnel']::track_grade4_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 16.38,4.09;
+  line-dasharray: step([zoom], (12, '1.75,1.75'), (15, '2.82,2.82'), (18, '4.09,4.09'), (21, '5.45,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 0][brunnel != 'tunnel']::track_grade1_casing_b8 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 3][brunnel != 'tunnel']::track_grade4_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 21.8,5.45;
+  line-dasharray: step([zoom], (12, '1.75,1.75'), (15, '2.82,2.82'), (18, '4.09,4.09'), (21, '5.45,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 'grade2'][brunnel != 'tunnel']::track_grade2_casing_b1 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 'grade5'][brunnel != 'tunnel']::track_grade5_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 4.38,1.75;
+  line-dasharray: step([zoom], (12, '1,1.63'), (15, '1.41,2.82'), (18, '2.05,4.09'), (21, '2.73,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 'grade2'][brunnel != 'tunnel']::track_grade2_casing_b2 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = 4][brunnel != 'tunnel']::track_grade5_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 7.06,2.82;
+  line-dasharray: step([zoom], (12, '1,1.63'), (15, '1.41,2.82'), (18, '2.05,4.09'), (21, '2.73,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 'grade2'][brunnel != 'tunnel']::track_grade2_casing_b3 {
+#transportation[zoom >= 'param::track_min_zoom'][class = 'track'][tracktype = null][brunnel != 'tunnel']::track_unknown_casing {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
   line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 10.24,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 'grade2'][brunnel != 'tunnel']::track_grade2_casing_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 13.63,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 1][brunnel != 'tunnel']::track_grade2_casing_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 4.38,1.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 1][brunnel != 'tunnel']::track_grade2_casing_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 7.06,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 1][brunnel != 'tunnel']::track_grade2_casing_b7 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 10.24,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 1][brunnel != 'tunnel']::track_grade2_casing_b8 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 13.63,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 'grade3'][brunnel != 'tunnel']::track_grade3_casing_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.63,1.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 'grade3'][brunnel != 'tunnel']::track_grade3_casing_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 4.23,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 'grade3'][brunnel != 'tunnel']::track_grade3_casing_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 6.14,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 'grade3'][brunnel != 'tunnel']::track_grade3_casing_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 8.18,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 2][brunnel != 'tunnel']::track_grade3_casing_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.63,1.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 2][brunnel != 'tunnel']::track_grade3_casing_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 4.23,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 2][brunnel != 'tunnel']::track_grade3_casing_b7 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 6.14,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 2][brunnel != 'tunnel']::track_grade3_casing_b8 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 8.18,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 'grade4'][brunnel != 'tunnel']::track_grade4_casing_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 1.75,1.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 'grade4'][brunnel != 'tunnel']::track_grade4_casing_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.82,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 'grade4'][brunnel != 'tunnel']::track_grade4_casing_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 4.09,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 'grade4'][brunnel != 'tunnel']::track_grade4_casing_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 5.45,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 3][brunnel != 'tunnel']::track_grade4_casing_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 1.75,1.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 3][brunnel != 'tunnel']::track_grade4_casing_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.82,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 3][brunnel != 'tunnel']::track_grade4_casing_b7 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 4.09,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 3][brunnel != 'tunnel']::track_grade4_casing_b8 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 5.45,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 'grade5'][brunnel != 'tunnel']::track_grade5_casing_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 1,1.63;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 'grade5'][brunnel != 'tunnel']::track_grade5_casing_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 1.41,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 'grade5'][brunnel != 'tunnel']::track_grade5_casing_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.05,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 'grade5'][brunnel != 'tunnel']::track_grade5_casing_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.73,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = 4][brunnel != 'tunnel']::track_grade5_casing_b5 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 1,1.63;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = 4][brunnel != 'tunnel']::track_grade5_casing_b6 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 1.41,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = 4][brunnel != 'tunnel']::track_grade5_casing_b7 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.05,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = 4][brunnel != 'tunnel']::track_grade5_casing_b8 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.73,5.45;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom < 15][class = 'track'][tracktype = null][brunnel != 'tunnel']::track_unknown_casing_b1 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 2.63,1.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 15][zoom < 18][class = 'track'][tracktype = null][brunnel != 'tunnel']::track_unknown_casing_b2 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 4.23,2.82;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 18][zoom < 21][class = 'track'][tracktype = null][brunnel != 'tunnel']::track_unknown_casing_b3 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 6.14,4.09;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 'param::track_min_zoom'][zoom >= 21][class = 'track'][tracktype = null][brunnel != 'tunnel']::track_unknown_casing_b4 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @track_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @track));
-  line-gap-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.1199999999999999), (15, 1.92), (18, 2.8800000000000003), (22, 4.800000000000001)) : exponential(1.5, [view::zoom], (12, 0.7), (15, 1.2), (18, 1.8), (22, 3)));
-  line-dasharray: 8.18,5.45;
+  line-dasharray: step([zoom], (12, '2.63,1.75'), (15, '4.23,2.82'), (18, '6.14,4.09'), (21, '8.18,5.45'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 'param::track_min_zoom'][class = 'track'][brunnel != 'tunnel']::track_fill {
@@ -1797,222 +1022,131 @@ Map {
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (12, 1.6), (15, 3.5200000000000005), (18, 8), (22, 32)) : exponential(1.5, [view::zoom], (12, 1), (15, 2.2), (18, 5), (22, 20)));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 14][mtb_scale = '0-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy_b1 {
+#transportation[zoom >= 14][mtb_scale = '0-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_easy_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][mtb_scale = '0'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy_b2 {
+#transportation[zoom >= 14][mtb_scale = '0'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_easy_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][mtb_scale = '0+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy_b3 {
+#transportation[zoom >= 14][mtb_scale = '0+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_easy_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][mtb_scale = '1-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy_b4 {
+#transportation[zoom >= 14][mtb_scale = '1-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_easy_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][mtb_scale = '1'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy_b5 {
+#transportation[zoom >= 14][mtb_scale = '1'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_easy_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][mtb_scale = '1+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy_b6 {
+#transportation[zoom >= 14][mtb_scale = '1+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_easy {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_easy_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '2-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium_b1 {
+#transportation[zoom >= 14][mtb_scale = '2-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_medium_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 4.4,1.65;
+  line-dasharray: step([zoom], (14, '4.4,1.65'), (16, '6.8,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][mtb_scale = '2-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium_b2 {
+#transportation[zoom >= 14][mtb_scale = '2'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_medium_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 6.8,2.55;
+  line-dasharray: step([zoom], (14, '4.4,1.65'), (16, '6.8,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '2'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium_b3 {
+#transportation[zoom >= 14][mtb_scale = '2+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_medium_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 4.4,1.65;
+  line-dasharray: step([zoom], (14, '4.4,1.65'), (16, '6.8,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][mtb_scale = '2'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_medium_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 6.8,2.55;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '2+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_medium_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 4.4,1.65;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][mtb_scale = '2+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_medium_b6 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_medium_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 6.8,2.55;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '3-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard_b1 {
+#transportation[zoom >= 14][mtb_scale = '3-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_hard_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 2.2,1.65;
+  line-dasharray: step([zoom], (14, '2.2,1.65'), (16, '3.4,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][mtb_scale = '3-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard_b2 {
+#transportation[zoom >= 14][mtb_scale = '3'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_hard_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 3.4,2.55;
+  line-dasharray: step([zoom], (14, '2.2,1.65'), (16, '3.4,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '3'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard_b3 {
+#transportation[zoom >= 14][mtb_scale = '3+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_hard_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 2.2,1.65;
+  line-dasharray: step([zoom], (14, '2.2,1.65'), (16, '3.4,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][mtb_scale = '3'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_hard_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 3.4,2.55;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '3+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_hard_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 2.2,1.65;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][mtb_scale = '3+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_hard_b6 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @mtb_hard_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 3.4,2.55;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '4-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b1 {
+#transportation[zoom >= 14][mtb_scale = '4-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.1,1.65;
+  line-dasharray: step([zoom], (14, '1.1,1.65'), (16, '1.7,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][mtb_scale = '4-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b2 {
+#transportation[zoom >= 14][mtb_scale = '4'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.7,2.55;
+  line-dasharray: step([zoom], (14, '1.1,1.65'), (16, '1.7,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '4'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b3 {
+#transportation[zoom >= 14][mtb_scale = '4+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.1,1.65;
+  line-dasharray: step([zoom], (14, '1.1,1.65'), (16, '1.7,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][mtb_scale = '4'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b4 {
+#transportation[zoom >= 14][mtb_scale = '5-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.7,2.55;
+  line-dasharray: step([zoom], (14, '1.1,1.65'), (16, '1.7,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '4+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b5 {
+#transportation[zoom >= 14][mtb_scale = '5'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.1,1.65;
+  line-dasharray: step([zoom], (14, '1.1,1.65'), (16, '1.7,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][mtb_scale = '4+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b6 {
+#transportation[zoom >= 14][mtb_scale = '5+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.7,2.55;
+  line-dasharray: step([zoom], (14, '1.1,1.65'), (16, '1.7,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '5-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b7 {
+#transportation[zoom >= 14][mtb_scale = '6'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
   line-width: linear([view::zoom], (14, 0.8), (18, 2));
   line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.1,1.65;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][mtb_scale = '5-'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b8 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.7,2.55;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '5'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b9 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.1,1.65;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][mtb_scale = '5'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b10 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.7,2.55;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '5+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b11 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.1,1.65;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][mtb_scale = '5+'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b12 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.7,2.55;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][mtb_scale = '6'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b13 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.1,1.65;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][mtb_scale = '6'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::mtb_extreme_b14 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @building_stroke);
-  line-width: linear([view::zoom], (14, 0.8), (18, 2));
-  line-offset: (0 - (exponential(1.3, [view::zoom], (14, 2.5), (18, 6))));
-  line-dasharray: 1.7,2.55;
+  line-dasharray: step([zoom], (14, '1.1,1.65'), (16, '1.7,2.55'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 13][class = 'via_ferrata'][brunnel != 'tunnel']::via_ferrata {
@@ -2022,304 +1156,58 @@ Map {
   line-border-width: ((linear([view::zoom], (13, 3), (15, 5), (18, 8)) - linear([view::zoom], (13, 1.6), (15, 3), (18, 5))) / 2);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 13][zoom < 16][class = 'via_ferrata'][brunnel != 'tunnel']::via_ferrata_dots_b1 {
+#transportation[zoom >= 13][class = 'via_ferrata'][brunnel != 'tunnel']::via_ferrata_dots {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @via_ferrata_case);
   line-width: linear([view::zoom], (13, 1.6), (15, 3), (18, 5));
-  line-dasharray: 1.33,3.97;
+  line-dasharray: step([zoom], (13, '1.33,3.97'), (16, '2.17,6.5'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 16][class = 'via_ferrata'][brunnel != 'tunnel']::via_ferrata_dots_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @via_ferrata_case);
-  line-width: linear([view::zoom], (13, 1.6), (15, 3), (18, 5));
-  line-dasharray: 2.17,6.5;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 14][zoom < 16][construction = 1]::road_construction_b1 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][construction = 1]::road_construction {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][zoom < 17][construction = 1]::road_construction_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][class = 'motorway_construction']::road_construction_omt {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 17][zoom < 18][construction = 1]::road_construction_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][class = 'trunk_construction']::road_construction_omt {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][zoom < 19][construction = 1]::road_construction_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][class = 'primary_construction']::road_construction_omt {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 19][zoom < 20][construction = 1]::road_construction_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][class = 'secondary_construction']::road_construction_omt {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 20][construction = 1]::road_construction_b6 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][class = 'tertiary_construction']::road_construction_omt {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 16][class = 'motorway_construction']::road_construction_omt_b1 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][class = 'minor_construction']::road_construction_omt {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][zoom < 17][class = 'motorway_construction']::road_construction_omt_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
+#transportation[zoom >= 14][class = 'service_construction']::road_construction_omt {
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 17][zoom < 18][class = 'motorway_construction']::road_construction_omt_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 19][class = 'motorway_construction']::road_construction_omt_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 19][zoom < 20][class = 'motorway_construction']::road_construction_omt_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][class = 'motorway_construction']::road_construction_omt_b6 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][class = 'trunk_construction']::road_construction_omt_b7 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][zoom < 17][class = 'trunk_construction']::road_construction_omt_b8 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 17][zoom < 18][class = 'trunk_construction']::road_construction_omt_b9 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 19][class = 'trunk_construction']::road_construction_omt_b10 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 19][zoom < 20][class = 'trunk_construction']::road_construction_omt_b11 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][class = 'trunk_construction']::road_construction_omt_b12 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][class = 'primary_construction']::road_construction_omt_b13 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][zoom < 17][class = 'primary_construction']::road_construction_omt_b14 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 17][zoom < 18][class = 'primary_construction']::road_construction_omt_b15 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 19][class = 'primary_construction']::road_construction_omt_b16 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 19][zoom < 20][class = 'primary_construction']::road_construction_omt_b17 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][class = 'primary_construction']::road_construction_omt_b18 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][class = 'secondary_construction']::road_construction_omt_b19 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][zoom < 17][class = 'secondary_construction']::road_construction_omt_b20 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 17][zoom < 18][class = 'secondary_construction']::road_construction_omt_b21 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 19][class = 'secondary_construction']::road_construction_omt_b22 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 19][zoom < 20][class = 'secondary_construction']::road_construction_omt_b23 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][class = 'secondary_construction']::road_construction_omt_b24 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][class = 'tertiary_construction']::road_construction_omt_b25 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][zoom < 17][class = 'tertiary_construction']::road_construction_omt_b26 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 17][zoom < 18][class = 'tertiary_construction']::road_construction_omt_b27 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 19][class = 'tertiary_construction']::road_construction_omt_b28 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 19][zoom < 20][class = 'tertiary_construction']::road_construction_omt_b29 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][class = 'tertiary_construction']::road_construction_omt_b30 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][class = 'minor_construction']::road_construction_omt_b31 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][zoom < 17][class = 'minor_construction']::road_construction_omt_b32 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 17][zoom < 18][class = 'minor_construction']::road_construction_omt_b33 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 19][class = 'minor_construction']::road_construction_omt_b34 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 19][zoom < 20][class = 'minor_construction']::road_construction_omt_b35 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][class = 'minor_construction']::road_construction_omt_b36 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][class = 'service_construction']::road_construction_omt_b37 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 1.26,1.26;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][zoom < 17][class = 'service_construction']::road_construction_omt_b38 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 2.93,2.93;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 17][zoom < 18][class = 'service_construction']::road_construction_omt_b39 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 3.18,3.18;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 19][class = 'service_construction']::road_construction_omt_b40 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.99,5.99;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 19][zoom < 20][class = 'service_construction']::road_construction_omt_b41 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 5.71,5.71;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][class = 'service_construction']::road_construction_omt_b42 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_2)) : @road_low);
-  line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
-  line-dasharray: 12.52,12.52;
+  line-dasharray: step([zoom], (14, '1.26,1.26'), (16, '2.93,2.93'), (17, '3.18,3.18'), (18, '5.99,5.99'), (19, '5.71,5.71'), (20, '12.52,12.52'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 12][ramp = 1][class = 'service'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_casing_b1 {
@@ -2576,7 +1464,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][brunnel = 'bridge'][class = 'service'][ramp != 1]::road_brunnel_low_casing_b2 {
+#transportation[zoom >= 3][zoom < 12][brunnel = 'bridge'][class = 'service'][ramp != 1]::road_brunnel_low_casing_b1 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @road_case));
@@ -2585,7 +1473,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b3 {
+#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b2 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @road_case));
@@ -2594,7 +1482,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b4 {
+#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b2 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @road_case));
@@ -2603,7 +1491,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b5 {
+#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b3 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @tertiary_case));
@@ -2612,7 +1500,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b6 {
+#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b3 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @tertiary_case));
@@ -2621,7 +1509,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b7 {
+#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b4 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @secondary_case));
@@ -2630,7 +1518,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b8 {
+#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b4 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @secondary_case));
@@ -2639,7 +1527,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b9 {
+#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b5 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @primary_case));
@@ -2648,7 +1536,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b10 {
+#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b5 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @primary_case));
@@ -2657,7 +1545,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b11 {
+#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b6 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_7 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trunk_case));
@@ -2666,7 +1554,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b12 {
+#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b6 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_7 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trunk_case));
@@ -2675,7 +1563,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b13 {
+#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_casing_b7 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_8 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @motorway_case));
@@ -2684,7 +1572,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b14 {
+#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_casing_b7 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @road_stroke_8 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @motorway_case));
@@ -2701,7 +1589,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][brunnel = 'bridge'][class = 'service'][ramp != 1]::road_brunnel_low_b2 {
+#transportation[zoom >= 3][zoom < 12][brunnel = 'bridge'][class = 'service'][ramp != 1]::road_brunnel_low_b1 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
@@ -2709,7 +1597,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b3 {
+#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b2 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
@@ -2717,7 +1605,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b4 {
+#transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b2 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
@@ -2725,7 +1613,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b5 {
+#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b3 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
@@ -2733,7 +1621,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b6 {
+#transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b3 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
@@ -2741,7 +1629,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b7 {
+#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b4 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
@@ -2749,7 +1637,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b8 {
+#transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b4 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
@@ -2757,7 +1645,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b9 {
+#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b5 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
@@ -2765,7 +1653,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b10 {
+#transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b5 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
@@ -2773,7 +1661,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b11 {
+#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b6 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
@@ -2781,7 +1669,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b12 {
+#transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b6 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
@@ -2789,7 +1677,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b13 {
+#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b7 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
@@ -2797,7 +1685,7 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b14 {
+#transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b7 {
   line-cap: 'round';
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
@@ -3043,537 +1931,250 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'unpaved'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b1 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'unpaved'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'unpaved'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b2 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'compacted'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'compacted'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b3 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'fine_gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'compacted'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b4 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'fine_gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b5 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'pebblestone'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'fine_gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b6 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'ground'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b7 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'dirt'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b8 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'earth'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'pebblestone'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b9 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'grass'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'pebblestone'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b10 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'grass_paver'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'ground'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b11 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'mud'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'ground'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b12 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'sand'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'dirt'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b13 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'rock'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'dirt'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b14 {
+#transportation[zoom >= 14][class = 'minor'][surface_detail = 'woodchips'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'earth'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b15 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'earth'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b16 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'grass'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b17 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'grass'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b18 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'grass_paver'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b19 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'grass_paver'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b20 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'mud'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b21 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'mud'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b22 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'sand'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b23 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'sand'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b24 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'rock'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b25 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'rock'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b26 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'minor'][surface_detail = 'woodchips'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b27 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'minor'][surface_detail = 'woodchips'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_minor_b28 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.9), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0.5), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'unpaved'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b1 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'unpaved'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'unpaved'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b2 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'compacted'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'compacted'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b3 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'fine_gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'compacted'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b4 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'fine_gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b5 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'pebblestone'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'fine_gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b6 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'ground'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b7 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'dirt'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'gravel'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b8 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'earth'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'pebblestone'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b9 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'grass'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'pebblestone'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b10 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'grass_paver'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'ground'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b11 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'mud'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'ground'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b12 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'sand'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'dirt'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b13 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'rock'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'dirt'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b14 {
+#transportation[zoom >= 14][class = 'service'][surface_detail = 'woodchips'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service {
   line-join: 'round';
   line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
   line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
+  line-dasharray: step([zoom], (14, '1.72,1.72'), (18, '2.61,2.61'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'earth'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b15 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'earth'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b16 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'grass'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b17 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'grass'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b18 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'grass_paver'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b19 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'grass_paver'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b20 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'mud'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b21 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'mud'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b22 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'sand'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b23 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'sand'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b24 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'rock'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b25 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'rock'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b26 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 18][class = 'service'][surface_detail = 'woodchips'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b27 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 1.72,1.72;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][class = 'service'][surface_detail = 'woodchips'][brunnel != 'tunnel'][brunnel != 'bridge']::road_unpaved_service_b28 {
-  line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @water_halo : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @road));
-  line-gap-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
-  line-width: (([param::variant] = 'eink') ? exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 1.4400000000000002), (22, 3.6)) : exponential(1.5, [view::zoom], (3, 0), (6, 0), (8, 0), (9, 0), (12, 0), (14, 0.8), (22, 2)));
-  line-dasharray: 2.61,2.61;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 13][zoom < 16][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b1 {
+#transportation[zoom >= 13][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
+  line-dasharray: step([zoom], (13, ''), (16, '1.64,1.64'), (17, '2,2'), (19, '11,11'), (21, '17.75,17.75'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 16][zoom < 17][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 1.64,1.64;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 2,2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 11,11;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 21][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 17.75,17.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 14][zoom < 16][access = 'no'][class != 'path']::road_no_access_b1 {
+#transportation[zoom >= 14][access = 'no'][class != 'path']::road_no_access {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
   line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 1,3;
+  line-dasharray: step([zoom], (14, '1,3'), (16, '2.58,7.74'), (18, '5.97,17.91'), (20, '13.35,40.06'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 16][zoom < 18][access = 'no'][class != 'path']::road_no_access_b2 {
+#transportation[zoom >= 14][access = 'private'][class != 'path']::road_no_access {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
   line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 2.58,7.74;
+  line-dasharray: step([zoom], (14, '1,3'), (16, '2.58,7.74'), (18, '5.97,17.91'), (20, '13.35,40.06'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
-#transportation[zoom >= 18][zoom < 20][access = 'no'][class != 'path']::road_no_access_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
-  line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 5.97,17.91;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][access = 'no'][class != 'path']::road_no_access_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
-  line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 13.35,40.06;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 14][zoom < 16][access = 'private'][class != 'path']::road_no_access_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
-  line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 1,3;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][zoom < 18][access = 'private'][class != 'path']::road_no_access_b6 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
-  line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 2.58,7.74;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 18][zoom < 20][access = 'private'][class != 'path']::road_no_access_b7 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
-  line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 5.97,17.91;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 20][access = 'private'][class != 'path']::road_no_access_b8 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_no_access_stroke), (0.3, @label_soft)) : @no_access);
-  line-width: exponential(1.5, [view::zoom], (14, 0.8), (15, 1), (18, 4), (22, 20));
-  line-dasharray: 13.35,40.06;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
-}
-#transportation[zoom >= 16][oneway = 1][class = 'trunk']['param::variant' = 'eink']::oneway_dark_b1 {
+#transportation[zoom >= 16][oneway = 1][class = 'trunk']['param::variant' = 'eink']::oneway_dark {
   marker-file: url('icons/oneway-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3583,7 +2184,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'primary']['param::variant' = 'eink']::oneway_dark_b2 {
+#transportation[zoom >= 16][oneway = 1][class = 'primary']['param::variant' = 'eink']::oneway_dark {
   marker-file: url('icons/oneway-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3593,7 +2194,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'secondary']['param::variant' = 'eink']::oneway_dark_b3 {
+#transportation[zoom >= 16][oneway = 1][class = 'secondary']['param::variant' = 'eink']::oneway_dark {
   marker-file: url('icons/oneway-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3603,7 +2204,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'tertiary']['param::variant' = 'eink']::oneway_dark_b4 {
+#transportation[zoom >= 16][oneway = 1][class = 'tertiary']['param::variant' = 'eink']::oneway_dark {
   marker-file: url('icons/oneway-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3613,7 +2214,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'minor']['param::variant' = 'eink']::oneway_dark_b5 {
+#transportation[zoom >= 16][oneway = 1][class = 'minor']['param::variant' = 'eink']::oneway_dark {
   marker-file: url('icons/oneway-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3623,7 +2224,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'service']['param::variant' = 'eink']::oneway_dark_b6 {
+#transportation[zoom >= 16][oneway = 1][class = 'service']['param::variant' = 'eink']::oneway_dark {
   marker-file: url('icons/oneway-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3633,7 +2234,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'trunk']['param::variant' = 'eink']::oneway_dark_reverse_b1 {
+#transportation[zoom >= 16][oneway = -1][class = 'trunk']['param::variant' = 'eink']::oneway_dark_reverse {
   marker-file: url('icons/oneway-reverse-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3643,7 +2244,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'primary']['param::variant' = 'eink']::oneway_dark_reverse_b2 {
+#transportation[zoom >= 16][oneway = -1][class = 'primary']['param::variant' = 'eink']::oneway_dark_reverse {
   marker-file: url('icons/oneway-reverse-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3653,7 +2254,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'secondary']['param::variant' = 'eink']::oneway_dark_reverse_b3 {
+#transportation[zoom >= 16][oneway = -1][class = 'secondary']['param::variant' = 'eink']::oneway_dark_reverse {
   marker-file: url('icons/oneway-reverse-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3663,7 +2264,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'tertiary']['param::variant' = 'eink']::oneway_dark_reverse_b4 {
+#transportation[zoom >= 16][oneway = -1][class = 'tertiary']['param::variant' = 'eink']::oneway_dark_reverse {
   marker-file: url('icons/oneway-reverse-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3673,7 +2274,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'minor']['param::variant' = 'eink']::oneway_dark_reverse_b5 {
+#transportation[zoom >= 16][oneway = -1][class = 'minor']['param::variant' = 'eink']::oneway_dark_reverse {
   marker-file: url('icons/oneway-reverse-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3683,7 +2284,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'service']['param::variant' = 'eink']::oneway_dark_reverse_b6 {
+#transportation[zoom >= 16][oneway = -1][class = 'service']['param::variant' = 'eink']::oneway_dark_reverse {
   marker-file: url('icons/oneway-reverse-dark.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3693,7 +2294,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'trunk']['param::variant' != 'eink']::oneway_b1 {
+#transportation[zoom >= 16][oneway = 1][class = 'trunk']['param::variant' != 'eink']::oneway {
   marker-file: url('icons/oneway-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3703,7 +2304,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'primary']['param::variant' != 'eink']::oneway_b2 {
+#transportation[zoom >= 16][oneway = 1][class = 'primary']['param::variant' != 'eink']::oneway {
   marker-file: url('icons/oneway-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3713,7 +2314,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'secondary']['param::variant' != 'eink']::oneway_b3 {
+#transportation[zoom >= 16][oneway = 1][class = 'secondary']['param::variant' != 'eink']::oneway {
   marker-file: url('icons/oneway-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3723,7 +2324,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'tertiary']['param::variant' != 'eink']::oneway_b4 {
+#transportation[zoom >= 16][oneway = 1][class = 'tertiary']['param::variant' != 'eink']::oneway {
   marker-file: url('icons/oneway-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3733,7 +2334,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'minor']['param::variant' != 'eink']::oneway_b5 {
+#transportation[zoom >= 16][oneway = 1][class = 'minor']['param::variant' != 'eink']::oneway {
   marker-file: url('icons/oneway-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3743,7 +2344,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = 1][class = 'service']['param::variant' != 'eink']::oneway_b6 {
+#transportation[zoom >= 16][oneway = 1][class = 'service']['param::variant' != 'eink']::oneway {
   marker-file: url('icons/oneway-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3753,7 +2354,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'trunk']['param::variant' != 'eink']::oneway_reverse_b1 {
+#transportation[zoom >= 16][oneway = -1][class = 'trunk']['param::variant' != 'eink']::oneway_reverse {
   marker-file: url('icons/oneway-reverse-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3763,7 +2364,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'primary']['param::variant' != 'eink']::oneway_reverse_b2 {
+#transportation[zoom >= 16][oneway = -1][class = 'primary']['param::variant' != 'eink']::oneway_reverse {
   marker-file: url('icons/oneway-reverse-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3773,7 +2374,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'secondary']['param::variant' != 'eink']::oneway_reverse_b3 {
+#transportation[zoom >= 16][oneway = -1][class = 'secondary']['param::variant' != 'eink']::oneway_reverse {
   marker-file: url('icons/oneway-reverse-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3783,7 +2384,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'tertiary']['param::variant' != 'eink']::oneway_reverse_b4 {
+#transportation[zoom >= 16][oneway = -1][class = 'tertiary']['param::variant' != 'eink']::oneway_reverse {
   marker-file: url('icons/oneway-reverse-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3793,7 +2394,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'minor']['param::variant' != 'eink']::oneway_reverse_b5 {
+#transportation[zoom >= 16][oneway = -1][class = 'minor']['param::variant' != 'eink']::oneway_reverse {
   marker-file: url('icons/oneway-reverse-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3803,7 +2404,7 @@ Map {
   marker-clip: false;
   marker-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation[zoom >= 16][oneway = -1][class = 'service']['param::variant' != 'eink']::oneway_reverse_b6 {
+#transportation[zoom >= 16][oneway = -1][class = 'service']['param::variant' != 'eink']::oneway_reverse {
   marker-file: url('icons/oneway-reverse-ink.png');
   marker-placement: 'line';
   marker-spacing: @oneway_spacing;
@@ -3819,70 +2420,28 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #transportation[class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 13][zoom < 16][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+#transportation[zoom >= 13][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks {
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,29.2;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 16][zoom < 18][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,2.96;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 18][zoom < 20][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,4.5;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 20][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1.12,11.2;
+  line-dasharray: step([zoom], (13, '1,29.2'), (16, '1,2.96'), (18, '1,4.5'), (20, '1.12,11.2'));
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 13][zoom < 16][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+#transportation[zoom >= 13][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks {
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,29.2;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 16][zoom < 18][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,2.96;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 18][zoom < 20][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,4.5;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 20][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1.12,11.2;
+  line-dasharray: step([zoom], (13, '1,29.2'), (16, '1,2.96'), (18, '1,4.5'), (20, '1.12,11.2'));
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
@@ -3902,27 +2461,10 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'bridge-path' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#transportation[zoom >= 14][zoom < 17][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b1 {
+#transportation[zoom >= 14][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps {
   line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 1.2,1.2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 2.88,2.88;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
-}
-#transportation[zoom >= 21][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
-  line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
-  line-dasharray: 6.31,6.31;
+  line-dasharray: step([zoom], (14, ''), (17, '1.2,1.2'), (19, '2.88,2.88'), (21, '6.31,6.31'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'service']::road_bridge_casing_b1 {
@@ -4044,141 +2586,66 @@ Map {
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 13][zoom < 16][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b1 {
+#transportation[zoom >= 13][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
+  line-dasharray: step([zoom], (13, ''), (16, '1.64,1.64'), (17, '2,2'), (19, '11,11'), (21, '17.75,17.75'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
-#transportation[zoom >= 16][zoom < 17][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 1.64,1.64;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 2,2;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 11,11;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 21][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
-  line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
-  line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
-  line-dasharray: 17.75,17.75;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
-}
-#transportation[zoom >= 13][brunnel = 'bridge'][class = 'rail']::rail_bridge_casing_b1 {
+#transportation[zoom >= 13][brunnel = 'bridge'][class = 'rail']::rail_bridge_casing {
   line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @road_bridge_case));
   line-gap-width: exponential(1.5, [view::zoom], (13, 2), (18, 8), (22, 40));
   line-width: linear([view::zoom], (13, 0.5), (18, 1.5));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 13][brunnel = 'bridge'][class = 'transit']::rail_bridge_casing_b2 {
+#transportation[zoom >= 13][brunnel = 'bridge'][class = 'transit']::rail_bridge_casing {
   line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @road_bridge_case));
   line-gap-width: exponential(1.5, [view::zoom], (13, 2), (18, 8), (22, 40));
   line-width: linear([view::zoom], (13, 0.5), (18, 1.5));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 13][brunnel = 'bridge'][class = 'rail']::rail_bridge_deck_b1 {
+#transportation[zoom >= 13][brunnel = 'bridge'][class = 'rail']::rail_bridge_deck {
   line-color: (([param::variant] = 'outdoor') ? @background_3 : (([param::variant] = 'topo') ? @background_2 : (([param::variant] = 'hybrid') ? 'transparent' : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @land))));
   line-width: exponential(1.5, [view::zoom], (13, 2), (18, 8), (22, 40));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 13][brunnel = 'bridge'][class = 'transit']::rail_bridge_deck_b2 {
+#transportation[zoom >= 13][brunnel = 'bridge'][class = 'transit']::rail_bridge_deck {
   line-color: (([param::variant] = 'outdoor') ? @background_3 : (([param::variant] = 'topo') ? @background_2 : (([param::variant] = 'hybrid') ? 'transparent' : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @land))));
   line-width: exponential(1.5, [view::zoom], (13, 2), (18, 8), (22, 40));
   line-emissive-strength: 0;
 }
 #transportation[class = 'rail'][brunnel = 'bridge']::bridge_rail {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 13][zoom < 16][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+#transportation[zoom >= 13][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks {
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,29.2;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 16][zoom < 18][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,2.96;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 18][zoom < 20][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,4.5;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 20][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1.12,11.2;
+  line-dasharray: step([zoom], (13, '1,29.2'), (16, '1,2.96'), (18, '1,4.5'), (20, '1.12,11.2'));
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 13][zoom < 16][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+#transportation[zoom >= 13][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks {
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,29.2;
+  line-dasharray: step([zoom], (13, '1,29.2'), (16, '1,2.96'), (18, '1,4.5'), (20, '1.12,11.2'));
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
-#transportation[zoom >= 16][zoom < 18][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,2.96;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 18][zoom < 20][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1,4.5;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 20][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
-  line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
-  line-dasharray: 1.12,11.2;
-  line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
-  line-emissive-strength: 0;
-}
-#transportation[zoom >= 8][zoom < 13][class = 'ferry']::ferry_b1 {
+#transportation[zoom >= 8][class = 'ferry']::ferry {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @ferry);
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (20, 1));
   line-opacity: linear([view::zoom], (8, 0), (10, 1));
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
-}
-#transportation[zoom >= 13][class = 'ferry']::ferry_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night)) : @ferry);
-  line-width: exponential(1.5, [view::zoom], (14, 0.5), (20, 1));
-  line-opacity: linear([view::zoom], (8, 0), (10, 1));
-  line-dasharray: 7.01,2.34;
+  line-dasharray: step([zoom], (8, ''), (13, '7.01,2.34'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #transportation[zoom >= 12][class = 'aerialway']::aerialway {
@@ -4192,74 +2659,39 @@ Map {
   line-opacity: linear([view::zoom], (13, 0.5), (16, 0.9));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
-#mountain_peak[zoom >= 15][zoom < 18][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth_b1 {
+#mountain_peak[zoom >= 15][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth {
   line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
   line-width: linear([view::zoom], (15, 2), (20, 6));
   line-offset: (0 - (linear([view::zoom], (15, 1.2), (20, 3.5))));
-  line-dasharray: 1,2.84;
-  line-opacity: @cliff_teeth_stroke_opacity;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
-}
-#mountain_peak[zoom >= 18][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
-  line-width: linear([view::zoom], (15, 2), (20, 6));
-  line-offset: (0 - (linear([view::zoom], (15, 1.2), (20, 3.5))));
-  line-dasharray: 1.04,5.2;
-  line-opacity: @cliff_teeth_stroke_opacity;
+  line-dasharray: step([zoom], (15, '1,2.84'), (18, '1.04,5.2'));
+  line-opacity: 0.7;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #boundary[zoom >= 3][admin_level = 2][maritime != 1]['param::show_boundaries' = 1]::boundary_country_halo {
-  line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @line_stroke_4)) : @boundary_halo));
+  line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @line_stroke_2)) : @boundary_halo));
   line-width: linear([view::zoom], (3, 4), (12, 8));
   line-opacity: linear([view::zoom], (3, 0), (4, 0.5));
   line-blur: linear([view::zoom], (3, 0), (12, 2));
   line-emissive-strength: 0;
 }
-#boundary[zoom >= 10][zoom < 13][admin_level = 6][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b1 {
+#boundary[zoom >= 10][admin_level = 6][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor {
   line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.6), (16, 1.5));
-  line-dasharray: 2.47,1.65;
+  line-dasharray: step([zoom], (10, '2.47,1.65'), (13, '3.83,2.55'));
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
-#boundary[zoom >= 13][admin_level = 6][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
-  line-width: linear([view::zoom], (10, 0.6), (16, 1.5));
-  line-dasharray: 3.83,2.55;
-  line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
-}
-#boundary[zoom >= 10][zoom < 13][admin_level = 8][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b3 {
+#boundary[zoom >= 10][admin_level = 8][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor {
   line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.4), (16, 1));
-  line-dasharray: 1.65,1.1;
+  line-dasharray: step([zoom], (10, '1.65,1.1'), (13, '2.55,1.7'));
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
-#boundary[zoom >= 13][admin_level = 8][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
-  line-width: linear([view::zoom], (10, 0.4), (16, 1));
-  line-dasharray: 2.55,1.7;
-  line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
-}
-#boundary[zoom >= 3][zoom < 7][admin_level = 4][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_state_b1 {
+#boundary[zoom >= 3][admin_level = 4][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_state {
   line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @boundary_state));
   line-width: linear([view::zoom], (3, 0.3), (12, 1.5));
-  line-opacity: linear([view::zoom], (3, 0), (4, 1));
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
-}
-#boundary[zoom >= 7][zoom < 9][admin_level = 4][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_state_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @boundary_state));
-  line-width: linear([view::zoom], (3, 0.3), (12, 1.5));
-  line-dasharray: 1.93,1.93,5.8,1.93;
-  line-opacity: linear([view::zoom], (3, 0), (4, 1));
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
-}
-#boundary[zoom >= 9][admin_level = 4][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_state_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @boundary_state));
-  line-width: linear([view::zoom], (3, 0.3), (12, 1.5));
-  line-dasharray: 2.6,2.6,7.8,2.6;
+  line-dasharray: step([zoom], (3, ''), (7, '1.93,1.93,5.8,1.93'), (9, '2.6,2.6,7.8,2.6'));
   line-opacity: linear([view::zoom], (3, 0), (4, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
@@ -4268,34 +2700,22 @@ Map {
   line-width: linear([view::zoom], (3, 0.5), (12, 2));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#boundary[zoom >= 1][zoom < 7][admin_level = 2][disputed = 1][maritime != 1]['param::show_boundaries' = 1]::boundary_disputed_b1 {
+#boundary[zoom >= 1][admin_level = 2][disputed = 1][maritime != 1]['param::show_boundaries' = 1]::boundary_disputed {
   line-color: (([param::variant] = 'hybrid') ? @boundary_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @boundary_country));
   line-width: linear([view::zoom], (3, 0.5), (12, 2));
-  line-dasharray: 2,1.33,3.33;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.8);
-}
-#boundary[zoom >= 7][zoom < 8][admin_level = 2][disputed = 1][maritime != 1]['param::show_boundaries' = 1]::boundary_disputed_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @boundary_country));
-  line-width: linear([view::zoom], (3, 0.5), (12, 2));
-  line-dasharray: 2.5,1.88;
-  line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.8);
-}
-#boundary[zoom >= 8][admin_level = 2][disputed = 1][maritime != 1]['param::show_boundaries' = 1]::boundary_disputed_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @boundary_country));
-  line-width: linear([view::zoom], (3, 0.5), (12, 2));
-  line-dasharray: 3.33,2.5;
+  line-dasharray: step([zoom], (1, '2,1.33,3.33'), (7, '2.5,1.88'), (8, '3.33,2.5'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.8);
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 13][zoom < 15]['param::buildings'>0]['param::variant' = 'eink']::building_flat {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' = 'eink']::building_flat_z15 {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
-  line-color: linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_3));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
@@ -4366,7 +2786,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#waterway[zoom >= 'param::river_label_min_zoom'][zoom >= 8][class = 'river'][name != null]::waterway_label_b1 {
+#waterway[zoom >= 'param::river_label_min_zoom'][zoom >= 8][class = 'river'][name != null]::waterway_label {
   text-placement: 'line';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_italic;
@@ -4383,7 +2803,7 @@ Map {
   text-min-distance: @label_spacing;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#waterway[zoom >= 'param::river_label_min_zoom'][zoom >= 8][class = 'canal'][name != null]::waterway_label_b2 {
+#waterway[zoom >= 'param::river_label_min_zoom'][zoom >= 8][class = 'canal'][name != null]::waterway_label {
   text-placement: 'line';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_italic;
@@ -4455,7 +2875,7 @@ Map {
   text-size: linear([view::zoom], (9, 11), (16, 14));
   text-wrap-width: (8 * linear([view::zoom], (9, 11), (16, 14)));
   text-collision-padding: (1 * 4);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -4470,7 +2890,7 @@ Map {
   text-size: @poi_size_2;
   text-wrap-width: @text_wrap_width;
   text-collision-padding: (1 * 4);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
   text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -4500,7 +2920,7 @@ Map {
   shield-text-optional: true;
   shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#transportation_name[zoom >= 10][class = 'motorway']::road_label_major_b1 {
+#transportation_name[zoom >= 10][class = 'motorway']::road_label_major {
   text-placement: 'billboard-line';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_medium;
@@ -4517,7 +2937,7 @@ Map {
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
-#transportation_name[zoom >= 10][class = 'trunk']::road_label_major_b2 {
+#transportation_name[zoom >= 10][class = 'trunk']::road_label_major {
   text-placement: 'billboard-line';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_medium;
@@ -4648,7 +3068,7 @@ Map {
   text-background-padding-x: 2.5;
   text-background-padding-y: 0.5;
 }
-#transportation_name[zoom >= 9][class = 'motorway'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' = 'eink']::road_shield_plate_major_mono_b1 {
+#transportation_name[zoom >= 9][class = 'motorway'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' = 'eink']::road_shield_plate_major_mono {
   text-placement: 'billboard-line-repeat';
   text-spacing: @road_shield_spacing;
   text-name: [ref];
@@ -4667,7 +3087,7 @@ Map {
   text-background-padding-x: 2.5;
   text-background-padding-y: 0.5;
 }
-#transportation_name[zoom >= 9][class = 'trunk'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' = 'eink']::road_shield_plate_major_mono_b2 {
+#transportation_name[zoom >= 9][class = 'trunk'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' = 'eink']::road_shield_plate_major_mono {
   text-placement: 'billboard-line-repeat';
   text-spacing: @road_shield_spacing;
   text-name: [ref];
@@ -4858,7 +3278,7 @@ Map {
   shield-unlock-image: true;
   shield-image-scale: ((1) / 2.0);
 }
-#transportation_name[zoom >= 9][class = 'motorway'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' != 'eink']::road_shield_plate_major_b1 {
+#transportation_name[zoom >= 9][class = 'motorway'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' != 'eink']::road_shield_plate_major {
   text-placement: 'billboard-line-repeat';
   text-spacing: @road_shield_spacing;
   text-name: [ref];
@@ -4877,7 +3297,7 @@ Map {
   text-background-padding-x: 2.5;
   text-background-padding-y: 0.5;
 }
-#transportation_name[zoom >= 9][class = 'trunk'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' != 'eink']::road_shield_plate_major_b2 {
+#transportation_name[zoom >= 9][class = 'trunk'][subclass != 'junction'][ref != null][network != 'us-interstate'][network != 'us-highway'][network != 'e-road']['param::road_shields' = 1]['param::variant' != 'eink']::road_shield_plate_major {
   text-placement: 'billboard-line-repeat';
   text-spacing: @road_shield_spacing;
   text-name: [ref];
@@ -5678,14 +4098,14 @@ Map {
   shield-allow-overlap: true;
   @extend %poi;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label_b1 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T1';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23200000;
   text-min-distance: @trail_spacing;
@@ -5696,14 +4116,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 0]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label_b2 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 0]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T1';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23200000;
   text-min-distance: @trail_spacing;
@@ -5714,14 +4134,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label_bridleway_b1 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T1';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23300000;
   text-min-distance: @trail_spacing;
@@ -5732,14 +4152,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 0]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label_bridleway_b2 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 0]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T1';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23300000;
   text-min-distance: @trail_spacing;
@@ -5750,14 +4170,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label_b1 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T2';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23400000;
   text-min-distance: @trail_spacing;
@@ -5768,14 +4188,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 1]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label_b2 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 1]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T2';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23400000;
   text-min-distance: @trail_spacing;
@@ -5786,14 +4206,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label_bridleway_b1 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T2';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23500000;
   text-min-distance: @trail_spacing;
@@ -5804,14 +4224,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 1]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label_bridleway_b2 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 1]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T2';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23500000;
   text-min-distance: @trail_spacing;
@@ -5822,14 +4242,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'demanding_mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label_b1 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'demanding_mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T3';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23600000;
   text-min-distance: @trail_spacing;
@@ -5840,14 +4260,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 2]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label_b2 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 2]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T3';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23600000;
   text-min-distance: @trail_spacing;
@@ -5858,14 +4278,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label_bridleway_b1 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T3';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23700000;
   text-min-distance: @trail_spacing;
@@ -5876,14 +4296,14 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 2]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label_bridleway_b2 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 2]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T3';
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_fill);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23700000;
   text-min-distance: @trail_spacing;
@@ -5894,7 +4314,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label_b1 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T4';
@@ -5912,7 +4332,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 3]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label_b2 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 3]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T4';
@@ -5930,7 +4350,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label_bridleway_b1 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T4';
@@ -5948,7 +4368,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 3]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label_bridleway_b2 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 3]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T4';
@@ -5966,7 +4386,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'demanding_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label_b1 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'demanding_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T5';
@@ -5984,7 +4404,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 4]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label_b2 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 4]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T5';
@@ -6002,7 +4422,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label_bridleway_b1 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T5';
@@ -6020,7 +4440,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 4]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label_bridleway_b2 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 4]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T5';
@@ -6038,7 +4458,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'difficult_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label_b1 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 'difficult_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T6';
@@ -6056,7 +4476,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'path'][sac_scale = 5]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label_b2 {
+#transportation[zoom >= 14][subclass = 'path'][sac_scale = 5]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T6';
@@ -6074,7 +4494,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label_bridleway_b1 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking']['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T6';
@@ -6092,7 +4512,7 @@ Map {
   text-background-padding-x: 2;
   text-background-padding-y: 0.5;
 }
-#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 5]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label_bridleway_b2 {
+#transportation[zoom >= 14][subclass = 'bridleway'][sac_scale = 5]['param::sac_scale_labels' = 1]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_label_bridleway {
   text-placement: 'billboard-line-repeat';
   text-spacing: @trail_spacing;
   text-name: 'T6';
@@ -6191,7 +4611,7 @@ Map {
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
-#transportation_name[zoom >= 12][class = 'primary']::road_label_primary_b1 {
+#transportation_name[zoom >= 12][class = 'primary']::road_label_primary {
   text-placement: 'billboard-line';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_medium;
@@ -6208,7 +4628,7 @@ Map {
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
-#transportation_name[zoom >= 12][class = 'secondary']::road_label_primary_b2 {
+#transportation_name[zoom >= 12][class = 'secondary']::road_label_primary {
   text-placement: 'billboard-line';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_medium;
@@ -6236,7 +4656,7 @@ Map {
   shield-text-dx: 0;
   shield-text-dy: 5.5;
   shield-wrap-width: @text_wrap_width;
-  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -6260,7 +4680,7 @@ Map {
   shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
   shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
   shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -6297,7 +4717,7 @@ Map {
   shield-text-optional: true;
   shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 13][zoom < 18][class = 'hamlet']::place_hamlet_b1 {
+#place[zoom >= 13][zoom < 18][class = 'hamlet']::place_hamlet {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_regular;
@@ -6311,7 +4731,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 13][zoom < 18][class = 'isolated_dwelling']::place_hamlet_b2 {
+#place[zoom >= 13][zoom < 18][class = 'isolated_dwelling']::place_hamlet {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_regular;
@@ -6325,7 +4745,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 13][zoom < 18][class = 'farm']::place_hamlet_b3 {
+#place[zoom >= 13][zoom < 18][class = 'farm']::place_hamlet {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_regular;
@@ -6339,7 +4759,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 13][zoom < 17][class = 'neighbourhood']::place_neighbourhood_b1 {
+#place[zoom >= 13][zoom < 17][class = 'neighbourhood']::place_neighbourhood {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_regular;
@@ -6355,7 +4775,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 13][zoom < 17][class = 'quarter']::place_neighbourhood_b2 {
+#place[zoom >= 13][zoom < 17][class = 'quarter']::place_neighbourhood {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_regular;
@@ -6387,7 +4807,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 10][class = 'island']::place_island_b1 {
+#place[zoom >= 10][class = 'island']::place_island {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_italic;
@@ -6401,7 +4821,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 10][class = 'islet']::place_island_b2 {
+#place[zoom >= 10][class = 'islet']::place_island {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_italic;
@@ -6497,7 +4917,7 @@ Map {
   shield-text-horizontal-alignment: 'auto';
   shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 4][zoom < 9][class = 'state']::place_state_b1 {
+#place[zoom >= 4][zoom < 9][class = 'state']::place_state {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_bold;
@@ -6513,7 +4933,7 @@ Map {
   text-wrap-before: true;
   text-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#place[zoom >= 4][zoom < 9][class = 'province']::place_state_b2 {
+#place[zoom >= 4][zoom < 9][class = 'province']::place_state {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_bold;

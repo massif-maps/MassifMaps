@@ -4,11 +4,11 @@ import { closedSets, narrowLayer } from './narrow.js';
 import type { Json, MapboxLayer } from './types.js';
 
 /**
- * Two properties have to be split into per-branch attachments rather than left as a field-driven
+ * Two properties have to be split into per-branch rules rather than left as a field-driven
  * expression, and both for the same reason: they name a RESOURCE, not a value.
  *
  * **`icon-image`** has to name one file, so splitting is what turns
- * `match(subclass, 'international', 'airport', …)` into attachments that each have a real icon.
+ * `match(subclass, 'international', 'airport', …)` into rules that each have a real icon.
  * **`text-font`** has to name one face: the symbolizer resolves it to a loaded `vt::Font` when it
  * builds the formatter for the rule, so an unsplit `match` left the face literally named `match`
  * and every label fell back to the default font.
@@ -33,7 +33,7 @@ function mustNotReadFeature(name: string): boolean {
     return MUST_BE_CONSTANT.has(name);
 }
 
-/** A layer splitting into more than this many attachments is left whole - the compile cost is real. */
+/** A layer splitting into more than this many rules is left whole - the compile cost is real. */
 const MAX_VARIANTS = 8;
 /** ...and how many a set that IS the whole filter may have: one rule each, nothing copied. */
 const MAX_SET_VALUES = 24;
@@ -151,9 +151,9 @@ function collapse(value: Json): Json | null {
 }
 
 /**
- * One MapBox layer -> the attachments it has to become. The common answer is the layer itself;
- * a field-driven paint value turns it into one variant per branch, each with a constant value and
- * the branch's condition added to the filter.
+ * One MapBox layer -> the rules it has to become, all in its one attachment. The common answer is
+ * the layer itself; a field-driven paint value turns it into one variant per branch, each with a
+ * constant value and the branch's condition added to the filter.
  */
 export function splitLayer(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
     let variants = splitIconByZoom(layer);
@@ -211,11 +211,11 @@ const SORT_KEY = 'line-sort-key';
 
 /**
  * A layer whose filter pins a field to a set AND whose paint branches on that same field, as one
- * attachment per value. The set test cannot bracket - it is a disjunction - so left whole it is a
+ * rule per value. The set test cannot bracket - it is a disjunction - so left whole it is a
  * when() the decoder evaluates per feature, and the paint chain re-tests the field it just passed.
- * Split, each attachment is one bracketed test and a constant (narrow.ts does the folding).
+ * Split, each rule is one bracketed test and a constant (narrow.ts does the folding).
  *
- * Also when the set is the WHOLE filter, even though nothing branches on it: there each attachment
+ * Also when the set is the WHOLE filter, even though nothing branches on it: there each rule
  * carries one bracketed test and nothing else, so the split trades a when() for N rules that the
  * decoder can prune - which is the trade the styles want.
  */
@@ -228,11 +228,11 @@ export function expandSetFilter(layer: MapboxLayer): MapboxLayer[] {
         }));
         const whole = expanded.every((variant) => isOnlyTest(variant.filter));
         // The cap is there to stop a cartesian blow-up when the REST of the filter is copied into
-        // every attachment. Where the set is the whole filter there is no rest, so the only cost is
+        // every rule. Where the set is the whole filter there is no rest, so the only cost is
         // one bracketed rule per value - which is what a category of sixteen poi classes needs.
         if (values.length > MAX_VARIANTS && !whole) continue;
         if (!branchesOn(layer, field) && !whole) continue;
-        // Splitting COPIES the rest of the filter into every attachment, so it only pays when that
+        // Splitting COPIES the rest of the filter into every rule, so it only pays when that
         // rest brackets: otherwise the one when() it removes comes back N times. Measured on
         // MapTiler topo-v4, which is full of layers testing a class set AND something else.
         if (expanded.every((variant) => brackets(variant.filter as Json | undefined))) return expanded;
@@ -284,7 +284,7 @@ function readsField(value: Json, field: string): boolean {
 
 /**
  * A sprite name that changes with ZOOM (`{stops: [[6, 'circle'], [12, ' ']]}`) cannot interpolate -
- * it names one file per zoom band. Each band becomes its own attachment, which is what puts the
+ * it names one file per zoom band. Each band becomes its own rule, which is what puts the
  * dot back under a town name up to the zoom the style drops it at.
  */
 function splitIconByZoom(layer: MapboxLayer): MapboxLayer[] {
@@ -321,7 +321,7 @@ export const BAND_MAXZOOM = 'massif:band-maxzoom';
  * Properties whose value is a NAME or a TEXT rather than a number, and which a style may still
  * ramp over zoom. Neither can interpolate, and `InterpolateExpression` reads a string keyframe as
  * a COLOUR - so `step(zoom, [name], 15, concat(...))` had the decoder trying to parse "Beauregard"
- * as a colour and losing the whole rule. One attachment per band says the same thing in a form the
+ * as a colour and losing the whole rule. One rule per band says the same thing in a form the
  * renderer has.
  */
 const ZOOM_BANDED = ['icon-image', 'text-field'];
@@ -352,7 +352,7 @@ function zoomBandsOf(value: Json, requireString: boolean): ZoomBand[] | null {
 
 /**
  * A feature-driven icon name is resolved as a chain of style-parameter lookups instead (see
- * iconExpression), which is one rule rather than one attachment per branch and has no MAX_VARIANTS:
+ * iconExpression), which is one rule rather than one per branch and has no MAX_VARIANTS:
  * MapTiler's accommodation table has nine branches, so it did not split at all and every hotel lost
  * its icon, and its food table nests a second lookup inside its own fallback.
  */

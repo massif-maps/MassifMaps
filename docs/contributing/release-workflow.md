@@ -54,6 +54,22 @@ of `latest`. A run with `publish` off keeps the zip and the tarballs as workflow
 script packs the tarballs locally: [BUILDING.md](https://github.com/massif-maps/MassifMaps/blob/master/BUILDING.md#npm-packages).
 What the web package contains and how an app hosts it: [the web guide](/docs/getting-started/web).
 
+## Release notes
+
+`scripts/release-notes.py` writes the notes of both releases and the SDK's `CHANGELOG.md` entry:
+one line per `feat`/`fix` squash commit since the last final release, its PR title verbatim. A
+commit goes to a release by the paths it touches:
+
+| Touches | SDK notes | Styles notes |
+|---|---|---|
+| `styles/massif`, `tools/style-sprite`, `tools/icon-font` only | — | yes |
+| anything else only | yes | — |
+| both | yes | yes |
+
+`docs`, `website`, `tests`, `.claude`, `.github` and `tools/style-preview` count for neither, so a
+styles PR with its doc page stays out of the SDK's notes. A PR touching both lands in both under
+one title, so the SDK change goes in its own PR, titled for the SDK.
+
 ## The Massif styles
 
 `release-styles.yml` releases `styles/massif` on its own version (`massif-styles-v<version>`): npm

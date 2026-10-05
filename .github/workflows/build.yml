@@ -162,17 +162,8 @@ jobs:
             exit 1
           }
 
-      # An explicit range: `tag:` diffs the two newest tags of ANY prefix, so a styles or rc tag
-      # would cut the notes short.
-      - name: Validate changelog generation preflight
-        uses: requarks/changelog-action@v1
-        with:
-          useGitmojis: false
-          excludeTypes: build,docs,other,style,chore,perf,doc
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fromTag: ${{ needs.create-release.outputs.VERSION_TAG }}
-          toTag: ${{ needs.create-release.outputs.PREVIOUS_TAG }}
-          writeToFile: false
+      - name: Validate release notes preflight
+        run: python3 scripts/release-notes.py "${{ needs.create-release.outputs.PREVIOUS_TAG }}" "${{ needs.create-release.outputs.VERSION_TAG }}"
 
   build:
     permissions:
@@ -849,13 +840,7 @@ jobs:
 
       - name: Generate CHANGELOG
         if: github.event.inputs.prerelease != 'true'
-        uses: requarks/changelog-action@v1
-        with:
-          useGitmojis: false
-          excludeTypes: build,docs,other,style,chore,perf,doc
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fromTag: ${{ needs.create-release.outputs.VERSION_TAG }}
-          toTag: ${{ needs.create-release.outputs.PREVIOUS_TAG }}
+        run: python3 scripts/release-notes.py --changelog CHANGELOG.md "${{ needs.create-release.outputs.PREVIOUS_TAG }}" "${{ needs.create-release.outputs.VERSION_TAG }}"
 
       - name: Commit CHANGELOG.md
         if: github.event.inputs.prerelease != 'true'
@@ -871,8 +856,6 @@ jobs:
           NPM_TAG: ${{ github.event.inputs.prerelease == 'true' && 'next' || 'latest' }}
           TAG: ${{ needs.create-release.outputs.VERSION_TAG }}
           PREVIOUS_TAG: ${{ needs.create-release.outputs.PREVIOUS_TAG }}
-        # From git, not the changelog action: its body quotes whole commit messages (237 KB for
-        # 6.1.0-rc.2), past the 128 KB of one env var and the 125,000 characters of a release body.
         run: |
           python3 scripts/release-notes.py "$PREVIOUS_TAG" "$TAG" > release_body.md
           cat >> release_body.md <<EOF

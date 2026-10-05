@@ -124,7 +124,9 @@ npm provenance.
    published.
 2. **Actions → Release Massif styles → Run workflow**, `version` (no `v`) and `publish` on:
    - npm `@massif-maps/styles@<version>` (`dist/npm`, provenance, trusted publishing — no token);
-   - GitHub release `massif-styles-v<version>` with every zip and `massif-screenshots-<version>.zip`;
+   - GitHub release `massif-styles-v<version>` with every zip and `massif-screenshots-<version>.zip`,
+     its notes the commits touching the styles since the last final `massif-styles-v*`
+     ([which commits](release-workflow.md#release-notes));
    - `docs.yml` dispatched, since a release made with `GITHUB_TOKEN` triggers no workflow.
 
 Versions are the style's own semver: a change that moves what a variant draws is a minor, a renamed

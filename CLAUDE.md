@@ -173,6 +173,10 @@ One user-visible outcome per title, imperative, readable without the diff. Scope
 (`vt`, `labels`, `terrain`, `renderers`, `datasources`), not by repo. Use `!` whenever a style, an
 option default or an `all/modules/*.i` signature changes.
 
+A change to both the SDK (renderer, converter, anything outside `styles/massif`) and the Massif
+styles is **two PRs**: the SDK one first, titled for the SDK, then the styles one. One squash commit
+is one changelog line, and a styles title hides the SDK fix from SDK users.
+
 ## Code style
 
 No formatter or linter for the C++ — **the surrounding file is the source of truth**. Match its

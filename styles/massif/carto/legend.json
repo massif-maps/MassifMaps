@@ -108,7 +108,7 @@
             "class": "track",
             "tracktype": "grade1"
           },
-          "attachment": "^(track_halo|track_grade1)(_b[0-9]+)?$"
+          "attachment": "^(track_halo|track_grade1_casing|track_fill)(_b[0-9]+)?$"
         },
         {
           "id": "track-grade2",
@@ -119,7 +119,7 @@
             "class": "track",
             "tracktype": "grade2"
           },
-          "attachment": "^(track_halo|track_grade2)(_b[0-9]+)?$"
+          "attachment": "^(track_halo|track_grade2_casing|track_fill)(_b[0-9]+)?$"
         },
         {
           "id": "track-grade3",
@@ -130,7 +130,7 @@
             "class": "track",
             "tracktype": "grade3"
           },
-          "attachment": "^(track_halo|track_grade3)(_b[0-9]+)?$"
+          "attachment": "^(track_halo|track_grade3_casing|track_fill)(_b[0-9]+)?$"
         },
         {
           "id": "track-grade4",
@@ -141,7 +141,7 @@
             "class": "track",
             "tracktype": "grade4"
           },
-          "attachment": "^(track_halo|track_grade4)(_b[0-9]+)?$"
+          "attachment": "^(track_halo|track_grade4_casing|track_fill)(_b[0-9]+)?$"
         },
         {
           "id": "track-grade5",
@@ -152,7 +152,7 @@
             "class": "track",
             "tracktype": "grade5"
           },
-          "attachment": "^(track_halo|track_grade5)(_b[0-9]+)?$"
+          "attachment": "^(track_halo|track_grade5_casing|track_fill)(_b[0-9]+)?$"
         },
         {
           "id": "track-unknown",
@@ -162,7 +162,7 @@
           "properties": {
             "class": "track"
           },
-          "attachment": "^(track_halo|track_unknown)(_b[0-9]+)?$"
+          "attachment": "^(track_halo|track_unknown_casing|track_fill)(_b[0-9]+)?$"
         }
       ]
     },

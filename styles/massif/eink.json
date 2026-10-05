@@ -5159,49 +5159,22 @@
       },
       "paint": {
         "line-color": [
-          "interpolate",
+          "match",
           [
-            "linear"
+            "get",
+            "class"
           ],
-          [
-            "zoom"
-          ],
-          12,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 68%)",
-            "hsl(0, 0%, 68%)"
-          ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 100%)",
-            "tertiary",
-            "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
-          ]
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 100%)",
+          "tertiary",
+          "hsl(0, 0%, 100%)",
+          "hsl(0, 0%, 100%)"
         ],
         "line-width": [
           "interpolate",
@@ -5423,101 +5396,385 @@
               "linear"
             ],
             [
-              "zoom"
+              "measure-light",
+              "brightness"
             ],
-            12,
+            0.25,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 32%)",
-                "hsl(0, 0%, 32%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 68%)",
-                "hsl(0, 0%, 68%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 0%)",
+              "tertiary",
+              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 0%)"
             ],
-            13,
+            0.3,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 100%)",
+              "tertiary",
+              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 100%)"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-tunnel-uncased",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "maxzoom": 13,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "layout": {
+        "line-join": "miter",
+        "line-cap": "butt",
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 30%)"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
+            0
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
+          ],
+          11,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            3.2,
+            "primary",
+            3,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            2.2,
+            "minor",
+            0.5,
+            0
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            30,
+            "primary",
+            28,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            26,
+            "minor",
+            20,
+            10
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            300,
+            "primary",
+            280,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            260,
+            "minor",
+            200,
+            100
+          ]
+        ],
+        "line-opacity": 0.5
+      },
+      "metadata": {
+        "massif:minzoom-param": "tunnel_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
               ],
               [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
                 "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 0%)",
-                "tertiary",
-                "hsl(0, 0%, 0%)",
-                "hsl(0, 0%, 0%)"
+                "trunk"
               ],
-              0.3,
+              0.6,
+              0.4
+            ]
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "match",
               [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 100%)",
-                "tertiary",
-                "hsl(0, 0%, 100%)",
-                "hsl(0, 0%, 100%)"
-              ]
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 70%)"
+            ],
+            0.3,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 30%)"
             ]
           ]
         }
@@ -7246,13 +7503,13 @@
             "zoom"
           ],
           12,
-          2.8,
+          5.84,
           15,
-          3.92,
+          9.36,
           18,
-          6.800000000000001,
+          15.760000000000002,
           22,
-          21.200000000000003
+          43.6
         ]
       },
       "metadata": {
@@ -7276,7 +7533,7 @@
       }
     },
     {
-      "id": "track-grade1",
+      "id": "track-grade1-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7314,8 +7571,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
         "line-color": "hsl(0, 0%, 0%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          15,
+          3.5200000000000005,
+          18,
+          8.0,
+          22,
+          32.0
+        ],
         "line-width": [
           "interpolate",
           [
@@ -7326,13 +7604,17 @@
             "zoom"
           ],
           12,
-          0.8,
+          1.1199999999999999,
           15,
           1.92,
           18,
-          4.800000000000001,
+          2.8800000000000003,
           22,
-          19.200000000000003
+          4.800000000000001
+        ],
+        "line-dasharray": [
+          8,
+          2
         ]
       },
       "metadata": {
@@ -7366,7 +7648,7 @@
       }
     },
     {
-      "id": "track-grade2",
+      "id": "track-grade2-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7404,8 +7686,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
         "line-color": "hsl(0, 0%, 0%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          15,
+          3.5200000000000005,
+          18,
+          8.0,
+          22,
+          32.0
+        ],
         "line-width": [
           "interpolate",
           [
@@ -7416,13 +7719,13 @@
             "zoom"
           ],
           12,
-          0.8,
+          1.1199999999999999,
           15,
           1.92,
           18,
-          4.800000000000001,
+          2.8800000000000003,
           22,
-          19.200000000000003
+          4.800000000000001
         ],
         "line-dasharray": [
           5,
@@ -7460,7 +7763,7 @@
       }
     },
     {
-      "id": "track-grade3",
+      "id": "track-grade3-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7498,8 +7801,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
         "line-color": "hsl(0, 0%, 0%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          15,
+          3.5200000000000005,
+          18,
+          8.0,
+          22,
+          32.0
+        ],
         "line-width": [
           "interpolate",
           [
@@ -7510,13 +7834,13 @@
             "zoom"
           ],
           12,
-          0.8,
+          1.1199999999999999,
           15,
           1.92,
           18,
-          4.800000000000001,
+          2.8800000000000003,
           22,
-          19.200000000000003
+          4.800000000000001
         ],
         "line-dasharray": [
           3,
@@ -7554,7 +7878,7 @@
       }
     },
     {
-      "id": "track-grade4",
+      "id": "track-grade4-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7592,8 +7916,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
         "line-color": "hsl(0, 0%, 0%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          15,
+          3.5200000000000005,
+          18,
+          8.0,
+          22,
+          32.0
+        ],
         "line-width": [
           "interpolate",
           [
@@ -7604,13 +7949,13 @@
             "zoom"
           ],
           12,
-          0.8,
+          1.1199999999999999,
           15,
           1.92,
           18,
-          4.800000000000001,
+          2.8800000000000003,
           22,
-          19.200000000000003
+          4.800000000000001
         ],
         "line-dasharray": [
           2,
@@ -7648,7 +7993,7 @@
       }
     },
     {
-      "id": "track-grade5",
+      "id": "track-grade5-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7686,8 +8031,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
         "line-color": "hsl(0, 0%, 0%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          15,
+          3.5200000000000005,
+          18,
+          8.0,
+          22,
+          32.0
+        ],
         "line-width": [
           "interpolate",
           [
@@ -7698,13 +8064,13 @@
             "zoom"
           ],
           12,
-          0.8,
+          1.1199999999999999,
           15,
           1.92,
           18,
-          4.800000000000001,
+          2.8800000000000003,
           22,
-          19.200000000000003
+          4.800000000000001
         ],
         "line-dasharray": [
           1,
@@ -7742,7 +8108,7 @@
       }
     },
     {
-      "id": "track-unknown",
+      "id": "track-unknown-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7773,8 +8139,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
         "line-color": "hsl(0, 0%, 0%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          15,
+          3.5200000000000005,
+          18,
+          8.0,
+          22,
+          32.0
+        ],
         "line-width": [
           "interpolate",
           [
@@ -7785,13 +8172,13 @@
             "zoom"
           ],
           12,
-          0.8,
+          1.1199999999999999,
           15,
           1.92,
           18,
-          4.800000000000001,
+          2.8800000000000003,
           22,
-          19.200000000000003
+          4.800000000000001
         ],
         "line-dasharray": [
           3,
@@ -7824,6 +8211,85 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 0%)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "track-fill",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "track"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "layout": {
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 100%)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          15,
+          3.5200000000000005,
+          18,
+          8.0,
+          22,
+          32.0
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
           ]
         }
       }
@@ -8212,7 +8678,7 @@
       }
     },
     {
-      "id": "via-ferrata",
+      "id": "via-ferrata-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -8247,12 +8713,158 @@
             "zoom"
           ],
           13,
-          1,
+          3,
+          15,
+          5,
           18,
-          2.5
+          8
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "via-ferrata",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "via_ferrata"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "paint": {
+        "line-color": "hsl(0, 0%, 100%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          1.6,
+          15,
+          3,
+          18,
+          5
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "via-ferrata-dots",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "via_ferrata"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "paint": {
+        "line-color": "hsl(0, 0%, 0%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          1.6,
+          15,
+          3,
+          18,
+          5
         ],
         "line-dasharray": [
-          1,
+          0.5,
           1.5
         ]
       },
@@ -8798,49 +9410,22 @@
       },
       "paint": {
         "line-color": [
-          "interpolate",
+          "match",
           [
-            "linear"
+            "get",
+            "class"
           ],
-          [
-            "zoom"
-          ],
-          12,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 68%)",
-            "hsl(0, 0%, 68%)"
-          ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 100%)",
-            "tertiary",
-            "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
-          ]
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 100%)",
+          "tertiary",
+          "hsl(0, 0%, 100%)",
+          "hsl(0, 0%, 100%)"
         ],
         "line-width": [
           "interpolate",
@@ -8925,101 +9510,265 @@
               "linear"
             ],
             [
-              "zoom"
+              "measure-light",
+              "brightness"
             ],
-            12,
+            0.25,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 32%)",
-                "hsl(0, 0%, 32%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 68%)",
-                "hsl(0, 0%, 68%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 0%)",
+              "tertiary",
+              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 0%)"
             ],
-            13,
+            0.3,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 100%)",
+              "tertiary",
+              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 100%)"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-link-uncased",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "maxzoom": 13,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "brunnel"
+            ],
+            [
+              "literal",
               [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 0%)",
-                "tertiary",
-                "hsl(0, 0%, 0%)",
-                "hsl(0, 0%, 0%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 100%)",
-                "tertiary",
-                "hsl(0, 0%, 100%)",
-                "hsl(0, 0%, 100%)"
+                "tunnel",
+                "bridge"
               ]
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "ramp"
+          ],
+          1
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 30%)"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            0.8,
+            0.4
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            20,
+            18
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            200,
+            180
+          ]
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "motorway",
+                "trunk"
+              ],
+              0.6,
+              0.4
+            ]
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 70%)"
+            ],
+            0.3,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 30%)"
             ]
           ]
         }
@@ -9549,49 +10298,20 @@
       },
       "paint": {
         "line-color": [
-          "interpolate",
+          "match",
           [
-            "linear"
+            "get",
+            "class"
           ],
-          [
-            "zoom"
-          ],
-          12,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 68%)",
-            "hsl(0, 0%, 68%)"
-          ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 100%)",
-            "tertiary",
-            "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
-          ]
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 30%)"
         ],
         "line-width": [
           "interpolate",
@@ -9811,101 +10531,42 @@
               "linear"
             ],
             [
-              "zoom"
+              "measure-light",
+              "brightness"
             ],
-            12,
+            0.25,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 32%)",
-                "hsl(0, 0%, 32%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 68%)",
-                "hsl(0, 0%, 68%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 70%)"
             ],
-            13,
+            0.3,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 0%)",
-                "tertiary",
-                "hsl(0, 0%, 0%)",
-                "hsl(0, 0%, 0%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 100%)",
-                "tertiary",
-                "hsl(0, 0%, 100%)",
-                "hsl(0, 0%, 100%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 30%)"
             ]
           ]
         }
@@ -10436,49 +11097,20 @@
       },
       "paint": {
         "line-color": [
-          "interpolate",
+          "match",
           [
-            "linear"
+            "get",
+            "class"
           ],
-          [
-            "zoom"
-          ],
-          12,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 68%)",
-            "hsl(0, 0%, 68%)"
-          ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 100%)",
-            "tertiary",
-            "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
-          ]
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 30%)"
         ],
         "line-width": [
           "interpolate",
@@ -10698,101 +11330,42 @@
               "linear"
             ],
             [
-              "zoom"
+              "measure-light",
+              "brightness"
             ],
-            12,
+            0.25,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 32%)",
-                "hsl(0, 0%, 32%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 68%)",
-                "hsl(0, 0%, 68%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 70%)"
             ],
-            13,
+            0.3,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 0%)",
-                "tertiary",
-                "hsl(0, 0%, 0%)",
-                "hsl(0, 0%, 0%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 100%)",
-                "tertiary",
-                "hsl(0, 0%, 100%)",
-                "hsl(0, 0%, 100%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 30%)"
             ]
           ]
         },
@@ -11337,49 +11910,22 @@
       },
       "paint": {
         "line-color": [
-          "interpolate",
+          "match",
           [
-            "linear"
+            "get",
+            "class"
           ],
-          [
-            "zoom"
-          ],
-          12,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 68%)",
-            "hsl(0, 0%, 68%)"
-          ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 100%)",
-            "tertiary",
-            "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
-          ]
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 100%)",
+          "tertiary",
+          "hsl(0, 0%, 100%)",
+          "hsl(0, 0%, 100%)"
         ],
         "line-width": [
           "interpolate",
@@ -11599,101 +12145,400 @@
               "linear"
             ],
             [
-              "zoom"
+              "measure-light",
+              "brightness"
             ],
-            12,
+            0.25,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 32%)",
-                "hsl(0, 0%, 32%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 68%)",
-                "hsl(0, 0%, 68%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 0%)",
+              "tertiary",
+              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 0%)"
             ],
-            13,
+            0.3,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 100%)",
+              "tertiary",
+              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 100%)"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-uncased",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 3,
+      "maxzoom": 13,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "brunnel"
+            ],
+            [
+              "literal",
               [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 0%)",
-                "tertiary",
-                "hsl(0, 0%, 0%)",
-                "hsl(0, 0%, 0%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 100%)",
-                "tertiary",
-                "hsl(0, 0%, 100%)",
-                "hsl(0, 0%, 100%)"
+                "tunnel",
+                "bridge"
               ]
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "ramp"
+          ],
+          1
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 30%)"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
+            0
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
+          ],
+          11,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            3.2,
+            "primary",
+            3,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            2.2,
+            "minor",
+            0.5,
+            0
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            30,
+            "primary",
+            28,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            26,
+            "minor",
+            20,
+            10
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            300,
+            "primary",
+            280,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            260,
+            "minor",
+            200,
+            100
+          ]
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "motorway",
+                "trunk"
+              ],
+              0.6,
+              0.4
+            ]
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 70%)"
+            ],
+            0.3,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 30%)"
             ]
           ]
         }
@@ -12615,7 +13460,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 15,
+      "minzoom": 14,
       "filter": [
         "all",
         [
@@ -12652,6 +13497,8 @@
           [
             "zoom"
           ],
+          14,
+          0.8,
           15,
           1,
           18,
@@ -14529,49 +15376,22 @@
       },
       "paint": {
         "line-color": [
-          "interpolate",
+          "match",
           [
-            "linear"
+            "get",
+            "class"
           ],
-          [
-            "zoom"
-          ],
-          12,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 68%)",
-            "hsl(0, 0%, 68%)"
-          ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            "hsl(0, 0%, 100%)",
-            "trunk",
-            "hsl(0, 0%, 100%)",
-            "primary",
-            "hsl(0, 0%, 100%)",
-            "secondary",
-            "hsl(0, 0%, 100%)",
-            "tertiary",
-            "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
-          ]
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 100%)",
+          "tertiary",
+          "hsl(0, 0%, 100%)",
+          "hsl(0, 0%, 100%)"
         ],
         "line-width": [
           "interpolate",
@@ -14791,101 +15611,383 @@
               "linear"
             ],
             [
-              "zoom"
+              "measure-light",
+              "brightness"
             ],
-            12,
+            0.25,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
               ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 32%)",
-                "hsl(0, 0%, 32%)"
-              ],
-              0.3,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 68%)",
-                "hsl(0, 0%, 68%)"
-              ]
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 0%)",
+              "tertiary",
+              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 0%)"
             ],
-            13,
+            0.3,
             [
-              "interpolate",
+              "match",
               [
-                "linear"
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 100%)",
+              "tertiary",
+              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 100%)"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-bridge-uncased",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "maxzoom": 13,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "brunnel"
+          ],
+          "bridge"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "hsl(0, 0%, 100%)",
+          "trunk",
+          "hsl(0, 0%, 100%)",
+          "primary",
+          "hsl(0, 0%, 100%)",
+          "secondary",
+          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 30%)"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
+            0
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
+          ],
+          11,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            3.2,
+            "primary",
+            3,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            2.2,
+            "minor",
+            0.5,
+            0
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            30,
+            "primary",
+            28,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            26,
+            "minor",
+            20,
+            10
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            300,
+            "primary",
+            280,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            260,
+            "minor",
+            200,
+            100
+          ]
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
               ],
               [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
                 "motorway",
-                "hsl(0, 0%, 0%)",
-                "trunk",
-                "hsl(0, 0%, 0%)",
-                "primary",
-                "hsl(0, 0%, 0%)",
-                "secondary",
-                "hsl(0, 0%, 0%)",
-                "tertiary",
-                "hsl(0, 0%, 0%)",
-                "hsl(0, 0%, 0%)"
+                "trunk"
               ],
-              0.3,
+              0.6,
+              0.4
+            ]
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "match",
               [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                "motorway",
-                "hsl(0, 0%, 100%)",
-                "trunk",
-                "hsl(0, 0%, 100%)",
-                "primary",
-                "hsl(0, 0%, 100%)",
-                "secondary",
-                "hsl(0, 0%, 100%)",
-                "tertiary",
-                "hsl(0, 0%, 100%)",
-                "hsl(0, 0%, 100%)"
-              ]
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 0%)",
+              "trunk",
+              "hsl(0, 0%, 0%)",
+              "primary",
+              "hsl(0, 0%, 0%)",
+              "secondary",
+              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 70%)"
+            ],
+            0.3,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "hsl(0, 0%, 100%)",
+              "trunk",
+              "hsl(0, 0%, 100%)",
+              "primary",
+              "hsl(0, 0%, 100%)",
+              "secondary",
+              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 30%)"
             ]
           ]
         }
@@ -16009,10 +17111,6 @@
           1,
           20,
           2
-        ],
-        "line-dasharray": [
-          4,
-          1
         ]
       },
       "metadata": {

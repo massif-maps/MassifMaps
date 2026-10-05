@@ -110,6 +110,7 @@
 @lowzoom_fill: hsl(0, 0%, 6%);
 @military: hsl(0, 40%, 92%);
 @military_line: hsl(0, 50%, 70%);
+@minor_low: hsl(224, 12%, 62%);
 @motorway: hsl(214, 23%, 70%);
 @motorway_bridge_case: hsl(214, 23%, 50%);
 @motorway_case: hsl(214, 23%, 60%);

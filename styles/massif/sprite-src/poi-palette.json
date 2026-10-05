@@ -753,7 +753,7 @@
       "border": 0
     },
     "waterfall": {
-      "disc": "hsl(110, 70%, 40%)",
+      "disc": "hsl(200, 85%, 45%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3

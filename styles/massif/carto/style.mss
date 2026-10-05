@@ -644,7 +644,7 @@ Map {
 #transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'service']::road_tunnel_b1 {
   line-join: 'miter';
   line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   line-opacity: @tunnel_stroke_opacity;
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
@@ -653,7 +653,7 @@ Map {
 #transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'minor']::road_tunnel_b2 {
   line-join: 'miter';
   line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   line-opacity: @tunnel_stroke_opacity;
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
@@ -662,7 +662,7 @@ Map {
 #transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'tertiary']::road_tunnel_b3 {
   line-join: 'miter';
   line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @road_low), (14, @tertiary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
   line-opacity: @tunnel_stroke_opacity;
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
@@ -671,7 +671,7 @@ Map {
 #transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'secondary']::road_tunnel_b4 {
   line-join: 'miter';
   line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @secondary_low), (14, @secondary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
   line-opacity: @tunnel_stroke_opacity;
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
@@ -680,7 +680,7 @@ Map {
 #transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'primary']::road_tunnel_b5 {
   line-join: 'miter';
   line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @primary), (14, @primary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
   line-opacity: @tunnel_stroke_opacity;
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
@@ -689,7 +689,7 @@ Map {
 #transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'trunk']::road_tunnel_b6 {
   line-join: 'miter';
   line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @trunk), (14, @trunk))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   line-opacity: @tunnel_stroke_opacity;
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
@@ -698,7 +698,7 @@ Map {
 #transportation[zoom >= 'param::tunnel_min_zoom'][brunnel = 'tunnel'][class = 'motorway']::road_tunnel_b7 {
   line-join: 'miter';
   line-cap: 'butt';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @motorway), (14, @motorway))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   line-opacity: @tunnel_stroke_opacity;
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel' : '');
@@ -1276,7 +1276,7 @@ Map {
 #transportation[zoom >= 12][ramp = 1][class = 'service'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_b1 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (12, 0.4), (18, 18), (22, 180));
   draw-once: (([param::variant] = 'hybrid') ? 'road-link' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1284,7 +1284,7 @@ Map {
 #transportation[zoom >= 12][ramp = 1][class = 'minor'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_b2 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (12, 0.4), (18, 18), (22, 180));
   draw-once: (([param::variant] = 'hybrid') ? 'road-link' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1292,7 +1292,7 @@ Map {
 #transportation[zoom >= 12][ramp = 1][class = 'tertiary'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_b3 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @road_low), (14, @tertiary))));
   line-width: exponential(1.5, [view::zoom], (12, 0.4), (18, 18), (22, 180));
   draw-once: (([param::variant] = 'hybrid') ? 'road-link' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1300,7 +1300,7 @@ Map {
 #transportation[zoom >= 12][ramp = 1][class = 'secondary'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_b4 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @secondary_low), (14, @secondary))));
   line-width: exponential(1.5, [view::zoom], (12, 0.4), (18, 18), (22, 180));
   draw-once: (([param::variant] = 'hybrid') ? 'road-link' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1308,7 +1308,7 @@ Map {
 #transportation[zoom >= 12][ramp = 1][class = 'primary'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_b5 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @primary), (14, @primary))));
   line-width: exponential(1.5, [view::zoom], (12, 0.4), (18, 18), (22, 180));
   draw-once: (([param::variant] = 'hybrid') ? 'road-link' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1316,7 +1316,7 @@ Map {
 #transportation[zoom >= 12][ramp = 1][class = 'trunk'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_b6 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @trunk), (14, @trunk))));
   line-width: exponential(1.5, [view::zoom], (12, 0.8), (18, 20), (22, 200));
   draw-once: (([param::variant] = 'hybrid') ? 'road-link' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1324,7 +1324,7 @@ Map {
 #transportation[zoom >= 12][ramp = 1][class = 'motorway'][brunnel != 'tunnel'][brunnel != 'bridge']::road_link_b7 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @motorway), (14, @motorway))));
   line-width: exponential(1.5, [view::zoom], (12, 0.8), (18, 20), (22, 200));
   draw-once: (([param::variant] = 'hybrid') ? 'road-link' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1584,7 +1584,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][brunnel = 'tunnel'][class = 'service'][ramp != 1]::road_brunnel_low_b1 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1592,7 +1592,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][brunnel = 'bridge'][class = 'service'][ramp != 1]::road_brunnel_low_b1 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1600,7 +1600,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b2 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1608,7 +1608,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'minor'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b2 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1616,7 +1616,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b3 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @road_low), (14, @tertiary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1624,7 +1624,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'tertiary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b3 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @road_low), (14, @tertiary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1632,7 +1632,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b4 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @secondary_low), (14, @secondary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1640,7 +1640,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'secondary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b4 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @secondary_low), (14, @secondary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1648,7 +1648,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b5 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @primary), (14, @primary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1656,7 +1656,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'primary'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b5 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @primary), (14, @primary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1664,7 +1664,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b6 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @trunk), (14, @trunk))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1672,7 +1672,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'trunk'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b6 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @trunk), (14, @trunk))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1680,7 +1680,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'tunnel'][ramp != 1]::road_brunnel_low_b7 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @motorway), (14, @motorway))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1688,7 +1688,7 @@ Map {
 #transportation[zoom >= 3][zoom < 12][class = 'motorway'][brunnel = 'bridge'][ramp != 1]::road_brunnel_low_b7 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @motorway), (14, @motorway))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-brunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1759,7 +1759,7 @@ Map {
 #transportation[zoom >= 12][zoom < 13][brunnel = 'tunnel'][class = 'service'][ramp != 1]['param::road_osm_low' = 1]::road_tunnel_low_b1 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1767,7 +1767,7 @@ Map {
 #transportation[zoom >= 12][zoom < 13][brunnel = 'tunnel'][class = 'minor'][ramp != 1]['param::road_osm_low' = 1]::road_tunnel_low_b2 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1775,7 +1775,7 @@ Map {
 #transportation[zoom >= 12][zoom < 13][brunnel = 'tunnel'][class = 'tertiary'][ramp != 1]['param::road_osm_low' = 1]::road_tunnel_low_b3 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @road_low), (14, @tertiary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1783,7 +1783,7 @@ Map {
 #transportation[zoom >= 12][zoom < 13][brunnel = 'tunnel'][class = 'secondary'][ramp != 1]['param::road_osm_low' = 1]::road_tunnel_low_b4 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @secondary_low), (14, @secondary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1791,7 +1791,7 @@ Map {
 #transportation[zoom >= 12][zoom < 13][brunnel = 'tunnel'][class = 'primary'][ramp != 1]['param::road_osm_low' = 1]::road_tunnel_low_b5 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @primary), (14, @primary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1799,7 +1799,7 @@ Map {
 #transportation[zoom >= 12][zoom < 13][brunnel = 'tunnel'][class = 'trunk'][ramp != 1]['param::road_osm_low' = 1]::road_tunnel_low_b6 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @trunk), (14, @trunk))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1807,7 +1807,7 @@ Map {
 #transportation[zoom >= 12][zoom < 13][brunnel = 'tunnel'][class = 'motorway'][ramp != 1]['param::road_osm_low' = 1]::road_tunnel_low_b7 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @motorway), (14, @motorway))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-tunnel-low' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1878,7 +1878,7 @@ Map {
 #transportation[zoom >= 3][class = 'service'][brunnel != 'tunnel'][brunnel != 'bridge'][ramp != 1]::road_b1 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1886,7 +1886,7 @@ Map {
 #transportation[zoom >= 3][class = 'minor'][brunnel != 'tunnel'][brunnel != 'bridge'][ramp != 1]::road_b2 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1894,7 +1894,7 @@ Map {
 #transportation[zoom >= 3][class = 'tertiary'][brunnel != 'tunnel'][brunnel != 'bridge'][ramp != 1]::road_b3 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @road_low), (14, @tertiary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1902,7 +1902,7 @@ Map {
 #transportation[zoom >= 3][class = 'secondary'][brunnel != 'tunnel'][brunnel != 'bridge'][ramp != 1]::road_b4 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @secondary_low), (14, @secondary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1910,7 +1910,7 @@ Map {
 #transportation[zoom >= 3][class = 'primary'][brunnel != 'tunnel'][brunnel != 'bridge'][ramp != 1]::road_b5 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @primary), (14, @primary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -1918,7 +1918,7 @@ Map {
 #transportation[zoom >= 3][class = 'trunk'][brunnel != 'tunnel'][brunnel != 'bridge'][ramp != 1]::road_b6 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @trunk), (14, @trunk))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -1926,7 +1926,7 @@ Map {
 #transportation[zoom >= 3][class = 'motorway'][brunnel != 'tunnel'][brunnel != 'bridge'][ramp != 1]::road_b7 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @motorway), (14, @motorway))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -2533,7 +2533,7 @@ Map {
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'service']::road_bridge_b1 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0)), (11, (([param::road_osm_low] = 1) ? 0 : 0)), (12, 0), (18, 10), (22, 100));
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -2541,7 +2541,7 @@ Map {
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'minor']::road_bridge_b2 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @road))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @water_halo)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @minor_low), (14, @road))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, (([param::road_osm_low] = 1) ? 0 : 0.26)), (12, 0.5), (18, 20), (22, 200));
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -2549,7 +2549,7 @@ Map {
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'tertiary']::road_bridge_b3 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @road_low), (14, @tertiary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @road_low), (14, @tertiary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 0 : 0)), (10, (([param::road_osm_low] = 1) ? 0.35 : 0.46)), (11, (([param::road_osm_low] = 1) ? 0.95 : 1.16)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -2557,7 +2557,7 @@ Map {
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'secondary']::road_bridge_b4 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @secondary_low), (14, @secondary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @water_halo), (14, @road_stroke_3)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @road_stroke), (0.3, @road_label_halo_night))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @secondary_low), (14, @secondary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0)), (8, (([param::road_osm_low] = 1) ? 0 : 0)), (9, (([param::road_osm_low] = 1) ? 1 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2 : 0.94)), (11, (([param::road_osm_low] = 1) ? 2.07 : 1.44)), (12, 2.2), (18, 26), (22, 260));
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -2565,7 +2565,7 @@ Map {
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'primary']::road_bridge_b5 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @primary), (14, @primary))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_4), (14, @road_stroke_4)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @primary), (14, @primary))));
   line-width: exponential(1.5, [view::zoom], (3, 0), (6, (([param::road_osm_low] = 1) ? 0 : 0.4)), (8, (([param::road_osm_low] = 1) ? 1 : 1.1)), (9, (([param::road_osm_low] = 1) ? 1.5 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2 : 1.74)), (11, (([param::road_osm_low] = 1) ? 2.33 : 2.24)), (12, 3), (18, 28), (22, 280));
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -2573,7 +2573,7 @@ Map {
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'trunk']::road_bridge_b6 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @trunk), (14, @trunk))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_5), (14, @road_stroke_5)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @trunk), (14, @trunk))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -2581,7 +2581,7 @@ Map {
 #transportation[zoom >= 12][brunnel = 'bridge'][class = 'motorway']::road_bridge_b7 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? step([view::zoom], (0, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? step([view::zoom], (0, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : step([view::zoom], (0, @motorway), (14, @motorway))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (13, @road_stroke_6), (14, @road_stroke_6)) : (([param::variant] = 'eink') ? linear([view::zoom], (12, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (13, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (13, @motorway), (14, @motorway))));
   line-width: exponential(1.5, [view::zoom], (3, 0.8), (6, (([param::road_osm_low] = 1) ? 0.85 : 1)), (8, (([param::road_osm_low] = 1) ? 1.14 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.4 : 1.6)), (10, (([param::road_osm_low] = 1) ? 1.82 : 1.94)), (11, (([param::road_osm_low] = 1) ? 2.34 : 2.44)), (12, 3.2), (18, 30), (22, 300));
   draw-once: (([param::variant] = 'hybrid') ? 'road-bridge' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
@@ -2649,7 +2649,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #transportation[zoom >= 12][class = 'aerialway']::aerialway {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @aerialway);
+  line-color: (([param::variant] = 'hybrid') ? (([subclass] = 'zip_line') ? @aerialway : @aerialway) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([subclass] = 'zip_line') ? @glacier_low : @glacier_low)), (0.3, (([subclass] = 'zip_line') ? @background : @background))) : (([subclass] = 'zip_line') ? @aerialway : @label)));
   line-width: exponential(1.5, [view::zoom], (14, 1), (20, 2));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
@@ -3331,24 +3331,24 @@ Map {
   shield-wrap-width: @poi_wrap_width;
   shield-collision-padding: (1 * 2);
   shield-z-elevate: ([param::poi_on_roof] = 1);
-  shield-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, ((get([param::poi-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-fill], [class])) ?? @poi_fill))));
+  shield-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, ((get([param::poi-fill-b25-subclass], [subclass])) ?? ((get([param::poi-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-fill-subclass], [subclass])) ?? ((get([param::poi-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-fill], [class])) ?? @poi_fill))))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
-  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+  shield-placement-priority: (20200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   shield-wrap-before: true;
   shield-file: (get([param::glyph], [subclass]) ?? get([param::poi-t0], [class]) ?? get([param::glyph], [class]) ?? 'icons-glyph/default.png');
   shield-unlock-image: true;
   shield-image-scale: (((([param::variant] = 'eink') ? 0.4 : (([param::poiStyle] = 'plain') ? 0.6 : 0.4))) / 2.0);
   shield-sdf: true;
   shield-icon-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
-  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
-  shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, ((get([param::poi-icon-background-fill-b25], [class])) ?? 'transparent')), (0.3, ((get([param::poi-icon-background-fill], [class])) ?? 'transparent')))));
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? ((get([param::poi-icon-halo-radius-eink-subclass], [subclass])) ?? ((get([param::poi-icon-halo-radius-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-halo-radius-eink], [class])) ?? 1))) : (([param::poiStyle] = 'plain') ? ((get([param::poi-icon-halo-radius-plain-subclass], [subclass])) ?? ((get([param::poi-icon-halo-radius-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-halo-radius-plain], [class])) ?? 1))) : ((get([param::poi-icon-halo-radius-subclass], [subclass])) ?? ((get([param::poi-icon-halo-radius-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-halo-radius], [class])) ?? 1)))));
+  shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, ((get([param::poi-icon-background-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-b25], [class])) ?? 'transparent')))), (0.3, ((get([param::poi-icon-background-fill-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill], [class])) ?? 'transparent')))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? 0.4 : (([param::poiStyle] = 'plain') ? 0.6 : 0.4))));
   shield-icon-background-padding-x: 0;
   shield-icon-background-padding-y: 0;
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, ((get([param::poi-icon-background-border-fill-b25], [class])) ?? 'transparent')), (0.3, ((get([param::poi-icon-background-border-fill], [class])) ?? 'transparent')))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, ((get([param::poi-icon-background-border-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-b25], [class])) ?? 'transparent')))), (0.3, ((get([param::poi-icon-background-border-fill-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill], [class])) ?? 'transparent')))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? 0.4 : (([param::poiStyle] = 'plain') ? 0.6 : 0.4))));
   shield-anchors: 'bottom,right,left';
   shield-text-optional: true;
@@ -3357,7 +3357,7 @@ Map {
 }
 #poi[zoom >= 18][class = 'tree'][name = null]['param::variant' != 'hybrid']::poi {
   shield-name: '';
-  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, ((get([param::poi-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-fill], [class])) ?? @poi_fill))));
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, ((get([param::poi-fill-b25-subclass], [subclass])) ?? ((get([param::poi-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-fill-subclass], [subclass])) ?? ((get([param::poi-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-fill], [class])) ?? @poi_fill))))));
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-placement-priority: (18900000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
@@ -3382,7 +3382,7 @@ Map {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (19100000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 1 : (([param::poiStyle] = 'plain') ? 1 : 1));
   shield-icon-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? 'transparent' : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, 'transparent'), (0.3, 'transparent'))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
@@ -3395,8 +3395,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19200000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3408,8 +3407,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19300000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3421,8 +3419,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19300000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3434,8 +3431,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19300000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3447,8 +3443,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19300000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3460,8 +3455,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19300000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3473,8 +3467,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19400000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3486,8 +3479,7 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19400000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3499,34 +3491,31 @@ Map {
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19400000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
 }
-#poi[zoom >= 14][class = 'power_tower']::poi {
+#poi[zoom >= 13][class = 'power_tower']::poi {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19500000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
 }
-#poi[zoom >= 14][class = 'wind_turbine']::poi {
+#poi[zoom >= 13][class = 'wind_turbine']::poi {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19500000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
@@ -3538,11 +3527,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19600000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3551,11 +3539,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19700000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3565,11 +3552,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19800000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3579,11 +3565,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19800000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3593,11 +3578,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19800000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3607,11 +3591,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19800000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3621,11 +3604,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19800000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3634,11 +3616,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19900000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3647,11 +3628,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19900000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3660,11 +3640,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19900000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3673,11 +3652,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19900000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3686,11 +3664,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (19900000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3700,11 +3677,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (20000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3714,11 +3690,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (20000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3727,11 +3702,10 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (20100000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
@@ -3740,37 +3714,49 @@ Map {
   shield-size: @poi_size_2;
   shield-wrap-width: @poi_wrap_width_2;
   shield-placement-priority: (20100000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-halo-radius: 1.5;
-  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)), (0.3, ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
   shield-text-radial-offset: 11;
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'adit']::poi {
-  shield-placement-priority: (20200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 14][zoom < 15][class = 'adit']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'archaeological_site']::poi {
-  shield-placement-priority: (20200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 15][zoom < 16][class = 'adit']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'castle']::poi {
-  shield-placement-priority: (20200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 14][zoom < 15][class = 'archaeological_site']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'cave_entrance']::poi {
-  shield-placement-priority: (20200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 15][zoom < 16][class = 'archaeological_site']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'fort']::poi {
-  shield-placement-priority: (20200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 14][zoom < 15][class = 'castle']::poi {
   @extend %poi;
 }
-#poi[zoom >= 14][zoom < 16][class = 'waterfall']::poi {
-  shield-placement-priority: (20200000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+#poi[zoom >= 15][zoom < 16][class = 'castle']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 14][zoom < 15][class = 'cave_entrance']::poi {
+  shield-name: '';
+  @extend %poi;
+}
+#poi[zoom >= 15][zoom < 16][class = 'cave_entrance']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 14][zoom < 15][class = 'fort']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 15][zoom < 16][class = 'fort']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 14][zoom < 15][class = 'waterfall']::poi {
+  @extend %poi;
+}
+#poi[zoom >= 15][zoom < 16][class = 'waterfall']::poi {
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 16][class = 'park'][name != null]::poi {
@@ -3797,74 +3783,62 @@ Map {
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'basic_hut']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (20500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'lean_to']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (20500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'picnic_shelter']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (20500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'rock_shelter']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (20500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'weather_shelter']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (20500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'shelter'][shelter_type = 'wilderness_hut']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (20500000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
   @extend %poi;
 }
 #poi[zoom >= 'param::water_min_zoom'][zoom >= 12][class = 'drinking_water']['param::highlight_drinking_water' = 0]::poi {
   shield-placement-priority: (20600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.30000000000000004 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.44999999999999996 : (0.30000000000000004 * [param::bare_icon_scale])))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   @extend %poi;
 }
 #poi[zoom >= 'param::water_min_zoom'][zoom >= 12][class = 'spring']['param::highlight_drinking_water' = 0]::poi_spring {
@@ -3899,14 +3873,14 @@ Map {
 }
 #poi[zoom >= 12][zoom < 15][subclass = 'alpine_hut']::poi {
   shield-placement-priority: (21000000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))) / 2.0);
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))));
   @extend %poi;
 }
 #poi[zoom >= $poi_pt_shelter_minzoom][class = 'shelter'][shelter_type = 'public_transport']::poi {
   shield-name: '';
   shield-placement-priority: (21100000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
-  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))) / 2.0);
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * [param::bare_icon_scale])))));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'shelter'][shelter_type != 'public_transport'][shelter_type != 'basic_hut'][shelter_type != 'lean_to'][shelter_type != 'picnic_shelter'][shelter_type != 'rock_shelter'][shelter_type != 'weather_shelter'][shelter_type != 'wilderness_hut']::poi {
@@ -4033,24 +4007,31 @@ Map {
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'aerialway'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'ferry'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'harbor'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'lighthouse'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'railway'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'railway_light'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'railway_metro'][subclass != 'tram_stop']::poi {
+  shield-placement-priority: (22600000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'airfield'][subclass != 'tram_stop']::poi {
@@ -4077,9 +4058,13 @@ Map {
 #poi[zoom >= 15][subclass = 'kindergarten']::poi {
   shield-fill: (([param::variant] = 'hybrid') ? @poi_fill_2 : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_fill_3)));
   shield-placement-priority: (23000000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
+  shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))) / 2.0);
+  shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3)) : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
-  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
-  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
+  shield-icon-background-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_fill_2), (0.3, @poi_icon_fill_3))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))));
+  shield-icon-background-border-fill: (([param::variant] = 'eink') ? ((get([param::poi-icon-background-border-fill-eink-subclass], [subclass])) ?? ((get([param::poi-icon-background-border-fill-eink-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-background-border-fill-eink], [class])) ?? 'transparent'))) : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, @poi_icon_fill_4), (0.3, @glacier_low))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))));
   @extend %poi;
 }
 #poi[zoom >= 12][class = 'drinking_water']['param::highlight_drinking_water' = 1]::poi {

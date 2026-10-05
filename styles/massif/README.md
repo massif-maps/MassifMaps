@@ -32,7 +32,8 @@ The converter runs with `--fold-casings --tile-draw-size 512 --live-light`.
 
 One module per layer family under [`layers/`](layers/), stacked bottom to top in
 `build.py`: land, water, rail and road tunnels, the roads on the ground, rail, bridges, lifts and
-ferries, boundaries, buildings, then the labels. Colours are **named** in
+ferries (a cable car or a ski lift in black, `aerialway-lift`, a zip line in the aerialway blue; hybrid
+keeps the blue on imagery), boundaries, buildings, then the labels. Colours are **named** in
 [`palette.py`](palette.py) and the rules only name them, so a variant is a
 palette plus the modules it adds.
 
@@ -128,15 +129,15 @@ deeper woods (`OUTDOOR` in the palette):
   before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
-  wilderness_hut: a roof-on-posts glyph on nature's green, named), campsites and picnic sites from z13; caves, adits, ruins, castles, forts,
-  archaeological sites, waterfalls and named parks and gardens (Standard shows park_like early too)
-  from z14, parks over the sights; viewpoints from z14 under every POI (below); drinking water
+  wilderness_hut: a badge on nature's green at a POI's size, named), campsites and picnic sites from z13; caves (named from
+  z15), adits, ruins, castles, forts, archaeological sites, waterfalls (in the water's blue) and named parks and
+  gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z14 under every POI
+  (below); drinking water
   and springs only from `water_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
   each until its ordinary POI layer takes over. A spring is
-  Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17; a drinking
-  water glyph is a size down. Water points have their own
+  Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17. Water points have their own
   category, in the water's blue. A hut draws the hut glyph, where
-  OpenMapTiles' `lodging` class would give it a bed.
+  OpenMapTiles' `lodging` class would give it a bed: osm-carto's closed hut (a walker in it for `alpine_hut`).
 
 ## Topo
 
@@ -183,8 +184,8 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
   track's dashes run on nothing; intermittent ones dotted.
 - **Roads** are white with black casings, their hierarchy carried by the casing's weight
   (`casing-scale` 1.8). Below z13 only motorways, trunks and primaries keep a casing; the small
-  roads are an uncased line in the casing's grey at the other variants' width, white once their
-  casing is drawn (`casing-from`). **Tracks, trails and via ferratas** are black and white
+  roads are an uncased line in the casing's grey at the other variants' width, fading to white
+  over the zoom their casing grows in (`casing-from`). **Tracks, trails and via ferratas** are black and white
   (the via ferrata's core white), tracks and trails 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood.
 - **Every label's halo is a pixel wider** (`lib.wider_halo`): a black word on a thin halo was lost over
@@ -226,7 +227,8 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
   category colour and drawn larger. It reads the class tables, so switching is a re-decode.
 - `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
   drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
-  e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`).
+  e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`). Such a glyph
+  has a 1 px halo (`BARE_HALO`), a plain POI 1.5.
 All of them are in [`params.py`](params.py), named as in Alpimaps' OSM style where it had one. A
 variant may state its own default (`Variant(params=...)`), written into `carto/<variant>.json` and,
 for a zoom, into the MapLibre file as the layer's `minzoom`. A switch is `lib.gate`: a selector the
@@ -332,7 +334,9 @@ from them — see "Taken from Mapbox Standard" below for why taking the widths a
 **It starts at z14, as Standard's does** (Standard's layer is z15 with the opacity stepping in at
 14). Below that a road is its fill alone, and every class under a primary takes Standard's one
 grey-blue (`road-low`, 80 %): the lighter fill a street gets from z14 would vanish without its
-casing. It used to follow the fill down to z3, Liberty's way; over a city grid (Denver at z12) that
+casing. Minor and service roads take a darker one (`minor-low`, 62 %): at 0.5 px the 80 % grey was
+lost over the countryside. The fill fades from the low colour to the street's over the zoom the
+casing grows in (z13–14), so the switch never pops. It used to follow the fill down to z3, Liberty's way; over a city grid (Denver at z12) that
 drew every street as a dark outlined line and the grid read as mesh, where Standard's reads as a
 map. E-ink keeps Liberty's casings (`casing-low`): its roads are white on white, and the casing is
 all there is of them.
@@ -439,7 +443,8 @@ under it if it has one, in the `barrier` category: the landcover barrier line's 
 darkened to read as a glyph, its night the line's own. Gate, lift gate and toll booth are Maki's,
 bollard, cycle barrier and stile (Temaki's `stile_squeezer`) Temaki's; border control and sally port
 share Maki's `barrier`. A white halo keeps the glyph readable over e-ink's patterns, and hybrid draws
-it in its light night colour on a dark halo. Bollards, then passages, then toll booths and border
+it in its light night colour on a dark halo. A barrier, a bench or a drinking water tap is drawn at
+the size of every other bare glyph (`bare_icon_scale`). Bollards, then passages, then toll booths and border
 controls, a layer each and named over unnamed in each: one layer of eight classes would be eight
 rules at one priority, the most common value, and `%poi` would hand it to every child rule that
 states none. The ladder excludes every barrier class.
@@ -448,7 +453,8 @@ states none. The ladder excludes every barrier class.
 from z14, a bare glyph in nature's green, sunk with the trees (`pois.landmarks`). Then what marks a
 spot on the ground rather than names one, from a tileset built with planetiler's `poi_landmarks` and
 `poi_guideposts` (packed as the trees are): a bare glyph in the `landmark` category's dark neutral,
-named if it is, from the zoom its size reads at — `power_tower` and `wind_turbine` from z14, `pylon`
+named if it is, from the zoom its size reads at — `power_tower` and `wind_turbine` from z13 (the tiles
+carry them from z14), `pylon`
 (aerialway), `mast` and `cross` (a summit cross) from z15, `wayside_cross`, `wayside_shrine`,
 `cairn`, `stone` and `rock` from z16, `guidepost` from z17 — growing with the zoom as a tree does.
 They are references, not places, so no disc. The ladder excludes every landmark class.
@@ -459,6 +465,13 @@ rule of its own and the cascade merges it with the base's — see
 [CartoCSS templates](../../docs/internals/cartocss-templates.md). The bus and tram stops' zooms are
 project `constants`, `poi_bus_minzoom`/`poi_bus_label_minzoom`, `poi_tram_minzoom`/`poi_tram_label_minzoom`
 and `poi_pt_shelter_minzoom` (`massif:minzoom-const`), which a child overrides with no rule at all. `examples/osm/` does both.
+
+**A child rule draws a POI as Massif does.** `%poi` carries the look per feature, not per layer: every
+colour, disc, ring and halo is a project.json table read by `subclass`, then `shelter_type`, then
+`class` (`pois.SUBCLASS_LOOK`, `SHELTER_LOOK`, chained with `??` by the converter). So a child rule
+extending it to bring viewpoints in at z13 draws them bare and green, a walker's shelter as a green
+badge - not the pink of `attraction` or the bare glyph of a bus shelter. The size is the exception:
+`%poi` states the ladder's, so a child's viewpoint is a badge's size.
 
 Liberty's italic face for them is taken as well — it is the one thing on the
 map that is not a road, and it should not read like one.
@@ -472,7 +485,8 @@ under `attraction`), which the converter resolves as `??` over one style
 parameter per sprite, so adding a sprite named after a subclass or a class is all it takes to draw
 it. A few classes borrow another's glyph (`pois.ALIAS`: a border control takes the barrier). Maki has
 no cave, adit, fort, archaeological site, fountain, bird hide, windmill, wayside shrine or guidepost:
-those glyphs are openstreetmap-carto's (an adit takes the cave), on the same disc. Bollard, cycle
+those glyphs are openstreetmap-carto's (an adit takes the cave), on the same disc, and so are the
+alpine and wilderness huts. Ruins, bollard, cycle
 barrier, stile, power tower, aerialway pylon (`aerialway_pole`), mast, wind turbine, summit cross
 (`mountain_cross`), cairn, stone and rock (`boulder1`, `boulder2`) are
 [Temaki](https://github.com/rapideditor/temaki)'s, also CC0; a wayside cross is Maki's
@@ -636,7 +650,7 @@ is MIT-0 (`LICENSE`): use it for anything, no notice required.
 
 `sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
-domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (nine glyphs openstreetmap-carto's, eleven
+domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (eleven glyphs openstreetmap-carto's, twelve
 [Temaki](https://github.com/rapideditor/temaki)'s, the `default` dot drawn for this project), **CC0** — a public-domain
 dedication, so it carries no attribution requirement and no share-alike; it is credited here because
 it is worth crediting, not because it must be. Most of `sprite-src/pattern/` is

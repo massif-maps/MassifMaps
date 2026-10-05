@@ -46,9 +46,8 @@ CLASSES = {
                           'nightclub', 'pitch', 'skiing', 'soccer', 'stadium', 'swimming', 'tennis'],
     # adit, cave_entrance, fort...: Alpimaps' planetiler keeps OSM's value where OpenMapTiles has no class
     'park_like': ['adit', 'beach', 'bird_hide', 'campsite', 'cave_entrance', 'cemetery', 'dog_park', 'garden',
-                  'mountain', 'park', 'playground', 'ranger_station', 'tree', 'viewpoint', 'volcano', 'waterfall',
-                  'wetland'],
-    'water': ['drinking_water', 'spring', 'water', 'water_point', 'watering_place'],
+                  'mountain', 'park', 'playground', 'ranger_station', 'tree', 'viewpoint', 'volcano', 'wetland'],
+    'water': ['drinking_water', 'spring', 'water', 'water_point', 'watering_place', 'waterfall'],
     'medical': ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary'],
     'education': ['college', 'library', 'school'],
     # Standard has no religion category and neither does Liberty; both leave it the neutral grey.
@@ -76,7 +75,7 @@ ICONS = sorted(f[:-4] for f in os.listdir(os.path.join(os.path.dirname(__file__)
 DEFAULT_ICON = 'default'
 UNKNOWN_ZOOM = 17
 # a class drawn with another's glyph
-ALIAS = {'border_control': 'barrier', 'sally_port': 'barrier', 'spring': 'water', 'wilderness_hut': 'alpine_hut'}
+ALIAS = {'border_control': 'barrier', 'sally_port': 'barrier', 'spring': 'water'}
 KNOWN = sorted((set(ICONS) | set(ALIAS)) - {DEFAULT_ICON})
 
 # A subclass that belongs to another category than its class. Liberty reads `subclass` for the ICON
@@ -182,7 +181,7 @@ def flat_match(value_of, default, furniture=None, keep_furniture=False, fixed=No
         out.append(sorted(classes) if len(classes) > 1 else classes[0])
         out.append(value_of(cat))
     out.append(default)
-    return out
+    return chained(lambda bare, cat: value_of(cat), out)
 
 
 # The data decides when a POI appears: `rank`, ordinal in its z14 tile (1-390 over Grenoble), on
@@ -215,6 +214,11 @@ PT_SHELTER = ['all', ['==', get('class'), 'shelter'], ['==', get('shelter_type')
 # the shelter_type values Alpimaps' tiles carry for a walker's shelter: named, from z13. Any other (none,
 # sun_shelter, building...) is an icon from z17, as a public-transport one in a city
 OUTDOOR_SHELTERS = ['basic_hut', 'lean_to', 'picnic_shelter', 'rock_shelter', 'weather_shelter', 'wilderness_hut']
+# (category, bare) looked up before the class, so a child rule extending %poi draws a viewpoint (an
+# attraction to OpenMapTiles) or a walker's shelter as Massif's own layers do
+SUBCLASS_LOOK = {**{sub: (cat, False) for cat, subs in SUBCLASS.items() for sub in subs},
+                 'kindergarten': ('park_like', False), 'viewpoint': ('park_like', True)}
+SHELTER_LOOK = {t: ('park_like', False) for t in OUTDOOR_SHELTERS}
 OTHER_SHELTER = ['all', ['==', get('class'), 'shelter'], ['!=', get('shelter_type'), 'public_transport'],
                  *[['!=', get('shelter_type'), t] for t in OUTDOOR_SHELTERS]]
 # Drawn by a layer of their own at every zoom, so the ladder leaves them out. Excluded rather than
@@ -265,40 +269,54 @@ def until_known(early, late, minzoom, maxzoom):
 NIGHT_INK = 'hsl(0, 0%, 12%)'
 
 
-def per_class(value_of, default, fixed=None):
-    """ONE flat match on class, grouping the classes that share a value: every branch a constant,
-    which is the shape mapbox2css folds into a project.json table. `fixed`: one category's value."""
+def chained(value_of, inner):
+    """`inner` (the class table) behind the subclass and shelter_type ones: mapbox2css folds each match
+    into a project.json table and chains the lookups with `??`"""
+    out = inner
+    for field, look in (('shelter_type', SHELTER_LOOK), ('subclass', SUBCLASS_LOOK)):
+        groups = {}
+        for label, (cat, bare) in sorted(look.items()):
+            groups.setdefault(json.dumps(value_of(bare, cat)), []).append(label)
+        table = ['match', get(field)]
+        for value, labels in groups.items():
+            table += [labels if len(labels) > 1 else labels[0], json.loads(value)]
+        out = table + [out]
+    return out
+
+
+def is_bare(cls):
+    """no disc: street furniture, landmarks, and a class with no glyph of its own (drawn as `default`)"""
+    return cls in NO_BACKGROUND or cls not in KNOWN
+
+
+def per_class(value_of, fixed=None, fixed_bare=False):
+    """`value_of(bare, category)` per class, grouping the classes that share a value, behind the subclass
+    and shelter_type tables (chained). `fixed`: one category's value."""
     if fixed:
-        return value_of(None, fixed)
+        return value_of(fixed_bare, fixed)
+    default = value_of(True, 'default')
     groups = {}
     for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND) | set(KNOWN)):
-        value = value_of(cls, CLASS_TO_CATEGORY.get(cls, 'default'))
+        value = value_of(is_bare(cls), CLASS_TO_CATEGORY.get(cls, 'default'))
         if value != default:
             groups.setdefault(value, []).append(cls)
     out = ['match', get('class')]
     for value, classes in groups.items():
         out += [classes if len(classes) > 1 else classes[0], value]
-    return out + [default]
-
-
-def bare_test(fixed_bare):
-    """no disc: street furniture, landmarks, and a class with no glyph of its own (drawn as `default`)"""
-    return lambda cls: fixed_bare if cls is None else cls in NO_BACKGROUND or cls not in KNOWN
+    return chained(value_of, out + [default])
 
 
 def icon_params(fixed=None, fixed_bare=False):
     # `transparent`, not `none`: the decoder's parseColor knows the CSS names and that one, and
     # throws on anything else - a bad colour kills the whole feature processor.
-    bare = bare_test(fixed_bare)
-    disc = lambda key: per_class(lambda cls, cat: 'transparent' if bare(cls) else CATEGORY[cat][key],
-                                 'transparent', fixed)
-    ring = lambda ink: per_class(lambda cls, cat: 'transparent' if bare(cls) else ink, 'transparent', fixed)
+    table = lambda value_of: per_class(value_of, fixed, fixed_bare)
+    disc = lambda key: table(lambda bare, cat: 'transparent' if bare else CATEGORY[cat][key])
+    ring = lambda ink: table(lambda bare, cat: 'transparent' if bare else ink)
     # a glyph with no disc under it is drawn in the category colour, not white on it
-    glyph = lambda ink, key: per_class(lambda cls, cat: CATEGORY[cat][key] if bare(cls) else ink,
-                                       CATEGORY['default'][key], fixed)
+    glyph = lambda ink, key: table(lambda bare, cat: CATEGORY[cat][key] if bare else ink)
     # poiStyle `plain`: OSM's look, every glyph bare in its category colour like the furniture
     plain = lambda badge, bare_value: ['match', ['config', 'poiStyle'], 'plain', bare_value, badge]
-    tinted = lambda key: per_class(lambda cls, cat: CATEGORY[cat][key], CATEGORY['default'][key], fixed)
+    tinted = lambda key: table(lambda bare, cat: CATEGORY[cat][key])
     return {'background': plain(by_hour(disc('night'), disc('disc')), 'transparent'),
             'background-stroke': plain(by_hour(ring(NIGHT_INK), ring('hsl(0, 0%, 100%)')), 'transparent'),
             'icon': plain(by_hour(glyph(NIGHT_INK, 'night'), glyph('hsl(0, 0%, 100%)', 'disc')),
@@ -312,12 +330,9 @@ MONO_INK = 'hsl(0, 0%, 0%)'
 
 def mono_params(fixed_bare=None):
     """e-ink: a black glyph on a white disc with a black ring, the same for every category"""
-    bare = bare_test(fixed_bare)
     fixed = None if fixed_bare is None else 'default'
-    return {'background': per_class(lambda cls, cat: 'transparent' if bare(cls) else 'hsl(0, 0%, 100%)',
-                                    'transparent', fixed),
-            'background-stroke': per_class(lambda cls, cat: 'transparent' if bare(cls) else MONO_INK, 'transparent',
-                                           fixed),
+    return {'background': per_class(lambda bare, cat: 'transparent' if bare else 'hsl(0, 0%, 100%)', fixed, fixed_bare),
+            'background-stroke': per_class(lambda bare, cat: 'transparent' if bare else MONO_INK, fixed, fixed_bare),
             'icon': MONO_INK,
             'radius': shape_match('radius'),
             'background-stroke-width': shape_match('border')}
@@ -332,8 +347,12 @@ def bare_scale(filter, bare):
     scale = ['config', 'bare_icon_scale']
     flat = lambda f: [c for sub in f[1:] for c in flat(sub)] if f[0] == 'all' else [f]
     clauses = flat(filter) if filter else []
-    reach, excluded, pinned = set(NO_BACKGROUND), set(), None
+    reach, excluded, pinned, no_viewpoint = set(NO_BACKGROUND), set(), None, False
     for c in clauses:
+        if c[1] == get('shelter_type') and c[0] in ('==', 'in'):
+            return 1
+        if c[0] == '!=' and c[1] == get('subclass') and c[2] == 'viewpoint':
+            no_viewpoint = True
         if c[0] == '==' and c[1] == get('class'):
             pinned = {c[2]}
         elif c[0] == 'in' and c[1] == get('class'):
@@ -349,7 +368,27 @@ def bare_scale(filter, bare):
     reach -= excluded
     if bare:
         return scale
-    return ['match', get('class'), sorted(reach), scale, 1] if reach else 1
+    expr = ['match', get('class'), sorted(reach), scale, 1] if reach else 1
+    # a walker's shelter is a badge, a viewpoint (a subclass of attraction) is not: as SHELTER_LOOK and SUBCLASS_LOOK
+    if 'shelter' in reach:
+        expr = ['match', get('shelter_type'), OUTDOOR_SHELTERS, 1, expr]
+    if not no_viewpoint and (pinned is None or 'attraction' in pinned):
+        expr = ['match', get('subclass'), 'viewpoint', scale, expr]
+    return expr
+
+
+# a bare glyph's halo, a hair under a plain POI's
+BARE_HALO = 1
+POI_HALO = 1.5
+
+
+def halo_width(mono, fixed, fixed_bare):
+    """no halo round a badge (its disc is one), BARE_HALO round a bare glyph, POI_HALO round a plain POI"""
+    badge = per_class(lambda bare, cat: BARE_HALO if bare else 0, fixed, fixed_bare)
+    if mono:
+        return badge
+    return ['match', ['config', 'poiStyle'], 'plain', per_class(lambda bare, cat: BARE_HALO if bare else POI_HALO,
+                                                                 fixed, fixed_bare), badge]
 
 
 def times(size, factor):
@@ -406,14 +445,14 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
                  # ONE template and ONE attachment for every POI: a child project's rule extends the one
                  # and merges with the other, see docs/internals/cartocss-templates.md
-                 metadata={'massif:params': ['icon-image', 'text-color'],
+                 metadata={'massif:params': ['icon-image', 'text-color', 'icon-halo-width'],
                            'massif:template': 'poi', 'massif:attachment': 'poi',
                            'massif:layout': massif_layout,
                            'massif:paint': {'text-color': MONO_INK if mono else night_color(category) if dark else text_color(category),
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
                                             # `plain`: a bare glyph needs the halo its disc gave it
                                             'icon-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
-                                            'icon-halo-width': 0 if mono else ['match', ['config', 'poiStyle'], 'plain', 1.5, 0]}}),
+                                            'icon-halo-width': halo_width(mono, category, bare)}}),
                    'subclass', 'class')
 
 
@@ -454,13 +493,16 @@ def springs(v):
     return [gate(dot, v, 'highlight_drinking_water', 0), gate(boosted(name, 'class'), v, 'highlight_drinking_water', 0)]
 
 
+# a cave's name waits for z15: the entrance alone says where it is
+CAVE_NAME = ['step', ['zoom'], ['match', get('class'), 'cave_entrance', '', NAME], 15, NAME]
+
+
 def mountain(v):
     out = []
     for id, minzoom, maxzoom, filter, icon, param in MOUNTAIN_LAYERS:
-        # a water point's glyph a size down: they are many, and a walker needs the dot, not the badge
         lay = poi_layer(id, minzoom, filter, v, icon=icon, maxzoom=maxzoom,
                         category='park_like' if id == 'poi-mountain-shelter' else None,
-                        scale=0.75 if id == 'poi-mountain-water' else 1)
+                        text=CAVE_NAME if id == 'poi-mountain-sight' else NAME)
         if param:
             lay['metadata']['massif:minzoom-param'] = param
         if param == 'water_min_zoom':
@@ -551,20 +593,18 @@ def barriers(v):
         cls = ['==', get('class'), classes[0]] if len(classes) == 1 else ['in', get('class'), ['literal', classes]]
         for suffix, named, text in (('', ['!', ['has', 'name']], ''), ('-named', ['has', 'name'], NAME)):
             out.append(reference(poi_layer('poi-barrier-%s%s' % (tier, suffix), 17, ['all', cls, named], v,
-                                           text=text, scale=0.75,
+                                           text=text,
                                            extra={'text-size': 11, 'text-variable-anchor': ['top']}), v))
     return out
 
 
 def reference(lay, v, category=None):
-    """a bare glyph under every POI (sunk), a halo round it for imagery and patterns; on hybrid in its
-    night colour"""
+    """a bare glyph under every POI (sunk); on hybrid in its night colour"""
     lay = sunk(lay)
-    lay['metadata']['massif:paint']['icon-halo-width'] = 1.5
     if v.flags.get('dark_ground'):
         # one params object, shared by every image of the chain
         params = lay['metadata']['massif:layout']['icon-image'][1][2]['params']
-        params['icon'] = per_class(lambda c, cat: CATEGORY[cat]['night'], CATEGORY['default']['night'], category)
+        params['icon'] = per_class(lambda bare, cat: CATEGORY[cat]['night'], category)
     return lay
 
 
@@ -572,7 +612,7 @@ def reference(lay, v, category=None):
 LANDMARK_TIERS = [(17, ['guidepost']),
                   (16, ['cairn', 'rock', 'stone', 'wayside_cross', 'wayside_shrine']),
                   (15, ['cross', 'mast', 'pylon']),
-                  (14, ['power_tower', 'wind_turbine'])]
+                  (13, ['power_tower', 'wind_turbine'])]
 
 
 def landmarks(v):
@@ -640,7 +680,7 @@ def write_sprite_palette(path):
     # Street furniture is in no category list, so walk both: those classes still need a glyph
     # colour, and without them the sheet would draw a bin with a disc under it.
     per_class = {}
-    bare = bare_test(False)
+    bare = is_bare
     for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND) | set(ICONS)):
         cat = CLASS_TO_CATEGORY.get(cls, 'default')
         shape = SHAPE.get(cls, DEFAULT_SHAPE)

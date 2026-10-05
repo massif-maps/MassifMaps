@@ -555,6 +555,8 @@
         "wayside_shrine-poi": "icons-glyph/wayside_shrine-poi.png",
         "wetland": "icons-glyph/wetland.png",
         "wetland-poi": "icons-glyph/wetland-poi.png",
+        "wilderness_hut": "icons-glyph/wilderness_hut.png",
+        "wilderness_hut-poi": "icons-glyph/wilderness_hut-poi.png",
         "wind_turbine": "icons-glyph/wind_turbine.png",
         "wind_turbine-poi": "icons-glyph/wind_turbine-poi.png",
         "windmill": "icons-glyph/windmill.png",
@@ -669,7 +671,6 @@
         "playground": "#267915",
         "ranger_station": "#267915",
         "volcano": "#267915",
-        "waterfall": "#267915",
         "wetland": "#267915",
         "dentist": "#f53d3d",
         "doctors": "#f53d3d",
@@ -682,6 +683,7 @@
         "spring": "#0f83bd",
         "water": "#0f83bd",
         "water_point": "#0f83bd",
+        "waterfall": "#0f83bd",
         "watering_place": "#0f83bd",
         "aerialway": "#3156c4",
         "airfield": "#3156c4",
@@ -774,7 +776,6 @@
         "playground": "#85d775",
         "ranger_station": "#85d775",
         "volcano": "#85d775",
-        "waterfall": "#85d775",
         "wetland": "#85d775",
         "dentist": "#e87d7d",
         "doctors": "#e87d7d",
@@ -787,6 +788,7 @@
         "spring": "#7ecbf1",
         "water": "#7ecbf1",
         "water_point": "#7ecbf1",
+        "waterfall": "#7ecbf1",
         "watering_place": "#7ecbf1",
         "aerialway": "#a8b7e6",
         "airfield": "#a8b7e6",
@@ -800,6 +802,35 @@
         "railway_light": "#a8b7e6",
         "railway_metro": "#a8b7e6",
         "place_of_worship": "#a3b3c2"
+      }
+    },
+    "poi-fill-b25-shelter_type": {
+      "default": {
+        "basic_hut": "#85d775",
+        "lean_to": "#85d775",
+        "picnic_shelter": "#85d775",
+        "rock_shelter": "#85d775",
+        "weather_shelter": "#85d775",
+        "wilderness_hut": "#85d775"
+      }
+    },
+    "poi-fill-b25-subclass": {
+      "default": {
+        "allotments": "#85d775",
+        "kindergarten": "#85d775",
+        "nature_reserve": "#85d775",
+        "picnic_table": "#85d775",
+        "viewpoint": "#85d775",
+        "artwork": "#ec93ce",
+        "gallery": "#ec93ce",
+        "theme_park": "#ec93ce",
+        "biergarten": "#fbcb6a",
+        "deli": "#fbcb6a",
+        "food_court": "#fbcb6a",
+        "pub": "#fbcb6a",
+        "convenience": "#93bfec",
+        "greengrocer": "#93bfec",
+        "supermarket": "#93bfec"
       }
     },
     "poi-fill-hybrid": {
@@ -879,7 +910,6 @@
         "playground": "#85d775",
         "ranger_station": "#85d775",
         "volcano": "#85d775",
-        "waterfall": "#85d775",
         "wetland": "#85d775",
         "dentist": "#e87d7d",
         "doctors": "#e87d7d",
@@ -892,6 +922,7 @@
         "spring": "#7ecbf1",
         "water": "#7ecbf1",
         "water_point": "#7ecbf1",
+        "waterfall": "#7ecbf1",
         "watering_place": "#7ecbf1",
         "aerialway": "#a8b7e6",
         "airfield": "#a8b7e6",
@@ -905,6 +936,64 @@
         "railway_light": "#a8b7e6",
         "railway_metro": "#a8b7e6",
         "place_of_worship": "#a3b3c2"
+      }
+    },
+    "poi-fill-hybrid-shelter_type": {
+      "default": {
+        "basic_hut": "#85d775",
+        "lean_to": "#85d775",
+        "picnic_shelter": "#85d775",
+        "rock_shelter": "#85d775",
+        "weather_shelter": "#85d775",
+        "wilderness_hut": "#85d775"
+      }
+    },
+    "poi-fill-hybrid-subclass": {
+      "default": {
+        "allotments": "#85d775",
+        "kindergarten": "#85d775",
+        "nature_reserve": "#85d775",
+        "picnic_table": "#85d775",
+        "viewpoint": "#85d775",
+        "artwork": "#ec93ce",
+        "gallery": "#ec93ce",
+        "theme_park": "#ec93ce",
+        "biergarten": "#fbcb6a",
+        "deli": "#fbcb6a",
+        "food_court": "#fbcb6a",
+        "pub": "#fbcb6a",
+        "convenience": "#93bfec",
+        "greengrocer": "#93bfec",
+        "supermarket": "#93bfec"
+      }
+    },
+    "poi-fill-shelter_type": {
+      "default": {
+        "basic_hut": "#267915",
+        "lean_to": "#267915",
+        "picnic_shelter": "#267915",
+        "rock_shelter": "#267915",
+        "weather_shelter": "#267915",
+        "wilderness_hut": "#267915"
+      }
+    },
+    "poi-fill-subclass": {
+      "default": {
+        "allotments": "#267915",
+        "kindergarten": "#267915",
+        "nature_reserve": "#267915",
+        "picnic_table": "#267915",
+        "viewpoint": "#267915",
+        "artwork": "#f042b6",
+        "gallery": "#f042b6",
+        "theme_park": "#f042b6",
+        "biergarten": "#f57a00",
+        "deli": "#f57a00",
+        "food_court": "#f57a00",
+        "pub": "#f57a00",
+        "convenience": "#2d87e1",
+        "greengrocer": "#2d87e1",
+        "supermarket": "#2d87e1"
       }
     },
     "poi-icon-background-border-fill": {
@@ -1115,6 +1204,35 @@
         "zoo": "#1f1f1f"
       }
     },
+    "poi-icon-background-border-fill-b25-shelter_type": {
+      "default": {
+        "basic_hut": "#1f1f1f",
+        "lean_to": "#1f1f1f",
+        "picnic_shelter": "#1f1f1f",
+        "rock_shelter": "#1f1f1f",
+        "weather_shelter": "#1f1f1f",
+        "wilderness_hut": "#1f1f1f"
+      }
+    },
+    "poi-icon-background-border-fill-b25-subclass": {
+      "default": {
+        "allotments": "#1f1f1f",
+        "artwork": "#1f1f1f",
+        "biergarten": "#1f1f1f",
+        "convenience": "#1f1f1f",
+        "deli": "#1f1f1f",
+        "food_court": "#1f1f1f",
+        "gallery": "#1f1f1f",
+        "greengrocer": "#1f1f1f",
+        "kindergarten": "#1f1f1f",
+        "nature_reserve": "#1f1f1f",
+        "picnic_table": "#1f1f1f",
+        "pub": "#1f1f1f",
+        "supermarket": "#1f1f1f",
+        "theme_park": "#1f1f1f",
+        "viewpoint": "transparent"
+      }
+    },
     "poi-icon-background-border-fill-eink": {
       "default": {
         "adit": "#000000",
@@ -1219,6 +1337,64 @@
         "zoo": "#000000"
       }
     },
+    "poi-icon-background-border-fill-eink-shelter_type": {
+      "default": {
+        "basic_hut": "#000000",
+        "lean_to": "#000000",
+        "picnic_shelter": "#000000",
+        "rock_shelter": "#000000",
+        "weather_shelter": "#000000",
+        "wilderness_hut": "#000000"
+      }
+    },
+    "poi-icon-background-border-fill-eink-subclass": {
+      "default": {
+        "allotments": "#000000",
+        "artwork": "#000000",
+        "biergarten": "#000000",
+        "convenience": "#000000",
+        "deli": "#000000",
+        "food_court": "#000000",
+        "gallery": "#000000",
+        "greengrocer": "#000000",
+        "kindergarten": "#000000",
+        "nature_reserve": "#000000",
+        "picnic_table": "#000000",
+        "pub": "#000000",
+        "supermarket": "#000000",
+        "theme_park": "#000000",
+        "viewpoint": "transparent"
+      }
+    },
+    "poi-icon-background-border-fill-shelter_type": {
+      "default": {
+        "basic_hut": "#ffffff",
+        "lean_to": "#ffffff",
+        "picnic_shelter": "#ffffff",
+        "rock_shelter": "#ffffff",
+        "weather_shelter": "#ffffff",
+        "wilderness_hut": "#ffffff"
+      }
+    },
+    "poi-icon-background-border-fill-subclass": {
+      "default": {
+        "allotments": "#ffffff",
+        "artwork": "#ffffff",
+        "biergarten": "#ffffff",
+        "convenience": "#ffffff",
+        "deli": "#ffffff",
+        "food_court": "#ffffff",
+        "gallery": "#ffffff",
+        "greengrocer": "#ffffff",
+        "kindergarten": "#ffffff",
+        "nature_reserve": "#ffffff",
+        "picnic_table": "#ffffff",
+        "pub": "#ffffff",
+        "supermarket": "#ffffff",
+        "theme_park": "#ffffff",
+        "viewpoint": "transparent"
+      }
+    },
     "poi-icon-background-border-width": {
       "default": {
         "airfield": 1.75,
@@ -1242,7 +1418,6 @@
         "playground": "#36ad1f",
         "ranger_station": "#36ad1f",
         "volcano": "#36ad1f",
-        "waterfall": "#36ad1f",
         "wetland": "#36ad1f",
         "aerialway": "#5474d4",
         "airfield": "#5474d4",
@@ -1329,7 +1504,8 @@
         "information": "#7594a3",
         "place_of_worship": "#7594a3",
         "spring": "#1193d4",
-        "water": "#1193d4"
+        "water": "#1193d4",
+        "waterfall": "#1193d4"
       }
     },
     "poi-icon-background-fill-b25": {
@@ -1346,7 +1522,6 @@
         "playground": "#85d775",
         "ranger_station": "#85d775",
         "volcano": "#85d775",
-        "waterfall": "#85d775",
         "wetland": "#85d775",
         "aerialway": "#a8b7e6",
         "airfield": "#a8b7e6",
@@ -1433,7 +1608,37 @@
         "information": "#a3b3c2",
         "place_of_worship": "#a3b3c2",
         "spring": "#7ecbf1",
-        "water": "#7ecbf1"
+        "water": "#7ecbf1",
+        "waterfall": "#7ecbf1"
+      }
+    },
+    "poi-icon-background-fill-b25-shelter_type": {
+      "default": {
+        "basic_hut": "#85d775",
+        "lean_to": "#85d775",
+        "picnic_shelter": "#85d775",
+        "rock_shelter": "#85d775",
+        "weather_shelter": "#85d775",
+        "wilderness_hut": "#85d775"
+      }
+    },
+    "poi-icon-background-fill-b25-subclass": {
+      "default": {
+        "allotments": "#85d775",
+        "kindergarten": "#85d775",
+        "nature_reserve": "#85d775",
+        "picnic_table": "#85d775",
+        "artwork": "#ec93ce",
+        "gallery": "#ec93ce",
+        "theme_park": "#ec93ce",
+        "biergarten": "#fbcb6a",
+        "deli": "#fbcb6a",
+        "food_court": "#fbcb6a",
+        "pub": "#fbcb6a",
+        "convenience": "#93bfec",
+        "greengrocer": "#93bfec",
+        "supermarket": "#93bfec",
+        "viewpoint": "transparent"
       }
     },
     "poi-icon-background-fill-eink": {
@@ -1538,6 +1743,64 @@
         "wilderness_hut": "#ffffff",
         "windmill": "#ffffff",
         "zoo": "#ffffff"
+      }
+    },
+    "poi-icon-background-fill-eink-shelter_type": {
+      "default": {
+        "basic_hut": "#ffffff",
+        "lean_to": "#ffffff",
+        "picnic_shelter": "#ffffff",
+        "rock_shelter": "#ffffff",
+        "weather_shelter": "#ffffff",
+        "wilderness_hut": "#ffffff"
+      }
+    },
+    "poi-icon-background-fill-eink-subclass": {
+      "default": {
+        "allotments": "#ffffff",
+        "artwork": "#ffffff",
+        "biergarten": "#ffffff",
+        "convenience": "#ffffff",
+        "deli": "#ffffff",
+        "food_court": "#ffffff",
+        "gallery": "#ffffff",
+        "greengrocer": "#ffffff",
+        "kindergarten": "#ffffff",
+        "nature_reserve": "#ffffff",
+        "picnic_table": "#ffffff",
+        "pub": "#ffffff",
+        "supermarket": "#ffffff",
+        "theme_park": "#ffffff",
+        "viewpoint": "transparent"
+      }
+    },
+    "poi-icon-background-fill-shelter_type": {
+      "default": {
+        "basic_hut": "#36ad1f",
+        "lean_to": "#36ad1f",
+        "picnic_shelter": "#36ad1f",
+        "rock_shelter": "#36ad1f",
+        "weather_shelter": "#36ad1f",
+        "wilderness_hut": "#36ad1f"
+      }
+    },
+    "poi-icon-background-fill-subclass": {
+      "default": {
+        "allotments": "#36ad1f",
+        "kindergarten": "#36ad1f",
+        "nature_reserve": "#36ad1f",
+        "picnic_table": "#36ad1f",
+        "artwork": "#f47bcc",
+        "gallery": "#f47bcc",
+        "theme_park": "#f47bcc",
+        "biergarten": "#ff9933",
+        "deli": "#ff9933",
+        "food_court": "#ff9933",
+        "pub": "#ff9933",
+        "convenience": "#63a6e9",
+        "greengrocer": "#63a6e9",
+        "supermarket": "#63a6e9",
+        "viewpoint": "transparent"
       }
     },
     "poi-icon-background-radius": {
@@ -1809,6 +2072,35 @@
         "viewpoint": "#85d775"
       }
     },
+    "poi-icon-fill-b25-shelter_type": {
+      "default": {
+        "basic_hut": "#1f1f1f",
+        "lean_to": "#1f1f1f",
+        "picnic_shelter": "#1f1f1f",
+        "rock_shelter": "#1f1f1f",
+        "weather_shelter": "#1f1f1f",
+        "wilderness_hut": "#1f1f1f"
+      }
+    },
+    "poi-icon-fill-b25-subclass": {
+      "default": {
+        "allotments": "#1f1f1f",
+        "artwork": "#1f1f1f",
+        "biergarten": "#1f1f1f",
+        "convenience": "#1f1f1f",
+        "deli": "#1f1f1f",
+        "food_court": "#1f1f1f",
+        "gallery": "#1f1f1f",
+        "greengrocer": "#1f1f1f",
+        "kindergarten": "#1f1f1f",
+        "nature_reserve": "#1f1f1f",
+        "picnic_table": "#1f1f1f",
+        "pub": "#1f1f1f",
+        "supermarket": "#1f1f1f",
+        "theme_park": "#1f1f1f",
+        "viewpoint": "#85d775"
+      }
+    },
     "poi-icon-fill-hybrid": {
       "default": {
         "adit": "#85d775",
@@ -1826,7 +2118,6 @@
         "tree": "#85d775",
         "viewpoint": "#85d775",
         "volcano": "#85d775",
-        "waterfall": "#85d775",
         "wetland": "#85d775",
         "aerialway": "#a8b7e6",
         "airfield": "#a8b7e6",
@@ -1934,7 +2225,37 @@
         "spring": "#7ecbf1",
         "water": "#7ecbf1",
         "water_point": "#7ecbf1",
+        "waterfall": "#7ecbf1",
         "watering_place": "#7ecbf1"
+      }
+    },
+    "poi-icon-fill-hybrid-shelter_type": {
+      "default": {
+        "basic_hut": "#85d775",
+        "lean_to": "#85d775",
+        "picnic_shelter": "#85d775",
+        "rock_shelter": "#85d775",
+        "weather_shelter": "#85d775",
+        "wilderness_hut": "#85d775"
+      }
+    },
+    "poi-icon-fill-hybrid-subclass": {
+      "default": {
+        "allotments": "#85d775",
+        "kindergarten": "#85d775",
+        "nature_reserve": "#85d775",
+        "picnic_table": "#85d775",
+        "viewpoint": "#85d775",
+        "artwork": "#ec93ce",
+        "gallery": "#ec93ce",
+        "theme_park": "#ec93ce",
+        "biergarten": "#fbcb6a",
+        "deli": "#fbcb6a",
+        "food_court": "#fbcb6a",
+        "pub": "#fbcb6a",
+        "convenience": "#93bfec",
+        "greengrocer": "#93bfec",
+        "supermarket": "#93bfec"
       }
     },
     "poi-icon-fill-plain": {
@@ -1954,7 +2275,6 @@
         "tree": "#36ad1f",
         "viewpoint": "#36ad1f",
         "volcano": "#36ad1f",
-        "waterfall": "#36ad1f",
         "wetland": "#36ad1f",
         "aerialway": "#5474d4",
         "airfield": "#5474d4",
@@ -2062,6 +2382,7 @@
         "spring": "#1193d4",
         "water": "#1193d4",
         "water_point": "#1193d4",
+        "waterfall": "#1193d4",
         "watering_place": "#1193d4"
       }
     },
@@ -2082,7 +2403,6 @@
         "tree": "#85d775",
         "viewpoint": "#85d775",
         "volcano": "#85d775",
-        "waterfall": "#85d775",
         "wetland": "#85d775",
         "aerialway": "#a8b7e6",
         "airfield": "#a8b7e6",
@@ -2190,7 +2510,494 @@
         "spring": "#7ecbf1",
         "water": "#7ecbf1",
         "water_point": "#7ecbf1",
+        "waterfall": "#7ecbf1",
         "watering_place": "#7ecbf1"
+      }
+    },
+    "poi-icon-fill-plain-b25-shelter_type": {
+      "default": {
+        "basic_hut": "#85d775",
+        "lean_to": "#85d775",
+        "picnic_shelter": "#85d775",
+        "rock_shelter": "#85d775",
+        "weather_shelter": "#85d775",
+        "wilderness_hut": "#85d775"
+      }
+    },
+    "poi-icon-fill-plain-b25-subclass": {
+      "default": {
+        "allotments": "#85d775",
+        "kindergarten": "#85d775",
+        "nature_reserve": "#85d775",
+        "picnic_table": "#85d775",
+        "viewpoint": "#85d775",
+        "artwork": "#ec93ce",
+        "gallery": "#ec93ce",
+        "theme_park": "#ec93ce",
+        "biergarten": "#fbcb6a",
+        "deli": "#fbcb6a",
+        "food_court": "#fbcb6a",
+        "pub": "#fbcb6a",
+        "convenience": "#93bfec",
+        "greengrocer": "#93bfec",
+        "supermarket": "#93bfec"
+      }
+    },
+    "poi-icon-fill-plain-shelter_type": {
+      "default": {
+        "basic_hut": "#36ad1f",
+        "lean_to": "#36ad1f",
+        "picnic_shelter": "#36ad1f",
+        "rock_shelter": "#36ad1f",
+        "weather_shelter": "#36ad1f",
+        "wilderness_hut": "#36ad1f"
+      }
+    },
+    "poi-icon-fill-plain-subclass": {
+      "default": {
+        "allotments": "#36ad1f",
+        "kindergarten": "#36ad1f",
+        "nature_reserve": "#36ad1f",
+        "picnic_table": "#36ad1f",
+        "viewpoint": "#36ad1f",
+        "artwork": "#f47bcc",
+        "gallery": "#f47bcc",
+        "theme_park": "#f47bcc",
+        "biergarten": "#ff9933",
+        "deli": "#ff9933",
+        "food_court": "#ff9933",
+        "pub": "#ff9933",
+        "convenience": "#63a6e9",
+        "greengrocer": "#63a6e9",
+        "supermarket": "#63a6e9"
+      }
+    },
+    "poi-icon-fill-shelter_type": {
+      "default": {
+        "basic_hut": "#ffffff",
+        "lean_to": "#ffffff",
+        "picnic_shelter": "#ffffff",
+        "rock_shelter": "#ffffff",
+        "weather_shelter": "#ffffff",
+        "wilderness_hut": "#ffffff"
+      }
+    },
+    "poi-icon-fill-subclass": {
+      "default": {
+        "allotments": "#ffffff",
+        "artwork": "#ffffff",
+        "biergarten": "#ffffff",
+        "convenience": "#ffffff",
+        "deli": "#ffffff",
+        "food_court": "#ffffff",
+        "gallery": "#ffffff",
+        "greengrocer": "#ffffff",
+        "kindergarten": "#ffffff",
+        "nature_reserve": "#ffffff",
+        "picnic_table": "#ffffff",
+        "pub": "#ffffff",
+        "supermarket": "#ffffff",
+        "theme_park": "#ffffff",
+        "viewpoint": "#36ad1f"
+      }
+    },
+    "poi-icon-halo-radius": {
+      "default": {
+        "adit": 0,
+        "aerialway": 0,
+        "airfield": 0,
+        "airport": 0,
+        "alcohol_shop": 0,
+        "alpine_hut": 0,
+        "american_football": 0,
+        "amusement_park": 0,
+        "aquarium": 0,
+        "archaeological_site": 0,
+        "art_gallery": 0,
+        "atm": 0,
+        "attraction": 0,
+        "bakery": 0,
+        "bank": 0,
+        "bar": 0,
+        "baseball": 0,
+        "basketball": 0,
+        "beach": 0,
+        "beer": 0,
+        "bicycle": 0,
+        "bicycle_rental": 0,
+        "bird_hide": 0,
+        "bus": 0,
+        "butcher": 0,
+        "cafe": 0,
+        "campsite": 0,
+        "car": 0,
+        "castle": 0,
+        "cave_entrance": 0,
+        "cemetery": 0,
+        "cinema": 0,
+        "clothing_store": 0,
+        "college": 0,
+        "cricket": 0,
+        "dentist": 0,
+        "doctors": 0,
+        "dog_park": 0,
+        "embassy": 0,
+        "fast_food": 0,
+        "ferry": 0,
+        "fire_station": 0,
+        "florist": 0,
+        "fort": 0,
+        "fountain": 0,
+        "fuel": 0,
+        "furniture": 0,
+        "gift": 0,
+        "golf": 0,
+        "grocery": 0,
+        "hairdresser": 0,
+        "harbor": 0,
+        "heliport": 0,
+        "hospital": 0,
+        "ice_cream": 0,
+        "information": 0,
+        "laundry": 0,
+        "library": 0,
+        "lighthouse": 0,
+        "lodging": 0,
+        "monument": 0,
+        "mountain": 0,
+        "museum": 0,
+        "music": 0,
+        "nightclub": 0,
+        "park": 0,
+        "parking": 0,
+        "parking_garage": 0,
+        "pharmacy": 0,
+        "pitch": 0,
+        "place_of_worship": 0,
+        "playground": 0,
+        "police": 0,
+        "post": 0,
+        "prison": 0,
+        "railway": 0,
+        "railway_light": 0,
+        "railway_metro": 0,
+        "ranger_station": 0,
+        "restaurant": 0,
+        "ruins": 0,
+        "school": 0,
+        "shop": 0,
+        "skiing": 0,
+        "soccer": 0,
+        "spring": 0,
+        "stadium": 0,
+        "sushi": 0,
+        "swimming": 0,
+        "tennis": 0,
+        "theatre": 0,
+        "town_hall": 0,
+        "veterinary": 0,
+        "volcano": 0,
+        "water": 0,
+        "waterfall": 0,
+        "wetland": 0,
+        "wilderness_hut": 0,
+        "windmill": 0,
+        "zoo": 0
+      }
+    },
+    "poi-icon-halo-radius-eink": {
+      "default": {
+        "adit": 0,
+        "aerialway": 0,
+        "airfield": 0,
+        "airport": 0,
+        "alcohol_shop": 0,
+        "alpine_hut": 0,
+        "american_football": 0,
+        "amusement_park": 0,
+        "aquarium": 0,
+        "archaeological_site": 0,
+        "art_gallery": 0,
+        "atm": 0,
+        "attraction": 0,
+        "bakery": 0,
+        "bank": 0,
+        "bar": 0,
+        "baseball": 0,
+        "basketball": 0,
+        "beach": 0,
+        "beer": 0,
+        "bicycle": 0,
+        "bicycle_rental": 0,
+        "bird_hide": 0,
+        "bus": 0,
+        "butcher": 0,
+        "cafe": 0,
+        "campsite": 0,
+        "car": 0,
+        "castle": 0,
+        "cave_entrance": 0,
+        "cemetery": 0,
+        "cinema": 0,
+        "clothing_store": 0,
+        "college": 0,
+        "cricket": 0,
+        "dentist": 0,
+        "doctors": 0,
+        "dog_park": 0,
+        "embassy": 0,
+        "fast_food": 0,
+        "ferry": 0,
+        "fire_station": 0,
+        "florist": 0,
+        "fort": 0,
+        "fountain": 0,
+        "fuel": 0,
+        "furniture": 0,
+        "gift": 0,
+        "golf": 0,
+        "grocery": 0,
+        "hairdresser": 0,
+        "harbor": 0,
+        "heliport": 0,
+        "hospital": 0,
+        "ice_cream": 0,
+        "information": 0,
+        "laundry": 0,
+        "library": 0,
+        "lighthouse": 0,
+        "lodging": 0,
+        "monument": 0,
+        "mountain": 0,
+        "museum": 0,
+        "music": 0,
+        "nightclub": 0,
+        "park": 0,
+        "parking": 0,
+        "parking_garage": 0,
+        "pharmacy": 0,
+        "pitch": 0,
+        "place_of_worship": 0,
+        "playground": 0,
+        "police": 0,
+        "post": 0,
+        "prison": 0,
+        "railway": 0,
+        "railway_light": 0,
+        "railway_metro": 0,
+        "ranger_station": 0,
+        "restaurant": 0,
+        "ruins": 0,
+        "school": 0,
+        "shop": 0,
+        "skiing": 0,
+        "soccer": 0,
+        "spring": 0,
+        "stadium": 0,
+        "sushi": 0,
+        "swimming": 0,
+        "tennis": 0,
+        "theatre": 0,
+        "town_hall": 0,
+        "veterinary": 0,
+        "volcano": 0,
+        "water": 0,
+        "waterfall": 0,
+        "wetland": 0,
+        "wilderness_hut": 0,
+        "windmill": 0,
+        "zoo": 0
+      }
+    },
+    "poi-icon-halo-radius-eink-shelter_type": {
+      "default": {
+        "basic_hut": 0,
+        "lean_to": 0,
+        "picnic_shelter": 0,
+        "rock_shelter": 0,
+        "weather_shelter": 0,
+        "wilderness_hut": 0
+      }
+    },
+    "poi-icon-halo-radius-eink-subclass": {
+      "default": {
+        "allotments": 0,
+        "artwork": 0,
+        "biergarten": 0,
+        "convenience": 0,
+        "deli": 0,
+        "food_court": 0,
+        "gallery": 0,
+        "greengrocer": 0,
+        "kindergarten": 0,
+        "nature_reserve": 0,
+        "picnic_table": 0,
+        "pub": 0,
+        "supermarket": 0,
+        "theme_park": 0,
+        "viewpoint": 1
+      }
+    },
+    "poi-icon-halo-radius-plain": {
+      "default": {
+        "adit": 1.5,
+        "aerialway": 1.5,
+        "airfield": 1.5,
+        "airport": 1.5,
+        "alcohol_shop": 1.5,
+        "alpine_hut": 1.5,
+        "american_football": 1.5,
+        "amusement_park": 1.5,
+        "aquarium": 1.5,
+        "archaeological_site": 1.5,
+        "art_gallery": 1.5,
+        "atm": 1.5,
+        "attraction": 1.5,
+        "bakery": 1.5,
+        "bank": 1.5,
+        "bar": 1.5,
+        "baseball": 1.5,
+        "basketball": 1.5,
+        "beach": 1.5,
+        "beer": 1.5,
+        "bicycle": 1.5,
+        "bicycle_rental": 1.5,
+        "bird_hide": 1.5,
+        "bus": 1.5,
+        "butcher": 1.5,
+        "cafe": 1.5,
+        "campsite": 1.5,
+        "car": 1.5,
+        "castle": 1.5,
+        "cave_entrance": 1.5,
+        "cemetery": 1.5,
+        "cinema": 1.5,
+        "clothing_store": 1.5,
+        "college": 1.5,
+        "cricket": 1.5,
+        "dentist": 1.5,
+        "doctors": 1.5,
+        "dog_park": 1.5,
+        "embassy": 1.5,
+        "fast_food": 1.5,
+        "ferry": 1.5,
+        "fire_station": 1.5,
+        "florist": 1.5,
+        "fort": 1.5,
+        "fountain": 1.5,
+        "fuel": 1.5,
+        "furniture": 1.5,
+        "gift": 1.5,
+        "golf": 1.5,
+        "grocery": 1.5,
+        "hairdresser": 1.5,
+        "harbor": 1.5,
+        "heliport": 1.5,
+        "hospital": 1.5,
+        "ice_cream": 1.5,
+        "information": 1.5,
+        "laundry": 1.5,
+        "library": 1.5,
+        "lighthouse": 1.5,
+        "lodging": 1.5,
+        "monument": 1.5,
+        "mountain": 1.5,
+        "museum": 1.5,
+        "music": 1.5,
+        "nightclub": 1.5,
+        "park": 1.5,
+        "parking": 1.5,
+        "parking_garage": 1.5,
+        "pharmacy": 1.5,
+        "pitch": 1.5,
+        "place_of_worship": 1.5,
+        "playground": 1.5,
+        "police": 1.5,
+        "post": 1.5,
+        "prison": 1.5,
+        "railway": 1.5,
+        "railway_light": 1.5,
+        "railway_metro": 1.5,
+        "ranger_station": 1.5,
+        "restaurant": 1.5,
+        "ruins": 1.5,
+        "school": 1.5,
+        "shop": 1.5,
+        "skiing": 1.5,
+        "soccer": 1.5,
+        "spring": 1.5,
+        "stadium": 1.5,
+        "sushi": 1.5,
+        "swimming": 1.5,
+        "tennis": 1.5,
+        "theatre": 1.5,
+        "town_hall": 1.5,
+        "veterinary": 1.5,
+        "volcano": 1.5,
+        "water": 1.5,
+        "waterfall": 1.5,
+        "wetland": 1.5,
+        "wilderness_hut": 1.5,
+        "windmill": 1.5,
+        "zoo": 1.5
+      }
+    },
+    "poi-icon-halo-radius-plain-shelter_type": {
+      "default": {
+        "basic_hut": 1.5,
+        "lean_to": 1.5,
+        "picnic_shelter": 1.5,
+        "rock_shelter": 1.5,
+        "weather_shelter": 1.5,
+        "wilderness_hut": 1.5
+      }
+    },
+    "poi-icon-halo-radius-plain-subclass": {
+      "default": {
+        "allotments": 1.5,
+        "artwork": 1.5,
+        "biergarten": 1.5,
+        "convenience": 1.5,
+        "deli": 1.5,
+        "food_court": 1.5,
+        "gallery": 1.5,
+        "greengrocer": 1.5,
+        "kindergarten": 1.5,
+        "nature_reserve": 1.5,
+        "picnic_table": 1.5,
+        "pub": 1.5,
+        "supermarket": 1.5,
+        "theme_park": 1.5,
+        "viewpoint": 1
+      }
+    },
+    "poi-icon-halo-radius-shelter_type": {
+      "default": {
+        "basic_hut": 0,
+        "lean_to": 0,
+        "picnic_shelter": 0,
+        "rock_shelter": 0,
+        "weather_shelter": 0,
+        "wilderness_hut": 0
+      }
+    },
+    "poi-icon-halo-radius-subclass": {
+      "default": {
+        "allotments": 0,
+        "artwork": 0,
+        "biergarten": 0,
+        "convenience": 0,
+        "deli": 0,
+        "food_court": 0,
+        "gallery": 0,
+        "greengrocer": 0,
+        "kindergarten": 0,
+        "nature_reserve": 0,
+        "picnic_table": 0,
+        "pub": 0,
+        "supermarket": 0,
+        "theme_park": 0,
+        "viewpoint": 1
       }
     },
     "poi-t0": {
@@ -2198,7 +3005,6 @@
         "border_control": "icons-glyph/barrier.png",
         "sally_port": "icons-glyph/barrier.png",
         "spring": "icons-glyph/water.png",
-        "wilderness_hut": "icons-glyph/alpine_hut.png",
         "lodging": "icons-glyph/alpine_hut.png"
       }
     },

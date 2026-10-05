@@ -69,6 +69,5 @@ def overhead(v):
                      'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 13, ['literal', [12, 4]]]},
               emissive=0.5),
         layer('aerialway', 'line', 'transportation', minzoom=12, filter=['==', get('class'), 'aerialway'],
-              paint={'line-color': c['aerialway'], 'line-width': zoom_ramp(14, 1, 20, 2, base=1.5),
-                     'line-dasharray': [4, 1]}, emissive=1),
+              paint={'line-color': c['aerialway'], 'line-width': zoom_ramp(14, 1, 20, 2, base=1.5)}, emissive=1),
     ]

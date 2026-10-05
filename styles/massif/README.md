@@ -51,8 +51,14 @@ palette plus the modules it adds.
   softer blue on a half-transparent halo.
 - **Woods over the landuse**, as Standard's one landuse layer draws them: a park's woods read a
   darker green instead of vanishing under its lawn.
-- **Tracks by `tracktype`**, OSM Carto's ladder: grade1 solid, grade5 dotted, one layer per grade.
-  `access` in `no`/`private` lays red dashes over the road, as MapTiler does. Our fork's
+- **A track is a double line**, MapTiler's and IGN's, so it never reads as a single-line trail: a
+  dashed outline (`track-<grade>-casing`) around a white fill (`track-fill`). The outline carries
+  `tracktype`, OSM Carto's ladder from grade1's long dashes to grade5's dots; it is never solid, or
+  a track reads as a road. It cannot fold into a `line-border`: the SDK draws a border with its
+  line's own dash.
+- **A via ferrata is a chain**: a yellow core in a dark edge, dark dots along it, from z13 - no
+  other way is drawn with a dot. **Aerialways** are a solid line.
+- `access` in `no`/`private` lays red dashes over the road from z14, as MapTiler does. Our fork's
   `construction` flag and stock OMT's `*_construction` classes both draw.
 - **An unpaved minor or service road has a dashed casing** from z14, OSM Carto's convention, read
   off `surface_detail` (gravel, ground, dirt...). Only Alpimaps' planetiler writes that field.
@@ -177,8 +183,11 @@ colour's lightness mirrored past brightness 0.25-0.3, so the page goes black and
   track's dashes run on nothing; intermittent ones dotted.
 - **Roads** are white with black casings, their hierarchy carried by the casing's weight
   (`casing-scale` 1.8). Below z13 only motorways, trunks and primaries keep a casing; the small
-  roads are an uncased light grey line at the other variants' width, fading to white over z12-13 as
-  their casing grows (`casing-from`). **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
+  roads are an uncased line in the casing's grey at the other variants' width, white once their
+  casing is drawn (`casing-from`). That grey is its own layer (`road-uncased`): the SDK reads a
+  day/night colour inside a zoom step wrong, and the converter keeps only the last stop of a zoom
+  fade, so a white road vanished below z13. **Tracks, trails and via ferratas** are black and white
+  (the via ferrata's core white), tracks and trails 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood.
 - **Every label's halo is a pixel wider** (`lib.wider_halo`): a black word on a thin halo was lost over
   a dark pattern or a road casing.

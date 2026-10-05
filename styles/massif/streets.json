@@ -4198,7 +4198,7 @@
       }
     },
     {
-      "id": "track-grade1",
+      "id": "track-grade1-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4236,8 +4236,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
-        "line-color": "hsl(30, 50%, 45%)",
+        "line-color": "hsl(30, 55%, 35%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          15,
+          2.2,
+          18,
+          5,
+          22,
+          20
+        ],
         "line-width": [
           "interpolate",
           [
@@ -4248,13 +4269,17 @@
             "zoom"
           ],
           12,
-          0.5,
+          0.7,
           15,
           1.2,
           18,
-          3,
+          1.8,
           22,
-          12
+          3
+        ],
+        "line-dasharray": [
+          8,
+          2
         ]
       },
       "metadata": {
@@ -4274,7 +4299,7 @@
       }
     },
     {
-      "id": "track-grade2",
+      "id": "track-grade2-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4312,8 +4337,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
-        "line-color": "hsl(30, 50%, 45%)",
+        "line-color": "hsl(30, 55%, 35%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          15,
+          2.2,
+          18,
+          5,
+          22,
+          20
+        ],
         "line-width": [
           "interpolate",
           [
@@ -4324,13 +4370,13 @@
             "zoom"
           ],
           12,
-          0.5,
+          0.7,
           15,
           1.2,
           18,
-          3,
+          1.8,
           22,
-          12
+          3
         ],
         "line-dasharray": [
           5,
@@ -4354,7 +4400,7 @@
       }
     },
     {
-      "id": "track-grade3",
+      "id": "track-grade3-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4392,8 +4438,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
-        "line-color": "hsl(30, 50%, 45%)",
+        "line-color": "hsl(30, 55%, 35%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          15,
+          2.2,
+          18,
+          5,
+          22,
+          20
+        ],
         "line-width": [
           "interpolate",
           [
@@ -4404,13 +4471,13 @@
             "zoom"
           ],
           12,
-          0.5,
+          0.7,
           15,
           1.2,
           18,
-          3,
+          1.8,
           22,
-          12
+          3
         ],
         "line-dasharray": [
           3,
@@ -4434,7 +4501,7 @@
       }
     },
     {
-      "id": "track-grade4",
+      "id": "track-grade4-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4472,8 +4539,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
-        "line-color": "hsl(30, 50%, 45%)",
+        "line-color": "hsl(30, 55%, 35%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          15,
+          2.2,
+          18,
+          5,
+          22,
+          20
+        ],
         "line-width": [
           "interpolate",
           [
@@ -4484,13 +4572,13 @@
             "zoom"
           ],
           12,
-          0.5,
+          0.7,
           15,
           1.2,
           18,
-          3,
+          1.8,
           22,
-          12
+          3
         ],
         "line-dasharray": [
           2,
@@ -4514,7 +4602,7 @@
       }
     },
     {
-      "id": "track-grade5",
+      "id": "track-grade5-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4552,8 +4640,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
-        "line-color": "hsl(30, 50%, 45%)",
+        "line-color": "hsl(30, 55%, 35%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          15,
+          2.2,
+          18,
+          5,
+          22,
+          20
+        ],
         "line-width": [
           "interpolate",
           [
@@ -4564,13 +4673,13 @@
             "zoom"
           ],
           12,
-          0.5,
+          0.7,
           15,
           1.2,
           18,
-          3,
+          1.8,
           22,
-          12
+          3
         ],
         "line-dasharray": [
           1,
@@ -4594,7 +4703,7 @@
       }
     },
     {
-      "id": "track-unknown",
+      "id": "track-unknown-casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4625,8 +4734,29 @@
           "tunnel"
         ]
       ],
+      "layout": {
+        "line-join": "round"
+      },
       "paint": {
-        "line-color": "hsl(30, 50%, 45%)",
+        "line-color": "hsl(30, 55%, 35%)",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          15,
+          2.2,
+          18,
+          5,
+          22,
+          20
+        ],
         "line-width": [
           "interpolate",
           [
@@ -4637,13 +4767,13 @@
             "zoom"
           ],
           12,
-          0.5,
+          0.7,
           15,
           1.2,
           18,
-          3,
+          1.8,
           22,
-          12
+          3
         ],
         "line-dasharray": [
           3,
@@ -4652,6 +4782,129 @@
       },
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
+        }
+      }
+    },
+    {
+      "id": "track-fill",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "track"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "layout": {
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 100%)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          15,
+          2.2,
+          18,
+          5,
+          22,
+          20
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
+        }
+      }
+    },
+    {
+      "id": "via-ferrata-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "via_ferrata"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "paint": {
+        "line-color": "hsl(25, 60%, 22%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          3,
+          15,
+          5,
+          18,
+          8
+        ]
+      },
+      "metadata": {
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -4692,7 +4945,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 60%, 40%)",
+        "line-color": "hsl(52, 100%, 55%)",
         "line-width": [
           "interpolate",
           [
@@ -4702,12 +4955,72 @@
             "zoom"
           ],
           13,
-          1,
+          1.6,
+          15,
+          3,
           18,
-          2.5
+          5
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
+        }
+      }
+    },
+    {
+      "id": "via-ferrata-dots",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "via_ferrata"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "paint": {
+        "line-color": "hsl(25, 60%, 22%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          1.6,
+          15,
+          3,
+          18,
+          5
         ],
         "line-dasharray": [
-          1,
+          0.5,
           1.5
         ]
       },
@@ -8890,7 +9203,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 15,
+      "minzoom": 14,
       "filter": [
         "all",
         [
@@ -8927,6 +9240,8 @@
           [
             "zoom"
           ],
+          14,
+          0.8,
           15,
           1,
           18,
@@ -11309,10 +11624,6 @@
           1,
           20,
           2
-        ],
-        "line-dasharray": [
-          4,
-          1
         ]
       },
       "metadata": {

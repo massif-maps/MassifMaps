@@ -59,9 +59,12 @@ LINK_WIDTH = zoom_ramp(12, ['match', get('class'), ['motorway', 'trunk'], 0.8, 0
 LINK_CASING = zoom_ramp(12, 0.5, 14, 0.8, 22, 2, base=1.5)
 
 PATH_WIDTH = zoom_ramp(12, 0, 15, 1, 18, 6, 22, 80, base=1.5)
-TRACK_WIDTH = zoom_ramp(12, 0.5, 15, 1.2, 18, 3, 22, 12, base=1.5)
-# OSM Carto's tracktype ladder: the rougher the track, the shorter the dash
-TRACK_GRADES = [('grade1', None), ('grade2', [5, 2]), ('grade3', [3, 2]), ('grade4', [2, 2]),
+# a track is a double line, MapTiler's and IGN's, so it never reads as a single-line trail
+TRACK_WIDTH = zoom_ramp(12, 1, 15, 2.2, 18, 5, 22, 20, base=1.5)
+TRACK_CASING = zoom_ramp(12, 0.7, 15, 1.2, 18, 1.8, 22, 3, base=1.5)
+# OSM Carto's tracktype ladder on the outline: the rougher the track, the shorter the dash. Never
+# solid, or a track reads as a road
+TRACK_GRADES = [('grade1', [8, 2]), ('grade2', [5, 2]), ('grade3', [3, 2]), ('grade4', [2, 2]),
                 ('grade5', [1, 2])]
 
 EMISSIVE = ['match', get('class'), ['motorway', 'trunk'], 0.6, 0.4]
@@ -71,16 +74,14 @@ UNPAVED = ['unpaved', 'compacted', 'fine_gravel', 'gravel', 'pebblestone', 'grou
            'grass_paver', 'mud', 'sand', 'rock', 'woodchips']
 
 
-def fill_color(c):
+def fill_colors(c):
     # below z14, uncased, Standard's one grey-blue for every road under a primary: a fill near the
     # ground's lightness would vanish without its casing
     low = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
            'secondary', c['secondary-low'], c['road-low']]
     high = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
             'secondary', c['secondary'], 'tertiary', c['tertiary'], c['road']]
-    z = c.get('casing-from', 14)
-    # e-ink fades the grey to white as the casing grows, rather than flipping a dark road at z14
-    return ['interpolate', ['linear'], ['zoom'], z - 1, low, z, high] if c.get('casing-low') else ['step', ['zoom'], low, z, high]
+    return low, high
 
 
 def case_color(c, key='case'):
@@ -129,16 +130,26 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:
         case_paint['line-dasharray'] = dash
-    fill_paint = {'line-color': fill_color(c), 'line-width': width}
-    if fill_opacity is not None:
-        fill_paint['line-opacity'] = fill_opacity
+    low, high = fill_colors(c)
+    z = c.get('casing-from', 14)
+    if not c.get('casing-low'):
+        fills = [(id, minzoom, maxzoom, ['step', ['zoom'], low, z, high])]
+    elif maxzoom is not None and maxzoom <= z:
+        fills = [(id, minzoom, maxzoom, low)]
+    else:
+        # e-ink's colours are day/night ramps, which the SDK reads wrong inside a zoom step (white or
+        # black at every zoom): the uncased colour is its own layer, over the cased one below z
+        fills = [(id, minzoom, maxzoom, high), (id + '-uncased', minzoom, z, low)]
     metadata = {'massif:minzoom-param': minzoom_param} if minzoom_param else None
-    return [
-        layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter,
-              layout=case_layout, paint=case_paint, emissive=0, metadata=draw_once(c, id, metadata)),
-        layer(id, 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
-              paint=fill_paint, emissive=EMISSIVE, metadata=draw_once(c, id, metadata)),
-    ]
+    out = [layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter,
+                 layout=case_layout, paint=case_paint, emissive=0, metadata=draw_once(c, id, metadata))]
+    for fill_id, lo, hi, color in fills:
+        fill_paint = {'line-color': color, 'line-width': width}
+        if fill_opacity is not None:
+            fill_paint['line-opacity'] = fill_opacity
+        out.append(layer(fill_id, 'line', 'transportation', minzoom=lo, maxzoom=hi, filter=filter, layout=layout,
+                         paint=fill_paint, emissive=EMISSIVE, metadata=draw_once(c, id, metadata)))
+    return out
 
 
 def low_casing(v, filter, id='road-casing-low', maxzoom=14):
@@ -206,19 +217,22 @@ def unpaved(c, brunnel_test):
 
 def tracks(c, brunnel_test):
     width = scaled(TRACK_WIDTH, c.get('track-scale', 1))
-    out = halo(c, 'track-halo', ['all', ['==', get('class'), 'track'], brunnel_test], width, 'track_min_zoom')
+    casing = scaled(TRACK_CASING, c.get('track-scale', 1))
+    outer = width[:3] + [x if i % 2 == 0 else x + 2 * y for i, (x, y) in enumerate(zip(width[3:], casing[3:]))]
+    track = ['all', ['==', get('class'), 'track'], brunnel_test]
+    out = halo(c, 'track-halo', track, outer, 'track_min_zoom')
     for grade, dash in TRACK_GRADES + [('unknown', [3, 2])]:
         # Alpimaps' planetiler writes the grade's index in OSM's list (grade1 = 0), OpenMapTiles the name
         test = ['!', ['has', 'tracktype']] if grade == 'unknown' else \
             ['in', get('tracktype'), ['literal', [grade, int(grade[-1]) - 1]]]
-        paint = {'line-color': c['track'], 'line-width': width}
-        if dash:
-            paint['line-dasharray'] = dash
-        out.append(layer('track-' + grade, 'line', 'transportation', minzoom=12,
+        out.append(layer('track-' + grade + '-casing', 'line', 'transportation', minzoom=12,
                          filter=['all', ['==', get('class'), 'track'], test, brunnel_test],
-                         metadata={'massif:minzoom-param': 'track_min_zoom'},
-                         paint=paint, emissive=0.25))
-    return out
+                         layout={'line-join': 'round'}, metadata={'massif:minzoom-param': 'track_min_zoom'},
+                         paint={'line-color': c['track'], 'line-gap-width': width, 'line-width': casing,
+                                'line-dasharray': dash}, emissive=0.25))
+    return out + [layer('track-fill', 'line', 'transportation', minzoom=12, filter=track,
+                        layout={'line-join': 'round'}, metadata={'massif:minzoom-param': 'track_min_zoom'},
+                        paint={'line-color': c['track-fill'], 'line-width': width}, emissive=0.25)]
 
 
 def tunnels(v):
@@ -247,13 +261,18 @@ def ground(v):
     # the thin ways have no bridge look of their own: a track bridge is the track
     not_tunnel = ['!=', get('brunnel'), 'tunnel']
     no_ramp = ['!=', get('ramp'), 1]
+    via_ferrata = ['all', ['==', get('class'), 'via_ferrata'], not_tunnel]
     trails = v.flags.get('trails', False)
     return (paths(c, surface, trails=trails) + (outdoor.trails(c, not_tunnel) if trails else []) + tracks(c, not_tunnel)
             + (outdoor.mtb(c, not_tunnel) if trails else []) + [
-        layer('via-ferrata', 'line', 'transportation', minzoom=13,
-              filter=['all', ['==', get('class'), 'via_ferrata'], ['!=', get('brunnel'), 'tunnel']],
-              paint={'line-color': c['via-ferrata'], 'line-width': zoom_ramp(13, 1, 18, 2.5),
-                     'line-dasharray': [1, 1.5]}, emissive=0.25),
+        # a chain, MapTiler's beads on a yellow core: no other way is drawn with a dot
+        layer('via-ferrata-casing', 'line', 'transportation', minzoom=13, filter=via_ferrata,
+              paint={'line-color': c['via-ferrata-case'], 'line-width': zoom_ramp(13, 3, 15, 5, 18, 8)}, emissive=0.25),
+        layer('via-ferrata', 'line', 'transportation', minzoom=13, filter=via_ferrata,
+              paint={'line-color': c['via-ferrata'], 'line-width': zoom_ramp(13, 1.6, 15, 3, 18, 5)}, emissive=0.25),
+        layer('via-ferrata-dots', 'line', 'transportation', minzoom=13, filter=via_ferrata,
+              paint={'line-color': c['via-ferrata-case'], 'line-width': zoom_ramp(13, 1.6, 15, 3, 18, 5),
+                     'line-dasharray': [0.5, 1.5]}, emissive=0.25),
     ] + [
         # our fork flags construction on the way, stock OMT suffixes the class
         layer(id, 'line', 'transportation', minzoom=14, filter=test,
@@ -270,9 +289,9 @@ def ground(v):
       + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH)
       + unpaved(c, surface) + cycleway(c, surface) + [
         # private and no-access ways: the casing's red dashes, the OSM convention MapTiler also draws
-        layer('road-no-access', 'line', 'transportation', minzoom=15,
+        layer('road-no-access', 'line', 'transportation', minzoom=14,
               filter=['all', ['!=', get('class'), 'path'], ['in', get('access'), ['literal', ['no', 'private']]]],
-              paint={'line-color': c['no-access'], 'line-width': zoom_ramp(15, 1, 18, 4, 22, 20, base=1.5),
+              paint={'line-color': c['no-access'], 'line-width': zoom_ramp(14, 0.8, 15, 1, 18, 4, 22, 20, base=1.5),
                      'line-dasharray': [1, 3]}, emissive=0.4),
     ] + oneway(c))
 

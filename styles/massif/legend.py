@@ -73,7 +73,7 @@ def spec():
         {'id': 'tracks', 'label': 'Tracks', 'zoom': 15, 'items': [
             line('track-' + grade, TRACK_LABELS[grade],
                  road('track', **({'tracktype': grade} if grade != 'unknown' else {})),
-                 only('track-halo', 'track-' + grade))
+                 only('track-halo', 'track-' + grade + '-casing', 'track-fill'))
             for grade, _ in roads.TRACK_GRADES + [('unknown', None)]]},
         {'id': 'trails', 'label': 'Hiking difficulty (SAC scale)', 'zoom': 15, 'items': [
             line(id.replace('trail-', 'sac-'), SAC_LABELS[i], road('path', subclass='path', sac_scale=values[0]),

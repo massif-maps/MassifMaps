@@ -172,8 +172,8 @@
 @road_shield_plate_background_fill: #4a63c9;
 @road_shield_plate_background_fill_2: #ffe266;
 @road_shield_plate_background_fill_3: #e8474b;
-@road_stroke: hsla(0, 0%, 0%, 0.25);
-@road_stroke_2: hsl(0, 0%, 70%);
+@road_stroke: hsl(0, 0%, 70%);
+@road_stroke_2: hsla(0, 0%, 0%, 0.25);
 @road_stroke_3: hsla(50, 90%, 92%, 0.6);
 @road_stroke_4: hsla(50, 90%, 85%, 0.7);
 @road_stroke_5: hsla(45, 95%, 75%, 0.8);
@@ -195,7 +195,8 @@
 @text_fill: hsl(205, 50%, 40%);
 @text_fill_2: hsl(200, 80%, 85%);
 @text_halo_fill: hsla(0, 0%, 0%, 0.75);
-@track: hsl(30, 50%, 45%);
+@track: hsl(30, 55%, 35%);
+@track_fill_stroke: hsla(0, 0%, 100%, 0.3);
 @track_label: hsl(30, 50%, 30%);
 @track_stroke: hsla(35, 70%, 75%, 0.8);
 @trail_background_border_fill: #000000;
@@ -205,7 +206,8 @@
 @trunk: hsl(235, 20%, 70%);
 @trunk_bridge_case: hsl(235, 20%, 50%);
 @trunk_case: hsl(235, 20%, 60%);
-@via_ferrata: hsl(0, 60%, 40%);
+@via_ferrata: hsl(52, 100%, 55%);
+@via_ferrata_case: hsl(25, 60%, 22%);
 @water: hsl(200, 100%, 80%);
 @water_fill: hsl(199, 44%, 62%);
 @water_halo: hsla(0, 0%, 100%, 0.55);

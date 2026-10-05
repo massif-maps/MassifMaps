@@ -128,7 +128,7 @@ deeper woods (`OUTDOOR` in the palette):
   international and national networks.
 - **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
   before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
-- **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
+- **A walker's POIs early**, in every variant: huts and bivouacs from z11; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, rock_shelter, weather_shelter, wilderness_hut: a
   badge on nature's green at a POI's size, named), campsites (a smaller glyph until z13, named from z13) and picnic sites from z13 (a picnic
   shelter, the same badge, from z16 and under the huts); caves (named from
@@ -228,6 +228,7 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger; a glyph bare in both (furniture, landmarks, trees) keeps badge
   mode's size. It reads the class tables, so switching is a re-decode.
+- `poi_label_scale` (0.9) — every POI name's size, a landmark's and a named tree's too.
 - `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
   drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
   e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`). Such a glyph
@@ -464,7 +465,8 @@ from z14, a bare glyph in nature's green, sunk with the trees (`pois.landmarks`)
 spot on the ground rather than names one, from a tileset built with planetiler's `poi_landmarks` and
 `poi_guideposts` (packed as the trees are): a bare glyph in the `landmark` category's dark neutral,
 named if it is, from the zoom its size reads at — `power_tower` and `wind_turbine` from z13 (the tiles
-carry them from z14), `pylon`
+carry them from z14, which an app on 256-px tiles reads there), at 0.7 of their size growing to it
+by z16, `pylon`
 (aerialway), `mast` and `cross` (a summit cross) from z15, `wayside_cross`, `wayside_shrine`,
 `cairn`, `stone` and `rock` from z16, `guidepost` from z17 — growing with the zoom as a tree does.
 They are references, not places, so no disc. The ladder excludes every landmark class.

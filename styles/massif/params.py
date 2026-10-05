@@ -7,6 +7,7 @@ SWITCH = [0, 1]
 PARAMS = {
     'poiStyle': {'default': 'badge', 'values': ['badge', 'plain']},
     'bare_icon_scale': {'default': 1.3},
+    'poi_label_scale': {'default': 0.9},
     'building_opacity': {'default': 1},
     'buildings': {'default': 2, 'values': [0, 1, 2]},
     'contour_opacity': {'default': 1},

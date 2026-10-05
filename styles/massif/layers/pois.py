@@ -392,6 +392,11 @@ def halo_width(mono, fixed, fixed_bare):
                                                                  fixed, fixed_bare), badge]
 
 
+def poi_text(size):
+    """a POI name's size, times `poi_label_scale`"""
+    return ['*', size, ['config', 'poi_label_scale']]
+
+
 def plain_size(scale, bare_size):
     """`poiStyle` plain: a place's glyph at 0.6, a bare one (furniture, landmarks) as badge mode draws it"""
     def size(e):
@@ -440,7 +445,7 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
         'text-field': gated(KNOWN_MAPLIBRE),
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
         'text-font': 'medium',
-        'text-size': 12,
+        'text-size': poi_text(12),
         'text-max-width': 9,
         'text-padding': 2,
         'text-variable-anchor': ['top', 'left', 'right'],
@@ -490,9 +495,10 @@ MOUNTAIN_LAYERS = [
     ('poi-mountain-shelter', 13, None, ['all', ['==', get('class'), 'shelter'],
                                         ['in', get('shelter_type'), ['literal', HUT_SHELTERS]]], MOUNTAIN_ICON, None),
     ('poi-mountain-water', 12, None, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
-    ('poi-mountain', 12, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
+    # huts from 11: the old Alpimaps OSM style's 12, which counted zooms on 256-px tiles
+    ('poi-mountain', 11, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
     # OpenMapTiles files a hut under lodging, whose glyph is a bed
-    ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),
+    ('poi-mountain-hut', 11, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),
 ]
 
 
@@ -507,7 +513,7 @@ def springs(v):
                        'circle-stroke-color': HALO_DAY, 'circle-stroke-width': zoom_ramp(13.5, 0, 14, 1)},
                 metadata={'massif:minzoom-param': 'spring_min_zoom'})
     name = layer('poi-spring-label', 'symbol', 'poi', minzoom=17, filter=spring,
-                 layout={'text-field': NAME, 'text-font': 'medium', 'text-size': 12, 'text-max-width': 9,
+                 layout={'text-field': NAME, 'text-font': 'medium', 'text-size': poi_text(12), 'text-max-width': 9,
                          'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': True},
                  paint={'text-color': MONO_INK if mono else CATEGORY['water']['day'],
                         'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH})
@@ -580,6 +586,8 @@ TREE = ['==', get('class'), 'tree']
 TREE_DOT = 'hsl(100, 45%, 60%)'
 # a 0.4 badge's glyph at z17, growing with the zoom
 TREE_SCALE = zoom_ramp(17, 1, 22, 2)
+# a power tower or a wind turbine seen from afar is small, at a landmark's size by z16
+FAR_LANDMARK_SCALE = zoom_ramp(13, 0.7, 16, 1, 17, 1, 22, 2)
 # under every label on the SDK: the layers must sit with the other POIs, `poi` cannot be split (README)
 TREE_SINK = 10000000
 
@@ -596,7 +604,7 @@ def trees(v):
     the glyph from z18, a named one the glyph and its name from z17, every other label winning over
     them. Hybrid draws only the named ones: the imagery shows the rest."""
     named = sunk(poi_layer('poi-tree-named', 17, ['all', TREE, ['has', 'name']], v, scale=TREE_SCALE,
-                           extra={'text-font': 'italic', 'text-size': 11, 'text-variable-anchor': ['top']}))
+                           extra={'text-font': 'italic', 'text-size': poi_text(11), 'text-variable-anchor': ['top']}))
     if v.flags.get('dark_ground'):
         return [named]
     unnamed = ['all', TREE, ['!', ['has', 'name']]]
@@ -623,7 +631,7 @@ def barriers(v):
         for suffix, named, text in (('', ['!', ['has', 'name']], ''), ('-named', ['has', 'name'], NAME)):
             out.append(reference(poi_layer('poi-barrier-%s%s' % (tier, suffix), 17, ['all', cls, named], v,
                                            text=text,
-                                           extra={'text-size': 11, 'text-variable-anchor': ['top']}), v))
+                                           extra={'text-size': poi_text(11), 'text-variable-anchor': ['top']}), v))
     return out
 
 
@@ -651,8 +659,9 @@ def landmarks(v):
                                bare=True), v, 'park_like')]
     for minzoom, classes in LANDMARK_TIERS:
         cls = ['==', get('class'), classes[0]] if len(classes) == 1 else ['in', get('class'), ['literal', classes]]
-        out.append(reference(poi_layer('poi-landmark-z%d' % minzoom, minzoom, cls, v, scale=TREE_SCALE,
-                                       extra={'text-size': 11, 'text-variable-anchor': ['top']}), v))
+        out.append(reference(poi_layer('poi-landmark-z%d' % minzoom, minzoom, cls, v,
+                                       scale=FAR_LANDMARK_SCALE if minzoom < 15 else TREE_SCALE,
+                                       extra={'text-size': poi_text(11), 'text-variable-anchor': ['top']}), v))
     return out
 
 

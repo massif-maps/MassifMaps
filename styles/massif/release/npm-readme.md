@@ -9,7 +9,7 @@ The Massif map styles — **streets**, **outdoor**, **topo**, **hybrid** and **e
 | `maplibre/` | `<variant>.json` + `sprite/` | MapLibre GL JS / Native, Mapbox GL |
 | `cartocss/` | CartoCSS project: `project.json`, `<variant>.json`, `.mss`, icons, `legend.json` | the SDK, style parameters live |
 | `cartocss-compiled/` | the same compiled to mapnik XML, `<variant>.xml` | the SDK, no CartoCSS parse at startup |
-| `cartocss-iconfont/` | CartoCSS project, POI icons drawn from the bundled `MassifIcons` font | the SDK, one font instead of PNGs |
+| `cartocss-iconfont/` | CartoCSS project, POI icons drawn from the bundled `MassifIcons` font, its iconotype source in `iconfont/` | the SDK, one font instead of PNGs |
 | `cartocss-iconfont-compiled/` | that compiled | |
 
 The MapLibre styles read OpenFreeMap's tiles and Mapterhorn's DEM. The optional archives

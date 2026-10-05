@@ -23,7 +23,7 @@ from it. Users' side: [Massif](../styles/massif.mdx). How the style itself is wr
 | `styles/massif/LICENSE` | MIT-0: use it for anything, no notice required |
 | `carto/`, `dist/`, `family.json` | generated, gitignored |
 | `tools/style-cli/` | the converter (`mapbox2css`) and compiler (`css2xml`) |
-| `tools/style-sprite/` | the sprite sheet (`build.mjs`) and the icon font (`iconfont.mjs`) |
+| `tools/style-sprite/` | the sprite sheet (`build.mjs`) and the icon font's iconotype project (`iconotype-project.mjs`) |
 | `tools/style-preview/` | the style dev page ([style preview](style-preview.md)) |
 | `.github/workflows/release-styles.yml` | CI build of every flavour; the published release |
 
@@ -40,6 +40,8 @@ from it. Users' side: [Massif](../styles/massif.mdx). How the style itself is wr
 
 cd styles/massif
 node ../../tools/style-sprite/build.mjs sprite-src sprite sprite   # after an SVG change
+node ../../tools/style-sprite/iconotype-project.mjs sprite-src/poi sprite-src/MassifIcons.iconotype.json \
+  --badge 10.5,10.5,27,27                                         # after a POI SVG change
 python3 build.py              # the MapLibre variants
 python3 build.py --convert    # and the SDK project into carto/, for the style preview
 ```
@@ -60,13 +62,19 @@ and one `massif-<flavour>-<version>.zip` per flavour, `dist/npm/` (the npm packa
   Minified; `metadata["massif:version"]` and `["massif:placeholder-sources"]` added.
 - **`cartocss`** — `build.convert()` into the flavour folder, as `--convert` does into `carto/`.
 - **`cartocss-iconfont`** — the same conversion with `--icon-font MassifIcons --icon-font-map
-  MassifIcons.json --icon-font-size 27 --fonts`. `tools/style-sprite/iconfont.mjs` builds the font
-  from `sprite-src/poi/`: each badge SVG loses its plate (the first `<circle>`), its glyph box
-  (`10.5 10.5 27 27` of the 48 px badge) becomes the em, codepoints run from U+E001 in name order,
-  and every name is mapped twice (`restaurant`, `restaurant-poi`). 27 is that box's height, so
-  `icon-size` scales a glyph exactly as it scaled the sprite; the converter still measures the
-  sheet's disc once for the plate the SDK draws under the glyph. A codepoint is not a contract —
-  adding an icon moves the ones after it — the map file is.
+  <map> --icon-font-size 27 --fonts`. The font is [iconotype](https://github.com/iconotype/iconotype)'s
+  (`@iconotype/cli build`) from the committed project `sprite-src/MassifIcons.iconotype.json`, which
+  `tools/style-sprite/iconotype-project.mjs` writes from `sprite-src/poi/`: each badge SVG loses its
+  plate (the first `<circle>`), its glyph box (`--badge 10.5,10.5,27,27` of the 48 px badge) becomes
+  the em, and iconotype's own fixer (`init`) makes the paths font-ready. Every name is mapped twice
+  (`restaurant`, `restaurant-poi`). 27 is that box's height, so `icon-size` scales a glyph exactly as
+  it scaled the sprite; the converter still measures the sheet's disc once for the plate the SDK
+  draws under the glyph. **A codepoint is a contract**: FNV-1a of the name into U+E000–U+F8FF, the
+  next free slot on a collision, and the existing project's codes kept first, so adding or removing
+  an icon moves no other, and an app's own font built from another folder lands each name on
+  Massif's character. An icon whose SVG is removed stays in the project, unselected, holding its
+  code. The flavour ships the project and the script in `iconfont/`
+  ([your own POI icons](../styles/massif-sdk.md#fonts)); the compiled one does not.
 - **`*-compiled`** — `massif-style css2xml` of every `<name>.json` of the folder, beside its
   `icons/`, `fonts/` and `legend.json`. The XML keeps the parameters live (`[param::variant]`).
 

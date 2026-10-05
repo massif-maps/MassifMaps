@@ -54,6 +54,13 @@ of `latest`. A run with `publish` off keeps the zip and the tarballs as workflow
 script packs the tarballs locally: [BUILDING.md](https://github.com/massif-maps/MassifMaps/blob/master/BUILDING.md#npm-packages).
 What the web package contains and how an app hosts it: [the web guide](/docs/getting-started/web).
 
+`@massif-maps/style-tools` also has dev builds: each push to master touching the style compiler
+(`libs-massif`, `tools/style-cli`) publishes `<latest + 1 patch>-dev.<run>` - `6.1.3-dev.412` after
+6.1.2 - under the `dev` dist-tag, from `release-style-tools.yml` (`publish-dev`). It sorts above
+every release so far and below the next, so `@massif-maps/style-tools@dev` is always the newest
+compiler and a `^6.1.2` range never picks it. npmjs.com lists that workflow as a second trusted
+publisher of the package.
+
 ## Release notes
 
 `scripts/release-notes.py` writes the notes of both releases and the SDK's `CHANGELOG.md` entry:

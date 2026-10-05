@@ -33,8 +33,10 @@ import build  # noqa: E402
 ROOT = os.path.join(HERE, '..', '..')
 SITE = 'https://massif-maps.github.io/MassifMaps/styles/massif'
 TAG_PREFIX = 'massif-styles-v'
-ICONFONT = os.path.join(ROOT, 'tools', 'style-sprite', 'iconfont.mjs')
+SPRITE_TOOLS = os.path.join(ROOT, 'tools', 'style-sprite')
 FACE = 'MassifIcons'
+# the icon font's source, regenerated from sprite-src/poi by iconotype-project.mjs (committed)
+ICON_PROJECT = os.path.join(HERE, 'sprite-src', FACE + '.iconotype.json')
 # the sources anyone can reach; the others are archives an app serves itself (docs/styles/massif-maplibre.md)
 PUBLIC_SOURCES = {'openmaptiles', 'dem'}
 FLAVOURS = ['maplibre', 'cartocss', 'cartocss-compiled', 'cartocss-iconfont', 'cartocss-iconfont-compiled']
@@ -76,15 +78,30 @@ def maplibre(out, version, base_url):
 
 
 def iconfont(tmp):
-    subprocess.run(['node', ICONFONT, os.path.join(HERE, 'sprite-src', 'poi'), tmp, FACE, '--alias', '-poi'], check=True)
-    # 27: the glyph's height in the 48 px badge (iconfont.mjs's box), so icon-size scales it as the sprite
-    return ['--icon-font', FACE, '--icon-font-map', os.path.join(tmp, FACE + '.json'), '--icon-font-size', '27',
+    """The font iconotype builds from the committed project, and the name -> character map, every name
+    twice (`restaurant`, `restaurant-poi`) as the sprite has both"""
+    os.makedirs(tmp)
+    project = shutil.copy(ICON_PROJECT, tmp)
+    subprocess.run(['npx', '--yes', '@iconotype/cli@0.3.0', 'build', '--input', project, '--lock',
+                    os.path.join(tmp, 'codepoints.lock')], cwd=SPRITE_TOOLS, check=True)
+    codes = json.load(open(os.path.join(tmp, FACE + '.json')))
+    json.dump({**codes, **{name + '-poi': code for name, code in codes.items()}}, open(os.path.join(tmp, 'map.json'), 'w'))
+    # 27: the glyph's height in the 48 px badge (iconotype-project.mjs --badge), so icon-size scales it as the sprite
+    return ['--icon-font', FACE, '--icon-font-map', os.path.join(tmp, 'map.json'), '--icon-font-size', '27',
             '--fonts', tmp]
+
+
+def iconfont_source(out):
+    """the project file and the script that makes one from another folder of SVGs, for an app's own font"""
+    folder = os.path.join(out, 'iconfont')
+    os.makedirs(folder)
+    shutil.copy(ICON_PROJECT, folder)
+    shutil.copy(os.path.join(SPRITE_TOOLS, 'iconotype-project.mjs'), folder)
 
 
 def compiled(project, out):
     """Every variant and example of a CartoCSS project, compiled; the files it reads sit beside."""
-    shutil.copytree(project, out, ignore=shutil.ignore_patterns('*.mss', '*.json'))
+    shutil.copytree(project, out, ignore=shutil.ignore_patterns('*.mss', '*.json', 'iconfont'))
     shutil.copy(os.path.join(project, 'legend.json'), out)
     for f in sorted(os.listdir(project)):
         if f.endswith('.json') and f not in ('project.json', 'legend.json'):
@@ -157,6 +174,7 @@ def main():
         print(build.convert(os.path.join(dist, 'cartocss')))
     if any('iconfont' in f for f in flavours):
         print(build.convert(os.path.join(dist, 'cartocss-iconfont'), iconfont(os.path.join(dist, '.iconfont'))))
+        iconfont_source(os.path.join(dist, 'cartocss-iconfont'))
     for flavour in ('cartocss', 'cartocss-iconfont'):
         if flavour + '-compiled' in flavours:
             compiled(os.path.join(dist, flavour), os.path.join(dist, flavour + '-compiled'))

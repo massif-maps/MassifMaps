@@ -81,6 +81,7 @@ jobs:
           npm ci --prefix tools/style-cli
           npm run build --prefix tools/style-cli
           npm ci --prefix tools/style-sprite
+          npm test --prefix tools/style-sprite
 
       # the MapLibre variants and the CartoCSS project are generated AND committed - the examples
       # build from carto/ - so a change that forgot to regenerate them fails here
@@ -88,6 +89,8 @@ jobs:
         working-directory: styles/massif
         run: |
           python3 build.py --convert
+          node ../../tools/style-sprite/iconotype-project.mjs sprite-src/poi sprite-src/MassifIcons.iconotype.json \
+            --badge 10.5,10.5,27,27
           git status --porcelain -- . ':!dist' ':!family.json'
           git diff --quiet -- . && test -z "$(git status --porcelain -- carto)"
 

@@ -106,3 +106,19 @@ so the swatches follow the variant: [legends](../features/legends.md).
 The CartoCSS flavours name font roles (regular, medium, bold, italic) and ship no font: the SDK
 draws them with the device's fonts. The icon-font flavours ship `fonts/MassifIcons.ttf`, found by the
 decoder in the project's `fonts/` folder.
+
+**Your own POI icons** in the icon-font flavour: `iconfont/` holds the font's source, an
+[iconotype](https://github.com/iconotype/iconotype) project, and the script that writes one from a
+folder of SVGs. A codepoint is derived from the icon's name, so the same name lands on the same
+character as in Massif's font, and the style's `glyph-<name>` parameters still find it:
+
+```sh
+cp iconfont/MassifIcons.iconotype.json mine.iconotype.json    # Massif's codes, kept as they are
+node iconfont/iconotype-project.mjs my-svgs/ mine.iconotype.json --name MassifIcons
+npx @iconotype/cli build --input mine.iconotype.json          # MassifIcons.ttf + MassifIcons.json
+cp MassifIcons.ttf fonts/
+```
+
+Each SVG is one glyph, named after the POI `class` or `subclass` it draws. A name Massif has no icon
+for needs its `glyph-<name>` parameter (the character `MassifIcons.json` gives it) in a
+[child project](massif-extending.md). A name your folder lacks draws no glyph.

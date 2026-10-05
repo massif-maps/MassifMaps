@@ -2,18 +2,21 @@
   "name": "@massif-maps/style-sprite",
   "version": "0.0.0",
   "private": true,
-  "description": "Pack a folder of SVGs into a MapLibre sprite sheet",
+  "description": "Pack a folder of SVGs into a MapLibre sprite sheet, and into an iconotype icon font project",
   "type": "module",
   "bin": {
-    "massif-sprite": "build.mjs"
+    "massif-sprite": "build.mjs",
+    "massif-iconotype-project": "iconotype-project.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@iconotype/cli": "0.3.0",
     "@resvg/resvg-js": "^2.6.2",
-    "pngjs": "^7.0.0",
-    "svg2ttf": "^6.1.0",
-    "svgicons2svgfont": "^15.0.1"
+    "pngjs": "^7.0.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
   }
 }

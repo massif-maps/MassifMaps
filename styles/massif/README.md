@@ -183,9 +183,7 @@ colour's lightness mirrored past brightness 0.25-0.3, so the page goes black and
 - **Roads** are white with black casings, their hierarchy carried by the casing's weight
   (`casing-scale` 1.8). Below z13 only motorways, trunks and primaries keep a casing; the small
   roads are an uncased line in the casing's grey at the other variants' width, white once their
-  casing is drawn (`casing-from`). That grey is its own layer (`road-uncased`): the SDK reads a
-  day/night colour inside a zoom step wrong, and the converter keeps only the last stop of a zoom
-  fade, so a white road vanished below z13. **Tracks, trails and via ferratas** are black and white
+  casing is drawn (`casing-from`). **Tracks, trails and via ferratas** are black and white
   (the via ferrata's core white), tracks and trails 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood.
 - **Every label's halo is a pixel wider** (`lib.wider_halo`): a black word on a thin halo was lost over

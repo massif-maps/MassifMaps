@@ -74,14 +74,14 @@ UNPAVED = ['unpaved', 'compacted', 'fine_gravel', 'gravel', 'pebblestone', 'grou
            'grass_paver', 'mud', 'sand', 'rock', 'woodchips']
 
 
-def fill_colors(c):
+def fill_color(c):
     # below z14, uncased, Standard's one grey-blue for every road under a primary: a fill near the
     # ground's lightness would vanish without its casing
     low = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
            'secondary', c['secondary-low'], c['road-low']]
     high = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
             'secondary', c['secondary'], 'tertiary', c['tertiary'], c['road']]
-    return low, high
+    return ['step', ['zoom'], low, c.get('casing-from', 14), high]
 
 
 def case_color(c, key='case'):
@@ -130,26 +130,16 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:
         case_paint['line-dasharray'] = dash
-    low, high = fill_colors(c)
-    z = c.get('casing-from', 14)
-    if not c.get('casing-low'):
-        fills = [(id, minzoom, maxzoom, ['step', ['zoom'], low, z, high])]
-    elif maxzoom is not None and maxzoom <= z:
-        fills = [(id, minzoom, maxzoom, low)]
-    else:
-        # e-ink's colours are day/night ramps, which the SDK reads wrong inside a zoom step (white or
-        # black at every zoom): the uncased colour is its own layer, over the cased one below z
-        fills = [(id, minzoom, maxzoom, high), (id + '-uncased', minzoom, z, low)]
+    fill_paint = {'line-color': fill_color(c), 'line-width': width}
+    if fill_opacity is not None:
+        fill_paint['line-opacity'] = fill_opacity
     metadata = {'massif:minzoom-param': minzoom_param} if minzoom_param else None
-    out = [layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter,
-                 layout=case_layout, paint=case_paint, emissive=0, metadata=draw_once(c, id, metadata))]
-    for fill_id, lo, hi, color in fills:
-        fill_paint = {'line-color': color, 'line-width': width}
-        if fill_opacity is not None:
-            fill_paint['line-opacity'] = fill_opacity
-        out.append(layer(fill_id, 'line', 'transportation', minzoom=lo, maxzoom=hi, filter=filter, layout=layout,
-                         paint=fill_paint, emissive=EMISSIVE, metadata=draw_once(c, id, metadata)))
-    return out
+    return [
+        layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter,
+              layout=case_layout, paint=case_paint, emissive=0, metadata=draw_once(c, id, metadata)),
+        layer(id, 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
+              paint=fill_paint, emissive=EMISSIVE, metadata=draw_once(c, id, metadata)),
+    ]
 
 
 def low_casing(v, filter, id='road-casing-low', maxzoom=14):

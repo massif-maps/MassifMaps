@@ -128,8 +128,9 @@ deeper woods (`OUTDOOR` in the palette):
 - **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
   before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
-  a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
-  wilderness_hut: a badge on nature's green at a POI's size, named), campsites and picnic sites from z13; caves (named from
+  a walker uses (`shelter_type` basic_hut, lean_to, rock_shelter, weather_shelter, wilderness_hut: a
+  badge on nature's green at a POI's size, named), campsites and picnic sites from z13 (a picnic
+  shelter, the same badge, from z16 and under the huts); caves (named from
   z15), adits, ruins, castles, forts, archaeological sites, waterfalls (in the water's blue) and named parks and
   gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z14 under every POI
   (below); drinking water
@@ -224,7 +225,8 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
   the style adds the footprints past z15 for 1.
 - `building_tilt_drop` (90), `building_ao` (1) — the converter's own, the same in every converted style.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
-  category colour and drawn larger. It reads the class tables, so switching is a re-decode.
+  category colour and drawn larger; a glyph bare in both (furniture, landmarks, trees) keeps badge
+  mode's size. It reads the class tables, so switching is a re-decode.
 - `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
   drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
   e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`). Such a glyph
@@ -243,7 +245,7 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
   bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
 - `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water and springs; 12 to plan a hike by its water.
-- `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
+- `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink; 10 at the lowest, the OSM example's), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
   `wetland_pattern_zoom` (13) — where e-ink's textures start.
@@ -615,11 +617,11 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
 Alpimaps' OSM style has them (`?project=osm`): the palette redeclared (each road class its own casing,
 footways red, road colours ramped over zoom as Alpimaps ramps them, tertiaries white), Massif's
 widths kept, POIs as bare glyphs (`poiStyle: plain`), Alpimaps' textures on woods, scrub, wetland
-and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
-reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
+and rock. Its tracks are Massif's - grades, SAC and MTB details - in OSM's brown (`@track`).
 Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
-their rank and hides pharmacies before z17 (`display: none`), and `osm.json`'s `constants` bring the
-bus stops in at z15, named from z16, and public-transport shelters at z15.
+their rank and hides pharmacies before z17 (`display: none`), `osm.json` brings campsites in at z10
+(`campsite_min_zoom`) and its `constants` bring the bus stops in at z15, named from z16, and
+public-transport shelters at z15.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

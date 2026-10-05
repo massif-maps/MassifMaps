@@ -17,7 +17,6 @@
         "eink": "eink"
       }
     },
-    "track_min_zoom": 24,
     "poiStyle": {
       "default": "plain",
       "values": {
@@ -27,7 +26,8 @@
     },
     "road_osm_low": 1,
     "tunnel_min_zoom": 13,
-    "water_min_zoom": 16
+    "water_min_zoom": 16,
+    "campsite_min_zoom": 10
   },
   "constants": {
     "poi_bus_minzoom": 15,

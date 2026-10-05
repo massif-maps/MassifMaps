@@ -3372,9 +3372,9 @@ export interface PropertyTypes {
         'featureIdOverride': boolean;
         readonly 'maxZoom': number;
         readonly 'minZoom': number;
-        /** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+        /** Returns the value of the specified style parameter: its default, or the value last set. */
         'params': Record<string, string>;
-        /** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+        /** Returns the value of the specified style parameter: its default, or the value last set. */
         [key: `params.${string}`]: string;
         /** (read-only) Returns the ordered style layer names as declared by the style (project JSON "layers", or Mapnik XML Layers), i.e. the draw order. CompositeVectorTileLayer places external sources by it: a source whose name is not in this list is not drawn. */
         readonly 'styleLayerNames': string[];
@@ -11062,7 +11062,7 @@ export interface StyleSpec_mbvt {
     compiledStyle?: Handle | string | StylesetSpec;
     /** Returns the value of feature id override flag. This is intended for cases when feature ids in tile are not globally unique. */
     featureIdOverride?: boolean;
-    /** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+    /** Returns the value of the specified style parameter: its default, or the value last set. */
     params?: Record<string, string>;
     project?: Handle | string | StylesetSpec;
     /** Returns the binary format the tiles are decoded as. */

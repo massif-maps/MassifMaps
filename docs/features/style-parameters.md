@@ -65,9 +65,11 @@ style.set("params.show_relief", "true");
 style.apply(Spec.object().set("params", Spec.object().set("lang", "fr").set("buildings", "1")));
 ```
 
-A parameter the style does not declare is refused there rather than dropped, which is the one
-difference worth knowing: `setStyleParameter` returns `false` for it, and the surface API turns
-that into `RESULT_UNKNOWN_PROPERTY`.
+A parameter the style does not declare is taken too, for a style that reads it by a computed name
+(`[param::poi-boost-[class]]`): its value is read as JSON, else as text, it is unset until the app
+sets it, and it survives a style change. A value the declared type refuses (`"abc"` for a number,
+an enum value not listed) makes `setStyleParameter` return `false`, which the surface API turns
+into `RESULT_UNKNOWN_PROPERTY`.
 
 Three scales every style has, declared or not: `_fontscale` (every label and icon, 1 by default),
 `_geometryscale` (1) and `_zoomlevelbias` (0). An app sets `_fontscale` on any style for its

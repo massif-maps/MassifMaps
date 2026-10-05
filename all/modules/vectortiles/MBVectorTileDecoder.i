@@ -37,8 +37,8 @@
 // The style's legend, resolved against the live parameters. No spec reads the style's own legend.json.
 !method(massif::MBVectorTileDecoder, getLegend, arg(spec, json), returns(json))
 // And as a property bag, which is what an app writes: set(style, "params.water_color", "#0af").
-// setStyleParameter answers whether the style declares the parameter, so an undeclared one is
-// refused rather than dropped.
+// setStyleParameter answers false for a value the declared type refuses; an undeclared name is
+// taken, so a style can read it by a computed name ([param::poi-boost-[class]]).
 !indexed(massif::MBVectorTileDecoder, params, getStyleParameter, setStyleParameter, returns(bool))
 !spec(massif::MBVectorTileDecoder, style, mbvt, alias(cartocss, cartoCSSStyleSet), alias(project, compiledStyleSet))
 %attributeval(massif::MBVectorTileDecoder, std::vector<std::string>, StyleParameters, getStyleParameters)

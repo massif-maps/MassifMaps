@@ -270,10 +270,14 @@ namespace massif {
             // a scale every style has, declared or not
             const std::map<std::string, float>& builtins = mvt::SymbolizerContext::Settings::getBuiltinParameters();
             auto builtin = builtins.find(param);
-            if (builtin == builtins.end()) {
-                throw InvalidArgumentException("Could not find parameter");
-            }
             auto it2 = _parameterValueMap.find(param);
+            if (builtin == builtins.end()) {
+                if (it2 == _parameterValueMap.end()) {
+                    throw InvalidArgumentException("Could not find parameter");
+                }
+                const std::string* str = std::get_if<std::string>(&it2->second);
+                return str ? *str : convertValueToJSON(it2->second).serialize();
+            }
             const double* set = (it2 != _parameterValueMap.end() ? std::get_if<double>(&it2->second) : nullptr);
             return boost::lexical_cast<std::string>(set ? *set : builtin->second);
         }
@@ -418,8 +422,12 @@ namespace massif {
                     return false;
                 }
             }
-            Log::Errorf("MBVectorTileDecoder::setStyleParameter: Could not find parameter: %s", param.c_str());
-            return false;
+            // Not declared: a style may still read it by a computed name ([param::poi-boost-[class]])
+            picojson::value jsonValue;
+            std::string err;
+            bool json = picojson::parse(jsonValue, value.begin(), value.end(), &err) == value.end() && err.empty();
+            _parameterValueMap[param] = json ? convertJSONValue(jsonValue) : mvt::Value(value);
+            return true;
         }
         const mvt::StyleParameter& styleParam = it->second;
 
@@ -475,10 +483,11 @@ namespace massif {
 
     bool MBVectorTileDecoder::setStyleParameter(const std::string& param, const std::string& value) {
         bool live = false;
+        bool set = false;
         {
             std::lock_guard<std::mutex> lock(_mutex);
 
-            setStyleParameterInternal(param, value);
+            set = setStyleParameterInternal(param, value);
 
             live = areParametersRepaintable({ param });
             if (live) {
@@ -495,7 +504,7 @@ namespace massif {
         } else {
             notifyDecoderChanged();
         }
-        return true;
+        return set;
     }
     void MBVectorTileDecoder::setJSONStyleParameters(const std::string& params) {
         try
@@ -1071,12 +1080,8 @@ namespace massif {
         for (auto it = _parameterValueMap.begin(); it != _parameterValueMap.end(); ) {
             auto it2 = map->getStyleParameterMap().find(it->first);
             if (it2 == map->getStyleParameterMap().end()) {
-                // a built-in scale outlives the style it was set under
-                if (mvt::SymbolizerContext::Settings::getBuiltinParameters().count(it->first) > 0) {
-                    it++;
-                } else {
-                    it = _parameterValueMap.erase(it);
-                }
+                // a built-in scale or an undeclared value outlives the style it was set under
+                it++;
                 continue;
             }
             const mvt::StyleParameter& styleParam = it2->second;

@@ -22,9 +22,10 @@ async function projectFiles(base, variant) {
     const child = variant ? await (await fetch(`${base}/${variant}.json`)).json() : {};
     const styles = [...new Set([...(project.styles ?? []), ...(child.styles ?? [])])];
     const texts = await Promise.all(styles.map((name) => fetch(`${base}/${name}`).then((r) => r.text())));
-    const images = new Set(Object.values(project.styleparameters ?? {})
-        .filter((v) => typeof v === 'string' && /\.(?:png|jpg|jpeg|svg)$/.test(v)));
-    for (const text of texts) {
+    const images = new Set();
+    // a parameter may be a table of files (`glyph`, `icon`), so the parameters are read as text too
+    const params = JSON.stringify([project.styleparameters ?? {}, child.styleparameters ?? {}]);
+    for (const text of [params, ...texts]) {
         for (const match of text.matchAll(IMAGE_PATH)) images.add(match[0]);
     }
     // The fonts the project carries. The decoder finds them by scanning the package for

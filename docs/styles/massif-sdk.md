@@ -51,7 +51,7 @@ The ones an app usually sets:
 |---|---|---|
 | `variant` | `streets` | which of the five maps |
 | `poiStyle` | `badge` | `plain`: POI glyphs without their disc |
-| `poi-boost-<class>` | 0 | added to that POI class's placement priority: 100000 = one layer, negative demotes |
+| `poi-boost.<class>` | 0 | added to that POI class's placement priority: 100000 = one layer, negative demotes |
 | `buildings` | 2 | 0 none, 1 flat footprints at every zoom, 2 footprints then 3D blocks from z15 |
 | `building_opacity` | 1 | the 3D buildings' alpha looking straight down |
 | `track_min_zoom`, `path_min_zoom` | 12 | where tracks, paths and trails appear |
@@ -110,7 +110,7 @@ decoder in the project's `fonts/` folder.
 **Your own POI icons** in the icon-font flavour: `iconfont/` holds the font's source, an
 [iconotype](https://github.com/iconotype/iconotype) project, and the script that writes one from a
 folder of SVGs. A codepoint is derived from the icon's name, so the same name lands on the same
-character as in Massif's font, and the style's `glyph-<name>` parameters still find it:
+character as in Massif's font, and the style's `glyph` table still finds it:
 
 ```sh
 cp iconfont/MassifIcons.iconotype.json mine.iconotype.json    # Massif's codes, kept as they are
@@ -120,5 +120,5 @@ cp MassifIcons.ttf fonts/
 ```
 
 Each SVG is one glyph, named after the POI `class` or `subclass` it draws. A name Massif has no icon
-for needs its `glyph-<name>` parameter (the character `MassifIcons.json` gives it) in a
+for needs its `glyph.<name>` entry (the character `MassifIcons.json` gives it) in a
 [child project](massif-extending.md). A name your folder lacks draws no glyph.

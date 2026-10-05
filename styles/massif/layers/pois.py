@@ -108,13 +108,6 @@ DEFAULT_SHAPE = {'radius': 21, 'border': 3}
 
 CLASS_TO_CATEGORY = {c: cat for cat, cs in CLASSES.items() for c in cs}
 
-# every `poi-boost-<name>` an app may set (lib.boosted): the classes and subclasses a rule or a colour
-# names, the mountain_peak classes, and the airport label
-BOOST_NAMES = sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND) | {s for ss in SUBCLASS.values() for s in ss} |
-                     {'attraction', 'caravan_site', 'kindergarten', 'lodging', 'picnic_site', 'shelter',
-                      'peak', 'saddle', 'volcano'})
-
-
 def match_on_class(pairs, default):
     """['match', ['get','class'], [classes], value, ..., default] with the branches sorted."""
     out = ['match', ['get', 'class']]
@@ -251,11 +244,11 @@ def icon_chain(cls, image, fallback=True):
     return ['coalesce', image(get('subclass')), image(cls), *([image(DEFAULT_ICON)] if fallback else [])]
 
 
-# MapLibre's test and the SDK's: the SDK reads the converter's one-parameter-per-glyph table, so a
-# sprite or font glyph added under a class's name makes the class known with no other edit
+# MapLibre's test and the SDK's: the SDK reads the converter's `glyph` table, so a sprite or font
+# glyph added under a class's name makes the class known with no other edit
 KNOWN_MAPLIBRE = ['any', ['in', get('class'), ['literal', KNOWN]], ['in', get('subclass'), ['literal', KNOWN]]]
-KNOWN_SDK = ['!=', ['coalesce', ['config', ['concat', 'glyph-', get('subclass')]],
-                    ['config', ['concat', 'glyph-', get('class')]], ''], '']
+KNOWN_SDK = ['!=', ['coalesce', ['get', get('subclass'), ['config', 'glyph']],
+                    ['get', get('class'), ['config', 'glyph']], ''], '']
 
 
 def until_known(early, late, minzoom, maxzoom):

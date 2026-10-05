@@ -38,154 +38,8 @@
       "rock_pattern_zoom",
       "wetland_pattern_zoom",
       "hillshade_max_zoom",
-      "poi-boost-adit",
-      "poi-boost-aerialway",
-      "poi-boost-airfield",
-      "poi-boost-airport",
-      "poi-boost-alcohol_shop",
-      "poi-boost-allotments",
-      "poi-boost-alpine_hut",
-      "poi-boost-american_football",
-      "poi-boost-amusement_park",
-      "poi-boost-aquarium",
-      "poi-boost-archaeological_site",
-      "poi-boost-art_gallery",
-      "poi-boost-artwork",
-      "poi-boost-atm",
-      "poi-boost-attraction",
-      "poi-boost-bakery",
-      "poi-boost-bank",
-      "poi-boost-bar",
-      "poi-boost-barrier",
-      "poi-boost-baseball",
-      "poi-boost-basketball",
-      "poi-boost-beach",
-      "poi-boost-beer",
-      "poi-boost-bench",
-      "poi-boost-bicycle",
-      "poi-boost-bicycle_rental",
-      "poi-boost-biergarten",
-      "poi-boost-bird_hide",
-      "poi-boost-bollard",
-      "poi-boost-border_control",
-      "poi-boost-bus",
-      "poi-boost-butcher",
-      "poi-boost-cafe",
-      "poi-boost-cairn",
-      "poi-boost-campsite",
-      "poi-boost-car",
-      "poi-boost-caravan_site",
-      "poi-boost-castle",
-      "poi-boost-cave_entrance",
-      "poi-boost-cemetery",
-      "poi-boost-cinema",
-      "poi-boost-clothing_store",
-      "poi-boost-college",
-      "poi-boost-convenience",
-      "poi-boost-cricket",
-      "poi-boost-cross",
-      "poi-boost-cycle_barrier",
-      "poi-boost-deli",
-      "poi-boost-dentist",
-      "poi-boost-doctors",
-      "poi-boost-dog_park",
-      "poi-boost-drinking_water",
-      "poi-boost-embassy",
-      "poi-boost-fast_food",
-      "poi-boost-ferry",
-      "poi-boost-fire_station",
-      "poi-boost-florist",
-      "poi-boost-food_court",
-      "poi-boost-fort",
-      "poi-boost-fountain",
-      "poi-boost-fuel",
-      "poi-boost-furniture",
-      "poi-boost-gallery",
-      "poi-boost-garden",
-      "poi-boost-gate",
-      "poi-boost-gift",
-      "poi-boost-golf",
-      "poi-boost-greengrocer",
-      "poi-boost-grocery",
-      "poi-boost-guidepost",
-      "poi-boost-hairdresser",
-      "poi-boost-harbor",
-      "poi-boost-heliport",
-      "poi-boost-hospital",
-      "poi-boost-ice_cream",
-      "poi-boost-kindergarten",
-      "poi-boost-laundry",
-      "poi-boost-library",
-      "poi-boost-lift_gate",
-      "poi-boost-lighthouse",
-      "poi-boost-lodging",
-      "poi-boost-mast",
-      "poi-boost-monument",
-      "poi-boost-mountain",
-      "poi-boost-museum",
-      "poi-boost-music",
-      "poi-boost-nature_reserve",
-      "poi-boost-nightclub",
-      "poi-boost-park",
-      "poi-boost-parking",
-      "poi-boost-parking_garage",
-      "poi-boost-peak",
-      "poi-boost-pharmacy",
-      "poi-boost-picnic_site",
-      "poi-boost-picnic_table",
-      "poi-boost-pitch",
-      "poi-boost-place_of_worship",
-      "poi-boost-playground",
-      "poi-boost-police",
-      "poi-boost-post",
-      "poi-boost-power_tower",
-      "poi-boost-prison",
-      "poi-boost-pub",
-      "poi-boost-pylon",
-      "poi-boost-railway",
-      "poi-boost-railway_light",
-      "poi-boost-railway_metro",
-      "poi-boost-ranger_station",
-      "poi-boost-restaurant",
-      "poi-boost-rock",
-      "poi-boost-ruins",
-      "poi-boost-saddle",
-      "poi-boost-sally_port",
-      "poi-boost-school",
-      "poi-boost-shelter",
-      "poi-boost-shop",
-      "poi-boost-skiing",
-      "poi-boost-soccer",
-      "poi-boost-spring",
-      "poi-boost-stadium",
-      "poi-boost-stile",
-      "poi-boost-stone",
-      "poi-boost-supermarket",
-      "poi-boost-sushi",
-      "poi-boost-swimming",
-      "poi-boost-telephone",
-      "poi-boost-tennis",
-      "poi-boost-theatre",
-      "poi-boost-theme_park",
-      "poi-boost-toilets",
-      "poi-boost-toll_booth",
-      "poi-boost-town_hall",
-      "poi-boost-tree",
-      "poi-boost-veterinary",
-      "poi-boost-viewpoint",
-      "poi-boost-volcano",
-      "poi-boost-waste_basket",
-      "poi-boost-water",
-      "poi-boost-water_point",
-      "poi-boost-waterfall",
-      "poi-boost-watering_place",
-      "poi-boost-wayside_cross",
-      "poi-boost-wayside_shrine",
-      "poi-boost-wetland",
-      "poi-boost-wilderness_hut",
-      "poi-boost-wind_turbine",
-      "poi-boost-windmill",
-      "poi-boost-zoo"
+      "poi-boost",
+      "glyph"
     ]
   },
   "sources": {
@@ -17833,8 +17687,12 @@
             [
               "coalesce",
               [
-                "config",
-                "poi-boost-airport"
+                "get",
+                "airport",
+                [
+                  "config",
+                  "poi-boost"
+                ]
               ],
               0
             ]
@@ -19289,14 +19147,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -19306,14 +19164,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -19321,14 +19179,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -19871,14 +19729,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -19888,14 +19746,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -19903,14 +19761,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -20193,14 +20051,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -20210,14 +20068,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -20225,14 +20083,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -20768,14 +20626,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -20785,14 +20643,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -20800,14 +20658,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -21352,14 +21210,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -21369,14 +21227,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -21384,14 +21242,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -21934,14 +21792,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -21951,14 +21809,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -21966,14 +21824,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -22515,14 +22373,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -22532,14 +22390,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -22547,14 +22405,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -23055,14 +22913,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -23072,14 +22930,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -23087,14 +22945,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -23602,14 +23460,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -23619,14 +23477,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -23634,14 +23492,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -24151,14 +24009,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -24168,14 +24026,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -24183,14 +24041,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -24707,14 +24565,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -24724,14 +24582,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -24739,14 +24597,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -25253,14 +25111,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -25270,14 +25128,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -25285,14 +25143,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -25806,14 +25664,14 @@
                   [
                     "coalesce",
                     [
-                      "config",
+                      "get",
                       [
-                        "concat",
-                        "poi-boost-",
-                        [
-                          "get",
-                          "subclass"
-                        ]
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "config",
+                        "poi-boost"
                       ]
                     ],
                     0
@@ -25823,14 +25681,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -25838,14 +25696,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -26346,14 +26204,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -26363,14 +26221,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -26378,14 +26236,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -26920,14 +26778,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -26937,14 +26795,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -26952,14 +26810,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -27465,14 +27323,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -27482,14 +27340,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -27497,14 +27355,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -28030,14 +27888,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -28047,14 +27905,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -28062,14 +27920,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -28575,14 +28433,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -28592,14 +28450,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -28607,14 +28465,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -28855,14 +28713,14 @@
             [
               "coalesce",
               [
-                "config",
+                "get",
                 [
-                  "concat",
-                  "poi-boost-",
-                  [
-                    "get",
-                    "class"
-                  ]
+                  "get",
+                  "class"
+                ],
+                [
+                  "config",
+                  "poi-boost"
                 ]
               ],
               0
@@ -29339,14 +29197,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -29356,14 +29214,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -29371,14 +29229,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -29873,14 +29731,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -29890,14 +29748,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -29905,14 +29763,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -30412,14 +30270,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -30429,14 +30287,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -30444,14 +30302,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -31000,14 +30858,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -31017,14 +30875,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -31032,14 +30890,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -31518,14 +31376,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -31535,14 +31393,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -31550,14 +31408,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -32047,14 +31905,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -32064,14 +31922,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -32079,14 +31937,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -32943,14 +32801,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -32960,14 +32818,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -32975,14 +32833,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -34200,25 +34058,25 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "glyph-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "glyph"
                     ]
                   ],
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "glyph-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "glyph"
                     ]
                   ],
                   ""
@@ -34289,14 +34147,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -34306,14 +34164,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -34321,14 +34179,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -35146,14 +35004,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -35163,14 +35021,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -35178,14 +35036,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -36034,14 +35892,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -36051,14 +35909,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -36066,14 +35924,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -37300,25 +37158,25 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "glyph-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "glyph"
                     ]
                   ],
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "glyph-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "glyph"
                     ]
                   ],
                   ""
@@ -37389,14 +37247,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -37406,14 +37264,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -37421,14 +37279,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -38247,14 +38105,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -38264,14 +38122,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -38279,14 +38137,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -39536,25 +39394,25 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "glyph-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "glyph"
                     ]
                   ],
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "glyph-",
-                      [
-                        "get",
-                        "class"
-                      ]
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "glyph"
                     ]
                   ],
                   ""
@@ -39625,14 +39483,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -39642,14 +39500,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -39657,14 +39515,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -40165,14 +40023,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -40182,14 +40040,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -40197,14 +40055,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -40715,14 +40573,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -40732,14 +40590,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -40747,14 +40605,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -41264,14 +41122,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -41281,14 +41139,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -41296,14 +41154,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -41825,14 +41683,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -41842,14 +41700,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -41857,14 +41715,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -42395,14 +42253,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -42412,14 +42270,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -42427,14 +42285,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -42940,14 +42798,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -42957,14 +42815,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -42972,14 +42830,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -43469,14 +43327,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -43486,14 +43344,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -43501,14 +43359,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -44009,14 +43867,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -44026,14 +43884,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -44041,14 +43899,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -44537,14 +44395,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -44554,14 +44412,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -44569,14 +44427,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -45111,14 +44969,14 @@
                 [
                   "coalesce",
                   [
-                    "config",
+                    "get",
                     [
-                      "concat",
-                      "poi-boost-",
-                      [
-                        "get",
-                        "subclass"
-                      ]
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
                     ]
                   ],
                   0
@@ -45128,14 +44986,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "subclass"
-                    ]
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -45143,14 +45001,14 @@
               [
                 "coalesce",
                 [
-                  "config",
+                  "get",
                   [
-                    "concat",
-                    "poi-boost-",
-                    [
-                      "get",
-                      "class"
-                    ]
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
                   ]
                 ],
                 0
@@ -47339,14 +47197,14 @@
             [
               "coalesce",
               [
-                "config",
+                "get",
                 [
-                  "concat",
-                  "poi-boost-",
-                  [
-                    "get",
-                    "class"
-                  ]
+                  "get",
+                  "class"
+                ],
+                [
+                  "config",
+                  "poi-boost"
                 ]
               ],
               0
@@ -47531,14 +47389,14 @@
             [
               "coalesce",
               [
-                "config",
+                "get",
                 [
-                  "concat",
-                  "poi-boost-",
-                  [
-                    "get",
-                    "class"
-                  ]
+                  "get",
+                  "class"
+                ],
+                [
+                  "config",
+                  "poi-boost"
                 ]
               ],
               0
@@ -49154,449 +49012,11 @@
     "hillshade_max_zoom": {
       "default": 16
     },
-    "poi-boost-adit": {
-      "default": 0
-    },
-    "poi-boost-aerialway": {
-      "default": 0
-    },
-    "poi-boost-airfield": {
-      "default": 0
-    },
-    "poi-boost-airport": {
-      "default": 0
-    },
-    "poi-boost-alcohol_shop": {
-      "default": 0
-    },
-    "poi-boost-allotments": {
-      "default": 0
-    },
-    "poi-boost-alpine_hut": {
-      "default": 0
-    },
-    "poi-boost-american_football": {
-      "default": 0
-    },
-    "poi-boost-amusement_park": {
-      "default": 0
-    },
-    "poi-boost-aquarium": {
-      "default": 0
-    },
-    "poi-boost-archaeological_site": {
-      "default": 0
-    },
-    "poi-boost-art_gallery": {
-      "default": 0
-    },
-    "poi-boost-artwork": {
-      "default": 0
-    },
-    "poi-boost-atm": {
-      "default": 0
-    },
-    "poi-boost-attraction": {
-      "default": 0
-    },
-    "poi-boost-bakery": {
-      "default": 0
-    },
-    "poi-boost-bank": {
-      "default": 0
-    },
-    "poi-boost-bar": {
-      "default": 0
-    },
-    "poi-boost-barrier": {
-      "default": 0
-    },
-    "poi-boost-baseball": {
-      "default": 0
-    },
-    "poi-boost-basketball": {
-      "default": 0
-    },
-    "poi-boost-beach": {
-      "default": 0
-    },
-    "poi-boost-beer": {
-      "default": 0
-    },
-    "poi-boost-bench": {
-      "default": 0
-    },
-    "poi-boost-bicycle": {
-      "default": 0
-    },
-    "poi-boost-bicycle_rental": {
-      "default": 0
-    },
-    "poi-boost-biergarten": {
-      "default": 0
-    },
-    "poi-boost-bird_hide": {
-      "default": 0
-    },
-    "poi-boost-bollard": {
-      "default": 0
-    },
-    "poi-boost-border_control": {
-      "default": 0
-    },
-    "poi-boost-bus": {
-      "default": 0
-    },
-    "poi-boost-butcher": {
-      "default": 0
-    },
-    "poi-boost-cafe": {
-      "default": 0
-    },
-    "poi-boost-cairn": {
-      "default": 0
-    },
-    "poi-boost-campsite": {
-      "default": 0
-    },
-    "poi-boost-car": {
-      "default": 0
-    },
-    "poi-boost-caravan_site": {
-      "default": 0
-    },
-    "poi-boost-castle": {
-      "default": 0
-    },
-    "poi-boost-cave_entrance": {
-      "default": 0
-    },
-    "poi-boost-cemetery": {
-      "default": 0
-    },
-    "poi-boost-cinema": {
-      "default": 0
-    },
-    "poi-boost-clothing_store": {
-      "default": 0
-    },
-    "poi-boost-college": {
-      "default": 0
-    },
-    "poi-boost-convenience": {
-      "default": 0
-    },
-    "poi-boost-cricket": {
-      "default": 0
-    },
-    "poi-boost-cross": {
-      "default": 0
-    },
-    "poi-boost-cycle_barrier": {
-      "default": 0
-    },
-    "poi-boost-deli": {
-      "default": 0
-    },
-    "poi-boost-dentist": {
-      "default": 0
-    },
-    "poi-boost-doctors": {
-      "default": 0
-    },
-    "poi-boost-dog_park": {
-      "default": 0
-    },
-    "poi-boost-drinking_water": {
-      "default": 0
-    },
-    "poi-boost-embassy": {
-      "default": 0
-    },
-    "poi-boost-fast_food": {
-      "default": 0
-    },
-    "poi-boost-ferry": {
-      "default": 0
-    },
-    "poi-boost-fire_station": {
-      "default": 0
-    },
-    "poi-boost-florist": {
-      "default": 0
-    },
-    "poi-boost-food_court": {
-      "default": 0
-    },
-    "poi-boost-fort": {
-      "default": 0
-    },
-    "poi-boost-fountain": {
-      "default": 0
-    },
-    "poi-boost-fuel": {
-      "default": 0
-    },
-    "poi-boost-furniture": {
-      "default": 0
-    },
-    "poi-boost-gallery": {
-      "default": 0
-    },
-    "poi-boost-garden": {
-      "default": 0
-    },
-    "poi-boost-gate": {
-      "default": 0
-    },
-    "poi-boost-gift": {
-      "default": 0
-    },
-    "poi-boost-golf": {
-      "default": 0
-    },
-    "poi-boost-greengrocer": {
-      "default": 0
-    },
-    "poi-boost-grocery": {
-      "default": 0
-    },
-    "poi-boost-guidepost": {
-      "default": 0
-    },
-    "poi-boost-hairdresser": {
-      "default": 0
-    },
-    "poi-boost-harbor": {
-      "default": 0
-    },
-    "poi-boost-heliport": {
-      "default": 0
-    },
-    "poi-boost-hospital": {
-      "default": 0
-    },
-    "poi-boost-ice_cream": {
-      "default": 0
-    },
-    "poi-boost-kindergarten": {
-      "default": 0
-    },
-    "poi-boost-laundry": {
-      "default": 0
-    },
-    "poi-boost-library": {
-      "default": 0
-    },
-    "poi-boost-lift_gate": {
-      "default": 0
-    },
-    "poi-boost-lighthouse": {
-      "default": 0
-    },
-    "poi-boost-lodging": {
-      "default": 0
-    },
-    "poi-boost-mast": {
-      "default": 0
-    },
-    "poi-boost-monument": {
-      "default": 0
-    },
-    "poi-boost-mountain": {
-      "default": 0
-    },
-    "poi-boost-museum": {
-      "default": 0
-    },
-    "poi-boost-music": {
-      "default": 0
-    },
-    "poi-boost-nature_reserve": {
-      "default": 0
-    },
-    "poi-boost-nightclub": {
-      "default": 0
-    },
-    "poi-boost-park": {
-      "default": 0
-    },
-    "poi-boost-parking": {
-      "default": 0
-    },
-    "poi-boost-parking_garage": {
-      "default": 0
-    },
-    "poi-boost-peak": {
-      "default": 0
-    },
-    "poi-boost-pharmacy": {
-      "default": 0
-    },
-    "poi-boost-picnic_site": {
-      "default": 0
-    },
-    "poi-boost-picnic_table": {
-      "default": 0
-    },
-    "poi-boost-pitch": {
-      "default": 0
-    },
-    "poi-boost-place_of_worship": {
-      "default": 0
-    },
-    "poi-boost-playground": {
-      "default": 0
-    },
-    "poi-boost-police": {
-      "default": 0
-    },
-    "poi-boost-post": {
-      "default": 0
-    },
-    "poi-boost-power_tower": {
-      "default": 0
-    },
-    "poi-boost-prison": {
-      "default": 0
-    },
-    "poi-boost-pub": {
-      "default": 0
-    },
-    "poi-boost-pylon": {
-      "default": 0
-    },
-    "poi-boost-railway": {
-      "default": 0
-    },
-    "poi-boost-railway_light": {
-      "default": 0
-    },
-    "poi-boost-railway_metro": {
-      "default": 0
-    },
-    "poi-boost-ranger_station": {
-      "default": 0
-    },
-    "poi-boost-restaurant": {
-      "default": 0
-    },
-    "poi-boost-rock": {
-      "default": 0
-    },
-    "poi-boost-ruins": {
-      "default": 0
-    },
-    "poi-boost-saddle": {
-      "default": 0
-    },
-    "poi-boost-sally_port": {
-      "default": 0
-    },
-    "poi-boost-school": {
-      "default": 0
-    },
-    "poi-boost-shelter": {
-      "default": 0
-    },
-    "poi-boost-shop": {
-      "default": 0
-    },
-    "poi-boost-skiing": {
-      "default": 0
-    },
-    "poi-boost-soccer": {
-      "default": 0
-    },
-    "poi-boost-spring": {
-      "default": 0
-    },
-    "poi-boost-stadium": {
-      "default": 0
-    },
-    "poi-boost-stile": {
-      "default": 0
-    },
-    "poi-boost-stone": {
-      "default": 0
-    },
-    "poi-boost-supermarket": {
-      "default": 0
-    },
-    "poi-boost-sushi": {
-      "default": 0
-    },
-    "poi-boost-swimming": {
-      "default": 0
-    },
-    "poi-boost-telephone": {
-      "default": 0
-    },
-    "poi-boost-tennis": {
-      "default": 0
-    },
-    "poi-boost-theatre": {
-      "default": 0
-    },
-    "poi-boost-theme_park": {
-      "default": 0
-    },
-    "poi-boost-toilets": {
-      "default": 0
-    },
-    "poi-boost-toll_booth": {
-      "default": 0
-    },
-    "poi-boost-town_hall": {
-      "default": 0
-    },
-    "poi-boost-tree": {
-      "default": 0
-    },
-    "poi-boost-veterinary": {
-      "default": 0
-    },
-    "poi-boost-viewpoint": {
-      "default": 0
-    },
-    "poi-boost-volcano": {
-      "default": 0
-    },
-    "poi-boost-waste_basket": {
-      "default": 0
-    },
-    "poi-boost-water": {
-      "default": 0
-    },
-    "poi-boost-water_point": {
-      "default": 0
-    },
-    "poi-boost-waterfall": {
-      "default": 0
-    },
-    "poi-boost-watering_place": {
-      "default": 0
-    },
-    "poi-boost-wayside_cross": {
-      "default": 0
-    },
-    "poi-boost-wayside_shrine": {
-      "default": 0
-    },
-    "poi-boost-wetland": {
-      "default": 0
-    },
-    "poi-boost-wilderness_hut": {
-      "default": 0
-    },
-    "poi-boost-wind_turbine": {
-      "default": 0
-    },
-    "poi-boost-windmill": {
-      "default": 0
-    },
-    "poi-boost-zoo": {
-      "default": 0
+    "poi-boost": {
+      "default": {}
+    },
+    "glyph": {
+      "default": {}
     }
   }
 }

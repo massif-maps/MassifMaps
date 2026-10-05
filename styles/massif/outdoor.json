@@ -60374,6 +60374,21 @@
             [
               "concat",
               [
+                "concat",
+                "shelter-",
+                [
+                  "get",
+                  "shelter_type"
+                ]
+              ],
+              "-poi"
+            ]
+          ],
+          [
+            "image",
+            [
+              "concat",
+              [
                 "get",
                 "subclass"
               ],
@@ -72190,6 +72205,21 @@
       "layout": {
         "icon-image": [
           "coalesce",
+          [
+            "image",
+            [
+              "concat",
+              [
+                "concat",
+                "shelter-",
+                [
+                  "get",
+                  "shelter_type"
+                ]
+              ],
+              "-poi"
+            ]
+          ],
           [
             "image",
             [

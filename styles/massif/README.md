@@ -194,8 +194,8 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
 - **Buildings** are outlined grey footprints to z15, then grey 3D blocks as in the other variants
   (`building_opacity` looking down, opaque once the camera leans in); footprints at every zoom with
   `buildings` 1.
-- **POIs** are a black glyph on a white disc with a black ring, the same for every category; the
-  MapLibre style names the neutral sprite rather than the colour-baked one.
+- **POIs** are a black glyph on a white disc with a black ring, the same for every category, a bare
+  glyph black with a white halo; the MapLibre style names the `-mono` sprite baked that way.
 
 A per-variant POI palette stays a lookup in the SDK project: the converter folds a `match` on the
 `variant` config into one set of tables per variant (`poi-*-eink-*`), picked by a per-draw
@@ -228,7 +228,9 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
 - `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
   drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
   e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`). Such a glyph
-  has a 1 px halo (`BARE_HALO`), a plain POI 1.5.
+  has a 1 px halo (`BARE_HALO`), a plain POI 1.5. MapLibre's sprite is not SDF, so the sprite build
+  draws that halo into the bare glyph's `-poi` and `-mono` images, and bakes a walker's shelter as
+  `shelter-<shelter_type>`, a badge, as the SDK's shelter table does.
 All of them are in [`params.py`](params.py), named as in Alpimaps' OSM style where it had one. A
 variant may state its own default (`Variant(params=...)`), written into `carto/<variant>.json` and,
 for a zoom, into the MapLibre file as the layer's `minzoom`. A switch is `lib.gate`: a selector the

@@ -18889,34 +18889,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -19696,34 +19704,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -20504,34 +20520,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -20823,34 +20847,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -21640,34 +21672,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -22455,34 +22495,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -23269,34 +23317,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -24087,34 +24143,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -24857,34 +24921,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -25649,34 +25721,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -26428,34 +26508,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -27217,34 +27305,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -27993,34 +28089,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -28777,34 +28881,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -29578,34 +29690,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -30372,36 +30492,44 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "lodging",
+                "alpine_hut",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "lodging",
-              "alpine_hut",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -31168,36 +31296,59 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "concat",
+                "shelter-",
+                [
+                  "get",
+                  "shelter_type"
+                ]
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
                 "get",
-                "class"
+                "subclass"
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "lodging",
-              "alpine_hut",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            [
+              "concat",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "lodging",
+                "alpine_hut",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
+              ],
+              "-mono"
+            ]
+          ],
+          [
+            "image",
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -31780,36 +31931,44 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "lodging",
+                "alpine_hut",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "lodging",
-              "alpine_hut",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -32787,36 +32946,44 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "lodging",
+                "alpine_hut",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "lodging",
-              "alpine_hut",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -33552,36 +33719,44 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "lodging",
+                "alpine_hut",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "lodging",
-              "alpine_hut",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -34356,34 +34531,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -35166,34 +35349,57 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "concat",
+                "shelter-",
+                [
+                  "get",
+                  "shelter_type"
+                ]
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
                 "get",
-                "class"
+                "subclass"
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            [
+              "concat",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
+              ],
+              "-mono"
+            ]
+          ],
+          [
+            "image",
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -35928,34 +36134,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -36680,34 +36894,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -37751,34 +37973,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -38896,29 +39126,37 @@
             [
               "image",
               [
-                "get",
-                "subclass"
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
               ]
             ],
             [
               "image",
               [
-                "match",
+                "concat",
                 [
-                  "get",
-                  "class"
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
                 ],
-                [
-                  "border_control",
-                  "sally_port"
-                ],
-                "barrier",
-                "spring",
-                "water",
-                [
-                  "get",
-                  "class"
-                ]
+                "-mono"
               ]
             ]
           ],
@@ -38928,34 +39166,42 @@
             [
               "image",
               [
-                "get",
-                "subclass"
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
               ]
             ],
             [
               "image",
               [
-                "match",
+                "concat",
                 [
-                  "get",
-                  "class"
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
                 ],
-                [
-                  "border_control",
-                  "sally_port"
-                ],
-                "barrier",
-                "spring",
-                "water",
-                [
-                  "get",
-                  "class"
-                ]
+                "-mono"
               ]
             ],
             [
               "image",
-              "default"
+              "default-mono"
             ]
           ]
         ],
@@ -40474,34 +40720,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -41565,29 +41819,37 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ]
         ],
@@ -42691,29 +42953,37 @@
             [
               "image",
               [
-                "get",
-                "subclass"
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
               ]
             ],
             [
               "image",
               [
-                "match",
+                "concat",
                 [
-                  "get",
-                  "class"
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
                 ],
-                [
-                  "border_control",
-                  "sally_port"
-                ],
-                "barrier",
-                "spring",
-                "water",
-                [
-                  "get",
-                  "class"
-                ]
+                "-mono"
               ]
             ]
           ],
@@ -42723,34 +42993,42 @@
             [
               "image",
               [
-                "get",
-                "subclass"
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
               ]
             ],
             [
               "image",
               [
-                "match",
+                "concat",
                 [
-                  "get",
-                  "class"
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
                 ],
-                [
-                  "border_control",
-                  "sally_port"
-                ],
-                "barrier",
-                "spring",
-                "water",
-                [
-                  "get",
-                  "class"
-                ]
+                "-mono"
               ]
             ],
             [
               "image",
-              "default"
+              "default-mono"
             ]
           ]
         ],
@@ -44270,34 +44548,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -45389,29 +45675,37 @@
             [
               "image",
               [
-                "get",
-                "subclass"
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
               ]
             ],
             [
               "image",
               [
-                "match",
+                "concat",
                 [
-                  "get",
-                  "class"
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
                 ],
-                [
-                  "border_control",
-                  "sally_port"
-                ],
-                "barrier",
-                "spring",
-                "water",
-                [
-                  "get",
-                  "class"
-                ]
+                "-mono"
               ]
             ]
           ],
@@ -45421,34 +45715,42 @@
             [
               "image",
               [
-                "get",
-                "subclass"
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
               ]
             ],
             [
               "image",
               [
-                "match",
+                "concat",
                 [
-                  "get",
-                  "class"
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
                 ],
-                [
-                  "border_control",
-                  "sally_port"
-                ],
-                "barrier",
-                "spring",
-                "water",
-                [
-                  "get",
-                  "class"
-                ]
+                "-mono"
               ]
             ],
             [
               "image",
-              "default"
+              "default-mono"
             ]
           ]
         ],
@@ -46649,34 +46951,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -47431,34 +47741,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -48214,34 +48532,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -49007,34 +49333,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -49812,34 +50146,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -50590,34 +50932,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -51362,34 +51712,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -52125,34 +52483,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": 0.4,
@@ -52886,34 +53252,42 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [
@@ -53529,36 +53903,44 @@
           [
             "image",
             [
-              "get",
-              "subclass"
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
             ]
           ],
           [
             "image",
             [
-              "match",
+              "concat",
               [
-                "get",
-                "class"
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "lodging",
+                "alpine_hut",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
               ],
-              [
-                "border_control",
-                "sally_port"
-              ],
-              "barrier",
-              "lodging",
-              "alpine_hut",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
+              "-mono"
             ]
           ],
           [
             "image",
-            "default"
+            "default-mono"
           ]
         ],
         "icon-size": [

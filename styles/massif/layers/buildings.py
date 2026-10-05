@@ -1,4 +1,5 @@
 from lib import by_hour, gate, get, layer, zoom_ramp
+from params import PARAMS
 
 
 # the SDK only: building_opacity looking straight down, so the tunnels show through; opaque once the
@@ -37,7 +38,11 @@ def layers(v):
     if v.flags.get('mono'):
         # e-ink: outlined footprints, then grey blocks whose walls the lighting shades
         c = v.palette
-        return flat('building-flat', {'fill-color': c['building'], 'fill-outline-color': c['building-outline']}, v) + \
+        # the outline is the fill's colour for a zoom after they appear, then fades in: a whole town's
+        # outlines at once turned the map dark
+        start = PARAMS['building_min_zoom']['default'] + 1
+        outline = ['interpolate', ['linear'], ['zoom'], start, c['building'], start + 1, c['building-outline']]
+        return flat('building-flat', {'fill-color': c['building'], 'fill-outline-color': outline}, v) + \
             [extrusion(c['building'])]
     return flat('building', {'fill-color': 'hsl(40, 43%, 93%)', 'fill-outline-color': 'hsl(40, 25%, 85%)'}, v) + \
         [extrusion('hsl(30, 43%, 93%)', 'hsl(0, 0%, 58%)')]

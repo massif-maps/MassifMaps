@@ -16481,7 +16481,19 @@
       "maxzoom": 15,
       "paint": {
         "fill-color": "hsl(0, 0%, 90%)",
-        "fill-outline-color": "hsl(0, 0%, 40%)"
+        "fill-outline-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          "hsl(0, 0%, 90%)",
+          16,
+          "hsl(0, 0%, 40%)"
+        ]
       },
       "metadata": {
         "massif:minzoom-param": "building_min_zoom",
@@ -16506,13 +16518,38 @@
               "linear"
             ],
             [
-              "measure-light",
-              "brightness"
+              "zoom"
             ],
-            0.25,
-            "hsl(0, 0%, 60%)",
-            0.3,
-            "hsl(0, 0%, 40%)"
+            15,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 10%)",
+              0.3,
+              "hsl(0, 0%, 90%)"
+            ],
+            16,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 60%)",
+              0.3,
+              "hsl(0, 0%, 40%)"
+            ]
           ]
         }
       }
@@ -16525,7 +16562,19 @@
       "minzoom": 15,
       "paint": {
         "fill-color": "hsl(0, 0%, 90%)",
-        "fill-outline-color": "hsl(0, 0%, 40%)"
+        "fill-outline-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          "hsl(0, 0%, 90%)",
+          16,
+          "hsl(0, 0%, 40%)"
+        ]
       },
       "metadata": {
         "massif:minzoom-param": "building_min_zoom",
@@ -16561,13 +16610,38 @@
               "linear"
             ],
             [
-              "measure-light",
-              "brightness"
+              "zoom"
             ],
-            0.25,
-            "hsl(0, 0%, 60%)",
-            0.3,
-            "hsl(0, 0%, 40%)"
+            15,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 10%)",
+              0.3,
+              "hsl(0, 0%, 90%)"
+            ],
+            16,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              "hsl(0, 0%, 60%)",
+              0.3,
+              "hsl(0, 0%, 40%)"
+            ]
           ]
         }
       },

@@ -191,9 +191,9 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
 - **Every label's halo is a pixel wider** (`lib.wider_halo`): a black word on a thin halo was lost over
   a dark pattern or a road casing.
 - **Shields** are one white plate with a black ring, for every country.
-- **Buildings** are outlined grey footprints to z15, then grey 3D blocks as in the other variants
+- **Buildings** are grey footprints to z15, then grey 3D blocks as in the other variants
   (`building_opacity` looking down, opaque once the camera leans in); footprints at every zoom with
-  `buildings` 1.
+  `buildings` 1. Their outline fades in over z15–16: a whole town's outlines at once turned the map dark.
 - **POIs** are a black glyph on a white disc with a black ring, the same for every category, a bare
   glyph black with a white halo; the MapLibre style names the `-mono` sprite baked that way.
 

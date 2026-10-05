@@ -2708,14 +2708,14 @@ Map {
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 13][zoom < 15]['param::buildings'>0]['param::variant' = 'eink']::building_flat {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
-  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
+  line-color: linear([view::zoom], (15, linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night))), (16, linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4))));
   line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' = 'eink']::building_flat {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
-  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
+  line-color: linear([view::zoom], (15, linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night))), (16, linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4))));
   line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;

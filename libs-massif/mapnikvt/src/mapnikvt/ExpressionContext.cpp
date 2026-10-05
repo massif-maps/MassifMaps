@@ -69,6 +69,17 @@ namespace massif::mvt {
         return Value();
     }
 
+    bool ExpressionContext::isLiveStyleParameter(const std::string& name) const {
+        if (name.empty()) {
+            return !_styleParameterStore || _styleParameterStore->anyLive();
+        }
+        std::size_t prefixLen = styleParameterPrefixLen(name);
+        if (_styleParamOverride && name.compare(prefixLen, std::string::npos, _styleParamOverrideName) == 0) {
+            return false;
+        }
+        return !_styleParameterStore || _styleParameterStore->isLive(name.substr(prefixLen));
+    }
+
     Value ExpressionContext::getViewStateVariable(const vt::ViewState& viewState, const std::string& name) const {
         if (isViewStateVariable(name)) {
             if (name == "view::zoom") {

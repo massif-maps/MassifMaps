@@ -3,7 +3,8 @@
  * a feature field is built once per feature and evaluated every frame. Folding the feature half at
  * build time must not change a single value - only what the per-frame evaluation redoes. Pinned: the
  * same numbers as the unfolded tree, the stops of a ramp becoming constants (so its curve is built
- * once), and the view variables and live style parameters staying variables.
+ * once), and the view variables and live style parameters staying variables. A parameter whose change
+ * re-decodes (not in the store's live names) folds like a field, and so does a ternary it decides.
  */
 
 #include "TestCheck.h"
@@ -13,6 +14,7 @@
 #include <mapnikvt/Feature.h>
 #include <mapnikvt/Predicate.h>
 #include <mapnikvt/Properties.h>
+#include <mapnikvt/StyleParameterStore.h>
 
 #include <cmath>
 #include <memory>
@@ -92,4 +94,34 @@ void testContextFold() {
     mvt::Expression param = std::make_shared<mvt::BinaryExpression>(mvt::BinaryExpression::Op::MUL, variable("param::width"), variable("class_width"));
     mvt::Expression paramFolded = mvt::foldContextExpressions(param, pedestrian);
     TEST_CHECK(std::holds_alternative<std::shared_ptr<mvt::BinaryExpression>>(paramFolded), "a style parameter stays live: it may change after the decode");
+
+    // ([param::variant] = 'eink') ? linear([view::brightness], (0.25, 1), (0.3, 3)) : [param::width]
+    auto store = std::make_shared<mvt::StyleParameterStore>(std::map<std::string, mvt::Value> { { "variant", mvt::Value(std::string("streets")) }, { "width", mvt::Value(7.0) } });
+    mvt::ExpressionContext storeContext;
+    storeContext.setStyleParameterStore(store);
+    mvt::Predicate isEink = std::make_shared<mvt::ComparisonPredicate>(mvt::ComparisonPredicate::Op::EQ, variable("param::variant"), mvt::Value(std::string("eink")));
+    std::vector<mvt::Expression> einkFrames { mvt::Value(0.25), mvt::Value(1.0), mvt::Value(0.3), mvt::Value(3.0) };
+    mvt::Expression einkRamp = std::make_shared<mvt::InterpolateExpression>(mvt::InterpolateExpression::Method::LINEAR, variable("view::brightness"), std::move(einkFrames));
+    mvt::Expression variantWidth = std::make_shared<mvt::TertiaryExpression>(mvt::TertiaryExpression::Op::CONDITIONAL, isEink, einkRamp, variable("param::width"));
+
+    TEST_CHECK(std::holds_alternative<std::shared_ptr<mvt::TertiaryExpression>>(mvt::foldContextExpressions(variantWidth, storeContext)), "with no live names on the store, every parameter stays live");
+
+    store->setLiveNames(std::make_shared<std::set<std::string>>(std::set<std::string> { "width" }));
+    mvt::Expression liveWidth = mvt::foldContextExpressions(variantWidth, storeContext);
+    TEST_CHECK(std::holds_alternative<std::shared_ptr<mvt::VariableExpression>>(liveWidth), "a re-decoding parameter decides the ternary at decode, a live one stays a variable");
+
+    store->setLiveNames(std::make_shared<std::set<std::string>>());
+    mvt::FloatFunctionProperty variantProp(0.0f);
+    variantProp.setExpression(variantWidth);
+    vt::FloatFunction streetsFunc = variantProp.getFunction(storeContext);
+    TEST_CHECK(!streetsFunc.function() && near(streetsFunc.value(), 7.0), "folded through, the property is a constant the renderer never evaluates");
+
+    store->setValues(std::map<std::string, mvt::Value> { { "variant", mvt::Value(std::string("eink")) }, { "width", mvt::Value(7.0) } });
+    vt::FloatFunction einkFunc = variantProp.getFunction(storeContext);
+    TEST_CHECK(einkFunc.function() && near(einkFunc(lit(0.275f)), 2.0), "a new value folds again on the next decode, not from a cached function");
+
+    mvt::Expression computed = std::make_shared<mvt::VariableExpression>(mvt::Expression(std::make_shared<mvt::BinaryExpression>(mvt::BinaryExpression::Op::ADD, mvt::Value(std::string("param::fill-")), variable("class"))));
+    TEST_CHECK(!mvt::readsLiveStyleParameters(computed, storeContext), "a name computed per feature is fixed when no parameter is live");
+    store->setLiveNames(std::make_shared<std::set<std::string>>(std::set<std::string> { "width" }));
+    TEST_CHECK(mvt::readsLiveStyleParameters(computed, storeContext), "and may be a live one otherwise");
 }

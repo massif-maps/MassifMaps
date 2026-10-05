@@ -49,6 +49,9 @@ namespace massif::mvt {
         bool hasStyleParameterOverride() const { return _styleParamOverride; }
 
         Value getVariable(const std::string& name) const;
+        // A style parameter whose change only repaints, so a decoded tile must keep reading it. An
+        // empty name is one computed per feature.
+        bool isLiveStyleParameter(const std::string& name) const;
         Value getViewStateVariable(const vt::ViewState& viewState, const std::string& name) const;
 
         static bool isViewStateVariable(const std::string& name) { return name.compare(0, 6, "view::") == 0; }

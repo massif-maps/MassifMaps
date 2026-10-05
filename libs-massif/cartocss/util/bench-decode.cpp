@@ -4,6 +4,7 @@
 
 #include <mapnikvt/SymbolizerContext.h>
 #include <mapnikvt/StyleParameterStore.h>
+#include <mapnikvt/StyleParameterResolver.h>
 #include <mapnikvt/MBVTFeatureDecoder.h>
 #include <mapnikvt/LayerTileReader.h>
 #include <mapnikvt/PredicateUtils.h>
@@ -167,6 +168,53 @@ namespace {
         return hasher.value;
     }
 
+    // What the renderer evaluates per frame for this tile: every distinct view-dependent style
+    // function once (GLTileRenderer memoises by function object), timed over many frames.
+    std::pair<std::size_t, double> frameEval(const vt::Tile& tile) {
+        std::set<const void*> seen;
+        std::vector<vt::FloatFunction> floats;
+        std::vector<vt::ColorFunction> colors;
+        auto addFloat = [&](const vt::FloatFunction& func) { if (func.function() && seen.insert(func.function().get()).second) floats.push_back(func); };
+        auto addColor = [&](const vt::ColorFunction& func) { if (func.function() && seen.insert(func.function().get()).second) colors.push_back(func); };
+        for (const std::shared_ptr<vt::TileLayer>& layer : tile.getLayers()) {
+            for (const std::shared_ptr<vt::TileGeometry>& geometry : layer->getGeometries()) {
+                const vt::TileGeometry::StyleParameters& params = geometry->getStyleParameters();
+                for (int i = 0; i < params.parameterCount; i++) {
+                    addColor(params.colorFuncs[i]);
+                    addColor(params.borderColorFuncs[i]);
+                    addFloat(params.emissiveFuncs[i]);
+                    addFloat(params.widthFuncs[i]);
+                    addFloat(params.offsetFuncs[i]);
+                    addFloat(params.gapWidthFuncs[i]);
+                    addFloat(params.blurFuncs[i]);
+                    addFloat(params.borderWidthFuncs[i]);
+                }
+            }
+            for (const std::shared_ptr<vt::TileLabel>& label : layer->getLabels()) {
+                const vt::TileLabel::Style& style = *label->getStyle();
+                addColor(style.colorFunc);
+                addColor(style.haloColorFunc);
+                addFloat(style.sizeFunc);
+                addFloat(style.haloRadiusFunc);
+                addFloat(style.emissiveFunc);
+            }
+        }
+        vt::ViewState viewState;
+        viewState.zoom = static_cast<float>(tile.getTileId().zoom) + 0.5f;
+        constexpr int FRAMES = 50;
+        volatile float sink = 0;
+        Clock::time_point start = Clock::now();
+        for (int frame = 0; frame < FRAMES; frame++) {
+            for (const vt::FloatFunction& func : floats) {
+                sink += func(viewState);
+            }
+            for (const vt::ColorFunction& func : colors) {
+                sink += static_cast<float>(func(viewState).value() & 1);
+            }
+        }
+        return { floats.size() + colors.size(), msSince(start) * 1000.0 / FRAMES };
+    }
+
     struct TileJob {
         std::string path;
         vt::TileId source;
@@ -224,7 +272,14 @@ int main(int argc, char* argv[]) {
         auto fontManager = std::make_shared<vt::FontManager>(1024, 1024);
         std::vector<unsigned char> fontData = loadFile(fontFile);
         fontManager->setFontDataLoader([fontData](const std::string&) { return fontData; });
-        mvt::SymbolizerContext::Settings settings(256, std::make_shared<mvt::StyleParameterStore>(styleParams), fontManager->getFont("fallback", nullptr));
+        // As MBVectorTileDecoder sets it up: what a change only repaints for stays live
+        auto parameterStore = std::make_shared<mvt::StyleParameterStore>(styleParams);
+        auto liveNames = std::make_shared<std::set<std::string>>(mvt::resolveLiveStyleParameters(*map));
+        if (map->getSelectionParameter()) {
+            liveNames->insert(map->getSelectionParameter()->name);
+        }
+        parameterStore->setLiveNames(std::move(liveNames));
+        mvt::SymbolizerContext::Settings settings(256, parameterStore, fontManager->getFont("fallback", nullptr));
         mvt::SymbolizerContext context(std::make_shared<vt::BitmapManager>(std::make_shared<BitmapLoader>(assetLoader)), fontManager, std::make_shared<vt::StrokeMap>(128, 512), std::make_shared<vt::GlyphMap>(1024, 1024), settings);
         auto transformer = std::make_shared<vt::DefaultTileTransformer>(1.0f);
 
@@ -311,7 +366,8 @@ int main(int argc, char* argv[]) {
                 geometries += layer->getGeometries().size();
                 labels += layer->getLabels().size();
             }
-            std::cout << job.target.zoom << "/" << job.target.x << "/" << job.target.y << " " << best << " ms, passes " << passes << " (" << passesWithoutValueTest << " without the value test), feature visits " << visits << ", tile layers " << tile->getLayers().size() << ", geometry batches " << geometries << ", labels " << labels << ", hash " << std::hex << tileHash(*tile) << ", content " << contentHash(*tile) << std::dec << std::endl;
+            std::pair<std::size_t, double> frame = frameEval(*tile);
+            std::cout << job.target.zoom << "/" << job.target.x << "/" << job.target.y << " " << best << " ms, passes " << passes << " (" << passesWithoutValueTest << " without the value test), feature visits " << visits << ", tile layers " << tile->getLayers().size() << ", geometry batches " << geometries << ", labels " << labels << ", frame functions " << frame.first << " in " << frame.second << " us, hash " << std::hex << tileHash(*tile) << ", content " << contentHash(*tile) << std::dec << std::endl;
             zoomTotals[job.target.zoom].first += best;
             zoomTotals[job.target.zoom].second++;
             total += best;

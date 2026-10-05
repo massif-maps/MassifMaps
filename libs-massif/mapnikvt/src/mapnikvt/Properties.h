@@ -381,7 +381,7 @@ namespace massif::mvt {
             if (!_contextVars && !_styleParamVars) {
                 return _func;
             }
-            if (!_contextVars) {
+            if (!_contextVars && readsLiveStyleParams(context)) {
                 // One object per store, not per feature, or the renderer can neither memoise nor batch it.
                 const StyleParameterStore* store = context.getStyleParameterStore().get();
                 std::lock_guard<std::mutex> lock(_liveFuncMutex);
@@ -451,8 +451,10 @@ namespace massif::mvt {
         }
 
     protected:
+        // A parameter whose change re-decodes is folded into the tile like a feature field: kept live,
+        // Massif's [param::variant] ternaries cost the Crosscall ~6 ms a frame
         bool readsLiveStyleParams(const ExpressionContext& context) const {
-            return _styleParamVars && !(_selectionFoldable && context.hasStyleParameterOverride());
+            return _styleParamVars && !(_selectionFoldable && context.hasStyleParameterOverride()) && readsLiveStyleParameters(_expr, context);
         }
 
         // An expression that also reads a feature field re-decodes on a parameter change anyway, so a closure
@@ -498,7 +500,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::FloatFunction buildFunction(const Expression& expr, const ExpressionContext& context) const override {
-            if (_viewStateVars || !foldsStyleParams(context)) {
+            if ((_viewStateVars && !std::holds_alternative<Value>(expr)) || !foldsStyleParams(context)) {
                 // By value: this function outlives the property that built it.
                 Value defaultValue = _defaultValue;
                 auto func = [expr, context, defaultValue](const vt::ViewState& viewState) -> float {
@@ -524,7 +526,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::ColorFunction buildFunction(const Expression& expr, const ExpressionContext& context) const override {
-            if (_viewStateVars || !foldsStyleParams(context)) {
+            if ((_viewStateVars && !std::holds_alternative<Value>(expr)) || !foldsStyleParams(context)) {
                 // By value: this function outlives the property that built it.
                 Value defaultValue = _defaultValue;
                 auto func = [expr, context, defaultValue](const vt::ViewState& viewState) -> vt::Color {

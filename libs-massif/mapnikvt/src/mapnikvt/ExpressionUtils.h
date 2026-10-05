@@ -114,6 +114,9 @@ namespace massif::mvt {
      */
     Expression foldContextExpressions(const Expression& expr, const ExpressionContext& context);
 
+    // Whether the expression reads a style parameter a change only repaints for (isLiveStyleParameter)
+    bool readsLiveStyleParameters(const Expression& expr, const ExpressionContext& context);
+
     struct ExpressionDeepEqualsChecker {
         bool operator() (const Value& val1, const Value& val2) const { return val1 == val2; }
         bool operator() (const Predicate& pred1, const Predicate& pred2) const;

@@ -292,7 +292,8 @@ only builds and packs; `build.yml` publishes its tarball.
    `CHANGELOG.md` entry since the last final release, a regular GitHub release.
 
 The run refuses a version below an existing `v` tag. Order: every build, then the GitHub release
-made public (notes from `scripts/release-notes.py`), then the JitPack and Swift package tags and npm.
+made public (notes from `scripts/release-notes.py`, which leaves out the style-only commits:
+[release notes](docs/contributing/release-workflow.md#release-notes)), then the JitPack and Swift package tags and npm.
 A failure before the release is public deletes the draft; after it, nothing is rolled back — re-run
 the failed job: the tags are forced and npm skips a version it already has.
 

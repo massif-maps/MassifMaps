@@ -27,6 +27,8 @@ description: MANDATORY skill for ALL pull requests. Must be used EVERY TIME befo
    4. **ALWAYS** use `--draft` — only the user decides when a PR is ready for review.
    5. The PR title **ALWAYS** follows the Conventional Commits header (`<type>(<scope>): <subject>`) — same convention as the [commit](../commit/SKILL.md) skill.
    6. **ALWAYS** reference the tracking issue in the body: `Fixes #<issue>` / `Closes #<issue>`.
+   7. **Split SDK and styles work**: a branch touching `styles/massif` and anything the SDK ships is
+      two PRs, the SDK one first — see the root [`CLAUDE.md`](../../../CLAUDE.md#a-pr-title-is-the-changelog-entry).
 
 ## Submodule work = one PR per repo
 

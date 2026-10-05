@@ -24,11 +24,13 @@
       "polygons_border",
       "lighting",
       "sac_scale_labels",
+      "trails",
       "road_osm_low",
       "track_min_zoom",
       "path_min_zoom",
       "tunnel_min_zoom",
       "water_min_zoom",
+      "spring_min_zoom",
       "campsite_min_zoom",
       "building_min_zoom",
       "city_min_zoom",
@@ -15677,7 +15679,9 @@
           [
             "zoom"
           ],
-          14,
+          12,
+          0.4,
+          15,
           1,
           20,
           2
@@ -15726,6 +15730,60 @@
               "hsl(0, 0%, 0%)",
               "hsl(0, 0%, 0%)"
             ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "power-line",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "power",
+      "minzoom": 14,
+      "paint": {
+        "line-color": "hsl(0, 0%, 45%)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.5,
+          18,
+          1,
+          20,
+          1.5
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.5
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 55%)",
+            0.3,
+            "hsl(0, 0%, 45%)"
           ]
         }
       }
@@ -16800,7 +16858,7 @@
       "paint": {
         "text-color": "hsl(0, 0%, 30%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2
+        "text-halo-width": 1.8
       },
       "metadata": {
         "massif:paint": {
@@ -16903,7 +16961,7 @@
       "paint": {
         "text-color": "hsl(0, 0%, 25%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2.25
+        "text-halo-width": 2
       },
       "metadata": {
         "massif:paint": {
@@ -17854,11 +17912,10 @@
           "Noto Sans Bold"
         ],
         "text-size": 12,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          0.9
+        "text-variable-anchor": [
+          "top"
         ],
+        "text-radial-offset": 1.0,
         "text-optional": true
       },
       "paint": {
@@ -22524,7 +22581,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 14,
+      "minzoom": 16,
       "filter": [
         "==",
         [
@@ -30964,7 +31021,7 @@
               ]
             ]
           ],
-          15,
+          16,
           [
             "coalesce",
             [
@@ -33896,159 +33953,7 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "icon-halo-width": [
-            "match",
-            [
-              "get",
-              "subclass"
-            ],
-            [
-              "allotments",
-              "artwork",
-              "biergarten",
-              "convenience",
-              "deli",
-              "food_court",
-              "gallery",
-              "greengrocer",
-              "kindergarten",
-              "nature_reserve",
-              "picnic_table",
-              "pub",
-              "supermarket",
-              "theme_park"
-            ],
-            0,
-            "viewpoint",
-            1,
-            [
-              "match",
-              [
-                "get",
-                "shelter_type"
-              ],
-              [
-                "basic_hut",
-                "lean_to",
-                "picnic_shelter",
-                "rock_shelter",
-                "weather_shelter",
-                "wilderness_hut"
-              ],
-              0,
-              [
-                "match",
-                [
-                  "get",
-                  "class"
-                ],
-                [
-                  "adit",
-                  "aerialway",
-                  "airfield",
-                  "airport",
-                  "alcohol_shop",
-                  "alpine_hut",
-                  "american_football",
-                  "amusement_park",
-                  "aquarium",
-                  "archaeological_site",
-                  "art_gallery",
-                  "atm",
-                  "attraction",
-                  "bakery",
-                  "bank",
-                  "bar",
-                  "baseball",
-                  "basketball",
-                  "beach",
-                  "beer",
-                  "bicycle",
-                  "bicycle_rental",
-                  "bird_hide",
-                  "bus",
-                  "butcher",
-                  "cafe",
-                  "campsite",
-                  "car",
-                  "castle",
-                  "cave_entrance",
-                  "cemetery",
-                  "cinema",
-                  "clothing_store",
-                  "college",
-                  "cricket",
-                  "dentist",
-                  "doctors",
-                  "dog_park",
-                  "embassy",
-                  "fast_food",
-                  "ferry",
-                  "fire_station",
-                  "florist",
-                  "fort",
-                  "fountain",
-                  "fuel",
-                  "furniture",
-                  "gift",
-                  "golf",
-                  "grocery",
-                  "hairdresser",
-                  "harbor",
-                  "heliport",
-                  "hospital",
-                  "ice_cream",
-                  "information",
-                  "laundry",
-                  "library",
-                  "lighthouse",
-                  "lodging",
-                  "monument",
-                  "mountain",
-                  "museum",
-                  "music",
-                  "nightclub",
-                  "park",
-                  "parking",
-                  "parking_garage",
-                  "pharmacy",
-                  "pitch",
-                  "place_of_worship",
-                  "playground",
-                  "police",
-                  "post",
-                  "prison",
-                  "railway",
-                  "railway_light",
-                  "railway_metro",
-                  "ranger_station",
-                  "restaurant",
-                  "ruins",
-                  "school",
-                  "shop",
-                  "skiing",
-                  "soccer",
-                  "spring",
-                  "stadium",
-                  "sushi",
-                  "swimming",
-                  "tennis",
-                  "theatre",
-                  "town_hall",
-                  "veterinary",
-                  "volcano",
-                  "water",
-                  "waterfall",
-                  "wetland",
-                  "wilderness_hut",
-                  "windmill",
-                  "zoo"
-                ],
-                0,
-                1
-              ]
-            ]
-          ],
+          "icon-halo-width": 0,
           "text-occlusion-opacity": [
             "match",
             [
@@ -35568,7 +35473,7 @@
         ]
       },
       "metadata": {
-        "massif:minzoom-param": "water_min_zoom",
+        "massif:minzoom-param": "spring_min_zoom",
         "massif:filter": [
           "==",
           [
@@ -49805,16 +49710,36 @@
             "default-mono"
           ]
         ],
-        "icon-size": 0.4,
-        "text-field": [
-          "coalesce",
+        "icon-size": [
+          "interpolate",
           [
-            "get",
-            "name"
+            "linear"
           ],
           [
-            "get",
-            "name_int"
+            "zoom"
+          ],
+          11,
+          0.24,
+          14,
+          0.4
+        ],
+        "text-field": [
+          "step",
+          [
+            "zoom"
+          ],
+          "",
+          14,
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
           ]
         ],
         "text-font": [
@@ -50229,7 +50154,19 @@
               "default"
             ]
           ],
-          "icon-size": 0.4,
+          "icon-size": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            11,
+            0.24,
+            14,
+            0.4
+          ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
@@ -50595,16 +50532,36 @@
             "default-mono"
           ]
         ],
-        "icon-size": 0.4,
-        "text-field": [
-          "coalesce",
+        "icon-size": [
+          "interpolate",
           [
-            "get",
-            "name"
+            "linear"
           ],
           [
-            "get",
-            "name_int"
+            "zoom"
+          ],
+          11,
+          0.24,
+          14,
+          0.4
+        ],
+        "text-field": [
+          "step",
+          [
+            "zoom"
+          ],
+          "",
+          14,
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
           ]
         ],
         "text-font": [
@@ -51020,7 +50977,19 @@
               "default"
             ]
           ],
-          "icon-size": 0.4,
+          "icon-size": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            11,
+            0.24,
+            14,
+            0.4
+          ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
@@ -51386,16 +51355,36 @@
             "default-mono"
           ]
         ],
-        "icon-size": 0.4,
-        "text-field": [
-          "coalesce",
+        "icon-size": [
+          "interpolate",
           [
-            "get",
-            "name"
+            "linear"
           ],
           [
-            "get",
-            "name_int"
+            "zoom"
+          ],
+          11,
+          0.24,
+          14,
+          0.4
+        ],
+        "text-field": [
+          "step",
+          [
+            "zoom"
+          ],
+          "",
+          14,
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
           ]
         ],
         "text-font": [
@@ -51810,7 +51799,19 @@
               "default"
             ]
           ],
-          "icon-size": 0.4,
+          "icon-size": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            11,
+            0.24,
+            14,
+            0.4
+          ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
@@ -52187,16 +52188,36 @@
             "default-mono"
           ]
         ],
-        "icon-size": 0.4,
-        "text-field": [
-          "coalesce",
+        "icon-size": [
+          "interpolate",
           [
-            "get",
-            "name"
+            "linear"
           ],
           [
-            "get",
-            "name_int"
+            "zoom"
+          ],
+          11,
+          0.24,
+          14,
+          0.4
+        ],
+        "text-field": [
+          "step",
+          [
+            "zoom"
+          ],
+          "",
+          14,
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
           ]
         ],
         "text-font": [
@@ -52612,7 +52633,19 @@
               "default"
             ]
           ],
-          "icon-size": 0.4,
+          "icon-size": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            11,
+            0.24,
+            14,
+            0.4
+          ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
@@ -57660,7 +57693,7 @@
         },
         "massif:layout": {
           "text-font": [
-            "ios:Helvetica Neue, Roboto, sans-serif"
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
           "symbol-sort-key": [
             "-",
@@ -57852,7 +57885,7 @@
         },
         "massif:layout": {
           "text-font": [
-            "ios:Helvetica Neue, Roboto, sans-serif"
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
           "symbol-sort-key": [
             "-",
@@ -57930,7 +57963,7 @@
       "paint": {
         "text-color": "hsl(0, 0%, 25%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2.25
+        "text-halo-width": 2
       },
       "metadata": {
         "massif:paint": {
@@ -58046,7 +58079,7 @@
       "paint": {
         "text-color": "hsl(0, 0%, 25%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2.25
+        "text-halo-width": 2
       },
       "metadata": {
         "massif:paint": {
@@ -58161,7 +58194,7 @@
       "paint": {
         "text-color": "hsl(0, 0%, 25%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2.25
+        "text-halo-width": 2
       },
       "metadata": {
         "massif:paint": {
@@ -59436,6 +59469,13 @@
         1
       ]
     },
+    "trails": {
+      "default": 1,
+      "values": [
+        0,
+        1
+      ]
+    },
     "road_osm_low": {
       "default": 0,
       "values": [
@@ -59453,6 +59493,9 @@
       "default": 12
     },
     "water_min_zoom": {
+      "default": 16
+    },
+    "spring_min_zoom": {
       "default": 16
     },
     "campsite_min_zoom": {

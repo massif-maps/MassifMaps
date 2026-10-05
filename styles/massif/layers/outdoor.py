@@ -77,9 +77,9 @@ def contour_labels(v):
                   layout={'symbol-placement': 'line', 'text-field': ['to-string', get('ele')],
                           'text-font': 'italic', 'text-size': zoom_ramp(13, 9, 17, 11),
                           'text-padding': 4, 'text-max-angle': 25},
-                  paint={'text-color': c['contour-label'], 'text-halo-color': c['halo'], 'text-halo-width': 1},
+                  paint={'text-color': c['contour-label'], 'text-halo-color': c['contour-halo'], 'text-halo-width': 0.8},
                   metadata={'massif:paint': {'text-color': by_hour(c['label-night'], c['contour-label']),
-                                             'text-halo-color': by_hour(c['halo-night'], c['halo'])}})]
+                                             'text-halo-color': by_hour(c['halo-night'], c['contour-halo'])}})]
 
 
 def cliffs(v):

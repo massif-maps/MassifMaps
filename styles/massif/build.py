@@ -34,6 +34,8 @@ class Variant:
         self.title = title
         self.parts = parts
         self.params = {k: (params or {}).get(k, spec['default']) for k, spec in PARAMS.items()}
+        if flags.get('trails'):
+            self.params['trails'] = 1
         self.palette = PALETTES[name]
         self.sources = {k: SOURCES[k] for k in ('openmaptiles', 'bathymap', *sources)}
         self.flags = flags
@@ -89,7 +91,7 @@ HYBRID = [land.background, imagery.layers, outdoor.hillshade, outdoor.contours, 
           labels.peaks, labels.places]
 
 # a walker's map brings the campsites in with the huts, and its water points early
-OUTDOOR_PARAMS = {'campsite_min_zoom': 13, 'water_min_zoom': 16}
+OUTDOOR_PARAMS = {'campsite_min_zoom': 13, 'water_min_zoom': 16, 'spring_min_zoom': 16}
 
 VARIANTS = {v.name: v for v in [
     Variant('streets', 'Massif Streets', STREETS, sources=('dem', 'contours')),
@@ -225,8 +227,15 @@ def family_style():
             # only == and != : each converts to a bracketed test the decoder prunes per tile, where an
             # `in` over several variants would become a when() evaluated per feature
             absent = [n for n in names if n not in present]
-            only = ['==', ['config', 'variant'], present[0]] if len(present) == 1 else \
-                ['all', *[['!=', ['config', 'variant'], n] for n in absent]]
+            trails = {n for n in names if VARIANTS[n].flags.get('trails')}
+            # a trail layer follows `trails`, not the variant's name: a child that keeps streets' look
+            # (examples/osm) may still take outdoor's trails
+            if set(present) in (trails, set(names) - trails):
+                only = ['==', ['config', 'trails'], 1 if set(present) == trails else 0]
+            elif len(present) == 1:
+                only = ['==', ['config', 'variant'], present[0]]
+            else:
+                only = ['all', *[['!=', ['config', 'variant'], n] for n in absent]]
             meta = merged.setdefault('metadata', {})
             meta['massif:filter'] = ['all', meta['massif:filter'], only] if 'massif:filter' in meta else only
         layers.append(merged)

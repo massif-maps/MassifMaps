@@ -3141,6 +3141,7 @@
         "plain": "plain"
       }
     },
+    "poi_label_scale": 0.9,
     "poi_on_roof": 1,
     "polygons_border": 0,
     "river_label_min_zoom": 9,

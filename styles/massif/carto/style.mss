@@ -2773,7 +2773,7 @@ Map {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_italic;
-  text-size: @poi_size_2;
+  text-size: @text_size;
   text-wrap-width: @text_wrap_width;
   text-collision-padding: (1 * 4);
   text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
@@ -2788,7 +2788,7 @@ Map {
   shield-placement: 'billboard';
   shield-name: (([iata]) ?? ((([name]) ?? ([name_int]))));
   shield-face-name: @font_bold;
-  shield-size: @poi_size;
+  shield-size: 12;
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @airport_label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_airport))));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
@@ -3758,8 +3758,8 @@ Map {
   shield-placement: 'billboard';
   shield-name: (([name]) ?? ([name_int]));
   shield-face-name: @font_medium;
-  shield-size: @poi_size;
-  shield-wrap-width: @poi_wrap_width;
+  shield-size: (12 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (12 * [param::poi_label_scale]));
   shield-collision-padding: (1 * 2);
   shield-z-elevate: ([param::poi_on_roof] = 1);
   shield-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, ((get([param::poi-fill-b25-subclass], [subclass])) ?? ((get([param::poi-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-fill-subclass], [subclass])) ?? ((get([param::poi-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-fill], [class])) ?? @poi_fill))))));
@@ -3783,7 +3783,7 @@ Map {
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? 0.4 : (([param::poiStyle] = 'plain') ? 0.6 : 0.4))));
   shield-anchors: 'bottom,right,left';
   shield-text-optional: true;
-  shield-text-radial-offset: 12;
+  shield-text-radial-offset: (1 * (12 * [param::poi_label_scale]));
   shield-text-horizontal-alignment: 'auto';
 }
 #poi[zoom >= 18][class = 'tree'][name = null]['param::variant' != 'hybrid']::poi {
@@ -3799,14 +3799,14 @@ Map {
 }
 #poi[zoom >= 17][class = 'tree'][name != null]::poi {
   shield-face-name: @font_italic;
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (20700000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 15][subclass = 'viewpoint']::poi {
@@ -3822,335 +3822,335 @@ Map {
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'guidepost']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (20900000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 16][class = 'cairn']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 16][class = 'rock']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 16][class = 'stone']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 16][class = 'wayside_cross']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 16][class = 'wayside_shrine']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21000000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 15][class = 'cross']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21100000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 15][class = 'mast']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21100000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 15][class = 'pylon']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21100000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'power_tower']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21200000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (13, (0.7 * (0.4 * [param::bare_icon_scale]))), (16, (1 * (0.4 * [param::bare_icon_scale]))), (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (13, (0.7 * (0.4 * [param::bare_icon_scale]))), (16, (1 * (0.4 * [param::bare_icon_scale]))), (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (13, (0.7 * (0.4 * [param::bare_icon_scale]))), (16, (1 * (0.4 * [param::bare_icon_scale]))), (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 13][class = 'wind_turbine']::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21200000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
-  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
+  shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (13, (0.7 * (0.4 * [param::bare_icon_scale]))), (16, (1 * (0.4 * [param::bare_icon_scale]))), (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
-  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
-  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
+  shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (13, (0.7 * (0.4 * [param::bare_icon_scale]))), (16, (1 * (0.4 * [param::bare_icon_scale]))), (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
+  shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (13, (0.7 * (0.4 * [param::bare_icon_scale]))), (16, (1 * (0.4 * [param::bare_icon_scale]))), (17, (1 * (0.4 * [param::bare_icon_scale]))), (22, (2 * (0.4 * [param::bare_icon_scale])))) : linear([view::zoom], (13, (0.27999999999999997 * [param::bare_icon_scale])), (16, (0.4 * [param::bare_icon_scale])), (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'bollard'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21300000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'bollard'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21400000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'cycle_barrier'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21500000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'gate'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21500000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'lift_gate'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21500000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'sally_port'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21500000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'stile'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21500000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'cycle_barrier'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21600000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'gate'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21600000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'lift_gate'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21600000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'sally_port'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21600000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'stile'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21600000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'border_control'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21700000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'toll_booth'][name = null]::poi {
   shield-name: '';
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21700000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'border_control'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21800000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 17][class = 'toll_booth'][name != null]::poi {
-  shield-size: @poi_size_2;
-  shield-wrap-width: @poi_wrap_width_2;
+  shield-size: (11 * [param::poi_label_scale]);
+  shield-wrap-width: (9 * (11 * [param::poi_label_scale]));
   shield-placement-priority: (21800000 + (((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))) / 2.0);
   shield-icon-fill: (([param::variant] = 'hybrid') ? ((get([param::poi-icon-fill-hybrid-subclass], [subclass])) ?? ((get([param::poi-icon-fill-hybrid-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-hybrid], [class])) ?? @poi_icon_fill))) : ([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, ((get([param::poi-icon-fill-plain-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-plain-subclass], [subclass])) ?? ((get([param::poi-icon-fill-plain-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-plain], [class])) ?? @poi_icon_fill_2))))) : linear([view::brightness], (0.25, ((get([param::poi-icon-fill-b25-subclass], [subclass])) ?? ((get([param::poi-icon-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-icon-fill-subclass], [subclass])) ?? ((get([param::poi-icon-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-icon-fill], [class])) ?? @poi_icon_fill_2)))))));
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-icon-background-border-width: ((((get([param::poi-icon-background-border-width], [class])) ?? 3)) * ((([param::variant] = 'eink') ? (0.4 * [param::bare_icon_scale]) : (([param::poiStyle] = 'plain') ? (0.4 * [param::bare_icon_scale]) : (0.4 * [param::bare_icon_scale])))));
   shield-anchors: 'bottom';
-  shield-text-radial-offset: 11;
+  shield-text-radial-offset: (1 * (11 * [param::poi_label_scale]));
   @extend %poi;
 }
 #poi[zoom >= 14][zoom < 15][class = 'adit']::poi {
@@ -4283,12 +4283,12 @@ Map {
   text-placement: 'billboard';
   text-name: (([name]) ?? ([name_int]));
   text-face-name: @font_medium;
-  text-size: @poi_size;
-  text-wrap-width: @poi_wrap_width;
+  text-size: (12 * [param::poi_label_scale]);
+  text-wrap-width: (9 * (12 * [param::poi_label_scale]));
   text-horizontal-alignment: 'middle';
   text-vertical-alignment: 'top';
-  text-dx: 0;
-  text-dy: 7.2;
+  text-dx: (0 * (12 * [param::poi_label_scale]));
+  text-dy: (0.6 * (12 * [param::poi_label_scale]));
   text-z-elevate: ([param::poi_on_roof] = 1);
   text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @poi_spring_label_fill);
   text-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @glacier_low);
@@ -4298,11 +4298,11 @@ Map {
   text-collision-padding: 2;
   text-wrap-before: true;
 }
-#poi[zoom >= 12][class = 'wilderness_hut']::poi {
+#poi[zoom >= 11][class = 'wilderness_hut']::poi {
   shield-placement-priority: (22700000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   @extend %poi;
 }
-#poi[zoom >= 12][zoom < 15][subclass = 'alpine_hut']::poi {
+#poi[zoom >= 11][zoom < 15][subclass = 'alpine_hut']::poi {
   shield-placement-priority: (22800000 + ((((get([param::poi-boost], [subclass])) ?? (0)) != 0) ? ((get([param::poi-boost], [subclass])) ?? (0)) : ((get([param::poi-boost], [class])) ?? (0))));
   shield-image-scale: (((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))) / 2.0);
   shield-icon-background-radius: ((((get([param::poi-icon-background-radius], [class])) ?? 21)) * ((([param::variant] = 'eink') ? (0.4 * 1) : (([param::poiStyle] = 'plain') ? 0.6 : (0.4 * 1)))));
@@ -4565,7 +4565,7 @@ Map {
   shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
 '), ('' + [ele])), ' m');
   shield-face-name: @font_medium;
-  shield-size: @poi_size_2;
+  shield-size: @text_size;
   shield-horizontal-alignment: 'middle';
   shield-vertical-alignment: 'top';
   shield-text-dx: 0;

@@ -11581,7 +11581,7 @@
       "source-layer": "power",
       "minzoom": 14,
       "paint": {
-        "line-color": "hsl(0, 0%, 55%)",
+        "line-color": "hsl(0, 0%, 48%)",
         "line-width": [
           "interpolate",
           [
@@ -11592,8 +11592,8 @@
             "zoom"
           ],
           14,
-          0.5,
-          18,
+          0.8,
+          16,
           1,
           20,
           1.5

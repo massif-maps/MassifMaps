@@ -74,5 +74,5 @@ def overhead(v):
                      'line-width': zoom_ramp(12, 0.4, 15, 1, 20, 2, base=1.5)}, emissive=1),
         # the tiles carry power lines from z14 (Alpimaps' planetiler `power` layer)
         layer('power-line', 'line', 'power', minzoom=14,
-              paint={'line-color': c['power'], 'line-width': zoom_ramp(14, 0.5, 18, 1, 20, 1.5, base=1.5)}, emissive=0.5),
+              paint={'line-color': c['power'], 'line-width': zoom_ramp(14, 0.8, 16, 1, 20, 1.5, base=1.5)}, emissive=0.5),
     ]

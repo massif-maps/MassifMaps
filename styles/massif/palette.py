@@ -101,7 +101,7 @@ STREETS = {
     'aerialway': 'hsl(225, 60%, 58%)',
     # a cable car or a ski lift in rail's ink; a zip line keeps the aerialway blue
     'aerialway-lift': 'hsl(0, 0%, 15%)',
-    'power': 'hsl(0, 0%, 55%)',
+    'power': 'hsl(0, 0%, 48%)',
     'rail': 'hsl(0, 0%, 65%)',
     'rail-night': 'hsl(0, 0%, 30%)',
     'rail-emphasis': 'hsl(0, 0%, 35%)',

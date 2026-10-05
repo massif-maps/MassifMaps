@@ -157,8 +157,8 @@ zoom range, so they are not fetched outside the enabled zooms.
 ## 6. Style parameters — runtime visibility toggles
 
 `param::` parameters let user settings drive layer visibility/appearance at runtime via
-`decoder.setStyleParameter(name, value)`. **They must be declared in a bundle style's project
-JSON** (`"styleparameters"`); a raw CartoCSS string cannot declare them (`loadMap` passes none).
+`decoder.setStyleParameter(name, value)`. Declare them in a bundle style's project JSON
+(`"styleparameters"`) to give them a default; an undeclared one is unset until the app sets it.
 
 Build a self-contained bundle in memory (no external file) with an in-memory zip:
 

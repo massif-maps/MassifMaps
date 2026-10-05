@@ -108,31 +108,28 @@ namespace massif {
          */
         std::vector<std::string> getStyleParameters() const;
         /**
-         * Returns the value of the specified style parameter.
-         * The style parameter must be declared in the current style.
+         * Returns the value of the specified style parameter: its default, or the value last set.
          * @param param The parameter to return.
          * @return The value of the parameter.
-         * @throws std::invalid_argument If the style parameter does not exist.
+         * @throws std::invalid_argument If the style parameter is neither declared nor set.
          */
         std::string getStyleParameter(const std::string& param) const;
         /**
          * Sets the value of the specified parameter.
-         * The style parameter must be declared in the current style.
+         * A parameter the style does not declare is read as JSON, else as text, and kept across style changes.
          * @param param The parameter to set.
          * @param value The value for the parameter.
-         * @return True if the parameter was set. False if the style parameter does not exist or could not be set.
+         * @return True if the parameter was set. False if the value does not fit the declared type.
          */
         bool setStyleParameter(const std::string& param, const std::string& value);
 
         /**
-         * Sets the values of the specified parameters.
-         * The style parameters must be declared in the current style.
+         * Sets the values of the specified parameters, as setStyleParameter does.
          * @param params The getStyleParameters to set.
          */
         void setStyleParameters(const std::map<std::string, std::string>& params);
         /**
-         * Sets the values of the specified parameters.
-         * The style parameters must be declared in the current style.
+         * Sets the values of the specified parameters, as setStyleParameter does.
          * @param params The getStyleParameters to set.
          */
         void setJSONStyleParameters(const std::string& params);

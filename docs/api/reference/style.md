@@ -31,7 +31,7 @@ The vector tile decoder, and the style set it reads. Created with `kind` **`styl
 | `cartoCSSStyle` | object `std::shared_ptr<massif::CartoCSSStyleSet>` | read/write | Returns the current CartoCSS style set used by the decoder. If decoder uses non-CartoCSS style set, null is returned. |
 | `compiledStyle` | object `std::shared_ptr<massif::CompiledStyleSet>` | read/write | Returns the current compiled style set used by the decoder. If decoder uses non-compiled style set, null is returned. |
 | `featureIdOverride` | boolean | read/write | Returns the value of feature id override flag. This is intended for cases when feature ids in tile are not globally unique. |
-| `params` | string | read/write | Returns the value of the specified style parameter. The style parameter must be declared in the current style. |
+| `params` | string | read/write | Returns the value of the specified style parameter: its default, or the value last set. |
 | `styleLayerNames` | struct `std::vector<std::string>` | read-only | Returns the ordered style layer names as declared by the style (project JSON "layers", or Mapnik XML Layers), i.e. the draw order. CompositeVectorTileLayer places external sources by it: a source whose name is not in this list is not drawn. |
 | `styleParameters` | struct `std::vector<std::string>` | read-only | Returns the list of all available style parameters. |
 | `tileFormat` | [enum](enums.md#enum-tileformat) | read/write | Returns the binary format the tiles are decoded as. |

@@ -616,7 +616,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> PANNING_MODE = MassifObject.key("panningMode");
     /** Returns the panning speed mode. */
     public static final MassifObject.Key<String> PANNING_SPEED_MODE = MassifObject.key("panningSpeedMode");
-    /** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+    /** Returns the value of the specified style parameter: its default, or the value last set. */
     public static final MassifObject.Key<String> PARAMS = MassifObject.key("params");
     /** Returns the paused state of the action. */
     public static final MassifObject.Key<Boolean> PAUSED = MassifObject.key("paused");

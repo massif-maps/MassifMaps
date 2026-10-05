@@ -619,9 +619,7 @@ def ranked(rows, ladder, v):
 
 
 def pt_shelter(v):
-    """`poi_pt_shelter_minzoom` in a city (streets, hybrid), z15 on the walker's variants"""
-    if v.flags.get('trails'):
-        return [poi_layer('poi-pt-shelter-outdoor', 15, PT_SHELTER, v, text='')]
+    """`poi_pt_shelter_minzoom`, never before the bus stop it stands at"""
     lay = poi_layer('poi-pt-shelter', 17, PT_SHELTER, v, text='')
     lay['metadata']['massif:minzoom-const'] = 'poi_pt_shelter_minzoom'
     return [lay]

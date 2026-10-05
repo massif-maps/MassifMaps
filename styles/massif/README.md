@@ -406,9 +406,8 @@ rank ≤ 10 at z14 (eating, bars, parking and schools at z15), ≤ 30 at z15 as 
 | 12 | airport, airfield, heliport |
 | 13 | rail, metro, ferry, harbour, aerialway, lighthouse |
 | 14–17 | everything else, by rank (above) |
-| 15 | public-transport shelter on outdoor, topo, e-ink, never named |
 | 16 | tram stop, named (Mapbox's tiles carry one from z16, Standard names it as it shows) |
-| 17 | bus stop, its badge; its name at 18. Public-transport shelter on streets and hybrid, and any shelter of another or no `shelter_type`: never named |
+| 17 | bus stop, its badge; its name at 18. Any shelter but a walker's (public-transport, or another or no `shelter_type`): never named |
 
 The ladder excludes the classes those layers draw with a chain of `!=` rather than listing the ones
 it keeps: a list is an `in`, a `when()` per feature, where the chain brackets.
@@ -606,7 +605,7 @@ and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
 reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
 Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
 their rank and hides pharmacies before z17 (`display: none`), and `osm.json`'s `constants` bring the
-bus stops in at z15, named from z16, and public-transport shelters at z15 as on outdoor.
+bus stops in at z15, named from z16, and public-transport shelters at z15.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

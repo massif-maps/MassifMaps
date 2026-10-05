@@ -33051,11 +33051,11 @@
       }
     },
     {
-      "id": "poi-pt-shelter-outdoor",
+      "id": "poi-pt-shelter",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 15,
+      "minzoom": 17,
       "filter": [
         "all",
         [
@@ -33638,7 +33638,8 @@
             1,
             0
           ]
-        }
+        },
+        "massif:minzoom-const": "poi_pt_shelter_minzoom"
       }
     },
     {

@@ -69,7 +69,7 @@ SOURCES = {
 
 STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges,
-           rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.trees, pois.barriers, pois.mountain, pois.layers, road_labels.layers,
+           rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.trees, pois.landmarks, pois.barriers, pois.mountain, pois.layers, road_labels.layers,
            labels.peaks, labels.places]
 
 # bottom to top; among the labels, the later a layer the higher its placement priority. The first
@@ -77,7 +77,7 @@ STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
 OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, outdoor.routes, roads.ground, rail.ground, roads.bridges,
            rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels,
-           labels.low, road_labels.major, shields.layers, pois.trees, pois.barriers, pois.mountain, pois.layers, outdoor.sac_labels,
+           labels.low, road_labels.major, shields.layers, pois.trees, pois.landmarks, pois.barriers, pois.mountain, pois.layers, outdoor.sac_labels,
            road_labels.layers, labels.peaks, labels.places]
 
 # e-ink carries everything outdoor does but the route bands, which grey into mud
@@ -85,7 +85,7 @@ EINK = [p for p in OUTDOOR if p is not outdoor.routes]
 
 HYBRID = [land.background, imagery.layers, outdoor.hillshade, outdoor.contours, rail.tunnels, roads.tunnels,
           roads.ground, rail.ground, roads.bridges, rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers,
-          outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.trees, pois.barriers, pois.mountain, pois.layers, road_labels.layers,
+          outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.trees, pois.landmarks, pois.barriers, pois.mountain, pois.layers, road_labels.layers,
           labels.peaks, labels.places]
 
 # a walker's map brings the campsites in with the huts, and its water points early
@@ -141,6 +141,14 @@ def maplibre_style(v):
 FIXED = ('id', 'type', 'source', 'source-layer', 'minzoom', 'maxzoom', 'filter')
 
 
+def mergeable(column):
+    """the same expression in every variant but for the objects in it, however deep"""
+    if all(isinstance(v, dict) for v in column) or len({json.dumps(v) for v in column}) == 1:
+        return True
+    return all(isinstance(v, list) and len(v) == len(column[0]) and v[:1] == column[0][:1] for v in column) and \
+        all(mergeable([v[i] for v in column]) for i in range(len(column[0])))
+
+
 def by_variant(values):
     """One value per variant name -> that value, or a match on the variant config."""
     names = list(values)
@@ -154,14 +162,10 @@ def by_variant(values):
         if missing:
             raise ValueError('a key only some variants state: %s' % missing)
         return {k: by_variant({n: values[n][k] for n in names}) for k in keys}
-    lists = [values[n] for n in names]
-    if all(isinstance(v, list) and len(v) == len(lists[0]) and v[:1] == lists[0][:1] for v in lists):
+    if mergeable(list(values.values())):
         # the same expression with an object inside (["image", name, {params}]): merge the object,
         # so the variant match lands on each param and not on the image the converter unwraps
-        column = lambda i: {n: values[n][i] for n in names}
-        if all(all(isinstance(v, dict) for v in column(i).values()) or len({json.dumps(v) for v in column(i).values()}) == 1
-               for i in range(len(lists[0]))):
-            return [by_variant(column(i)) for i in range(len(lists[0]))]
+        return [by_variant({n: values[n][i] for n in names}) for i in range(len(values[names[0]]))]
     default = values[names[0]]
     out = ['match', ['config', 'variant']]
     groups = []

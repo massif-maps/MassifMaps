@@ -4,6 +4,7 @@ Each POI layer carries the same flat match on `class`, because the converter nee
 key on per layer to fold it into one project.json table - see the style's README.
 """
 import json
+import os
 from collections import OrderedDict
 
 from lib import boosted, by_hour, gate, get, layer, scaled, zoom_ramp
@@ -25,6 +26,8 @@ CATEGORY = OrderedDict([
     ('transit', {'disc': 'hsl(225, 60%, 58%)', 'night': 'hsl(225, 55%, 78%)', 'day': 'hsl(225, 60%, 48%)'}),
     # ours: the landcover barrier line's grey-brown, darkened to read as a glyph; its night is the line
     ('barrier', {'disc': 'hsl(20, 12%, 45%)', 'night': 'hsl(20, 10%, 70%)', 'day': 'hsl(20, 12%, 38%)'}),
+    # ours: a landmark is a reference on the ground, not a place - a dark neutral, its night a light one
+    ('landmark', {'disc': 'hsl(30, 8%, 35%)', 'night': 'hsl(30, 8%, 75%)', 'day': 'hsl(30, 8%, 30%)'}),
     ('default', {'disc': 'hsl(200, 20%, 55%)', 'night': 'hsl(210, 20%, 70%)', 'day': 'hsl(210, 20%, 43%)'}),
 ])
 
@@ -55,13 +58,26 @@ CLASSES = {
     # every point barrier Alpimaps' planetiler emits (Poi.MULTIPOINT_CLASSES), and the shared glyph
     'barrier': ['barrier', 'bollard', 'border_control', 'cycle_barrier', 'gate', 'lift_gate', 'sally_port',
                 'stile', 'toll_booth'],
+    # Alpimaps' planetiler `poi_landmarks` and `poi_guideposts`, packed as the trees are
+    'landmark': ['cairn', 'cross', 'guidepost', 'mast', 'power_tower', 'pylon', 'rock', 'stone', 'wayside_cross',
+                 'wayside_shrine', 'wind_turbine'],
 }
 
 # Street furniture, not a place: the glyph stands on the map with no disc under it, which is what
 # Standard's backgroundPointOfInterestLabels=none does for the whole map. Matched on class AND
 # subclass, because OpenMapTiles carries a bench or a tree as a subclass of something coarser.
 NO_BACKGROUND = ['bench', 'drinking_water', 'garden', 'picnic_site', 'shelter', 'telephone',
-                 'toilets', 'tree', 'waste_basket', *CLASSES['barrier']]
+                 'toilets', 'tree', 'viewpoint', 'waste_basket', *CLASSES['barrier'], *CLASSES['landmark']]
+
+# Every sprite in sprite-src/poi is a glyph a POI can name: by subclass, else by class, else `default`.
+# A class with a drawing (or an alias) is KNOWN; any other draws `default`, bare, from UNKNOWN_ZOOM.
+ICONS = sorted(f[:-4] for f in os.listdir(os.path.join(os.path.dirname(__file__), '..', 'sprite-src', 'poi'))
+               if f.endswith('.svg'))
+DEFAULT_ICON = 'default'
+UNKNOWN_ZOOM = 17
+# a class drawn with another's glyph
+ALIAS = {'border_control': 'barrier', 'sally_port': 'barrier', 'spring': 'water', 'wilderness_hut': 'alpine_hut'}
+KNOWN = sorted((set(ICONS) | set(ALIAS)) - {DEFAULT_ICON})
 
 # A subclass that belongs to another category than its class. Liberty reads `subclass` for the ICON
 # only (florist, furniture) and colours nothing by it, so there is no MapTiler palette to copy here -
@@ -211,10 +227,44 @@ OTHER_SHELTER = ['all', ['==', get('class'), 'shelter'], ['!=', get('shelter_typ
 # Drawn by a layer of their own at every zoom, so the ladder leaves them out. Excluded rather than
 # listed: a class list is a when() per feature, an exclusion a few prunable selectors.
 OWN_LAYER = sorted({'bus', 'campsite', 'drinking_water', 'shelter', 'spring', 'tree', 'wilderness_hut'} |
-                   {c for _, _, cs in STATION_LAYERS for c in cs} | set(CLASSES['barrier']) - {'barrier'})
+                   {c for _, _, cs in STATION_LAYERS for c in cs} | set(CLASSES['barrier']) - {'barrier'} |
+                   set(CLASSES['landmark']))
 
-# a viewpoint is an attraction to OpenMapTiles: its own glyph at every zoom (a ruin keeps the castle, as Standard)
-ICON = ['match', get('subclass'), ['florist', 'furniture', 'viewpoint'], get('subclass'), get('class')]
+
+def class_icon(alias=ALIAS):
+    """the glyph a class names: its own, or the one it borrows"""
+    by_icon = {}
+    for cls, icon in sorted(alias.items()):
+        by_icon.setdefault(icon, []).append(cls)
+    out = ['match', get('class')]
+    for icon, classes in by_icon.items():
+        out += [classes if len(classes) > 1 else classes[0], icon]
+    return out + [get('class')]
+
+
+ICON = class_icon()
+
+
+def icon_chain(cls, image, fallback=True):
+    """subclass, else class, else DEFAULT_ICON: `coalesce` falls through a missing image on MapLibre,
+    `??` through a missing parameter on the SDK"""
+    return ['coalesce', image(get('subclass')), image(cls), *([image(DEFAULT_ICON)] if fallback else [])]
+
+
+# MapLibre's test and the SDK's: the SDK reads the converter's one-parameter-per-glyph table, so a
+# sprite or font glyph added under a class's name makes the class known with no other edit
+KNOWN_MAPLIBRE = ['any', ['in', get('class'), ['literal', KNOWN]], ['in', get('subclass'), ['literal', KNOWN]]]
+KNOWN_SDK = ['!=', ['coalesce', ['config', ['concat', 'glyph-', get('subclass')]],
+                    ['config', ['concat', 'glyph-', get('class')]], ''], '']
+
+
+def until_known(early, late, minzoom, maxzoom):
+    """`early` below UNKNOWN_ZOOM, `late` from it"""
+    if minzoom >= UNKNOWN_ZOOM:
+        return late
+    if maxzoom is not None and maxzoom <= UNKNOWN_ZOOM:
+        return early
+    return ['step', ['zoom'], early, UNKNOWN_ZOOM, late]
 
 
 # Standard's night POI: the disc takes the category's night colour, and the ring and the glyph go
@@ -228,7 +278,7 @@ def per_class(value_of, default, fixed=None):
     if fixed:
         return value_of(None, fixed)
     groups = {}
-    for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND)):
+    for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND) | set(KNOWN)):
         value = value_of(cls, CLASS_TO_CATEGORY.get(cls, 'default'))
         if value != default:
             groups.setdefault(value, []).append(cls)
@@ -238,15 +288,21 @@ def per_class(value_of, default, fixed=None):
     return out + [default]
 
 
-def icon_params(fixed=None):
+def bare_test(fixed_bare):
+    """no disc: street furniture, landmarks, and a class with no glyph of its own (drawn as `default`)"""
+    return lambda cls: fixed_bare if cls is None else cls in NO_BACKGROUND or cls not in KNOWN
+
+
+def icon_params(fixed=None, fixed_bare=False):
     # `transparent`, not `none`: the decoder's parseColor knows the CSS names and that one, and
     # throws on anything else - a bad colour kills the whole feature processor.
-    bare = lambda cls: cls in NO_BACKGROUND
+    bare = bare_test(fixed_bare)
     disc = lambda key: per_class(lambda cls, cat: 'transparent' if bare(cls) else CATEGORY[cat][key],
-                                 CATEGORY['default'][key], fixed)
-    ring = lambda ink: per_class(lambda cls, cat: 'transparent' if bare(cls) else ink, ink, fixed)
+                                 'transparent', fixed)
+    ring = lambda ink: per_class(lambda cls, cat: 'transparent' if bare(cls) else ink, 'transparent', fixed)
     # a glyph with no disc under it is drawn in the category colour, not white on it
-    glyph = lambda ink, key: per_class(lambda cls, cat: CATEGORY[cat][key] if bare(cls) else ink, ink, fixed)
+    glyph = lambda ink, key: per_class(lambda cls, cat: CATEGORY[cat][key] if bare(cls) else ink,
+                                       CATEGORY['default'][key], fixed)
     # poiStyle `plain`: OSM's look, every glyph bare in its category colour like the furniture
     plain = lambda badge, bare_value: ['match', ['config', 'poiStyle'], 'plain', bare_value, badge]
     tinted = lambda key: per_class(lambda cls, cat: CATEGORY[cat][key], CATEGORY['default'][key], fixed)
@@ -261,12 +317,14 @@ def icon_params(fixed=None):
 MONO_INK = 'hsl(0, 0%, 0%)'
 
 
-def mono_params():
+def mono_params(fixed_bare=None):
     """e-ink: a black glyph on a white disc with a black ring, the same for every category"""
-    bare = lambda cls: cls in NO_BACKGROUND
+    bare = bare_test(fixed_bare)
+    fixed = None if fixed_bare is None else 'default'
     return {'background': per_class(lambda cls, cat: 'transparent' if bare(cls) else 'hsl(0, 0%, 100%)',
-                                    'hsl(0, 0%, 100%)'),
-            'background-stroke': per_class(lambda cls, cat: 'transparent' if bare(cls) else MONO_INK, MONO_INK),
+                                    'transparent', fixed),
+            'background-stroke': per_class(lambda cls, cat: 'transparent' if bare(cls) else MONO_INK, 'transparent',
+                                           fixed),
             'icon': MONO_INK,
             'radius': shape_match('radius'),
             'background-stroke-width': shape_match('border')}
@@ -276,14 +334,22 @@ NAME = ['coalesce', get('name'), get('name_int')]
 
 
 def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overlap=False, scale=1,
-              category=None, extra=None):
-    """`scale` may be a zoom ramp; `extra` overrides the label's layout"""
+              category=None, extra=None, bare=False, unknown=False):
+    """`scale` may be a zoom ramp; `extra` overrides the label's layout; `bare`: no disc whatever the
+    class; `unknown`: the filter lets any class through, so one with no glyph waits for UNKNOWN_ZOOM"""
+    mono = v.flags.get('mono', False)
+    # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
+    # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
+    baked = lambda name: ['image', name if mono else name + '-poi' if isinstance(name, str) else ['concat', name, '-poi']]
+    params = {'params': mono_params(True if bare else None) if mono else icon_params(category, bare)}
+    neutral = lambda name: ['image', name]
+    chain = lambda image: until_known(icon_chain(icon, image, fallback=False), icon_chain(icon, image),
+                                      minzoom, maxzoom) if unknown else icon_chain(icon, image)
+    gated = lambda known: until_known(['case', known, text, ''], text, minzoom, maxzoom) if unknown and text else text
     layout = {
-        # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
-        # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
-        'icon-image': icon if v.flags.get('mono') else ['concat', icon, '-poi'],
+        'icon-image': chain(baked),
         'icon-size': scaled(scale, 0.4) if isinstance(scale, list) else 0.4,
-        'text-field': text,
+        'text-field': gated(KNOWN_MAPLIBRE),
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
         'text-font': 'medium',
         'text-size': 12,
@@ -298,8 +364,10 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
     }
     # on imagery the ground is dark by day as well, so the label keeps its night pair
     dark = v.flags.get('dark_ground', False)
-    mono = v.flags.get('mono', False)
-    massif_layout = {'icon-image': ['image', icon, {'params': mono_params() if mono else icon_params(category)}]}
+    massif_icon = chain(neutral)
+    # the converter takes the FIRST image's params for the whole layer: stated once, not per image and band
+    (massif_icon[2] if massif_icon[0] == 'step' else massif_icon)[1].append(params)
+    massif_layout = {'icon-image': massif_icon, **({'text-field': gated(KNOWN_SDK)} if unknown else {})}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
     massif_layout['icon-size'] = scaled(scale, 0.4) if mono else \
         ['match', ['config', 'poiStyle'], 'plain', scaled(scale, 0.6), scaled(scale, 0.4)]
@@ -321,11 +389,8 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
 
 # A walker's POIs, each until its category layer takes over, water from `water_min_zoom`.
 # data-driven even for the hut layer: a constant icon-image is not one mapbox2css recolours
-MOUNTAIN_ICON = ['match', get('class'), ['lodging', 'wilderness_hut'], 'alpine_hut', 'spring', 'water', get('class')]
-# the viewpoint first, so a cave or a ruin beside it wins the collision; at every zoom, in nature's
-# green as the sprite bakes it, where its class (attraction) would colour it pink
+MOUNTAIN_ICON = class_icon({**ALIAS, 'lodging': 'alpine_hut'})
 MOUNTAIN_LAYERS = [
-    ('poi-mountain-viewpoint', 14, None, ['==', get('subclass'), 'viewpoint'], ICON, None),
     ('poi-mountain-sight', 14, 16, ['in', get('class'), ['literal', ['adit', 'archaeological_site', 'castle',
                                                                       'cave_entrance', 'fort', 'waterfall']]], ICON, None),
     # a named park early and over the sights, as Standard gives park_like a wider filterrank
@@ -364,7 +429,7 @@ def mountain(v):
     for id, minzoom, maxzoom, filter, icon, param in MOUNTAIN_LAYERS:
         # a water point's glyph a size down: they are many, and a walker needs the dot, not the badge
         lay = poi_layer(id, minzoom, filter, v, icon=icon, maxzoom=maxzoom,
-                        category='park_like' if id in ('poi-mountain-viewpoint', 'poi-mountain-shelter') else None,
+                        category='park_like' if id == 'poi-mountain-shelter' else None,
                         scale=0.75 if id == 'poi-mountain-water' else 1)
         if param:
             lay['metadata']['massif:minzoom-param'] = param
@@ -441,8 +506,6 @@ def trees(v):
     return [dot, sunk(poi_layer('poi-tree', 18, unnamed, v, text='', scale=TREE_SCALE)), named]
 
 
-# no glyph of their own: Maki's barrier
-BARRIER_ICON = ['match', get('class'), ['border_control', 'sally_port'], 'barrier', get('class')]
 # least important first, a layer each: also keeps any one priority off most %poi rules (the template's)
 BARRIER_TIERS = [('bollard', ['bollard']),
                  ('passage', ['cycle_barrier', 'gate', 'lift_gate', 'sally_port', 'stile']),
@@ -457,13 +520,40 @@ def barriers(v):
     for tier, classes in BARRIER_TIERS:
         cls = ['==', get('class'), classes[0]] if len(classes) == 1 else ['in', get('class'), ['literal', classes]]
         for suffix, named, text in (('', ['!', ['has', 'name']], ''), ('-named', ['has', 'name'], NAME)):
-            lay = sunk(poi_layer('poi-barrier-%s%s' % (tier, suffix), 17, ['all', cls, named], v, icon=BARRIER_ICON,
-                                 text=text, scale=0.75, extra={'text-size': 11, 'text-variable-anchor': ['top']}))
-            lay['metadata']['massif:paint']['icon-halo-width'] = 1.5
-            if v.flags.get('dark_ground'):
-                params = lay['metadata']['massif:layout']['icon-image'][2]['params']
-                params['icon'] = per_class(lambda c, cat: CATEGORY[cat]['night'], CATEGORY['default']['night'])
-            out.append(lay)
+            out.append(reference(poi_layer('poi-barrier-%s%s' % (tier, suffix), 17, ['all', cls, named], v,
+                                           text=text, scale=0.75,
+                                           extra={'text-size': 11, 'text-variable-anchor': ['top']}), v))
+    return out
+
+
+def reference(lay, v, category=None):
+    """a bare glyph under every POI (sunk), a halo round it for imagery and patterns; on hybrid in its
+    night colour"""
+    lay = sunk(lay)
+    lay['metadata']['massif:paint']['icon-halo-width'] = 1.5
+    if v.flags.get('dark_ground'):
+        # one params object, shared by every image of the chain
+        params = lay['metadata']['massif:layout']['icon-image'][1][2]['params']
+        params['icon'] = per_class(lambda c, cat: CATEGORY[cat]['night'], CATEGORY['default']['night'], category)
+    return lay
+
+
+# by the size of the thing, so by how far off it reads: a pylon line or a turbine from the valley
+LANDMARK_TIERS = [(17, ['guidepost']),
+                  (16, ['cairn', 'rock', 'stone', 'wayside_cross', 'wayside_shrine']),
+                  (15, ['cross', 'mast', 'pylon']),
+                  (14, ['power_tower', 'wind_turbine'])]
+
+
+def landmarks(v):
+    """a viewpoint, then what marks a spot on the ground rather than names one (Alpimaps' `poi_landmarks`,
+    `poi_guideposts`): bare glyphs over the trees and under the barriers, so they never hide a POI"""
+    out = [reference(poi_layer('poi-viewpoint', 14, ['==', get('subclass'), 'viewpoint'], v, category='park_like',
+                               bare=True), v, 'park_like')]
+    for minzoom, classes in LANDMARK_TIERS:
+        cls = ['==', get('class'), classes[0]] if len(classes) == 1 else ['in', get('class'), ['literal', classes]]
+        out.append(reference(poi_layer('poi-landmark-z%d' % minzoom, minzoom, cls, v, scale=TREE_SCALE,
+                                       extra={'text-size': 11, 'text-variable-anchor': ['top']}), v))
     return out
 
 
@@ -471,10 +561,11 @@ def stop(id, filter, zooms, const, v):
     """The icon from `poi_<const>_minzoom`, the name from `poi_<const>_label_minzoom`: project constants,
     so a child project moves either in its `constants`"""
     icon_zoom, name_zoom = zooms
-    icon = poi_layer(id + '-icon', icon_zoom, filter, v, maxzoom=name_zoom, text='')
+    unknown = const == 'rank30'
+    icon = poi_layer(id + '-icon', icon_zoom, filter, v, maxzoom=name_zoom, text='', unknown=unknown)
     icon['metadata'].update({'massif:minzoom-const': 'poi_%s_minzoom' % const,
                              'massif:maxzoom-const': 'poi_%s_label_minzoom' % const})
-    named = poi_layer(id, name_zoom, filter, v)
+    named = poi_layer(id, name_zoom, filter, v, unknown=unknown)
     named['metadata']['massif:minzoom-const'] = 'poi_%s_label_minzoom' % const
     return [icon, named]
 
@@ -482,7 +573,9 @@ def stop(id, filter, zooms, const, v):
 def ranked(rows, ladder, v):
     out = []
     for id, minzoom, filter, const in rows:
-        lay = poi_layer(id, minzoom, ['all', ladder, filter], v)
+        clauses = filter[1:] if filter[0] == 'all' else [filter]
+        pinned = any(c[0] in ('==', 'in') and c[1] == get('class') for c in clauses)
+        lay = poi_layer(id, minzoom, ['all', ladder, filter], v, unknown=not pinned)
         lay['metadata']['massif:minzoom-const'] = const
         out.append(lay)
     return out
@@ -519,14 +612,15 @@ def write_sprite_palette(path):
     # Street furniture is in no category list, so walk both: those classes still need a glyph
     # colour, and without them the sheet would draw a bin with a disc under it.
     per_class = {}
-    for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND)):
+    bare = bare_test(False)
+    for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND) | set(ICONS)):
         cat = CLASS_TO_CATEGORY.get(cls, 'default')
         shape = SHAPE.get(cls, DEFAULT_SHAPE)
         per_class[cls] = {
-            'disc': None if cls in NO_BACKGROUND else CATEGORY[cat]['disc'],
-            'glyph': CATEGORY[cat]['disc'] if cls in NO_BACKGROUND else 'hsl(0, 0%, 100%)',
+            'disc': None if bare(cls) else CATEGORY[cat]['disc'],
+            'glyph': CATEGORY[cat]['disc'] if bare(cls) else 'hsl(0, 0%, 100%)',
             'radius': shape['radius'],
-            'border': 0 if cls in NO_BACKGROUND else shape['border'],
+            'border': 0 if bare(cls) else shape['border'],
         }
     default = {'disc': CATEGORY['default']['disc'], 'glyph': 'hsl(0, 0%, 100%)',
                'radius': DEFAULT_SHAPE['radius'], 'border': DEFAULT_SHAPE['border']}

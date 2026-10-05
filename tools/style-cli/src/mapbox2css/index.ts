@@ -906,6 +906,17 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     options.styleParams!.clear();
     for (const [name, value] of presetParams.get('') ?? []) options.styleParams!.set(name, value);
 
+    // `massif:attachment` names an attachment a child project's rules join, so it keeps its name
+    const sharedAttachments = new Set((style.layers ?? [])
+        .map((layer) => (layer.metadata as Record<string, Json> | undefined)?.['massif:attachment'])
+        .filter((name): name is string => typeof name === 'string').map(attachmentName));
+    const merged = mergeIdenticalPaint(blocks, drawOrder, [...alternates.values()].map((result) => result.blocks), sharedAttachments);
+    if (merged > 0) {
+        coverage.note(`${merged} attachment(s) joined the one drawn just before them: same source-layer, ` +
+            'and every rule of both paints the same opaque lines or fills in every preset, so their ' +
+            'order cannot show and one pass over the layer draws both');
+    }
+
     let hoisted = withMap(base);
     let palette: string[] = [];
     const presetPalettes = new Map<string, string>();
@@ -3936,6 +3947,60 @@ export function projectEntries(drawOrder: DrawOrderEntry[]): string[] {
     return runs.flatMap((run) => (split.has(run.sourceLayer)
         ? run.attachments.map((attachment) => `${run.sourceLayer}::${attachment}`)
         : [run.sourceLayer]));
+}
+
+/** A declaration whose stacking order could show: anything translucent, blended or textured. */
+const ORDER_VISIBLE = /opacity|comp-op|draw-once|elevation-mode|pattern|rgba\(|hsla\(|transparent|#[0-9a-fA-F]{8}\b/;
+
+/**
+ * Adjacent attachments of one source-layer whose every rule paints the same opaque lines or fills, in
+ * every preset, renamed into the first of them. Drawn one after the other or in the tile's order, the
+ * pixels are the same - and a feature both match is drawn once instead of twice, the same opaque
+ * pixels again. An attachment is a pass over its source layer per tile, so this is decode time saved.
+ * Returns how many attachments were folded into another.
+ */
+export function mergeIdenticalPaint(blocks: Array<{ selector: string; declarations: string[] }>, drawOrder: DrawOrderEntry[],
+    presets: Array<Array<{ declarations: string[] }>>, keep: Set<string>): number {
+    // blocks[i] and drawOrder[i] are pushed together, so they share an index
+    const sequence = drawOrder.map((entry, at) => ({ entry, at }))
+        .sort((a, b) => a.entry.index - b.entry.index || a.at - b.at).map((item) => item.at);
+    const groups: Array<{ sourceLayer: string; attachment: string; at: number[] }> = [];
+    for (const at of sequence) {
+        const { sourceLayer, attachment } = drawOrder[at];
+        const last = groups[groups.length - 1];
+        if (last && last.sourceLayer === sourceLayer && last.attachment === attachment) last.at.push(at);
+        else groups.push({ sourceLayer, attachment, at: [at] });
+    }
+    const flat = (declaration: string) => /^(line|polygon)-/.test(declaration) && !ORDER_VISIBLE.test(declaration);
+    const signature = (group: { attachment: string; at: number[] }): string | null => {
+        if (group.attachment === '' || keep.has(group.attachment)) return null;
+        const runs = [blocks, ...presets];
+        const paints: string[] = [];
+        for (const run of runs) {
+            const first = run[group.at[0]].declarations;
+            if (!first.every(flat)) return null;
+            const paint = JSON.stringify(first);
+            if (group.at.some((at) => JSON.stringify(run[at].declarations) !== paint)) return null;
+            paints.push(paint);
+        }
+        return paints.join('\n');
+    };
+
+    let merged = 0;
+    let current: { sourceLayer: string; attachment: string; paint: string | null } | null = null;
+    for (const group of groups) {
+        const paint = signature(group);
+        if (current && paint !== null && current.paint === paint && current.sourceLayer === group.sourceLayer) {
+            for (const at of group.at) {
+                blocks[at].selector = blocks[at].selector.slice(0, -group.attachment.length) + current.attachment;
+                drawOrder[at] = { ...drawOrder[at], attachment: current.attachment };
+            }
+            merged++;
+            continue;
+        }
+        current = { sourceLayer: group.sourceLayer, attachment: group.attachment, paint };
+    }
+    return merged;
 }
 
 /** What the split above cost, so a project that grew entries says why. */

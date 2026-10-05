@@ -52,7 +52,7 @@ def night_inverted(lay):
     meta = lay.setdefault('metadata', {})
     paint = {**lay.get('paint', {}), **meta.get('massif:paint', {})}
     def night(v):
-        # a zoom ramp stays outside: the converter carries a brightness ramp inside one, not around it
+        # a zoom ramp stays outside: maplibre only takes a zoom expression at the top of a property
         if isinstance(v, list) and v[:1] == ['interpolate'] and v[2] == ['zoom']:
             return v[:3] + [x if i % 2 == 0 else night(x) for i, x in enumerate(v[3:])]
         if isinstance(v, list) and v[:1] == ['step'] and v[1] == ['zoom']:

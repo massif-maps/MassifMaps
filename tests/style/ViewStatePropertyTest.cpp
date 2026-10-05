@@ -184,6 +184,39 @@ void testViewStateProperty() {
         TEST_CHECK(!(live == other), "two plates differing only in a live colour are two styles");
     }
 
+    // 7. A day/night ramp INSIDE a zoom ramp - how the Massif e-ink road fill reads. The inner key
+    //    frames used to be evaluated without the view state, so brightness read 0: night at noon.
+    {
+        mvt::ColorFunctionProperty fill("#000000");
+        fill.setExpression(mvt::parseExpression("step([view::zoom], 0, linear([view::brightness], 0.25, '#000000', 0.3, '#ffffff'), "
+            "13, linear([view::brightness], 0.25, '#202020', 0.3, '#808080'))", false));
+        vt::ColorFunction func = fill.getFunction(mvt::ExpressionContext());
+        auto at = [&](float zoom, float brightness) {
+            vt::ViewState viewState = lit(brightness);
+            viewState.zoom = zoom;
+            return func(viewState).rgba()[0];
+        };
+        TEST_CHECK(func.function() != nullptr, "a zoom step over brightness ramps stays a per-frame function");
+        TEST_CHECK(near(at(12.0f, 1.0f), 1.0f), "below the step, daylight draws the low stop's day colour");
+        TEST_CHECK(near(at(12.0f, 0.0f), 0.0f), "and night its night colour");
+        TEST_CHECK(near(at(14.0f, 1.0f), 128.0f / 255.0f), "above the step, the high stop's day colour");
+        TEST_CHECK(near(at(14.0f, 0.0f), 32.0f / 255.0f), "and its night colour");
+
+        // Mapbox Standard's water: a constant colour at one stop, a brightness ramp at the next.
+        mvt::ColorFunctionProperty water("#000000");
+        water.setExpression(mvt::parseExpression("linear([view::zoom], 13, '#ffffff', "
+            "14, linear([view::brightness], 0, '#000000', 0.02, '#808080'))", false));
+        vt::ColorFunction waterFunc = water.getFunction(mvt::ExpressionContext());
+        vt::ViewState noon = lit(1.0f);
+        noon.zoom = 14.0f;
+        TEST_CHECK(near(waterFunc(noon).rgba()[0], 128.0f / 255.0f), "a constant stop beside a ramp stop draws the ramp's day colour");
+
+        mvt::FloatFunctionProperty width = property(mvt::parseExpression("linear([view::zoom], 12, linear([view::brightness], 0, 0, 1, 2), "
+            "14, linear([view::brightness], 0, 0, 1, 4))", false));
+        TEST_CHECK(near(evaluate(width, [] { vt::ViewState v = lit(1.0f); v.zoom = 13.0f; return v; }()), 3.0f),
+            "a linear zoom ramp blends the two inner ramps, each read at the frame's brightness");
+    }
+
     // Massif's building fade: building_opacity looking straight down, so tunnels show; opaque leaning in.
     {
         auto store = std::make_shared<mvt::StyleParameterStore>(std::map<std::string, mvt::Value> { { "building_opacity", mvt::Value(0.6) } });

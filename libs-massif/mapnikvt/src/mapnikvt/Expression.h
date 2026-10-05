@@ -134,14 +134,16 @@ namespace massif::mvt {
         const std::vector<Expression>& getKeyFrames() const { return _keyFrames; }
         bool isColor() const { return _color; }
 
-        Value evaluate(float t, const ExpressionContext& context) const;
+        // A key frame may itself read the view (a day/night ramp inside a zoom ramp), so the frame's
+        // view state goes down to it; without one a nested `[view::brightness]` read as night.
+        Value evaluate(float t, const ExpressionContext& context, const vt::ViewState* viewState = nullptr) const;
 
     private:
         float remapExponential(float t) const;
-        Value evaluateDiscrete(float t, const ExpressionContext& context) const;
+        Value evaluateDiscrete(float t, const ExpressionContext& context, const vt::ViewState* viewState) const;
 
         static std::optional<std::pair<float, float>> constantKeyRange(const std::vector<Expression>&);
-        static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext& context);
+        static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext& context, const vt::ViewState* viewState);
         static std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> buildConstantFCurve(Method method, const std::vector<Expression>&);
         static bool discreteKeyFrames(Method method, const std::vector<Expression>&);
         static bool yieldsColor(const Expression& expr);

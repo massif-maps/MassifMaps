@@ -27,7 +27,7 @@ Map {
 }
 
 #global_landcover[zoom < 8][class = 'built']['param::variant' != 'hybrid']::lowzoom_built {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @lowzoom_built);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @lowzoom_built);
   polygon-opacity: linear([view::zoom], (7.8, 1), (8, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -47,7 +47,7 @@ Map {
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
 #global_landcover[zoom < 8][class = 'tree']['param::variant' != 'hybrid']::lowzoom_tree {
-  polygon-fill: (([param::variant] = 'outdoor') ? @polygon_fill_7 : (([param::variant] = 'topo') ? @polygon_fill_8 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @wood_low)));
+  polygon-fill: (([param::variant] = 'outdoor') ? @polygon_fill_7 : (([param::variant] = 'topo') ? @polygon_fill_8 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @wood_low)));
   polygon-opacity: linear([view::zoom], (7.8, 1), (8, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -57,22 +57,22 @@ Map {
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
 #global_landcover[zoom < 8][class = 'scrub']['param::variant' != 'hybrid']::lowzoom_scrub {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @scrub_low);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @scrub_low);
   polygon-opacity: linear([view::zoom], (7.8, 1), (8, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
 #global_landcover[zoom < 8][class = 'heath']['param::variant' != 'hybrid']::lowzoom_heath {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @heath_low);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @heath_low);
   polygon-opacity: linear([view::zoom], (7.8, 1), (8, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
 #global_landcover[zoom < 8][class = 'grass']['param::variant' != 'hybrid']::lowzoom_grass {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @grass_low);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @grass_low);
   polygon-opacity: linear([view::zoom], (7.8, 1), (8, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
 #global_landcover[zoom < 8][class = 'sand']['param::variant' != 'hybrid']::lowzoom_sand {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @sand_low);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @sand_low);
   polygon-opacity: linear([view::zoom], (7.8, 1), (8, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -102,7 +102,7 @@ Map {
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
 #landcover[zoom >= 7][class = 'grass']['param::variant' != 'hybrid']::landcover_grass {
-  polygon-fill: (([param::variant] = 'outdoor') ? @landcover_grass_fill : (([param::variant] = 'topo') ? @landcover_grass_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @grass)));
+  polygon-fill: (([param::variant] = 'outdoor') ? @landcover_grass_fill : (([param::variant] = 'topo') ? @landcover_grass_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @grass)));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (7.8, 0), (8, 1), (13, 1), (14, 0)) : linear([view::zoom], (7.8, 0), (8, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -111,7 +111,7 @@ Map {
   polygon-pattern-emissive-strength: 0;
 }
 #landcover[zoom >= 7][class = 'wetland']['param::variant' != 'hybrid']::landcover_wetland {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @wetland);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @wetland);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (7.8, 0), (8, 1), (12, 1), (13, 0)) : linear([view::zoom], (7.8, 0), (8, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -120,7 +120,7 @@ Map {
   polygon-pattern-emissive-strength: 0;
 }
 #landcover[zoom >= 7][class = 'sand']['param::variant' != 'hybrid']::landcover_sand {
-  polygon-fill: (([param::variant] = 'topo') ? @landcover_sand_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @sand));
+  polygon-fill: (([param::variant] = 'topo') ? @landcover_sand_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @sand));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (7.8, 0), (8, 1), (11, 1), (12, 0)) : linear([view::zoom], (7.8, 0), (8, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -129,7 +129,7 @@ Map {
   polygon-pattern-emissive-strength: 0;
 }
 #landcover[zoom >= 7][class = 'rock']['param::variant' != 'hybrid']::landcover_rock {
-  polygon-fill: (([param::variant] = 'outdoor') ? @landcover_rock_fill : (([param::variant] = 'topo') ? @landcover_rock_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @rock)));
+  polygon-fill: (([param::variant] = 'outdoor') ? @landcover_rock_fill : (([param::variant] = 'topo') ? @landcover_rock_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @rock)));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (7.8, 0), (8, 1), (11, 1), (12, 0)) : linear([view::zoom], (7.8, 0), (8, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -215,7 +215,7 @@ Map {
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
 #park[zoom >= 5]['param::variant' != 'hybrid']::park {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @national_park);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @national_park);
   polygon-opacity: linear([view::zoom], (5, 0), (6, 0.5), (13, 0.3));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -393,7 +393,7 @@ Map {
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #landuse[zoom >= 9][class = 'military']['param::variant' != 'hybrid']::landuse_military {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @military);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @military);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (9, 0), (10, 1), (12, 1), (13, 0)) : linear([view::zoom], (9, 0), (10, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
@@ -402,7 +402,7 @@ Map {
   polygon-pattern-emissive-strength: 0;
 }
 #landcover[zoom >= 7][class = 'wood']['param::variant' != 'hybrid']::landcover_wood {
-  polygon-fill: (([param::variant] = 'outdoor') ? linear([view::zoom], (8, @polygon_fill_7), (11, @landcover_wood_fill)) : (([param::variant] = 'topo') ? linear([view::zoom], (8, @polygon_fill_8), (11, @landcover_wood_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @landcover_wood_fill_3), (0.3, @label_night)) : linear([view::zoom], (8, @wood_low), (11, @wood)))));
+  polygon-fill: (([param::variant] = 'outdoor') ? linear([view::zoom], (8, @polygon_fill_7), (11, @landcover_wood_fill)) : (([param::variant] = 'topo') ? linear([view::zoom], (8, @polygon_fill_8), (11, @landcover_wood_fill_2)) : (([param::variant] = 'eink') ? linear([view::zoom], (8, linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2))), (11, linear([view::brightness], (0.25, @landcover_wood_fill_3), (0.3, @label_night)))) : linear([view::zoom], (8, @wood_low), (11, @wood)))));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (7.8, 0), (8, 1), (10, 1), (11, 0)) : linear([view::zoom], (7.8, 0), (8, 1)));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
@@ -436,7 +436,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
 #landcover[zoom >= 15][class = 'barrier']['param::variant' != 'hybrid']::barrier {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2)) : @barrier);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4)) : @barrier);
   line-width: linear([view::zoom], (15, 0.5), (18, 1.5));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
@@ -450,7 +450,7 @@ Map {
 #waterway[zoom >= 8][zoom < 12][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b1 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
   line-dasharray: 1.13,0.45;
@@ -459,7 +459,7 @@ Map {
 #waterway[zoom >= 12][zoom < 15][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b2 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
   line-dasharray: 4.3,1.72;
@@ -468,7 +468,7 @@ Map {
 #waterway[zoom >= 15][zoom < 18][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b3 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
   line-dasharray: 8.91,3.56;
@@ -477,26 +477,26 @@ Map {
 #waterway[zoom >= 18][brunnel != 'tunnel'][intermittent != 1]['param::variant' = 'eink']::waterway_mono_b4 {
   line-cap: 'round';
   line-join: 'round';
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
   line-dasharray: 15.74,6.3;
   line-emissive-strength: 0;
 }
 #waterway[zoom >= 12][zoom < 15][intermittent = 1][brunnel != 'tunnel']['param::variant' = 'eink']::waterway_intermittent_mono_b1 {
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-dasharray: 1,1.58;
   line-emissive-strength: 0;
 }
 #waterway[zoom >= 15][zoom < 18][intermittent = 1][brunnel != 'tunnel']['param::variant' = 'eink']::waterway_intermittent_mono_b2 {
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-dasharray: 1.78,3.56;
   line-emissive-strength: 0;
 }
 #waterway[zoom >= 18][intermittent = 1][brunnel != 'tunnel']['param::variant' = 'eink']::waterway_intermittent_mono_b3 {
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-dasharray: 3.15,6.3;
   line-emissive-strength: 0;
@@ -528,7 +528,7 @@ Map {
   line-emissive-strength: 0;
 }
 #water[brunnel != 'tunnel']['param::variant' != 'hybrid']::water {
-  polygon-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_night), (0.3, @water_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @water_night), (0.3, @water))));
+  polygon-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_night), (0.3, @water_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @water_night), (0.3, @water))));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : linear([view::zoom], (5, 0.1), (7, 0)));
 }
 #water[brunnel != 'tunnel']['param::variant' = 'eink']::water_pattern {
@@ -541,12 +541,12 @@ Map {
   line-emissive-strength: 0;
 }
 #aeroway[zoom >= 11]['mapnik::geometry_type' = 3]['param::variant' != 'hybrid']::aeroway_area {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_5)) : @aeroway);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @aeroway);
   polygon-opacity: linear([view::zoom], (10, 0), (11, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
 #aeroway[zoom >= 9]['mapnik::geometry_type' = 2]['param::variant' != 'hybrid']::aeroway_line {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_5)) : @aeroway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @aeroway);
   line-width: exponential(1.5, [view::zoom], (9, (([class] = 'runway') ? 1 : 0.5)), (18, (([class] = 'runway') ? 80 : 20)));
   line-opacity: linear([view::zoom], (10, 0), (11, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
@@ -557,12 +557,12 @@ Map {
   polygon-emissive-strength: 0;
 }
 #depth[zoom < 8][min_depth > 0][min_depth < 7000]['param::variant' != 'hybrid']::water_depth {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @depth_200);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_3), (0.3, @polygon_fill_4)) : @depth_200);
   polygon-opacity: linear([view::zoom], (6, 0.35), (8, 0));
   polygon-emissive-strength: 0;
 }
 #depth[zoom < 8][min_depth >= 7000]['param::variant' != 'hybrid']::water_depth_deep {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @depth_7000);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill), (0.3, @polygon_fill_2)) : @depth_7000);
   polygon-opacity: linear([view::zoom], (6, 0.35), (8, 0));
   polygon-emissive-strength: 0;
 }
@@ -581,34 +581,34 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #contour[zoom >= 11][div >= 100]::contour_index {
-  line-color: (([param::variant] = 'topo') ? @contour_index_stroke : (([param::variant] = 'hybrid') ? @contour_index_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_index_stroke_3), (0.3, @line_stroke_7)) : @contour_index)));
+  line-color: (([param::variant] = 'topo') ? @contour_index_stroke : (([param::variant] = 'hybrid') ? @contour_index_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_index_stroke_3), (0.3, @line_stroke_8)) : @contour_index)));
   line-width: linear([view::zoom], (11, 0.6), (16, 1.4));
   line-opacity: linear([view::zoom], (11, (0.35 * [param::contour_opacity])), (14, (0.6 * [param::contour_opacity])));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #transportation[zoom >= 13][zoom < 16][brunnel = 'tunnel'][class = 'rail']['param::show_underground' = 1]::rail_tunnel_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 1.38,1.38;
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][brunnel = 'tunnel'][class = 'rail']['param::show_underground' = 1]::rail_tunnel_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 2.85,2.85;
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 13][zoom < 16][brunnel = 'tunnel'][class = 'transit']['param::show_underground' = 1]::rail_tunnel_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 1.38,1.38;
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][brunnel = 'tunnel'][class = 'transit']['param::show_underground' = 1]::rail_tunnel_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 2.85,2.85;
   line-opacity: @tunnel_stroke_opacity;
@@ -616,7 +616,7 @@ Map {
 }
 #transportation[zoom >= 15][class = 'path'][brunnel = 'tunnel'][subclass != 'steps']::tunnel_path_casing {
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-gap-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (22, 2));
   draw-once: (([param::variant] = 'hybrid') ? 'tunnel-path' : '');
@@ -625,63 +625,63 @@ Map {
 #transportation[zoom >= 'param::path_min_zoom'][class = 'path'][brunnel = 'tunnel'][subclass != 'steps']::tunnel_path {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path_stroke)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_stroke_2))) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([subclass] = 'bridleway') ? @rail : @background)), (0.3, (([subclass] = 'bridleway') ? @rail_emphasis : @glacier_low))) : linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_z16)))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path_stroke)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_stroke_2))) : (([param::variant] = 'eink') ? linear([view::zoom], (15, linear([view::brightness], (0.25, (([subclass] = 'bridleway') ? @rail : @background)), (0.3, (([subclass] = 'bridleway') ? @rail_emphasis : @glacier_low)))), (16, linear([view::brightness], (0.25, (([subclass] = 'bridleway') ? @rail : @background)), (0.3, (([subclass] = 'bridleway') ? @rail_emphasis : @glacier_low))))) : linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_z16)))));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   draw-once: (([param::variant] = 'hybrid') ? 'tunnel-path' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][zoom < 17][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 1.2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 2.88,2.88;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 21][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 6.31,6.31;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 13][zoom < 16][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b1 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 1.64,1.64;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 2,2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 11,11;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 21][class = 'path'][subclass = 'cycleway'][brunnel = 'tunnel']::tunnel_cycleway_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 17.75,17.75;
@@ -964,7 +964,7 @@ Map {
 }
 #transportation[zoom >= 15][class = 'path'][subclass != 'steps'][subclass != 'path'][subclass != 'bridleway'][brunnel != 'tunnel'][brunnel != 'bridge']['param::variant' != 'streets']['param::variant' != 'hybrid']::urban_path_casing {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case);
   line-gap-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (22, 2));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
@@ -972,13 +972,13 @@ Map {
 #transportation[zoom >= 'param::path_min_zoom'][class = 'path'][subclass != 'steps'][subclass != 'path'][subclass != 'bridleway'][brunnel != 'tunnel'][brunnel != 'bridge']['param::variant' != 'streets']['param::variant' != 'hybrid']::urban_path {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::zoom], (15, @path), (16, @path_z16)));
+  line-color: (([param::variant] = 'eink') ? linear([view::zoom], (15, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (16, linear([view::brightness], (0.25, @background), (0.3, @glacier_low)))) : linear([view::zoom], (15, @path), (16, @path_z16)));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 15][class = 'path'][subclass != 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']['param::variant' != 'outdoor']['param::variant' != 'topo']['param::variant' != 'eink']::path_casing {
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : @path_case);
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : @path_case);
   line-gap-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (22, 2));
   draw-once: (([param::variant] = 'hybrid') ? 'path' : '');
@@ -993,24 +993,24 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][zoom < 17][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 1.2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 2.88,2.88;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 21][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 6.31,6.31;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -1029,462 +1029,462 @@ Map {
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.2,1.6;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.6,2.8;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 8.37,4.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.2,1.6;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.6,2.8;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][brunnel != 'tunnel'][sac_scale != 'mountain_hiking'][sac_scale != 1][sac_scale != 'demanding_mountain_hiking'][sac_scale != 2][sac_scale != 'alpine_hiking'][sac_scale != 3][sac_scale != 'demanding_alpine_hiking'][sac_scale != 4][sac_scale != 'difficult_alpine_hiking'][sac_scale != 5]['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t1_bridleway_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 8.37,4.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 1][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t2_bridleway_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'demanding_mountain_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 2][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t3_bridleway_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 3.5,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 3][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t4_bridleway_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 5.23,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'demanding_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 4][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t5_bridleway_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'path'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b1 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b2 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 'difficult_alpine_hiking'][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b3 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom < 14][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b4 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1,1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 14][zoom < 16][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b5 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 1.4,2.1;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 'param::path_min_zoom'][zoom >= 16][subclass = 'bridleway'][sac_scale = 5][brunnel != 'tunnel']['param::variant' != 'streets']['param::variant' != 'hybrid']::trail_t6_bridleway_b6 {
   line-join: 'round';
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   line-width: (([param::variant] = 'eink') ? exponential(1.3, [view::zoom], (12, 0.96), (15, 2.2399999999999998), (18, 4.16)) : exponential(1.3, [view::zoom], (12, 0.6), (15, 1.4), (18, 2.6)));
   line-dasharray: 2.09,3.14;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -2091,289 +2091,289 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][zoom < 16][construction = 1]::road_construction_b1 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][construction = 1]::road_construction_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][construction = 1]::road_construction_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][construction = 1]::road_construction_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][construction = 1]::road_construction_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][construction = 1]::road_construction_b6 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 14][zoom < 16][class = 'motorway_construction']::road_construction_omt_b1 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'motorway_construction']::road_construction_omt_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][class = 'motorway_construction']::road_construction_omt_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][class = 'motorway_construction']::road_construction_omt_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][class = 'motorway_construction']::road_construction_omt_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][class = 'motorway_construction']::road_construction_omt_b6 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 14][zoom < 16][class = 'trunk_construction']::road_construction_omt_b7 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'trunk_construction']::road_construction_omt_b8 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][class = 'trunk_construction']::road_construction_omt_b9 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][class = 'trunk_construction']::road_construction_omt_b10 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][class = 'trunk_construction']::road_construction_omt_b11 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][class = 'trunk_construction']::road_construction_omt_b12 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 14][zoom < 16][class = 'primary_construction']::road_construction_omt_b13 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'primary_construction']::road_construction_omt_b14 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][class = 'primary_construction']::road_construction_omt_b15 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][class = 'primary_construction']::road_construction_omt_b16 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][class = 'primary_construction']::road_construction_omt_b17 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][class = 'primary_construction']::road_construction_omt_b18 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 14][zoom < 16][class = 'secondary_construction']::road_construction_omt_b19 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'secondary_construction']::road_construction_omt_b20 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][class = 'secondary_construction']::road_construction_omt_b21 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][class = 'secondary_construction']::road_construction_omt_b22 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][class = 'secondary_construction']::road_construction_omt_b23 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][class = 'secondary_construction']::road_construction_omt_b24 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 14][zoom < 16][class = 'tertiary_construction']::road_construction_omt_b25 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'tertiary_construction']::road_construction_omt_b26 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][class = 'tertiary_construction']::road_construction_omt_b27 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][class = 'tertiary_construction']::road_construction_omt_b28 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][class = 'tertiary_construction']::road_construction_omt_b29 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][class = 'tertiary_construction']::road_construction_omt_b30 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 14][zoom < 16][class = 'minor_construction']::road_construction_omt_b31 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'minor_construction']::road_construction_omt_b32 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][class = 'minor_construction']::road_construction_omt_b33 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][class = 'minor_construction']::road_construction_omt_b34 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][class = 'minor_construction']::road_construction_omt_b35 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][class = 'minor_construction']::road_construction_omt_b36 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 14][zoom < 16][class = 'service_construction']::road_construction_omt_b37 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 1.26,1.26;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'service_construction']::road_construction_omt_b38 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 2.93,2.93;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 17][zoom < 18][class = 'service_construction']::road_construction_omt_b39 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 3.18,3.18;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 18][zoom < 19][class = 'service_construction']::road_construction_omt_b40 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.99,5.99;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 19][zoom < 20][class = 'service_construction']::road_construction_omt_b41 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 5.71,5.71;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 20][class = 'service_construction']::road_construction_omt_b42 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke)) : @road_low);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_4), (0.3, @line_stroke_3)) : @road_low);
   line-width: exponential(1.5, [view::zoom], (14, 2), (18, 20), (22, 200));
   line-dasharray: 12.52,12.52;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
@@ -3646,34 +3646,34 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.4);
 }
 #transportation[zoom >= 13][zoom < 16][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b1 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 1.64,1.64;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 2,2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 11,11;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 21][class = 'path'][subclass = 'cycleway'][brunnel != 'tunnel'][brunnel != 'bridge']::cycleway_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 17.75,17.75;
@@ -3973,68 +3973,68 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #transportation[class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 13][zoom < 16][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,29.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][zoom < 18][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,2.96;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 18][zoom < 20][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,4.5;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 20][class = 'rail'][brunnel != 'tunnel'][brunnel != 'bridge']::rail_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1.12,11.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 13][zoom < 16][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,29.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][zoom < 18][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,2.96;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 18][zoom < 20][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,4.5;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 20][class = 'transit'][brunnel != 'tunnel'][brunnel != 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::tram_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1.12,11.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
@@ -4042,7 +4042,7 @@ Map {
 }
 #transportation[zoom >= 15][class = 'path'][brunnel = 'bridge'][subclass != 'steps']::bridge_path_casing {
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-gap-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (22, 2));
   draw-once: (([param::variant] = 'hybrid') ? 'bridge-path' : '');
@@ -4051,30 +4051,30 @@ Map {
 #transportation[zoom >= 'param::path_min_zoom'][class = 'path'][brunnel = 'bridge'][subclass != 'steps']::bridge_path {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path_stroke)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_stroke_2))) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, (([subclass] = 'bridleway') ? @rail : @background)), (0.3, (([subclass] = 'bridleway') ? @rail_emphasis : @glacier_low))) : linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_z16)))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path_stroke)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_stroke_2))) : (([param::variant] = 'eink') ? linear([view::zoom], (15, linear([view::brightness], (0.25, (([subclass] = 'bridleway') ? @rail : @background)), (0.3, (([subclass] = 'bridleway') ? @rail_emphasis : @glacier_low)))), (16, linear([view::brightness], (0.25, (([subclass] = 'bridleway') ? @rail : @background)), (0.3, (([subclass] = 'bridleway') ? @rail_emphasis : @glacier_low))))) : linear([view::zoom], (15, (([subclass] = 'bridleway') ? @bridleway : @path)), (16, (([subclass] = 'bridleway') ? @bridleway : @path_z16)))));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   draw-once: (([param::variant] = 'hybrid') ? 'bridge-path' : '');
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][zoom < 17][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 1.2,1.2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 2.88,2.88;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 21][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_3 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 6.31,6.31;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -4248,34 +4248,34 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 13][zoom < 16][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b1 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 16][zoom < 17][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b2 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 1.64,1.64;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 17][zoom < 19][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b3 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 2,2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 19][zoom < 21][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b4 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 11,11;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.6);
 }
 #transportation[zoom >= 21][class = 'path'][subclass = 'cycleway'][brunnel = 'bridge']::bridge_cycleway_b5 {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @cycleway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @cycleway);
   line-width: linear([view::zoom], (13, 0.8), (18, 2), (22, 20));
   line-opacity: linear([view::zoom], (13, 0), (13.5, 1));
   line-dasharray: 17.75,17.75;
@@ -4304,68 +4304,68 @@ Map {
   line-emissive-strength: 0;
 }
 #transportation[class = 'rail'][brunnel = 'bridge']::bridge_rail {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 13][zoom < 16][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,29.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][zoom < 18][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,2.96;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 18][zoom < 20][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,4.5;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 20][class = 'rail'][brunnel = 'bridge']::bridge_rail_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1.12,11.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-gap-width: linear([view::zoom], (15, 0), (16, 1), (18, 2), (22, 20));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 13][zoom < 16][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b1 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,29.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][zoom < 18][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b2 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,2.96;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 18][zoom < 20][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b3 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1,4.5;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 20][class = 'transit'][brunnel = 'bridge']['param::show_tram' = 1]['param::show_tram' = 1]::bridge_tram_tracks_b4 {
-  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @label)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
+  line-color: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @rail_stroke), (0.3, @rail_stroke)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @label), (0.3, @label))), (0.3, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))))), (0.3, linear([view::brightness], (0.25, linear([view::brightness], (0.25, @line_stroke_2), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @label), (0.3, @label)))))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @rail))));
   line-width: exponential(1.5, [view::zoom], (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 1.12,11.2;
   line-opacity: linear([view::zoom], (13.75, 0), (14, 1));
@@ -4390,13 +4390,13 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
 #mountain_peak[zoom >= 13][class = 'cliff']['mapnik::geometry_type' = 2]::cliff {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_5), (0.3, @line_stroke_4)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
   line-width: linear([view::zoom], (13, 0.6), (18, 1.6));
   line-opacity: linear([view::zoom], (13, 0.5), (16, 0.9));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #mountain_peak[zoom >= 15][zoom < 18][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_5), (0.3, @line_stroke_4)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
   line-width: linear([view::zoom], (15, 2), (20, 6));
   line-offset: (0 - (linear([view::zoom], (15, 1.2), (20, 3.5))));
   line-dasharray: 1,2.84;
@@ -4404,7 +4404,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #mountain_peak[zoom >= 18][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_5), (0.3, @line_stroke_4)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
   line-width: linear([view::zoom], (15, 2), (20, 6));
   line-offset: (0 - (linear([view::zoom], (15, 1.2), (20, 3.5))));
   line-dasharray: 1.04,5.2;
@@ -4412,7 +4412,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #boundary[zoom >= 3][admin_level = 2][maritime != 1]['param::show_boundaries' = 1]::boundary_country_halo {
-  line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @line_stroke_6)) : @boundary_halo));
+  line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @line_stroke_2)) : @boundary_halo));
   line-width: linear([view::zoom], (3, 4), (12, 8));
   line-opacity: linear([view::zoom], (3, 0), (4, 0.5));
   line-blur: linear([view::zoom], (3, 0), (12, 2));
@@ -4447,20 +4447,20 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #boundary[zoom >= 3][zoom < 7][admin_level = 4][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_state_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @boundary_state));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @boundary_state));
   line-width: linear([view::zoom], (3, 0.3), (12, 1.5));
   line-opacity: linear([view::zoom], (3, 0), (4, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #boundary[zoom >= 7][zoom < 9][admin_level = 4][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_state_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @boundary_state));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @boundary_state));
   line-width: linear([view::zoom], (3, 0.3), (12, 1.5));
   line-dasharray: 1.93,1.93,5.8,1.93;
   line-opacity: linear([view::zoom], (3, 0), (4, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #boundary[zoom >= 9][admin_level = 4][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_state_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @boundary_state));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_state_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @boundary_state));
   line-width: linear([view::zoom], (3, 0.3), (12, 1.5));
   line-dasharray: 2.6,2.6,7.8,2.6;
   line-opacity: linear([view::zoom], (3, 0), (4, 1));
@@ -4491,14 +4491,14 @@ Map {
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 13][zoom < 15]['param::buildings'>0]['param::variant' = 'eink']::building_flat {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>0]['param::buildings' = 1]['param::variant' = 'eink']::building_flat_z15 {
   polygon-fill: linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night));
-  line-color: linear([view::brightness], (0.25, @line_stroke), (0.3, @line_stroke_2));
+  line-color: linear([view::brightness], (0.25, @line_stroke_3), (0.3, @line_stroke_4));
   line-width: @building_stroke_width;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
@@ -4518,7 +4518,7 @@ Map {
   line-emissive-strength: 0;
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>1]['param::variant' != 'hybrid']::building_3d {
-  building-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night)) : linear([view::brightness], (0.25, @line_stroke_7), (0.3, @building_3d_fill)));
+  building-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night)) : linear([view::brightness], (0.25, @line_stroke_8), (0.3, @building_3d_fill)));
   building-height: (([render_height]) ?? (5));
   building-min-height: (([render_min_height]) ?? (0));
   building-fill-opacity: linear([view::tilt], (70, 1), (85, [param::building_opacity]));
@@ -4531,8 +4531,8 @@ Map {
   text-size: linear([view::zoom], (13, 9), (17, 11));
   text-collision-padding: (1 * 4);
   text-max-char-angle-delta: 25;
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @label_night), (0.3, @contour_label_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label_halo_night)) : linear([view::brightness], (0.25, @label_night), (0.3, @contour_label)))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @label_night), (0.3, @contour_label_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @road_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label_halo_night)))) : linear([view::brightness], (0.25, @label_night), (0.3, @contour_label)))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 16300000;
@@ -4545,8 +4545,8 @@ Map {
   text-face-name: @font_regular;
   text-size: linear([view::zoom], (13, 10), (16, 13));
   text-wrap-width: (7 * linear([view::zoom], (13, 10), (16, 13)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 16400000;
   text-collision-padding: 2;
@@ -4560,8 +4560,8 @@ Map {
   text-size: linear([view::zoom], (17, 10), (20, 13));
   text-collision-padding: (1 * 3);
   text-z-elevate: ([param::poi_on_roof] = 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @housenumber_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @rail_emphasis)) : linear([view::brightness], (0.25, @label_night), (0.3, @housenumber))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @housenumber_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @rail))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @rail_emphasis)))) : linear([view::brightness], (0.25, @label_night), (0.3, @housenumber))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 16500000;
@@ -4576,8 +4576,8 @@ Map {
   text-size: linear([view::zoom], (9, 9), (18, 14));
   text-character-spacing: (0.05 * linear([view::zoom], (9, 9), (18, 14)));
   text-max-char-angle-delta: 30;
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @background)))) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 16600000;
@@ -4593,8 +4593,8 @@ Map {
   text-size: linear([view::zoom], (9, 9), (18, 14));
   text-character-spacing: (0.05 * linear([view::zoom], (9, 9), (18, 14)));
   text-max-char-angle-delta: 30;
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @background)))) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 16600000;
@@ -4609,8 +4609,8 @@ Map {
   text-face-name: @font_italic;
   text-size: linear([view::zoom], (14, 9), (18, 12));
   text-max-char-angle-delta: 30;
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @background)))) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 16700000;
@@ -4626,8 +4626,8 @@ Map {
   text-size: linear([view::zoom], (12, 9), (18, 14));
   text-character-spacing: (0.05 * linear([view::zoom], (12, 9), (18, 14)));
   text-wrap-width: (5 * linear([view::zoom], (12, 9), (18, 14)));
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @background)))) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 16800000;
@@ -4642,8 +4642,8 @@ Map {
   text-size: linear([view::zoom], (3, (([class] = 'ocean' || [class] = 'sea') ? 12 : 10)), (14, (([class] = 'ocean' || [class] = 'sea') ? 18 : 13)));
   text-character-spacing: ((([class] = 'ocean') ? 0.25 : (([class] = 'sea') ? 0.15 : 0.01)) * linear([view::zoom], (3, (([class] = 'ocean' || [class] = 'sea') ? 12 : 10)), (14, (([class] = 'ocean' || [class] = 'sea') ? 18 : 13))));
   text-wrap-width: (7 * linear([view::zoom], (3, (([class] = 'ocean' || [class] = 'sea') ? 12 : 10)), (14, (([class] = 'ocean' || [class] = 'sea') ? 18 : 13))));
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @background)))) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 16900000;
@@ -4658,8 +4658,8 @@ Map {
   text-size: linear([view::zoom], (9, 11), (16, 14));
   text-wrap-width: (8 * linear([view::zoom], (9, 11), (16, 14)));
   text-collision-padding: (1 * 4);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 17000000;
@@ -4673,8 +4673,8 @@ Map {
   text-size: @poi_size_2;
   text-wrap-width: @text_wrap_width;
   text-collision-padding: (1 * 4);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_park))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 17100000;
@@ -4690,8 +4690,8 @@ Map {
   shield-vertical-alignment: 'top';
   shield-text-dx: 0;
   shield-text-dy: 10.8;
-  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @airport_label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_airport))));
-  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @airport_label_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_airport))));
+  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   shield-placement-priority: (17200000 + (([param::poi-boost-airport]) ?? (0)));
   shield-collision-padding: 2;
@@ -4712,8 +4712,8 @@ Map {
   text-character-spacing: (0.15 * linear([view::zoom], (10, 9), (18, 16)));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 17300000;
@@ -4729,8 +4729,8 @@ Map {
   text-character-spacing: (0.15 * linear([view::zoom], (10, 9), (18, 16)));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 17300000;
@@ -5115,7 +5115,7 @@ Map {
   shield-collision-padding: (1 * 2);
   shield-z-elevate: ([param::poi_on_roof] = 1);
   shield-fill: (([param::variant] = 'hybrid') ? (([param::poi-fill-hybrid-[class]]) ?? @poi_icon_fill) : ([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, (([param::poi-fill-b25-[class]]) ?? @poi_icon_fill)), (0.3, (([param::poi-fill-[class]]) ?? @poi_fill))));
-  shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  shield-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @road_label_halo), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   shield-placement-priority: (23000000 + (((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))));
@@ -5124,7 +5124,7 @@ Map {
   shield-unlock-image: true;
   shield-image-scale: (((([param::variant] = 'eink') ? 0.4 : (([param::poiStyle] = 'plain') ? 0.6 : 0.4))) / 2.0);
   shield-sdf: true;
-  shield-icon-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  shield-icon-halo-fill: (([param::variant] = 'hybrid') ? @halo_night : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @road_label_halo), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-icon-halo-radius: (([param::variant] = 'eink') ? 0 : (([param::poiStyle] = 'plain') ? 1.5 : 0));
   shield-icon-fill: (([param::variant] = 'eink') ? @background : (([param::poiStyle] = 'plain') ? linear([view::brightness], (0.25, (([param::poi-icon-fill-plain-b25-[class]]) ?? @poi_icon_fill)), (0.3, (([param::poi-icon-fill-plain-[class]]) ?? @poi_icon_fill_2))) : linear([view::brightness], (0.25, (([param::poi-icon-fill-b25-[class]]) ?? @poi_icon_fill)), (0.3, (([param::poi-icon-fill-[class]]) ?? @poi_icon_fill_2)))));
   shield-icon-background-fill: (([param::variant] = 'eink') ? (([param::poi-icon-background-fill-eink-[class]]) ?? 'transparent') : (([param::poiStyle] = 'plain') ? 'transparent' : linear([view::brightness], (0.25, (([param::poi-icon-background-fill-b25-[class]]) ?? 'transparent')), (0.3, (([param::poi-icon-background-fill-[class]]) ?? 'transparent')))));
@@ -5141,10 +5141,10 @@ Map {
 #poi[zoom >= 18][class = 'tree'][name = null]['param::variant' != 'hybrid']::poi {
   shield-name: '';
   shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, (([param::poi-fill-b25-[class]]) ?? @poi_icon_fill)), (0.3, (([param::poi-fill-[class]]) ?? @poi_fill))));
-  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @road_label_halo), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-placement-priority: (19300000 + ((((([param::poi-boost-[subclass]]) ?? (0)) != 0) ? (([param::poi-boost-[subclass]]) ?? (0)) : (([param::poi-boost-[class]]) ?? (0))) - 10000000));
   shield-image-scale: (((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))) / 2.0);
-  shield-icon-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-icon-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @road_label_halo), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-icon-background-radius: (((([param::poi-icon-background-radius-[class]]) ?? 21)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   shield-icon-background-border-width: (((([param::poi-icon-background-border-width-[class]]) ?? 3)) * ((([param::variant] = 'eink') ? linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale]))) : (([param::poiStyle] = 'plain') ? linear([view::zoom], (17, 0.6), (22, 1.2)) : linear([view::zoom], (17, (0.4 * [param::bare_icon_scale])), (22, (0.8 * [param::bare_icon_scale])))))));
   @extend %poi;
@@ -5888,7 +5888,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23600000;
   text-min-distance: @trail_spacing;
@@ -5906,7 +5906,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23600000;
   text-min-distance: @trail_spacing;
@@ -5924,7 +5924,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23700000;
   text-min-distance: @trail_spacing;
@@ -5942,7 +5942,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23700000;
   text-min-distance: @trail_spacing;
@@ -5960,7 +5960,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23800000;
   text-min-distance: @trail_spacing;
@@ -5978,7 +5978,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23800000;
   text-min-distance: @trail_spacing;
@@ -5996,7 +5996,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23900000;
   text-min-distance: @trail_spacing;
@@ -6014,7 +6014,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 23900000;
   text-min-distance: @trail_spacing;
@@ -6032,7 +6032,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24000000;
   text-min-distance: @trail_spacing;
@@ -6050,7 +6050,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24000000;
   text-min-distance: @trail_spacing;
@@ -6068,7 +6068,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24100000;
   text-min-distance: @trail_spacing;
@@ -6086,7 +6086,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_3);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @trail_stroke_2);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24100000;
   text-min-distance: @trail_spacing;
@@ -6104,7 +6104,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24200000;
   text-min-distance: @trail_spacing;
@@ -6122,7 +6122,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24200000;
   text-min-distance: @trail_spacing;
@@ -6140,7 +6140,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24300000;
   text-min-distance: @trail_spacing;
@@ -6158,7 +6158,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24300000;
   text-min-distance: @trail_spacing;
@@ -6176,7 +6176,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24400000;
   text-min-distance: @trail_spacing;
@@ -6194,7 +6194,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24400000;
   text-min-distance: @trail_spacing;
@@ -6212,7 +6212,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24500000;
   text-min-distance: @trail_spacing;
@@ -6230,7 +6230,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24500000;
   text-min-distance: @trail_spacing;
@@ -6248,7 +6248,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24600000;
   text-min-distance: @trail_spacing;
@@ -6266,7 +6266,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24600000;
   text-min-distance: @trail_spacing;
@@ -6284,7 +6284,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24700000;
   text-min-distance: @trail_spacing;
@@ -6302,7 +6302,7 @@ Map {
   text-face-name: @font_bold;
   text-size: @road_size;
   text-collision-padding: (1 * 2);
-  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @trail_stroke), (0.3, @road_label)) : @trail_stroke_2);
+  text-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @trail_stroke);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0.1);
   text-placement-priority: 24700000;
   text-min-distance: @trail_spacing;
@@ -6320,8 +6320,8 @@ Map {
   text-size: linear([view::zoom], (14, 10), (18, 12));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @rail_emphasis))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @rail_emphasis))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 24800000;
@@ -6335,8 +6335,8 @@ Map {
   text-size: linear([view::zoom], (14, 10), (18, 12));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @track_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @track_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 24900000;
@@ -6352,8 +6352,8 @@ Map {
   text-character-spacing: (0.15 * linear([view::zoom], (10, 6.5), (18, 13)));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 25000000;
@@ -6369,8 +6369,8 @@ Map {
   text-character-spacing: (0.15 * linear([view::zoom], (10, 8), (18, 14)));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 25100000;
@@ -6386,8 +6386,8 @@ Map {
   text-character-spacing: (0.15 * linear([view::zoom], (10, 9), (18, 16)));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 25200000;
@@ -6403,8 +6403,8 @@ Map {
   text-character-spacing: (0.15 * linear([view::zoom], (10, 9), (18, 16)));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 25300000;
@@ -6420,8 +6420,8 @@ Map {
   text-character-spacing: (0.15 * linear([view::zoom], (10, 9), (18, 16)));
   text-max-char-angle-delta: 30;
   text-collision-padding: (1 * 1);
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @road_label_night), (0.3, @road_label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @road_label_halo_night), (0.3, @road_label_halo))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   text-placement-priority: 25300000;
@@ -6439,8 +6439,8 @@ Map {
   shield-text-dx: 0;
   shield-text-dy: 5.5;
   shield-wrap-width: @text_wrap_width;
-  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
-  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
+  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   shield-placement-priority: (25400000 + (([param::poi-boost-[class]]) ?? (0)));
@@ -6463,8 +6463,8 @@ Map {
   shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
   shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
   shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
-  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
+  shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke_2))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
+  shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
   shield-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   shield-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
   shield-placement-priority: (25500000 + (([param::poi-boost-[class]]) ?? (0)));
@@ -6506,8 +6506,8 @@ Map {
   text-face-name: @font_regular;
   text-size: linear([view::zoom], (13, 10), (16, 13));
   text-wrap-width: (7 * linear([view::zoom], (13, 10), (16, 13)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 25700000;
   text-collision-padding: 2;
@@ -6520,8 +6520,8 @@ Map {
   text-face-name: @font_regular;
   text-size: linear([view::zoom], (13, 10), (16, 13));
   text-wrap-width: (7 * linear([view::zoom], (13, 10), (16, 13)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 25700000;
   text-collision-padding: 2;
@@ -6534,8 +6534,8 @@ Map {
   text-face-name: @font_regular;
   text-size: linear([view::zoom], (13, 10), (16, 13));
   text-wrap-width: (7 * linear([view::zoom], (13, 10), (16, 13)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 25700000;
   text-collision-padding: 2;
@@ -6550,8 +6550,8 @@ Map {
   text-wrap-width: (7 * linear([view::zoom], (13, 10), (16, 13)));
   text-transform: 'uppercase';
   text-character-spacing: (0.05 * linear([view::zoom], (13, 10), (16, 13)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 25800000;
   text-collision-padding: 2;
@@ -6566,8 +6566,8 @@ Map {
   text-wrap-width: (7 * linear([view::zoom], (13, 10), (16, 13)));
   text-transform: 'uppercase';
   text-character-spacing: (0.05 * linear([view::zoom], (13, 10), (16, 13)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 25800000;
   text-collision-padding: 2;
@@ -6582,8 +6582,8 @@ Map {
   text-wrap-width: (7 * linear([view::zoom], (11, 11), (15, 15)));
   text-transform: 'uppercase';
   text-character-spacing: (0.1 * linear([view::zoom], (11, 11), (15, 15)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 25900000;
   text-collision-padding: 2;
@@ -6596,8 +6596,8 @@ Map {
   text-face-name: @font_italic;
   text-size: linear([view::zoom], (10, 11), (16, 15));
   text-wrap-width: (7 * linear([view::zoom], (10, 11), (16, 15)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26000000;
   text-collision-padding: 2;
@@ -6610,8 +6610,8 @@ Map {
   text-face-name: @font_italic;
   text-size: linear([view::zoom], (10, 11), (16, 15));
   text-wrap-width: (7 * linear([view::zoom], (10, 11), (16, 15)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26000000;
   text-collision-padding: 2;
@@ -6624,8 +6624,8 @@ Map {
   text-face-name: @font_medium;
   text-size: linear([view::zoom], (10, 10), (14, 14), (16, 16));
   text-wrap-width: (7 * linear([view::zoom], (10, 10), (14, 14), (16, 16)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26100000;
   text-collision-padding: 2;
@@ -6638,8 +6638,8 @@ Map {
   text-face-name: @font_medium;
   text-size: linear([view::zoom], (8, 11), (12, 16), (16, 20));
   text-wrap-width: (7 * linear([view::zoom], (8, 11), (12, 16), (16, 20)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26200000;
   text-collision-padding: 2;
@@ -6652,8 +6652,8 @@ Map {
   shield-face-name: @font_medium;
   shield-size: linear([view::zoom], (6, 10), (8, 11));
   shield-wrap-width: (7 * linear([view::zoom], (6, 10), (8, 11)));
-  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   shield-placement-priority: 26300000;
   shield-collision-padding: 2;
@@ -6672,8 +6672,8 @@ Map {
   text-face-name: @font_medium;
   text-size: linear([view::zoom], (8, 16), (12, 20), (15, 24));
   text-wrap-width: (7 * linear([view::zoom], (8, 16), (12, 20), (15, 24)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26400000;
   text-collision-padding: 2;
@@ -6686,8 +6686,8 @@ Map {
   shield-face-name: @font_medium;
   shield-size: linear([view::zoom], (3, 11), (6, 14), (8, 16));
   shield-wrap-width: (7 * linear([view::zoom], (3, 11), (6, 14), (8, 16)));
-  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   shield-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   shield-placement-priority: 26500000;
   shield-collision-padding: 2;
@@ -6708,8 +6708,8 @@ Map {
   text-wrap-width: (6 * linear([view::zoom], (4, 9), (9, 16)));
   text-transform: 'uppercase';
   text-character-spacing: (0.15 * linear([view::zoom], (4, 9), (9, 16)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26600000;
   text-collision-padding: 2;
@@ -6724,8 +6724,8 @@ Map {
   text-wrap-width: (6 * linear([view::zoom], (4, 9), (9, 16)));
   text-transform: 'uppercase';
   text-character-spacing: (0.15 * linear([view::zoom], (4, 9), (9, 16)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @road_label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @road_label_night)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @line_stroke))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @road_label)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label_soft))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26600000;
   text-collision-padding: 2;
@@ -6738,8 +6738,8 @@ Map {
   text-face-name: @font_medium;
   text-size: linear([view::zoom], (3, 9), (6, 12), (9, 16));
   text-wrap-width: (6 * linear([view::zoom], (3, 9), (6, 12), (9, 16)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26700000;
   text-collision-padding: 2;
@@ -6752,8 +6752,8 @@ Map {
   text-face-name: @font_medium;
   text-size: linear([view::zoom], (1, 11), (5, 16), (9, 22));
   text-wrap-width: (6 * linear([view::zoom], (1, 11), (5, 16), (9, 22)));
-  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @background)) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
-  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
+  text-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low))), (0.3, linear([view::brightness], (0.25, @background), (0.3, @background)))) : linear([view::brightness], (0.25, @label_night), (0.3, @label))));
+  text-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, linear([view::brightness], (0.25, @background), (0.3, @background))), (0.3, linear([view::brightness], (0.25, @glacier_low), (0.3, @glacier_low)))) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low))));
   text-halo-radius: (([param::variant] = 'eink') ? 2.25 : 1.25);
   text-placement-priority: 26800000;
   text-collision-padding: 2;

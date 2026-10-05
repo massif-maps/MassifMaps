@@ -264,16 +264,15 @@ test('cubic-bezier is an easing, not CartoCSS cubic, which is a spline', () => {
     assert.ok(!out.includes('cubic('), 'never the spline');
 });
 
-test('a ramp at the stop of another ramp collapses: CartoCSS cannot nest two', () => {
-    // Mapbox Standard writes its water fill as a zoom ramp whose far stop is a brightness ramp.
-    // The nested form parses and then draws NOTHING - every lake came out empty on device.
-    const notes = [];
+test('a ramp at the stop of another ramp nests: every stop survives', () => {
+    // The Massif e-ink road fill is a zoom ramp whose stops are day/night ramps. Collapsed onto the
+    // last stop, z12 drew the z13 colour.
     const out = translateExpression(['interpolate', ['linear'], ['zoom'],
-        13, '#aaddff',
-        14, ['interpolate', ['linear'], ['measure-light', 'brightness'], 0, '#004466', 0.02, '#aaddff']], notes);
-    assert.ok(!/linear\([^)]*linear\(/.test(out), out);
-    assert.match(out, /view::brightness/);
-    assert.match(notes.join(' '), /cannot nest/);
+        12, ['interpolate', ['linear'], ['measure-light', 'brightness'], 0.25, '#000000', 0.3, '#ffffff'],
+        13, ['interpolate', ['linear'], ['measure-light', 'brightness'], 0.25, '#202020', 0.3, '#808080']]);
+    assert.equal(out, 'linear(([view::zoom] - 1), '
+        + '(12, linear([view::brightness], (0.25, #000000), (0.3, #ffffff))), '
+        + '(13, linear([view::brightness], (0.25, #202020), (0.3, #808080))))');
 });
 
 test('the zoom shift follows the tile draw size the style will be drawn at', () => {

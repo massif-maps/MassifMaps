@@ -109,6 +109,7 @@ namespace massif {
         std::vector<std::string> getStyleParameters() const;
         /**
          * Returns the value of the specified style parameter: its default, or the value last set.
+         * "table.key" returns one member of an object parameter.
          * @param param The parameter to return.
          * @return The value of the parameter.
          * @throws std::invalid_argument If the style parameter is neither declared nor set.
@@ -117,6 +118,7 @@ namespace massif {
         /**
          * Sets the value of the specified parameter.
          * A parameter the style does not declare is read as JSON, else as text, and kept across style changes.
+         * "table.key" sets one member of a declared object parameter and keeps the others.
          * @param param The parameter to set.
          * @param value The value for the parameter.
          * @return True if the parameter was set. False if the value does not fit the declared type.
@@ -258,6 +260,10 @@ namespace massif {
         void resetSymbolizerContextRasterMaps();
         void updateParameterStore();
         void updateSelectionState();
+        // "table.key" names one member of a declared object parameter
+        bool splitTableEntry(const std::string& param, std::string& table, std::string& key) const;
+        std::string tableName(const std::string& param) const;
+        mvt::Value getParameterValue(const std::string& param) const;
         bool setStyleParameterInternal(const std::string& param, const std::string& value);
         bool areParametersRepaintable(const std::vector<std::string>& params) const;
         void updateSymbolizer();

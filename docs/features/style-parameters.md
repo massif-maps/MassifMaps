@@ -96,7 +96,12 @@ class, and the app can rewrite the whole table at once:
 
 ```java
 decoder.setStyleParameter("poi_colors", "{\"restaurant\":\"#c0392b\",\"cafe\":\"#8e6e53\"}");
+decoder.setStyleParameter("poi_colors.cafe", "#6f4e37");   // one member, the others kept
+style.set("params.poi_colors.cafe", "#6f4e37");            // the same, through the surface API
 ```
+
+`<table>.<key>` names one member of an object table: setting it keeps every other member, the value
+read as JSON, else as text. `getStyleParameter("poi_colors.cafe")` reads that member back.
 
 `get(table, key)` takes a member by name from an object or an element by index from an array, and is
 unset when the key is missing — so the third argument is what you usually want. `getStyleParameter`

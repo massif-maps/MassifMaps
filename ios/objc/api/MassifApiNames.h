@@ -616,7 +616,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPanBounds;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPanningMode;
 /** Returns the panning speed mode. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPanningSpeedMode;
-/** Returns the value of the specified style parameter: its default, or the value last set. */
+/** Returns the value of the specified style parameter: its default, or the value last set. "table.key" returns one member of an object parameter. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyParams;
 /** Returns the paused state of the action. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPaused;

@@ -4730,7 +4730,7 @@
           "position": false,
           "cppType": "std::string",
           "indexed": "string",
-          "doc": "Returns the value of the specified style parameter: its default, or the value last set."
+          "doc": "Returns the value of the specified style parameter: its default, or the value last set. \"table.key\" returns one member of an object parameter."
         },
         {
           "name": "styleLayerNames",

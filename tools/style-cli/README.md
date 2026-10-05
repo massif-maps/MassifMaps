@@ -7,6 +7,8 @@ Style conversion for [Massif Maps](https://github.com/massif-maps/MassifMaps). O
 npx @massif-maps/style-tools css2xml style/project.json style.xml
 ```
 
+`@massif-maps/style-tools@dev` is the compiler on master, published on every change to it.
+
 ## Subcommands
 
 | | |

@@ -2,9 +2,18 @@ name: Style tools CLI
 
 # Builds massif-style to WebAssembly and packs @massif-maps/style-tools. build.yml calls it and
 # publishes the tarball on the SDK version. docs/contributing/style-tools.md: why TypeScript + wasm.
+# A push to master publishes a dev build too (publish-dev), so a style using a compiler change
+# need not wait for the next SDK release.
 
 on:
   pull_request:
+    paths:
+      - 'tools/style-cli/**'
+      - 'scripts/gen-cartocss-properties.py'
+      - 'libs-massif/**'
+      - '.github/workflows/release-style-tools.yml'
+  push:
+    branches: [master]
     paths:
       - 'tools/style-cli/**'
       - 'scripts/gen-cartocss-properties.py'
@@ -108,11 +117,46 @@ jobs:
           test -s /tmp/roundtrip.xml
           node dist/cli.js mapbox2css test/fixtures/style.json /tmp/mapbox2css --validate
 
+      # The patch after npm's `latest`, as a prerelease: above every release so far, below the next one
+      - name: Dev version
+        id: dev
+        if: ${{ !inputs.version && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        run: |
+          latest=$(npm view @massif-maps/style-tools version)
+          IFS=. read -r major minor patch <<< "$latest"
+          echo "version=$major.$minor.$((patch + 1))-dev.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+
       - name: Set version and pack
-        run: python3 scripts/npm-packages.py pack "${{ inputs.version || '0.0.0-devel' }}" --only style-tools
+        run: python3 scripts/npm-packages.py pack "${{ inputs.version || steps.dev.outputs.version || '0.0.0-devel' }}" --only style-tools
 
       - uses: actions/upload-artifact@v4
         with:
           name: style-tools-tarball
           path: dist/npm/*.tgz
           if-no-files-found: error
+
+  publish-dev:
+    name: Publish the dev build
+    # not under build.yml: a call carries its version and its caller's workflow_dispatch event
+    needs: [package]
+    if: ${{ !inputs.version && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+      - uses: actions/download-artifact@v4
+        with:
+          name: style-tools-tarball
+          path: dist/npm
+      # Trusted publishing: npmjs.com lists this workflow as well as build.yml for the package.
+      # `dev`, never `latest` or `next`: an app opts in with `@massif-maps/style-tools@dev`.
+      - name: Publish to npm
+        run: |
+          npm install -g npm@^11.5.1
+          python3 scripts/npm-packages.py publish --tag dev

@@ -279,11 +279,11 @@ POI ranking (SDK only; MapLibre ignores it):
 - `poi-boost.<name>` (0) — added to a POI's placement priority, so the culler keeps it over the labels
   it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
   (`poi-boost.alpine_hut`, then `poi-boost.lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
-  for the airport label. `poi-boost` is one table, empty by default: any name can be set. A priority is the layer's position × 100000: trees sit at 9.3M–9.4M, viewpoints at 9.5M,
-  landmarks at 9.6M–9.9M and point barriers at 10.0M–10.5M (their layer's less `TREE_SINK`), the airport
-  at 17.2M, POIs span 20.6M to 23.5M, road and trail names reach 25.3M, summits 25.4M–25.6M, place
-  names 25.7M–26.8M. So `100000` lifts a
-  class one layer, `3000000` over every unboosted POI and most road and trail names (not a summit), and a negative value demotes. Whole numbers: the
+  for the airport label. `poi-boost` is one table, empty by default: any name can be set. A priority is the layer's position × 100000: trees sit at 10.7M–10.8M, viewpoints at 10.9M,
+  landmarks at 11.0M–11.3M and point barriers at 11.4M–11.9M (their layer's less `TREE_SINK`), the
+  airport at 16.8M, road and trail names and shields 16.9M–20.5M, POIs 22.1M to 24.9M (above the road
+  names, as in Standard and MapTiler), summits 25.0M–25.2M, place names 25.3M–26.4M. So `100000` lifts a
+  class one layer, `3000000` over every unboosted POI (not every summit), and a negative value demotes. Whole numbers: the
   culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
   rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
 

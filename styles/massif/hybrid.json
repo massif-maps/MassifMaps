@@ -13596,6 +13596,643 @@
       }
     },
     {
+      "id": "path-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "path"
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ],
+          [
+            "get",
+            "ref"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10,
+          18,
+          12
+        ],
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsla(0, 0%, 0%, 0.75)",
+            0.3,
+            "hsla(0, 0%, 0%, 0.75)"
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
+        }
+      }
+    },
+    {
+      "id": "track-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 14,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "track"
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ],
+          [
+            "get",
+            "ref"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10,
+          18,
+          12
+        ],
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsla(0, 0%, 0%, 0.75)",
+            0.3,
+            "hsla(0, 0%, 0%, 0.75)"
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-label-service",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "service"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          6.5,
+          18,
+          13
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsla(0, 0%, 0%, 0.75)",
+            0.3,
+            "hsla(0, 0%, 0%, 0.75)"
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-label-minor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "minor"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          8,
+          18,
+          14
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsla(0, 0%, 0%, 0.75)",
+            0.3,
+            "hsla(0, 0%, 0%, 0.75)"
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-label-tertiary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "tertiary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsla(0, 0%, 0%, 0.75)",
+            0.3,
+            "hsla(0, 0%, 0%, 0.75)"
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-label-primary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "primary",
+            "secondary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsla(0, 0%, 0%, 0.75)",
+            0.3,
+            "hsla(0, 0%, 0%, 0.75)"
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
+        }
+      }
+    },
+    {
       "id": "poi-tree-named",
       "type": "symbol",
       "source": "openmaptiles",
@@ -107836,643 +108473,6 @@
           ],
           1
         ]
-      }
-    },
-    {
-      "id": "path-label",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 15,
-      "filter": [
-        "==",
-        [
-          "get",
-          "class"
-        ],
-        "path"
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ],
-          [
-            "get",
-            "ref"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Italic"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          14,
-          10,
-          18,
-          12
-        ],
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 100%)",
-        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
-        "text-halo-width": 1
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsl(0, 0%, 100%)",
-            0.3,
-            "hsl(0, 0%, 100%)"
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsla(0, 0%, 0%, 0.75)",
-            0.3,
-            "hsla(0, 0%, 0%, 0.75)"
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
-          ]
-        }
-      }
-    },
-    {
-      "id": "track-label",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 14,
-      "filter": [
-        "==",
-        [
-          "get",
-          "class"
-        ],
-        "track"
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ],
-          [
-            "get",
-            "ref"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Italic"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          14,
-          10,
-          18,
-          12
-        ],
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 100%)",
-        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
-        "text-halo-width": 1
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsl(0, 0%, 100%)",
-            0.3,
-            "hsl(0, 0%, 100%)"
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsla(0, 0%, 0%, 0.75)",
-            0.3,
-            "hsla(0, 0%, 0%, 0.75)"
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
-          ]
-        }
-      }
-    },
-    {
-      "id": "road-label-service",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 15,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "service"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          6.5,
-          18,
-          13
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 100%)",
-        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
-        "text-halo-width": 1
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsl(0, 0%, 100%)",
-            0.3,
-            "hsl(0, 0%, 100%)"
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsla(0, 0%, 0%, 0.75)",
-            0.3,
-            "hsla(0, 0%, 0%, 0.75)"
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
-          ]
-        }
-      }
-    },
-    {
-      "id": "road-label-minor",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 13,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "minor"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          8,
-          18,
-          14
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 100%)",
-        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
-        "text-halo-width": 1
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsl(0, 0%, 100%)",
-            0.3,
-            "hsl(0, 0%, 100%)"
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsla(0, 0%, 0%, 0.75)",
-            0.3,
-            "hsla(0, 0%, 0%, 0.75)"
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
-          ]
-        }
-      }
-    },
-    {
-      "id": "road-label-tertiary",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 13,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "tertiary"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          9,
-          18,
-          16
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 100%)",
-        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
-        "text-halo-width": 1
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsl(0, 0%, 100%)",
-            0.3,
-            "hsl(0, 0%, 100%)"
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsla(0, 0%, 0%, 0.75)",
-            0.3,
-            "hsla(0, 0%, 0%, 0.75)"
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
-          ]
-        }
-      }
-    },
-    {
-      "id": "road-label-primary",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 12,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "primary",
-            "secondary"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          9,
-          18,
-          16
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 100%)",
-        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
-        "text-halo-width": 1
-      },
-      "metadata": {
-        "massif:paint": {
-          "text-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsl(0, 0%, 100%)",
-            0.3,
-            "hsl(0, 0%, 100%)"
-          ],
-          "text-halo-color": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "measure-light",
-              "brightness"
-            ],
-            0.25,
-            "hsla(0, 0%, 0%, 0.75)",
-            0.3,
-            "hsla(0, 0%, 0%, 0.75)"
-          ],
-          "text-occlusion-opacity": [
-            "match",
-            [
-              "config",
-              "label_occlusion"
-            ],
-            0,
-            1,
-            0
-          ]
-        },
-        "massif:layout": {
-          "text-font": [
-            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
-          ]
-        }
       }
     },
     {

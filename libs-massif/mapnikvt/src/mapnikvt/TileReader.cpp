@@ -88,7 +88,8 @@ namespace massif::mvt {
                 tileLayers.push_back(std::move(tileLayer));
             }
         };
-        bool elevationBased = _transformer && _transformer->isElevationBased();
+        // A tile's content is clipped to it by the stencil masks, or on terrain by the drape it is baked into
+        bool clippedPerTile = !_transformer || !_transformer->isElevationBased() || _transformer->isFlatContentDraped();
         std::unique_ptr<vt::TileLayerBuilder> sharedBuilder;
         std::string sharedLayer;
         auto flushSharedBuilder = [&]() {
@@ -132,10 +133,9 @@ namespace massif::mvt {
 
                 // Consecutive styles of one source layer drawing flat geometry share a tile layer, so
                 // their lines and fills pack into a few draw calls; the builder keeps their order.
-                // On terrain the tiles are not stencil-clipped, and layer-major order is what keeps a
-                // casing under the fill of the tile next to it.
+                // Unclipped, layer-major order is what keeps one tile's casing under the next one's fill.
                 std::string drawOnceGroup = ValueConverter<std::string>::convert(std::visit(ExpressionEvaluator(exprContext, nullptr), style->getDrawOnce()));
-                bool shareable = layerPresent && !elevationBased && style->getOpacity() == 1.0f && !style->getCompOp() && drawOnceGroup.empty() && !hasElevationMode(*style) && drawsFlatGeometry(rules);
+                bool shareable = layerPresent && clippedPerTile && style->getOpacity() == 1.0f && !style->getCompOp() && drawOnceGroup.empty() && !hasElevationMode(*style) && drawsFlatGeometry(rules);
                 if (sharedBuilder && !(shareable && sharedLayer == layer->getName())) {
                     flushSharedBuilder();
                 }

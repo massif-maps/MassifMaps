@@ -353,8 +353,10 @@ namespace massif {
             bool terrainTangramContent = terrainEnabled && terrainOptions && !terrainOptions->isDrapeFillsEnabled();
             bool terrainSourceDensity = (terrainOptions && terrainOptions->isDrapeFillsEnabled()) || isAreaSourceDensityForced();
             bool terrainSourceDensityLines = terrainTangramContent || (terrainOptions && terrainOptions->isDrapeLinesEnabled()) || isLineSourceDensityForced();
+            // Decides whether flat styles share a tile layer (TileReader), so a switch re-decodes
+            bool terrainFlatContentDraped = terrainOptions && terrainOptions->isDrapeFillsEnabled() && terrainOptions->isDrapeLinesEnabled();
             // Not the exaggeration: only the GPU reads it, so comparing it would re-decode the map every frame it animates.
-            if (_terrainOptions.lock() != terrainOptions || _terrainEnabled != terrainEnabled || _terrainMeshResolution != terrainMeshResolution || _terrainMinZoom != terrainMinZoom || _terrainSourceDensity != terrainSourceDensity || _terrainSourceDensityLines != terrainSourceDensityLines) {
+            if (_terrainOptions.lock() != terrainOptions || _terrainEnabled != terrainEnabled || _terrainMeshResolution != terrainMeshResolution || _terrainMinZoom != terrainMinZoom || _terrainSourceDensity != terrainSourceDensity || _terrainSourceDensityLines != terrainSourceDensityLines || _terrainFlatContentDraped != terrainFlatContentDraped) {
                 // Keep the visible tiles on screen while re-fetching: this only changes while the map is flat,
                 // where the old tesselation draws the same picture, and clearing would blank it for a whole decode.
                 invalidateTiles(false);
@@ -367,6 +369,7 @@ namespace massif {
                 _terrainMinZoom = terrainMinZoom;
                 _terrainSourceDensity = terrainSourceDensity;
                 _terrainSourceDensityLines = terrainSourceDensityLines;
+                _terrainFlatContentDraped = terrainFlatContentDraped;
             }
         }
 
@@ -1405,7 +1408,7 @@ namespace massif {
                 if (terrainOptions->isDecodeActive()) {
                     // Must match what loadData compares against, or tiles decoded for the other mode stay cached forever.
                     bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
-                    tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), terrainOptions->isDrapeFillsEnabled() || isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
+                    tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), terrainOptions->isDrapeFillsEnabled() || isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced(), terrainOptions->isDrapeFillsEnabled() && terrainOptions->isDrapeLinesEnabled());
                 }
             }
         }

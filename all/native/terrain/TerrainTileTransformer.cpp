@@ -382,13 +382,14 @@ namespace massif {
         }
     }
 
-    TerrainTileTransformer::TerrainTileTransformer(std::shared_ptr<const vt::TileTransformer> base, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines) :
+    TerrainTileTransformer::TerrainTileTransformer(std::shared_ptr<const vt::TileTransformer> base, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines, bool flatContentDraped) :
         _base(std::move(base)),
         _elevationManager(elevationManager),
         _meshResolution(std::max(1, meshResolution)),
         _minZoom(minZoom),
         _sourceDensity(sourceDensity),
-        _sourceDensityLines(sourceDensityLines)
+        _sourceDensityLines(sourceDensityLines),
+        _flatContentDraped(flatContentDraped)
     {
     }
 

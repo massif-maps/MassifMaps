@@ -128,10 +128,9 @@ deeper woods (`OUTDOOR` in the palette):
   before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
-  wilderness_hut: a roof-on-posts glyph on nature's green, named), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
+  wilderness_hut: a roof-on-posts glyph on nature's green, named), campsites and picnic sites from z13; caves, adits, ruins, castles, forts,
   archaeological sites, waterfalls and named parks and gardens (Standard shows park_like early too)
-  from z14, parks over the sights and a viewpoint yielding to all of them, keeping its
-  own glyph and nature's green at every zoom (OpenMapTiles files it under `attraction`); drinking water
+  from z14, parks over the sights; viewpoints from z14 under every POI (below); drinking water
   and springs only from `water_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
   each until its ordinary POI layer takes over. A spring is
   Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17; a drinking
@@ -226,6 +225,9 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
 - `building_tilt_drop` (90), `building_ao` (1) — the converter's own, the same in every converted style.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger. It reads the class tables, so switching is a re-decode.
+- `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
+  drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
+  e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`).
 All of them are in [`params.py`](params.py), named as in Alpimaps' OSM style where it had one. A
 variant may state its own default (`Variant(params=...)`), written into `carto/<variant>.json` and,
 for a zoom, into the MapLibre file as the layer's `minzoom`. A switch is `lib.gate`: a selector the
@@ -275,9 +277,10 @@ POI ranking (SDK only; MapLibre ignores it):
   it collides with. `<name>` is the POI's `subclass` when that boost is non-zero, else its `class`
   (`poi-boost-alpine_hut`, then `poi-boost-lodging`); `peak`, `saddle`, `volcano` for summits, `airport`
   for the airport label. Declared for every name in `pois.BOOST_NAMES` (an undeclared one cannot be
-  set). A priority is the layer's position × 100000: trees sit at 8.6M–8.7M and point barriers at
-  8.8M–9.3M (their layer's less `TREE_SINK`), the airport at 16.5M, POIs span 19.4M to 22.5M, road
-  and trail names reach 24.3M, summits 24.4M–24.6M, place names 25.8M. So `100000` lifts a
+  set). A priority is the layer's position × 100000: trees sit at 9.3M–9.4M, viewpoints at 9.5M,
+  landmarks at 9.6M–9.9M and point barriers at 10.0M–10.5M (their layer's less `TREE_SINK`), the airport
+  at 17.2M, POIs span 20.6M to 23.5M, road and trail names reach 25.3M, summits 25.4M–25.6M, place
+  names 25.7M–26.8M. So `100000` lifts a
   class one layer, `3000000` over every unboosted POI and most road and trail names (not a summit), and a negative value demotes. Whole numbers: the
   culler holds the sum as a float, exact only to 2 at this size. A change is a re-decode. A child
   rule that states its own `shield-placement-priority` adds the boost itself, as `examples/osm` does.
@@ -403,13 +406,20 @@ rank ≤ 10 at z14 (eating, bars, parking and schools at z15), ≤ 30 at z15 as 
 | 12 | airport, airfield, heliport |
 | 13 | rail, metro, ferry, harbour, aerialway, lighthouse |
 | 14–17 | everything else, by rank (above) |
-| 15 | public-transport shelter on outdoor, topo, e-ink, never named |
 | 16 | tram stop, named (Mapbox's tiles carry one from z16, Standard names it as it shows) |
-| 17 | bus stop, its badge; its name at 18. Public-transport shelter on streets and hybrid, and any shelter of another or no `shelter_type`: never named |
+| 17 | bus stop, its badge; its name at 18. Any shelter but a walker's (public-transport, or another or no `shelter_type`): never named |
 
 The ladder excludes the classes those layers draw with a chain of `!=` rather than listing the ones
-it keeps: a list is an `in`, a `when()` per feature, where the chain brackets. A class with no glyph
-draws its name, as on Liberty.
+it keeps: a list is an `in`, a `when()` per feature, where the chain brackets.
+
+**A POI with no glyph is a dot, and waits for z17.** Neither its subclass nor its class has a
+drawing (`sports_centre`, `office`, a shop type Maki lacks: a sixth of a z14 tile's POIs over the
+Alps), so it would otherwise stand as a bare name from its rank's zoom. Below z17 the ladder's layers
+draw it nothing; from z17 it is `default`, a small bare dot in the default category's grey, with its
+name. "No glyph" is tested against the sprite on MapLibre (the class list `pois.KNOWN`, read from
+`sprite-src/poi/` at build time) and against the converter's `glyph-<name>` table on the SDK, so an
+icon added to either makes its class known with no other edit. The test is a `step` over zoom, which
+the converter splits into a rule per band.
 
 **Trees yield to the other labels, as on MapTiler.** A tileset built with planetiler's `poi_trees`
 carries `class=tree` in `poi` from z14: the unnamed ones packed into ONE MultiPoint per tile holding
@@ -436,6 +446,15 @@ controls, a layer each and named over unnamed in each: one layer of eight classe
 rules at one priority, the most common value, and `%poi` would hand it to every child rule that
 states none. The ladder excludes every barrier class.
 
+**Viewpoints and landmarks under every POI, over the trees.** A viewpoint never hides another POI:
+from z14, a bare glyph in nature's green, sunk with the trees (`pois.landmarks`). Then what marks a
+spot on the ground rather than names one, from a tileset built with planetiler's `poi_landmarks` and
+`poi_guideposts` (packed as the trees are): a bare glyph in the `landmark` category's dark neutral,
+named if it is, from the zoom its size reads at — `power_tower` and `wind_turbine` from z14, `pylon`
+(aerialway), `mast` and `cross` (a summit cross) from z15, `wayside_cross`, `wayside_shrine`,
+`cairn`, `stone` and `rock` from z16, `guidepost` from z17 — growing with the zoom as a tree does.
+They are references, not places, so no disc. The ladder excludes every landmark class.
+
 **A child project moves any of it.** Every POI layer extends ONE template, `%poi`, and draws into
 ONE attachment, `::poi` (`massif:template`, `massif:attachment`), so a child widens a class with a
 rule of its own and the cascade merges it with the base's — see
@@ -449,12 +468,17 @@ map that is not a road, and it should not read like one.
 Their icons are **Maki**, the CC0 set both references descend from, vendored under `sprite-src/poi/`
 and renamed from Maki's hyphens to the OMT `class` they answer to (`art-gallery` → `art_gallery`),
 with eight that do not line up mapped by hand — `rail` for `railway`, `toilet` for `toilets`,
-`doctor` for `doctors`, and so on. Named by the class, `icon-image` is a plain `["get", "class"]`
-rather than a ninety-branch table, which the converter resolves through one style parameter per
-sprite. A class with no drawing simply draws its label, which is what Liberty does too. Maki has
-no cave, adit, fort, archaeological site, fountain, bird hide or windmill: those glyphs are
-openstreetmap-carto's (an adit takes the cave), on the same disc. Bollard, cycle barrier and stile
-are [Temaki](https://github.com/rapideditor/temaki)'s, also CC0.
+`doctor` for `doctors`, and so on. A POI's glyph is its `subclass`'s drawing, else its `class`'s,
+else `default`: `icon-image` is a `coalesce` of three images (`florist` under `shop`, `viewpoint`
+under `attraction`), which the converter resolves as `??` over one style
+parameter per sprite, so adding a sprite named after a subclass or a class is all it takes to draw
+it. A few classes borrow another's glyph (`pois.ALIAS`: a border control takes the barrier). Maki has
+no cave, adit, fort, archaeological site, fountain, bird hide, windmill, wayside shrine or guidepost:
+those glyphs are openstreetmap-carto's (an adit takes the cave), on the same disc. Bollard, cycle
+barrier, stile, power tower, aerialway pylon (`aerialway_pole`), mast, wind turbine, summit cross
+(`mountain_cross`), cairn, stone and rock (`boulder1`, `boulder2`) are
+[Temaki](https://github.com/rapideditor/temaki)'s, also CC0; a wayside cross is Maki's
+`religious-christian`, the `default` dot is drawn for this project.
 
 The discs are Standard's day disc colours (park_like `hsl(110, 70%, 40%)`, a shade lighter than its
 text), the labels its text colours.
@@ -581,7 +605,7 @@ and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
 reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
 Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
 their rank and hides pharmacies before z17 (`display: none`), and `osm.json`'s `constants` bring the
-bus stops in at z15, named from z16, and public-transport shelters at z15 as on outdoor.
+bus stops in at z15, named from z16, and public-transport shelters at z15.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.
@@ -614,8 +638,8 @@ is MIT-0 (`LICENSE`): use it for anything, no notice required.
 
 `sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
-domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (seven glyphs openstreetmap-carto's, three
-[Temaki](https://github.com/rapideditor/temaki)'s), **CC0** — a public-domain
+domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (nine glyphs openstreetmap-carto's, eleven
+[Temaki](https://github.com/rapideditor/temaki)'s, the `default` dot drawn for this project), **CC0** — a public-domain
 dedication, so it carries no attribution requirement and no share-alike; it is credited here because
 it is worth crediting, not because it must be. Most of `sprite-src/pattern/` is
 [openstreetmap-carto](https://github.com/gravitystorm/openstreetmap-carto)'s, also **CC0**, recoloured.

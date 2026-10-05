@@ -188,6 +188,12 @@
       "radius": 21,
       "border": 3
     },
+    "cairn": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
+    },
     "campsite": {
       "disc": "hsl(110, 70%, 40%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -242,9 +248,21 @@
       "radius": 21,
       "border": 3
     },
+    "cross": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
+    },
     "cycle_barrier": {
       "disc": null,
       "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
+    },
+    "default": {
+      "disc": null,
+      "glyph": "hsl(200, 20%, 55%)",
       "radius": 21,
       "border": 0
     },
@@ -356,6 +374,12 @@
       "radius": 21,
       "border": 3
     },
+    "guidepost": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
+    },
     "hairdresser": {
       "disc": "hsl(210, 75%, 65%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -382,6 +406,12 @@
     },
     "ice_cream": {
       "disc": "hsl(30, 100%, 60%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "information": {
+      "disc": "hsl(200, 20%, 55%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -415,6 +445,12 @@
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
+    },
+    "mast": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
     },
     "monument": {
       "disc": "hsl(320, 85%, 72%)",
@@ -506,11 +542,23 @@
       "radius": 21,
       "border": 3
     },
+    "power_tower": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
+    },
     "prison": {
       "disc": "hsl(250, 75%, 72%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
+    },
+    "pylon": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
     },
     "railway": {
       "disc": "hsl(225, 60%, 58%)",
@@ -541,6 +589,12 @@
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
+    },
+    "rock": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
     },
     "ruins": {
       "disc": "hsl(320, 85%, 72%)",
@@ -599,6 +653,12 @@
     "stile": {
       "disc": null,
       "glyph": "hsl(20, 12%, 45%)",
+      "radius": 21,
+      "border": 0
+    },
+    "stone": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
       "radius": 21,
       "border": 0
     },
@@ -663,10 +723,10 @@
       "border": 3
     },
     "viewpoint": {
-      "disc": "hsl(110, 70%, 40%)",
-      "glyph": "hsl(0, 0%, 100%)",
+      "disc": null,
+      "glyph": "hsl(110, 70%, 40%)",
       "radius": 21,
-      "border": 3
+      "border": 0
     },
     "volcano": {
       "disc": "hsl(110, 70%, 40%)",
@@ -687,10 +747,10 @@
       "border": 3
     },
     "water_point": {
-      "disc": "hsl(200, 85%, 45%)",
-      "glyph": "hsl(0, 0%, 100%)",
+      "disc": null,
+      "glyph": "hsl(200, 85%, 45%)",
       "radius": 21,
-      "border": 3
+      "border": 0
     },
     "waterfall": {
       "disc": "hsl(110, 70%, 40%)",
@@ -699,10 +759,22 @@
       "border": 3
     },
     "watering_place": {
-      "disc": "hsl(200, 85%, 45%)",
-      "glyph": "hsl(0, 0%, 100%)",
+      "disc": null,
+      "glyph": "hsl(200, 85%, 45%)",
       "radius": 21,
-      "border": 3
+      "border": 0
+    },
+    "wayside_cross": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
+    },
+    "wayside_shrine": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
     },
     "wetland": {
       "disc": "hsl(110, 70%, 40%)",
@@ -715,6 +787,12 @@
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
+    },
+    "wind_turbine": {
+      "disc": null,
+      "glyph": "hsl(30, 8%, 35%)",
+      "radius": 21,
+      "border": 0
     },
     "windmill": {
       "disc": "hsl(320, 85%, 72%)",

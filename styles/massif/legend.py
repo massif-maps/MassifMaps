@@ -28,6 +28,10 @@ POIS = [('food_and_drink', 'Food and drink', 'restaurant'), ('store_like', 'Shop
         ('default', 'Other', 'place_of_worship')]
 BARRIERS = [('gate', 'Gate'), ('lift_gate', 'Lift gate'), ('bollard', 'Bollard'),
             ('cycle_barrier', 'Cycle barrier'), ('stile', 'Stile'), ('toll_booth', 'Toll booth')]
+LANDMARKS = [('power_tower', 'Power tower'), ('wind_turbine', 'Wind turbine'), ('pylon', 'Aerialway pylon'),
+             ('mast', 'Mast'), ('cross', 'Summit cross'), ('wayside_cross', 'Wayside cross'),
+             ('wayside_shrine', 'Wayside shrine'), ('cairn', 'Cairn'), ('stone', 'Boulder'), ('rock', 'Rock'),
+             ('guidepost', 'Guidepost')]
 # (id, label, transportation_name fields): one per plate colour and sign
 SHIELDS = [
     ('shield-red', 'Motorway, national road (FR, NL)', {'class': 'motorway', 'ref': 'A 7', 'iso_a2': 'FR'}),
@@ -114,6 +118,8 @@ def spec():
             item('ruins', 'Ruins', 'poi', 'point', {'class': 'castle', 'subclass': 'ruins', 'name': 'Ruines'}),
             item('spring', 'Spring', 'poi', 'point', {'class': 'spring', 'subclass': 'spring'}),
         ]},
+        {'id': 'landmarks', 'label': 'Landmarks', 'zoom': 17, 'items': [
+            item(cls, label, 'poi', 'point', {'class': cls}) for cls, label in LANDMARKS]},
         {'id': 'barriers', 'label': 'Barriers', 'zoom': 17, 'items': [
             item(cls, label, 'poi', 'point', {'class': cls}) for cls, label in BARRIERS]},
         {'id': 'pois', 'label': 'Places of interest', 'zoom': 17, 'items': [

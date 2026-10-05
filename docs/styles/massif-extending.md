@@ -66,6 +66,20 @@ So are the rank ladder's: `poi_rank10_minzoom` (14), `poi_rank30_minzoom` (15),
 
 How the template, the attachment and `display` compile: [CartoCSS templates](../internals/cartocss-templates.md).
 
+**POI icons** resolve by name: the POI's `subclass`, else its `class`, else `default` (a small bare
+dot). Each name is a style parameter, `glyph-<name>`, so a child adds an icon in its
+`styleparameters` and the POIs of that class or subclass draw it, on the disc of their category:
+
+```json
+"styleparameters": { "glyph-sports_centre": "mine/sports_centre.png" }
+```
+
+In the sprite flavour the value is a file: the glyph as a distance field, which is what the style
+tints, as the converter cuts `icons-glyph/*.png` out of a sprite (`massif-style mapbox2css` over a
+style whose sprite carries your drawing writes one). In the icon-font flavour it is the glyph's
+character in `MassifIcons`. A class with no icon waits for z17 under the rank ladder; one that gets an icon this
+way is drawn from its rank's zoom, as the base's own classes are.
+
 ## The OpenStreetMap example
 
 `osm.json` ships in both CartoCSS flavours: Massif re-skinned with OpenStreetMap Carto's colours, as

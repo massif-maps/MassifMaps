@@ -364,6 +364,22 @@ test('--icon-font draws a shield icon as a glyph, and needs no sprite sheet at a
     assert.ok(!out.includes('shield-sdf'));
 });
 
+test('an icon chain stepped over zoom is one band per step, and a zoom constant stays the layer\'s start', () => {
+    const iconFont = { face: 'osm', glyphs: new Map([['cafe', '\ue001'], ['default', '\ue002']]) };
+    const chain = (...names) => ['coalesce', ...names.map((n) => ['image', n])];
+    const out = convert({ layers: [{
+        ...symbol({
+            'text-field': ['step', ['zoom'], '', 17, ['get', 'name']],
+            'icon-image': ['step', ['zoom'], chain(['get', 'class']), 17, chain(['get', 'class'], 'default')],
+        }, {}),
+        minzoom: 14, metadata: { 'massif:minzoom-const': 'rank10_minzoom' },
+    }] }, TABLE, { ...NO_PALETTE, iconFont, tileDrawSize: 512 });
+
+    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom < 17\]::shield_b1 \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\]\);/);
+    assert.match(out.mss, /#road_label\[zoom >= \$rank10_minzoom\]\[zoom >= 17\]\[zoom < 24\]::shield_b2 \{[^}]*shield-icon-name: \(\[param::icon-\[class\]\] \?\? '\ue002'\);/);
+    assert.equal(JSON.parse(out.project).constants.rank10_minzoom, 14, 'the late band does not restate it');
+});
+
 test('--icon-font-size scales a glyph by icon-size, as the sprite it replaces', () => {
     const iconFont = { face: 'osm', glyphs: new Map([['mountain', '']]), size: 27 };
     const out = convert({ layers: [symbol(

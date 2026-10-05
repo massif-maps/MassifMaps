@@ -610,6 +610,112 @@
       ]
     },
     {
+      "id": "landmarks",
+      "label": "Landmarks",
+      "zoom": 17,
+      "items": [
+        {
+          "id": "power_tower",
+          "label": "Power tower",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "power_tower"
+          }
+        },
+        {
+          "id": "wind_turbine",
+          "label": "Wind turbine",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "wind_turbine"
+          }
+        },
+        {
+          "id": "pylon",
+          "label": "Aerialway pylon",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "pylon"
+          }
+        },
+        {
+          "id": "mast",
+          "label": "Mast",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "mast"
+          }
+        },
+        {
+          "id": "cross",
+          "label": "Summit cross",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "cross"
+          }
+        },
+        {
+          "id": "wayside_cross",
+          "label": "Wayside cross",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "wayside_cross"
+          }
+        },
+        {
+          "id": "wayside_shrine",
+          "label": "Wayside shrine",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "wayside_shrine"
+          }
+        },
+        {
+          "id": "cairn",
+          "label": "Cairn",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "cairn"
+          }
+        },
+        {
+          "id": "stone",
+          "label": "Boulder",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "stone"
+          }
+        },
+        {
+          "id": "rock",
+          "label": "Rock",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "rock"
+          }
+        },
+        {
+          "id": "guidepost",
+          "label": "Guidepost",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "guidepost"
+          }
+        }
+      ]
+    },
+    {
       "id": "barriers",
       "label": "Barriers",
       "zoom": 17,

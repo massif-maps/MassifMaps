@@ -208,7 +208,7 @@ namespace massif::mvt {
         return t;
     }
 
-    Value InterpolateExpression::evaluate(float t, const ExpressionContext& context) const {
+    Value InterpolateExpression::evaluate(float t, const ExpressionContext& context, const vt::ViewState* viewState) const {
         struct Evaluator {
             explicit Evaluator(float t) : _time(t) { }
             Value operator() (const cglib::fcurve2<float>& fcurve) const {
@@ -224,7 +224,7 @@ namespace massif::mvt {
         };
         // Evaluated in place: a by-value copy heap-allocates the key frames, and this runs per parameter per draw call.
         if (_discrete) {
-            return evaluateDiscrete(t, context);
+            return evaluateDiscrete(t, context, viewState);
         }
         // The curve holds outside the key range, as mapbox's `interpolate`; cglib would extrapolate
         // (a (16, 6) -> (17, 4) minimum-distance went negative by z19).
@@ -235,24 +235,24 @@ namespace massif::mvt {
         if (_fcurve) {
             return std::visit(Evaluator(time), *_fcurve);
         }
-        return std::visit(Evaluator(time), buildFCurve(_method, _keyFrames, context));
+        return std::visit(Evaluator(time), buildFCurve(_method, _keyFrames, context, viewState));
     }
 
     /**
      * A step whose values are not interpolatable: the key frame is returned verbatim, which is all
      * a step ever meant. Below the first key it is the first value, as mapbox's own base is.
      */
-    Value InterpolateExpression::evaluateDiscrete(float t, const ExpressionContext& context) const {
+    Value InterpolateExpression::evaluateDiscrete(float t, const ExpressionContext& context, const vt::ViewState* viewState) const {
         if (_keyFrames.size() < 2) {
             return Value();
         }
-        Value result = std::visit(ExpressionEvaluator(context, nullptr), _keyFrames[1]);
+        Value result = std::visit(ExpressionEvaluator(context, viewState), _keyFrames[1]);
         for (std::size_t i = 2; i + 1 < _keyFrames.size(); i += 2) {
             auto keyVal = std::get_if<mvt::Value>(&_keyFrames[i]);
             if (!keyVal || ValueConverter<float>::convert(*keyVal) > t) {
                 break;
             }
-            result = std::visit(ExpressionEvaluator(context, nullptr), _keyFrames[i + 1]);
+            result = std::visit(ExpressionEvaluator(context, viewState), _keyFrames[i + 1]);
         }
         return result;
     }
@@ -356,7 +356,7 @@ namespace massif::mvt {
         }
         return std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>>();
     }
-    std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> InterpolateExpression::buildFCurve(Method method, const std::vector<Expression>& keyFrames, const ExpressionContext& context) {
+    std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> InterpolateExpression::buildFCurve(Method method, const std::vector<Expression>& keyFrames, const ExpressionContext& context, const vt::ViewState* viewState) {
         cglib::fcurve_type type = cglib::fcurve_type::linear;
         switch (method) {
         case Method::STEP:
@@ -379,7 +379,7 @@ namespace massif::mvt {
             auto keyVal = std::get_if<mvt::Value>(&keyFrames[i + 0]);
             float key = ValueConverter<float>::convert(*keyVal);
             const Expression &expr = keyFrames[i + 1];
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), expr);
+            Value val = std::visit(ExpressionEvaluator(context, viewState), expr);
             if (auto str = std::get_if<std::string>(&val)) {
                 vt::Color color = parseColor(*str);
                 colorKeyFramesList.emplace_back(cglib::vec<float, 5>{ { key, color[0], color[1], color[2], color[3] } });

@@ -1378,26 +1378,22 @@ now share one target source-layer. Label **placement** does not go through that:
 computed straight from the MapBox layer index (see below), so which label wins a collision is exact
 even where draw order is approximate.
 
-## A ramp cannot hold another ramp
+## A ramp can hold another ramp
 
-CartoCSS's `linear()`/`exponential()` take constant stop values. A stop whose value is itself an
-interpolation **parses and then draws nothing at all** — no warning, no fallback colour, just an
-empty polygon. Mapbox Standard writes its water fill exactly that way:
+A stop whose value is itself an interpolation is carried as is: Mapbox Standard's water fill, a zoom
+ramp whose far stop is a `["measure-light","brightness"]` ramp, becomes
 
 ```
-interpolate linear zoom
-  13 -> hsl(200,100%,80%)
-  14 -> interpolate linear ["measure-light","brightness"] 0 -> dark, 0.02 -> hsl(200,100%,80%)
+linear([view::zoom], (13, @water), (14, linear([view::brightness], (0, @water_night), (0.02, @water))))
 ```
 
-and under `--live-light` — where `measure-light` stays live as `[view::brightness]` instead of being
-resolved to a constant — every lake and river came out empty. Confirmed on device by replacing the
-INNER ramp with a constant, which brought the water straight back while the outer ramp stayed.
+and the Massif e-ink road fill, a zoom ramp whose every stop is a day/night ramp, keeps each stop.
 
-The outer ramp now **collapses onto the inner one** and the swap is reported. The inner is the one
-kept because it is what carries the day/night difference, which is the whole point of `--live-light`;
-the outer's own variation over zoom is lost. Four declarations in Standard are affected: the water
-fill, the background emissive, and two polygon opacities.
+Two SDK bugs once made this draw wrong, and the converter used to collapse the outer ramp onto the
+inner to dodge them. A nested colour ramp was read as a number, so the curve around it threw
+"Mismatched types" and drew nothing (every lake empty on device). And the inner ramp was evaluated
+without the frame's view state, so a nested `[view::brightness]` read 0 — the night colour at noon.
+Both are fixed in mapnikvt's `InterpolateExpression`; `tests/style/ViewStatePropertyTest.cpp` pins them.
 
 ## Bracketed predicates, not `when()`
 

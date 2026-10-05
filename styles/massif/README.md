@@ -160,7 +160,8 @@ crossing once: no disc at a join. MapLibre has no such pass and still shows them
 
 Everything outdoor draws but the relief and the route bands, which grey into mud, on a page of
 black, white and a few greys (`EINK`). At night the page inverts (`lib.night_inverted`): every
-colour's lightness mirrored past brightness 0.25-0.3, so the page goes black and the ink white. What colour says elsewhere is said here by texture and weight:
+colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black and the ink white
+(a base colour with its own night, like a label halo, is inverted from its day value). What colour says elsewhere is said here by texture and weight:
 
 - **Patterns** from `sprite-src/pattern/`, the ones Alpimaps' e-ink style uses: openstreetmap-carto's
   trees, scrub, wetland, rock, beach, ice sheet, graves and hatching, baked to one grey at 45 %

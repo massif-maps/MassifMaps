@@ -57,6 +57,9 @@ def night_inverted(lay):
             return v[:3] + [x if i % 2 == 0 else night(x) for i, x in enumerate(v[3:])]
         if isinstance(v, list) and v[:1] == ['step'] and v[1] == ['zoom']:
             return v[:2] + [night(v[2])] + [x if i % 2 == 0 else night(x) for i, x in enumerate(v[3:])]
+        # a base colour that is already by_hour: e-ink's night is its DAY inverted, not its night
+        if isinstance(v, list) and v[:3] == by_hour(None, None)[:3]:
+            v = v[6]
         return by_hour(inverted(v), v)
     colours = {k: night(v) for k, v in paint.items() if k.endswith('-color') and v != inverted(v)}
     if colours:

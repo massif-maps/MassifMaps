@@ -99,9 +99,9 @@
 @landuse_residential_fill: hsl(35, 15%, 91%);
 @landuse_residential_fill_2: hsl(45, 10%, 86%);
 @line_stroke: hsl(0, 0%, 75%);
-@line_stroke_2: hsl(0, 0%, 85%);
-@line_stroke_3: hsl(0, 0%, 60%);
-@line_stroke_4: hsl(0, 0%, 40%);
+@line_stroke_2: hsl(0, 0%, 60%);
+@line_stroke_3: hsl(0, 0%, 40%);
+@line_stroke_4: hsl(0, 0%, 85%);
 @line_stroke_5: hsla(0, 0%, 0%, 0.2);
 @line_stroke_6: hsl(0, 0%, 20%);
 @line_stroke_7: hsl(0, 0%, 80%);

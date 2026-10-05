@@ -3371,35 +3371,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "fill-emissive-strength": [
             "match",
@@ -13375,87 +13349,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         }
       }
@@ -13569,87 +13465,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         }
       }
@@ -13733,87 +13551,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         },
         "massif:filter": [
@@ -13952,87 +13692,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         },
         "massif:filter": [
@@ -15547,87 +15209,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         }
       }
@@ -15732,87 +15316,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         }
       }
@@ -15887,87 +15393,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         },
         "massif:filter": [
@@ -16097,87 +15525,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ]
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 85%)",
-                0.3,
-                "hsl(0, 0%, 85%)"
-              ],
-              0.3,
-              [
-                "interpolate",
-                [
-                  "linear"
-                ],
-                [
-                  "measure-light",
-                  "brightness"
-                ],
-                0.25,
-                "hsl(0, 0%, 15%)",
-                0.3,
-                "hsl(0, 0%, 15%)"
-              ]
-            ]
+            "hsl(0, 0%, 15%)"
           ]
         },
         "massif:filter": [
@@ -17371,35 +16721,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 70%)"
-            ],
+            "hsl(0, 0%, 70%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 30%)"
-            ]
+            "hsl(0, 0%, 30%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -17411,35 +16735,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -17526,35 +16824,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 75%)"
-            ],
+            "hsl(0, 0%, 75%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 25%)"
-            ]
+            "hsl(0, 0%, 25%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -17566,35 +16838,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -17670,35 +16916,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 65%)"
-            ],
+            "hsl(0, 0%, 65%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 35%)"
-            ]
+            "hsl(0, 0%, 35%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -17710,35 +16930,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -17862,35 +17056,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -17902,35 +17070,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -18049,35 +17191,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -18089,35 +17205,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -18220,35 +17310,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -18260,35 +17324,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -18424,35 +17462,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -18464,35 +17476,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -18590,35 +17576,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 85%)"
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 15%)"
-            ]
+            "hsl(0, 0%, 15%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -18630,35 +17590,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -18740,35 +17674,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 85%)"
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 15%)"
-            ]
+            "hsl(0, 0%, 15%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -18780,35 +17688,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -18903,35 +17785,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -18943,35 +17799,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -19084,35 +17914,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -19124,35 +17928,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -20593,35 +19371,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -20633,35 +19385,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -21227,35 +19953,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -21267,35 +19967,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -21601,35 +20275,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -21641,35 +20289,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -22228,35 +20850,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -22268,35 +20864,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -22864,35 +21434,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -22904,35 +21448,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -23498,35 +22016,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -23538,35 +22030,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -24131,35 +22597,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -24171,35 +22611,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -24723,35 +23137,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -24763,35 +23151,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -25322,35 +23684,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -25362,35 +23698,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -25923,35 +24233,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -25963,35 +24247,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -26531,35 +24789,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -26571,35 +24803,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -27129,35 +25335,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -27169,35 +25349,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -27734,35 +25888,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -27774,35 +25902,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 1.5,
           "text-occlusion-opacity": [
@@ -28324,35 +26426,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -28364,35 +26440,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -28950,35 +27000,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -28990,35 +27014,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -29547,35 +27545,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -29587,35 +27559,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -30164,35 +28110,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -30204,35 +28124,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -30762,35 +28656,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -30802,35 +28670,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -31577,35 +29419,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -31617,35 +29433,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -32163,35 +29953,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -32203,35 +29967,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -32754,35 +30492,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -32794,35 +30506,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -33394,35 +31080,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -33434,35 +31094,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -33964,35 +31598,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -34004,35 +31612,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -34545,35 +32127,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -34585,35 +32141,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -35493,35 +33023,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -35533,35 +33037,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -36891,35 +34369,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -36931,35 +34383,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -37800,35 +35226,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -37840,35 +35240,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -38740,35 +36114,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -38780,35 +36128,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -40147,35 +37469,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -40187,35 +37483,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -41057,35 +38327,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -41097,35 +38341,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -42487,35 +39705,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -42527,35 +39719,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -43080,35 +40246,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -43120,35 +40260,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -43682,35 +40796,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -43722,35 +40810,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -44283,35 +41345,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -44323,35 +41359,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -44896,35 +41906,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -44936,35 +41920,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -45517,35 +42475,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -45557,35 +42489,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -46114,35 +43020,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -46154,35 +43034,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -46695,35 +43549,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -46735,35 +43563,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -47287,35 +44089,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -47327,35 +44103,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -47867,35 +44617,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -47907,35 +44631,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -48494,35 +45192,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-color": [
             "interpolate",
@@ -48534,35 +45206,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 95%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 5%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "icon-halo-width": 0,
           "text-occlusion-opacity": [
@@ -49972,35 +46618,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -50012,35 +46632,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -50128,35 +46722,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -50168,35 +46736,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -50287,35 +46829,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -50327,35 +46843,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -50446,35 +46936,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -50486,35 +46950,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -50605,35 +47043,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -50645,35 +47057,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -50765,35 +47151,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -50805,35 +47165,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-occlusion-opacity": [
             "match",
@@ -50937,35 +47271,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 85%)"
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 15%)"
-            ]
+            "hsl(0, 0%, 15%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -50977,35 +47285,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -51181,35 +47463,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 85%)"
-            ],
+            "hsl(0, 0%, 85%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 15%)"
-            ]
+            "hsl(0, 0%, 15%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -51221,35 +47477,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -51386,35 +47616,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 75%)"
-            ],
+            "hsl(0, 0%, 75%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 25%)"
-            ]
+            "hsl(0, 0%, 25%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -51426,35 +47630,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -51554,35 +47732,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 75%)"
-            ],
+            "hsl(0, 0%, 75%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 25%)"
-            ]
+            "hsl(0, 0%, 25%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -51594,35 +47746,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -51721,35 +47847,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 75%)"
-            ],
+            "hsl(0, 0%, 75%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 25%)"
-            ]
+            "hsl(0, 0%, 25%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -51761,35 +47861,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -51886,35 +47960,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -51926,35 +47974,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -52053,35 +48075,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -52093,35 +48089,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -52220,35 +48190,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -52260,35 +48204,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -52403,35 +48321,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -52443,35 +48335,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -52570,35 +48436,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -52610,35 +48450,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -52755,35 +48569,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -52795,35 +48583,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -52924,35 +48686,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 75%)"
-            ],
+            "hsl(0, 0%, 75%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 25%)"
-            ]
+            "hsl(0, 0%, 25%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -52964,35 +48700,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -53102,35 +48812,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -53142,35 +48826,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",
@@ -53280,35 +48938,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ],
+            "hsl(0, 0%, 100%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ]
+            "hsl(0, 0%, 0%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -53320,35 +48952,9 @@
               "brightness"
             ],
             0.25,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 0%)",
-              0.3,
-              "hsl(0, 0%, 0%)"
-            ],
+            "hsl(0, 0%, 0%)",
             0.3,
-            [
-              "interpolate",
-              [
-                "linear"
-              ],
-              [
-                "measure-light",
-                "brightness"
-              ],
-              0.25,
-              "hsl(0, 0%, 100%)",
-              0.3,
-              "hsl(0, 0%, 100%)"
-            ]
+            "hsl(0, 0%, 100%)"
           ],
           "text-emissive-strength": [
             "match",

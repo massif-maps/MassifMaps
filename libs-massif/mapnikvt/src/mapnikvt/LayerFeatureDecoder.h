@@ -67,6 +67,8 @@ namespace massif::mvt {
         virtual std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields, bool clip = true) const = 0;
 
         virtual bool findFeature(long long localId, std::string& layerName, Feature& feature) const = 0;
+        // False only when no feature of the layer carries the field with a value equal to this one.
+        virtual bool mayHaveFieldValue(const std::string& layerName, const std::string& field, const Value& value) const { return true; }
 
     protected:
         virtual void invalidateGeometryCache() = 0;

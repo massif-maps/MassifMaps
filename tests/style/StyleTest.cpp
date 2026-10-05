@@ -28,6 +28,7 @@ void testZoomShift();
 void testDrawOnce();
 void testCartoCSSTemplate();
 void testMultiPointPartIndex();
+void testFieldValuePrefilter();
 
 int main() {
     testLayerConfig();
@@ -52,6 +53,7 @@ int main() {
     testDrawOnce();
     testCartoCSSTemplate();
     testMultiPointPartIndex();
+    testFieldValuePrefilter();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

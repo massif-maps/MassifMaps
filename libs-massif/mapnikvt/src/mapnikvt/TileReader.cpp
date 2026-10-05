@@ -94,7 +94,7 @@ namespace massif::mvt {
                 // Prefilter before building anything: a style with no rule left at this zoom (or
                 // none that its parameters can satisfy) contributes nothing, and building a layer
                 // builder for it is pure cost - a tile goes through every style of every layer.
-                std::vector<std::shared_ptr<const Rule>> rules = preFilterStyleRules(style, exprContext);
+                std::vector<std::shared_ptr<const Rule>> rules = preFilterStyleRules(style, exprContext, layerPresent ? layer : std::shared_ptr<const Layer>());
                 if (rules.empty()) {
                     styleIdx++;
                     continue;
@@ -358,13 +358,18 @@ namespace massif::mvt {
         return std::make_shared<Symbolizer::FeatureProcessor>(std::move(processor));
     }
 
-    std::vector<std::shared_ptr<const Rule>> TileReader::preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext) const {
+    std::vector<std::shared_ptr<const Rule>> TileReader::preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext, const std::shared_ptr<const Layer>& presentLayer) const {
+        // A converted style is one attachment per source class, and most classes are absent from any
+        // one tile: answered from the layer's values, each such attachment skips its pass over the layer
+        PredicateFieldValueEvaluator fieldValueEvaluator([this, &presentLayer](const std::string& field, const Value& value) {
+            return !presentLayer || mayHaveFieldValue(presentLayer, field, value);
+        });
         std::vector<std::shared_ptr<const Rule>> rules;
         for (const std::shared_ptr<const Rule>& rule : style->getZoomRules(exprContext.getAdjustedZoom())) {
             if (std::shared_ptr<const Filter> filter = rule->getFilter()) {
                 // Test if the filter is potentially satisfiable. If not, can skip this rule
                 if (filter->getType() == Filter::Type::FILTER && filter->getPredicate()) {
-                    if (!std::visit(PredicatePreEvaluator(exprContext), *filter->getPredicate())) {
+                    if (!std::visit(PredicatePreEvaluator(exprContext), *filter->getPredicate()) || !std::visit(fieldValueEvaluator, *filter->getPredicate())) {
                         continue;
                     }
                 }

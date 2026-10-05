@@ -30,6 +30,10 @@ namespace massif::mvt {
         return _featureDecoder.hasLayer(resolveLayerName(layer));
     }
 
+    bool LayerTileReader::mayHaveFieldValue(const std::shared_ptr<const Layer>& layer, const std::string& field, const Value& value) const {
+        return _featureDecoder.mayHaveFieldValue(resolveLayerName(layer), field, value);
+    }
+
     std::string LayerTileReader::resolveLayerName(const std::shared_ptr<const Layer>& layer) const {
         return _layerNameOverride.empty() ? layer->getName() : _layerNameOverride;
     }

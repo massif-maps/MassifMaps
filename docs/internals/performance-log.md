@@ -2442,3 +2442,23 @@ features, decoded for all 256 z18 children of its z14 tile by the old and the ne
 output = old output with out-of-clip parts removed, feature for feature (0 missing, 0 extra, 0
 differing); the unzoomed decode identical; 316 -> 43 ms, 17 MB -> 0.46 MB of dumped geometry.
 
+## 38. A converted style walked every source layer once per attachment (2026-10-05)
+
+Martin: Massif's CartoCSS decodes much slower than Alpimaps' OSM style. Host, `bench-decode`
+([10-performance.md](rendering/10-performance.md#decoding-a-tile-one-pass-per-attachment)), Release,
+Apple M-series: 15 rhone-alpes tiles (Grenoble, Chamonix, Lyon at z10-z14) plus the z14 ones
+overzoomed to z15/z16, best of 3 decodes each, summed; median of 9 interleaved rounds. Arial for
+every face. Not a device number.
+
+| | decode, 21 tiles | passes, Grenoble z14 |
+|---|---|---|
+| Massif streets, master | 187.7 ms | 181 |
+| Massif streets, value test + per-field-set cache | 151.7 ms (-19%) | 117 |
+| Alpimaps OSM, master | 143.3 ms | 34 |
+| Alpimaps OSM, both | 139.7 ms | 32 |
+
+`sample` on master: `getFeatureData` 31% of the Massif decode against 10% of OSM's, the excess
+alone ~ the 44 ms gap; tesselation the same in both. Measured NOT to matter, same harness: 209 of
+the 1476 style parameters dropped (the `poi-boost` zeros and transparent borders) and the 1183
+`[param::variant]` ternaries folded to the variant: each within 2%, under the noise. Every tile of
+the five Massif variants and of OSM draws the same before and after (both hashes). Device check owed.

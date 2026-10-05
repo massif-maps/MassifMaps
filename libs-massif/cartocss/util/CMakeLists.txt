@@ -14,6 +14,8 @@ option(SINGLE_LIBRARY "Compile as single library" OFF)
 # vt and mapnikvt as archives rather than object libraries, so the linker keeps only what these
 # tools reach. Only the SDK build needs the object form ($<TARGET_OBJECTS:>).
 option(STATIC_LIBRARIES "Build the massif libraries as static archives" ON)
+# ON to profile bench-decode (`sample`): the size flags strip the symbols a profile needs.
+option(NO_SIZE_FLAGS "Leave out the size flags below" OFF)
 
 # These are host tools, so size beats speed - and the size here is boost.spirit and vt template
 # code, all of which mapnikvt and vt hand over as OBJECT libraries, i.e. every object lands in the
@@ -27,7 +29,7 @@ endif()
 if(EMSCRIPTEN)
   add_compile_options(-Oz)
   add_link_options(-Oz)
-elseif(NOT MSVC)
+elseif(NOT MSVC AND NOT NO_SIZE_FLAGS)
   add_compile_options(-ffunction-sections -fdata-sections)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-flto=thin)
@@ -106,6 +108,9 @@ target_link_libraries(css2xml ${TOOL_LIBRARIES})
 
 add_executable(mvt2xml mvt2xml.cpp)
 target_link_libraries(mvt2xml ${TOOL_LIBRARIES})
+
+add_executable(bench-decode bench-decode.cpp)
+target_link_libraries(bench-decode ${TOOL_LIBRARIES})
 
 if(EMSCRIPTEN)
   # NODERAWFS gives the C++ the real filesystem, so AssetLoader's fopen and pugixml's save_file

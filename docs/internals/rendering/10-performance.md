@@ -414,6 +414,37 @@ elements here) and only then discards what the layer predicate rules out. Sharin
 `FilteredPropertyState` across a project's layers would fix it, and that is an API change to the
 compiler rather than a local one.
 
+### Decoding a tile: one pass per attachment
+
+`TileReader::readTile` walks a tile layer's features **once per style** (= attachment) that has a
+rule left at the tile's zoom. A hand-written project has a few attachments per source layer
+(Alpimaps OSM: ~35 passes on a z14 tile); a converted MapLibre style has one per MapLibre layer, and
+Massif streets made **181 passes** on the same tile — 88 attachments on `transportation` alone, most
+for a class the tile does not carry. Each pass rebuilt every feature's data (`getFeatureData`, 31%
+of the decode), so the passes, not the rules, `when()` (none left) or the style parameters, were
+the cost. Two things now keep a pass from costing a walk:
+
+- **A rule testing a value the tile layer does not carry is dropped before the pass**
+  (`PredicateFieldValueEvaluator`, `LayerFeatureDecoder::mayHaveFieldValue`): `[class = 'motorway']`
+  on a tile with no motorway. Only an equality on a field against a LITERAL counts — a field against a
+  style parameter is how a selection is drawn, and that must survive the parameter changing with no
+  decode. The MVT decoder answers from one scan of the layer per field; MLT answers "maybe".
+- **The feature-data cache is kept per field set** for the tile, not in one slot the next style
+  with other fields evicted; the per-call field-set lookup is a precomputed key map.
+
+**How to measure it:** `libs-massif/cartocss/util/bench-decode` decodes a folder of `z_x_y.pbf`
+tiles through a project and prints, per tile, the best of N decodes, the passes (and how many the
+value test saved), and two hashes of what the tile draws — `hash` per batch, `content` with the
+batching taken out, so a style change that moves features between attachments still compares equal.
+
+```sh
+cmake -S libs-massif/cartocss/util -B build/bench -DCMAKE_BUILD_TYPE=Release && cmake --build build/bench --target bench-decode
+build/bench/bench-decode styles/massif/carto/streets.json tiles/ /System/Library/Fonts/Supplemental/Arial.ttf --runs 3 --overzoom 2
+```
+
+`-DNO_SIZE_FLAGS=ON` keeps the symbols for `sample`. The numbers are in the
+[performance log](../performance-log.md#38-a-converted-style-walked-every-source-layer-once-per-attachment-2026-10-05).
+
 ### Flattening the cascade is exponential in INDEPENDENT filter fields
 
 Every round above tuned the constant factor. The shape underneath is worse than linear, and it is

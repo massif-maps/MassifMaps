@@ -35,6 +35,7 @@ void testLabelSlice();
 void testLabelFade();
 void testLayerContentFlags();
 void testDrawOnce();
+void testPointGeoPosIndex();
 void testViewStateMatrix();
 void testLabelNormalBuild();
 void testNormalMapSlope();
@@ -81,6 +82,7 @@ int main() {
     testLabelFade();
     testLayerContentFlags();
     testDrawOnce();
+    testPointGeoPosIndex();
     testViewStateMatrix();
     testLabelNormalBuild();
     testNormalMapSlope();

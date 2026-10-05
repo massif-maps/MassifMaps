@@ -75,9 +75,9 @@ namespace massif::mvt {
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         auto verticesList = pointGeometry->getVerticesList();
-                        for (const auto& vertices : verticesList) {
-                            for (const auto &vertex: vertices) {
-                                pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        for (std::size_t part = 0; part < verticesList.size(); part++) {
+                            for (const auto &vertex: verticesList[part]) {
+                                pointProcessor(featureCollection.getLocalId(featureIndex), vertex, pointGeometry->getPartIndex(part));
                             }
                         }
                     }

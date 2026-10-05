@@ -162,7 +162,7 @@ namespace massif::vt {
             _builderParameters.borderWidthFuncs[styleIndex] = FloatFunction(0);
         }
 
-        return [style, transform, styleIndex, glyphMap, glyphId, this](long long id, const Vertex& vertex) {
+        return [style, transform, styleIndex, glyphMap, glyphId, this](long long id, const Vertex& vertex, int geoPosIndex) {
             std::size_t i0 = _coords.size();
             cglib::vec2<float> pen(0, 0);
             const GlyphMap::Glyph* glyph = glyphMap->getGlyph(glyphId);
@@ -171,7 +171,7 @@ namespace massif::vt {
                 tesselateGlyph(vertex, static_cast<std::int8_t>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
             }
             _ids.fill(id, _indices.size() - _ids.size());
-            _geoPosIndexes.fill(0, _indices.size() - _geoPosIndexes.size());
+            _geoPosIndexes.fill(geoPosIndex, _indices.size() - _geoPosIndexes.size());
             if (transform) {
                 for (std::size_t i = i0; i < _binormals.size(); i++) {
                     _binormals[i] = cglib::transform(_binormals[i], *transform);

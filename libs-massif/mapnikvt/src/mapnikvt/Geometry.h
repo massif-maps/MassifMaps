@@ -27,6 +27,8 @@ namespace massif::mvt {
 
         const VerticesList& getVerticesList() const { return _verticesList; }
         int getPartIndex(std::size_t part) const { return _partIndices.empty() ? static_cast<int>(part) : _partIndices[part]; }
+        // Of the source feature: part indices exist only when a clip dropped some of several parts.
+        bool isMultiPoint() const { return !_partIndices.empty() || _verticesList.size() > 1; }
         const Vertices getVertices() const {
             Vertices flattened;
             for (auto const &v: _verticesList) {

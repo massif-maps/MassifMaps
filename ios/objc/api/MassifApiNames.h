@@ -1097,6 +1097,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetFloatParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetOffset;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetPosition;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSegments;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;

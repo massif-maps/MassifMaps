@@ -38,7 +38,7 @@ val sun = CelestialSprite().apply {
 }
 
 val plane = CelestialSprite().apply {
-    setPosition(MapPos(5.72, 45.19), 11000.0)   // WGS84 position + altitude in metres
+    setPosition(MapPos(5.72, 45.19), 11000.0)   // WGS84 lon/lat + metres above sea level
     screenSize = 24f                            // sized in pixels instead of degrees
     bitmap = planeBitmap
 }
@@ -51,7 +51,8 @@ mapView.layers.insert(0, layer)    // FIRST: the map and the terrain then draw o
 
 :::note Surface API
 The same through the [surface API](/docs/api/): a `celestial` layer, `sprite` and `arc` objects of
-the `celestial` kind, `add` / `remove` / `clear` on the layer, `setDirection` on an object and
+the `celestial` kind, `add` / `remove` / `clear` on the layer, `setDirection` or
+`setPosition([lon, lat], altitude)` on an object and
 `setDirections` / `setSegments` / `setCircle` on an arc (directions flat: `[az0, alt0, az1, alt1, …]`).
 
 ```js
@@ -174,7 +175,10 @@ every other layer's content: a click on terrain in front of the sun reports the 
 **angular** (`ClickRadius`, in degrees) because a sprite half a pixel wide would be unhittable
 otherwise. Register a `CelestialEventListener` on the layer, or through the surface API subscribe to
 `celestial.clicked` - consumable, its payload carrying `celestialObject`, `azimuth`, `altitude` and
-`clickType`. An object's `metaData` rides along, so it names what was hit:
+`clickType`. Hits arrive nearest first until one is consumed, so a tap on a star also reports its
+name label or a figure line through it - give decorative objects `clickRadius = 0`. `azimuth` and
+`altitude` are the object's own direction, 0 for an arc or a position-anchored object. An object's
+`metaData` rides along, so it names what was hit:
 
 ```js
 const sky = map.addLayer('sky', { type: 'celestial' });
@@ -190,7 +194,7 @@ A tap aimed at the sky has no map position at all; the SDK asks the layers with 
 that case, instead of dropping the touch as it used to. If that hits nothing, `map.clicked` still
 does not fire - there is no ground position to report - so every celestial layer's listener gets
 `onSkyClicked` instead, surface API `sky.clicked` (consumable; `celestialObject` is null, `azimuth` and
-`altitude` are where the tap aimed). The usual use is clearing a selection:
+`altitude` are where the tap aimed). A tap that hit an object never fires it, consumed or not. The usual use is clearing a selection:
 
 ```js
 sky.onSkyClick(() => clearSelection());
@@ -214,6 +218,9 @@ mapView.options.freeRoamMoveSpeed = 1.0f
 | `OFF` (default) | pans the map | pan / pinch / rotate | tilt and rotation orbit the focus |
 | `LOOK` | looks around | pan / pinch / rotate | as above, except the heading turns about the camera |
 | `FIRST_PERSON` | looks around, position never changes | move: forward/back and strafe | the camera never orbits anything |
+
+The rotation is not a compass bearing: it turns counter-clockwise, so an object at azimuth A is
+straight ahead at rotation −A (`rotation: 110` looks at azimuth 250°, west-south-west).
 
 `FIRST_PERSON` is a camera model, not a gesture mapping: `setTilt` and `setMapRotation` driven by a
 device orientation sensor behave exactly like the drag.

@@ -1096,6 +1096,7 @@ public final class ApiNames {
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_OFFSET = "setOffset";
+    public static final String METHOD_SET_POSITION = "setPosition";
     public static final String METHOD_SET_SEGMENTS = "setSegments";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";

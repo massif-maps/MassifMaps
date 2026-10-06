@@ -62,18 +62,18 @@ namespace massif {
 
         /**
          * Returns the geographic position of a position-anchored object.
-         * @return The position, in the coordinate system of the layer's data source projection.
+         * @return The position, as WGS84 longitude and latitude.
          */
         MapPos getPosition() const;
         /**
          * Returns the altitude of a position-anchored object.
-         * @return The altitude in meters above the ground.
+         * @return The altitude in meters above sea level.
          */
         double getPositionAltitude() const;
         /**
          * Anchors the object above a place on the map, e.g. an aircraft.
-         * @param pos The position, in the coordinate system of the layer's data source projection.
-         * @param altitude The altitude in meters above the ground.
+         * @param pos The position, as WGS84 longitude and latitude.
+         * @param altitude The altitude in meters above sea level.
          */
         void setPosition(const MapPos& pos, double altitude);
 

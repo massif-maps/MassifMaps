@@ -591,6 +591,7 @@ const char* massif_property_name(massif_property property);
 #define MASSIF_METHOD_SET_LAYER_GEO_JSON "setLayerGeoJSON"
 #define MASSIF_METHOD_SET_META_DATA_ELEMENT "setMetaDataElement"
 #define MASSIF_METHOD_SET_OFFSET "setOffset"
+#define MASSIF_METHOD_SET_POSITION "setPosition"
 #define MASSIF_METHOD_SET_SEGMENTS "setSegments"
 #define MASSIF_METHOD_SET_STYLE_PARAMETER "setStyleParameter"
 #define MASSIF_METHOD_SET_STYLE_PARAMETERS "setStyleParameters"

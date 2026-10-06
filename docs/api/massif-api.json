@@ -2210,6 +2210,22 @@
           ],
           "returns": "void",
           "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialObject",
+          "name": "setPosition",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            },
+            {
+              "name": "altitude",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
         }
       ],
       "events": []

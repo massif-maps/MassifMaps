@@ -174,16 +174,35 @@ namespace {
         // maplibre's recalculateZoomAndCenter. Ridden at sea level above high ground, a z16 camera over
         // Grenoble (212 m) hung tens of metres over the roofs; a focus pinned while a finger drags bobs.
         // So the drag holds the focus height, and its end slides the focus down the view ray instead.
-        double down45 = -std::sqrt(0.5);
+        // A camera at 500 looking down 45 degrees; the ray's height above a ground profile along it.
+        double down45 = std::sqrt(0.5);
+        auto ray = [down45](auto ground) {
+            return [down45, ground](double d) { return 500 - d * down45 - ground(d * down45); };
+        };
+        auto flat = [](double z) { return [z](double) { return z; }; };
+        double onGround = 500 / down45;
         double distance = 0;
-        TEST_CHECK(CameraClearance::groundAlongView(500, down45, 0, 707.1, distance) && std::abs(distance - 707.1) < 0.1,
-                   "a focus already on the ground stays where it is");
-        TEST_CHECK(CameraClearance::groundAlongView(500, down45, 200, 707.1, distance) && std::abs(distance - 424.26) < 0.1,
+        TEST_CHECK(CameraClearance::groundAlongView(ray(flat(0)), onGround, onGround * 16, distance) && distance == onGround,
+                   "a focus already on the ground stays exactly where it is, so a tap moves nothing");
+        TEST_CHECK(CameraClearance::groundAlongView(ray(flat(200)), 707.1, 707.1 * 16, distance) && std::abs(distance - 424.26) < 0.01,
                    "ground 200 up, the focus lands 300 below the camera along the ray");
         double zoomDelta = std::log2(707.1 / distance);
         TEST_CHECK(zoomDelta > 0.7 && zoomDelta < 0.8, "and the zoom says the camera is that much closer to it");
-        TEST_CHECK(!CameraClearance::groundAlongView(500, 0, 0, 707.1, distance), "a level view never meets the ground");
-        TEST_CHECK(!CameraClearance::groundAlongView(100, down45, 200, 707.1, distance), "nor does a camera under it");
+        TEST_CHECK(CameraClearance::groundAlongView(ray(flat(300)), 707.1, 707.1 * 16, distance) && std::abs(distance - 282.84) < 0.01,
+                   "a focus under the ground comes back up the ray");
+
+        // Landing on the height under the OLD focus left the new one off the ground, and the next frame's pin
+        // moved the camera by the difference: the pan's end shifted the picture.
+        auto slope = ray([](double x) { return 0.5 * x; });
+        TEST_CHECK(CameraClearance::groundAlongView(slope, 300, 300 * 16, distance) && std::abs(slope(distance)) < 1.0e-6,
+                   "on a slope it lands on the ground under its own new position");
+        TEST_CHECK(std::abs(distance - 500 / (1.5 * down45)) < 1.0e-6, "where the ray meets the slope");
+
+        auto level = [](double) { return 500.0; };
+        TEST_CHECK(!CameraClearance::groundAlongView(level, 707.1, 707.1 * 16, distance), "a level view never meets the ground");
+        TEST_CHECK(!CameraClearance::groundAlongView(ray(flat(600)), 707.1, 707.1 * 16, distance), "nor does a camera under it");
+        auto unknown = [](double) { return std::numeric_limits<double>::quiet_NaN(); };
+        TEST_CHECK(!CameraClearance::groundAlongView(unknown, 707.1, 707.1 * 16, distance), "nor ground with no height cached");
     }
 }
 

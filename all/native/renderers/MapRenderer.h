@@ -252,8 +252,8 @@ namespace massif {
 
         // Per camera event rather than one frame later (mapbox's transform._constrainCamera). Call with _mutex held.
         void constrainCameraToClearance();
-        // After a gesture: the camera held, the focus slid down its view ray to groundZ, the zoom re-derived.
-        void landFocusAlongView(double groundZ);
+        // After a gesture: the camera held, the focus slid along its view ray onto the ground, the zoom re-derived.
+        bool landFocusAlongView(const ElevationManager& elevationManager, double lift);
 
         // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
         double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);

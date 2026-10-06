@@ -936,26 +936,32 @@ namespace massif {
         }
     }
 
-    void MapRenderer::landFocusAlongView(double groundZ) {
+    bool MapRenderer::landFocusAlongView(const ElevationManager& elevationManager, double lift) {
         std::shared_ptr<ProjectionSurface> projectionSurface = _options->getProjectionSurface();
-        // The vertical ray math holds on the plane only; a globe just takes the frame's pin.
-        if (!std::dynamic_pointer_cast<PlanarProjectionSurface>(projectionSurface)) {
-            return;
-        }
         cglib::vec3<double> cameraPos = _viewState.getCameraPos();
         cglib::vec3<double> offset = _viewState.getFocusPos() - cameraPos;
         double distance = cglib::length(offset);
+        // The frame's pin rule, read through the surface so a globe lands radially.
+        auto aboveGround = [&](double d) {
+            MapPos mapPos = projectionSurface->calculateMapPos(cameraPos + offset * (d / distance));
+            double groundZ = 0;
+            if (!elevationManager.getDisplayHeightCached(mapPos.getX(), mapPos.getY(), groundZ)) {
+                return std::numeric_limits<double>::quiet_NaN();
+            }
+            return mapPos.getZ() - (groundZ + lift);
+        };
         double newDistance = 0;
-        if (!(distance > 0) || !CameraClearance::groundAlongView(cameraPos(2), offset(2) / distance, groundZ, distance, newDistance)) {
-            return;
+        if (!projectionSurface || !CameraClearance::groundAlongView(aboveGround, distance, distance * 16, newDistance)) {
+            return false;
         }
         // A tap lands where it stood: marking the camera changed would apply a pending FocusPointOffset.
         if (std::abs(newDistance - distance) <= distance * 1.0e-9) {
-            return;
+            return false;
         }
         _viewState.setFocusPos(cameraPos + offset * (newDistance / distance));
         _viewState.setZoom(static_cast<float>(_viewState.getZoom() + std::log2(distance / newDistance)));
         _viewState.cameraChanged();
+        return true;
     }
 
     /**
@@ -1438,13 +1444,14 @@ namespace massif {
                             _viewState.setFocusHeight(std::max(focusMapPos.getZ(), shellFocusZ + lift));
                         } else {
                             double pinnedZ = std::max(terrainZ, shellFocusZ) + lift;
-                            if (_terrainFocusFrozen) {
-                                _terrainFocusFrozen = false;
-                                landFocusAlongView(pinnedZ);
-                            }
-                            // A finer DEM tile moves the ground under a still camera: without a frame for it, the
-                            // picture stays at the old height.
-                            if (pinnedZ != focusMapPos.getZ()) {
+                            // On the ground, not the shell: the next frame raises a camera under it, and only then.
+                            bool landed = _terrainFocusFrozen && landFocusAlongView(*elevationManager, lift);
+                            _terrainFocusFrozen = false;
+                            if (landed) {
+                                requestRedraw();
+                            } else if (pinnedZ != focusMapPos.getZ()) {
+                                // A finer DEM tile moves the ground under a still camera: without a frame for it, the
+                                // picture stays at the old height.
                                 _viewState.setFocusHeight(pinnedZ);
                                 requestRedraw();
                             }

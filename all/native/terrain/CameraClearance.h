@@ -43,19 +43,50 @@ namespace massif {
 
         /**
          * maplibre's recalculateZoomAndCenter, after a gesture held the focus height: the camera stays, the focus slides
-         * along the view ray onto the ground, and the zoom follows the new distance. False for a ray that never meets it.
-         * @param cameraZ The camera height.
-         * @param dirZ The view direction's z (unit vector).
-         * @param groundZ The height the focus is to land at.
-         * @param distance The current camera-to-focus distance.
+         * along the view ray onto the ground, and the zoom follows the new distance. Solved on the ground under each ray
+         * point, not on the height under the old focus, so the next frame's pin has nothing left to move.
+         * @param aboveGround The ray's height above the ground at a camera distance; NaN where the ground is unknown.
+         * @param distance The current camera-to-focus distance, where the search starts.
+         * @param maxDistance How far a focus floating above the ground may land.
          * @param newDistance The camera-to-focus distance once on the ground.
+         * @return False for a ray that never meets the ground.
          */
-        static bool groundAlongView(double cameraZ, double dirZ, double groundZ, double distance, double& newDistance) {
-            if (!(dirZ < -1.0e-6) || !(distance > 0) || !(cameraZ > groundZ)) {
+        template <typename AboveGround>
+        static bool groundAlongView(const AboveGround& aboveGround, double distance, double maxDistance, double& newDistance) {
+            constexpr int MARCH_STEPS = 64;
+            constexpr int BISECT_STEPS = 40;
+            if (!(distance > 0) || !(maxDistance > distance)) {
                 return false;
             }
-            newDistance = (groundZ - cameraZ) / dirZ;
-            return std::isfinite(newDistance) && newDistance > 0;
+            double height = aboveGround(distance);
+            if (std::abs(height) <= distance * 1.0e-9) {
+                newDistance = distance;
+                return true;
+            }
+            // Unknown ground counts as below the ray.
+            auto above = [&](double d) { return !(aboveGround(d) < 0); };
+            bool startAbove = above(distance);
+            // Towards the ground: away from the camera when floating, back towards it when buried.
+            double end = startAbove ? maxDistance : 0;
+            double from = distance;
+            for (int i = 1; i <= MARCH_STEPS; i++) {
+                double f = static_cast<double>(i) / MARCH_STEPS;
+                double to = distance + (end - distance) * f * f;
+                if (above(to) != startAbove) {
+                    for (int j = 0; j < BISECT_STEPS; j++) {
+                        double mid = (from + to) * 0.5;
+                        if (above(mid) == startAbove) {
+                            from = mid;
+                        } else {
+                            to = mid;
+                        }
+                    }
+                    newDistance = startAbove ? to : from;
+                    return newDistance > 0;
+                }
+                from = to;
+            }
+            return false;
         }
 
         /**

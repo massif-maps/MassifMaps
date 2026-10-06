@@ -217,6 +217,23 @@ namespace {
                    "and with no marcher the globe's hit is refined onto the terrain, not left at sea level");
     }
 
+    // A marker floated above flattened ("2D") terrain: the drape lift stayed at its full height with the
+    // terrain at 0, and billboards, drawn without depth, have nothing to be lifted clear of.
+    void testTheLiftFollowsItsScale() {
+        auto elevation = std::make_shared<RampProvider>();
+        elevation->height = 1234.0;
+        auto base = std::make_shared<PlanarProjectionSurface>();
+        MapPos mapPos = internalOf(7.05, 45.9, 0.0);
+        double full = TerrainProjectionSurface(base, elevation).calculatePosition(mapPos)(2) - 1234.0;
+        double half = TerrainProjectionSurface(base, elevation, 0.5).calculatePosition(mapPos)(2) - 1234.0;
+        double none = TerrainProjectionSurface(base, elevation, 0.0).calculatePosition(mapPos)(2) - 1234.0;
+        TEST_CHECK(full > 0, "the default keeps the drape lift");
+        TEST_CHECK(nearly(half, full / 2, 1.0e-6), "it scales with the exaggeration it is given");
+        TEST_CHECK(none == 0, "and at 0 an element sits exactly on the ground");
+        TEST_CHECK(nearly(TerrainProjectionSurface(base, elevation, 0.0).calculateMapPos(TerrainProjectionSurface(base, elevation, 0.0).calculatePosition(mapPos)).getZ(), 0.0, 1.0e-6),
+                   "and maps back to height 0 above it");
+    }
+
     void testTheVersionIsCapturedForTheRebuildCheck() {
         auto elevation = std::make_shared<RampProvider>();
         auto base = std::make_shared<PlanarProjectionSurface>();
@@ -233,4 +250,5 @@ void testTerrainSurface() {
     testSubdivisionComposesWithoutDuplicatingJoins();
     testPickingPrefersTheTerrainThenFallsBackToTheBase();
     testTheVersionIsCapturedForTheRebuildCheck();
+    testTheLiftFollowsItsScale();
 }

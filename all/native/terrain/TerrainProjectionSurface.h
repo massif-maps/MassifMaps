@@ -21,7 +21,8 @@ namespace massif {
      */
     class TerrainProjectionSurface : public ProjectionSurface {
     public:
-        TerrainProjectionSurface(const std::shared_ptr<ProjectionSurface>& base, const std::shared_ptr<ElevationProvider>& elevationManager);
+        // liftScale: 0 for billboards (drawn without depth, so a lift only floats them), the exaggeration for the rest.
+        TerrainProjectionSurface(const std::shared_ptr<ProjectionSurface>& base, const std::shared_ptr<ElevationProvider>& elevationManager, double liftScale = 1.0);
 
         const std::shared_ptr<ProjectionSurface>& getBase() const { return _base; }
         const std::shared_ptr<ElevationProvider>& getElevationManager() const { return _elevationManager; }

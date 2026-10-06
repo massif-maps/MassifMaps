@@ -230,7 +230,7 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
 - `building_tilt_drop` (90), `building_ao` (1) — the converter's own, the same in every converted style.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger; a glyph bare in both (furniture, landmarks, trees) keeps badge
-  mode's size. It reads the class tables, so switching is a re-decode.
+  mode's size; on e-ink the glyph stays black. It reads the class tables, so switching is a re-decode.
 - `poi_label_scale` (0.9) — every POI name's size, a landmark's and a named tree's too.
 - `poi_label_color` (`category`) — `neutral` draws every POI name in the map's label ink rather than
   its category's colour. A string, not a 0/1 switch: the converter folds a match on a parameter into

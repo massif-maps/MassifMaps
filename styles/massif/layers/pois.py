@@ -338,10 +338,12 @@ MONO_INK = 'hsl(0, 0%, 0%)'
 
 
 def mono_params(fixed_bare=None):
-    """e-ink: a black glyph on a white disc with a black ring, the same for every category"""
+    """e-ink: a black glyph on a white disc with a black ring, the same for every category; `plain`, the
+    glyph alone"""
     fixed = None if fixed_bare is None else 'default'
-    return {'background': per_class(lambda bare, cat: 'transparent' if bare else 'hsl(0, 0%, 100%)', fixed, fixed_bare),
-            'background-stroke': per_class(lambda bare, cat: 'transparent' if bare else MONO_INK, fixed, fixed_bare),
+    plain = lambda badge: ['match', ['config', 'poiStyle'], 'plain', 'transparent', badge]
+    return {'background': plain(per_class(lambda bare, cat: 'transparent' if bare else 'hsl(0, 0%, 100%)', fixed, fixed_bare)),
+            'background-stroke': plain(per_class(lambda bare, cat: 'transparent' if bare else MONO_INK, fixed, fixed_bare)),
             'icon': MONO_INK,
             'radius': shape_match('radius'),
             'background-stroke-width': shape_match('border')}
@@ -391,11 +393,9 @@ BARE_HALO = 1
 POI_HALO = 1.5
 
 
-def halo_width(mono, fixed, fixed_bare):
+def halo_width(fixed, fixed_bare):
     """no halo round a badge (its disc is one), BARE_HALO round a bare glyph, POI_HALO round a plain POI"""
     badge = per_class(lambda bare, cat: BARE_HALO if bare else 0, fixed, fixed_bare)
-    if mono:
-        return badge
     return ['match', ['config', 'poiStyle'], 'plain', per_class(lambda bare, cat: BARE_HALO if bare else POI_HALO,
                                                                  fixed, fixed_bare), badge]
 
@@ -477,8 +477,8 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
     (massif_icon[2] if massif_icon[0] == 'step' else massif_icon)[1].append(params)
     massif_layout = {'icon-image': massif_icon, **({'text-field': gated(KNOWN_SDK)} if unknown else {})}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
-    massif_layout['icon-size'] = times(scaled(scale, 0.4), bare_size) if mono else \
-        ['match', ['config', 'poiStyle'], 'plain', plain_size(scale, bare_size), times(scaled(scale, 0.4), bare_size)]
+    massif_layout['icon-size'] = ['match', ['config', 'poiStyle'], 'plain', plain_size(scale, bare_size),
+                                  times(scaled(scale, 0.4), bare_size)]
     return boosted(layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
                  paint={'text-color': MONO_INK if mono else night_color(category) if dark else day_color(category),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
@@ -492,7 +492,7 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
                                             # `plain`: a bare glyph needs the halo its disc gave it
                                             'icon-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
-                                            'icon-halo-width': halo_width(mono, category, bare)}}),
+                                            'icon-halo-width': halo_width(category, bare)}}),
                    'subclass', 'class')
 
 

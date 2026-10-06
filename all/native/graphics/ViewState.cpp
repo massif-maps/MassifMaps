@@ -247,7 +247,7 @@ namespace massif {
         }
         _tilt = tilt;
         // A negative tilt is a rotation of the view about the camera; setViewTilt is the model where the camera stays.
-        _cameraTilt = std::max(tilt, 0.0f);
+        _cameraTilt = std::max(tilt, Const::MIN_CAMERA_TILT);
     }
 
     void ViewState::setViewTilt(float tilt) {
@@ -825,9 +825,18 @@ namespace massif {
         // The first ray of each bisected column that reaches no ground is the horizon; the sky quad is clipped
         // to the lowest one, the way tangram's sky mesh is.
         skyHorizonNDC = 1.0f;
+        // Bisected from a point that sees ground: the centre, unless the camera looks up (#285), where a
+        // centre in the sky clipped the quad at the middle row and left a black band below.
+        bool centreOnGround = false;
+        {
+            cglib::vec3<double> worldPos0 = cglib::transform_point(cglib::vec3<double>(0, 0, -1), invModelviewProjMat);
+            cglib::vec3<double> worldPos1 = cglib::transform_point(cglib::vec3<double>(0, 0,  1), invModelviewProjMat);
+            double t = -1;
+            centreOnGround = options.getProjectionSurface()->calculateHitPoint(cglib::ray3<double>(worldPos0, worldPos1 - worldPos0), heightMin, t) && t > 0;
+        }
         for (double xx : { -1, 0, 1 }) {
             for (double yy : { -1, 0, 1 }) {
-                double x0 = 0, y0 = 0, x1 = xx, y1 = yy;
+                double x0 = centreOnGround ? 0 : xx, y0 = centreOnGround ? 0 : -1, x1 = xx, y1 = yy;
                 for (int iter = -1; iter < 16; iter++) {
                     double x = (iter < 0 ? xx : (x0 + x1) * 0.5), y = (iter < 0 ? yy : (y0 + y1) * 0.5);
                     cglib::vec3<double> worldPos0 = cglib::transform_point(cglib::vec3<double>(x, y, -1), invModelviewProjMat);

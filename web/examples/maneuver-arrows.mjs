@@ -46,38 +46,11 @@ const ARROW_STYLE = [
   '}',
 ].join('\n');
 
-const METRES_PER_DEGREE = 111319.5;
-
-/**
- * The route from `before` metres behind point `index` to `after` metres past it, clamped at the ends.
- * The facade has no ManeuverArrowBuilder.buildArrow yet: this is its walk, in the same local plane.
- */
-function arrowAt(index, before, after) {
-  const k = Math.cos((ROUTE[index][1] * Math.PI) / 180);
-  const walk = (step, length) => {
-    const out = [];
-    let at = ROUTE[index];
-    for (let i = index + step; i >= 0 && i < ROUTE.length && length > 0; i += step) {
-      const next = ROUTE[i];
-      const d = Math.hypot((next[0] - at[0]) * k, next[1] - at[1]) * METRES_PER_DEGREE;
-      const t = d > length ? length / d : 1;
-      out.push([at[0] + (next[0] - at[0]) * t, at[1] + (next[1] - at[1]) * t]);
-      length -= d;
-      at = next;
-    }
-    return out;
-  };
-  return [...walk(-1, before).reverse(), ROUTE[index], ...walk(1, after)];
-}
-
-function arrows(head) {
+function arrows(builder, head) {
   return {
     type: 'FeatureCollection',
-    features: MANEUVERS.map(([index]) => ({
-      type: 'Feature',
-      properties: { head },
-      geometry: { type: 'LineString', coordinates: arrowAt(index, 30, 30) },
-    })),
+    features: MANEUVERS.flatMap(([index]) =>
+      builder.call('buildArrowAtIndex', ROUTE, index).features.map((arrow) => ({ ...arrow, properties: { head } }))),
   };
 }
 
@@ -102,8 +75,9 @@ export default async function start(host) {
   // A layer of its own, added last: it draws over the route and every layer before it.
   const maneuvers = map.source('maneuver-data', { type: 'geojson', maxZoom: 18 });
   const layer = maneuvers.createLayer('maneuver');
+  const builder = map.object('geometry', 'maneuver-arrows', { type: 'maneuver-arrow', lengthBefore: 30, lengthAfter: 30 });
   let head = 0;
-  maneuvers.setGeoJSON(layer, arrows(HEADS[head]));
+  maneuvers.setGeoJSON(layer, arrows(builder, HEADS[head]));
   map.addLayer('maneuver', { type: 'vector', source: 'maneuver-data', style: { type: 'mbvt', cartocss: { type: 'cartocss', css: ARROW_STYLE } } });
 
   const overview = (duration) => {
@@ -121,7 +95,7 @@ export default async function start(host) {
   });
   host.button('Head shape', () => {
     head = (head + 1) % HEADS.length;
-    maneuvers.setGeoJSON(layer, arrows(HEADS[head]));
+    maneuvers.setGeoJSON(layer, arrows(builder, HEADS[head]));
     host.caption(`${HEADS[head]} head: line-arrow-width and -length, no marker and no bitmap.`);
   });
   host.button('Overview', () => overview(1500));

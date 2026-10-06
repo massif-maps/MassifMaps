@@ -1048,6 +1048,8 @@ public final class ApiNames {
     public static final String METHOD_ADD_FEATURE = "addFeature";
     public static final String METHOD_ADD_LOCALE = "addLocale";
     public static final String METHOD_ADD_VECTOR_DATA_SOURCE = "addVectorDataSource";
+    public static final String METHOD_BUILD_ARROW = "buildArrow";
+    public static final String METHOD_BUILD_ARROW_AT_INDEX = "buildArrowAtIndex";
     public static final String METHOD_CALCULATE_ADDRESSES = "calculateAddresses";
     public static final String METHOD_CALCULATE_HORIZON = "calculateHorizon";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
@@ -1094,6 +1096,7 @@ public final class ApiNames {
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_OFFSET = "setOffset";
+    public static final String METHOD_SET_POSITION = "setPosition";
     public static final String METHOD_SET_SEGMENTS = "setSegments";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
@@ -1161,6 +1164,7 @@ public final class ApiNames {
     public static final String TYPE_GEOCODING_MULTI_OSM_OFFLINE = "multi-osm-offline";
     public static final String TYPE_GEOCODING_MULTI_OSM_OFFLINE_REVERSE = "multi-osm-offline-reverse";
     public static final String TYPE_GEOMETRY_LINE = "line";
+    public static final String TYPE_GEOMETRY_MANEUVER_ARROW = "maneuver-arrow";
     public static final String TYPE_GEOMETRY_POINT = "point";
     public static final String TYPE_GEOMETRY_POLYGON = "polygon";
     public static final String TYPE_LAYER_CELESTIAL = "celestial";

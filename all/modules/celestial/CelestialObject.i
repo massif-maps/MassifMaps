@@ -24,6 +24,7 @@
 
 !polymorphic_shared_ptr(massif::CelestialObject, celestial.CelestialObject)
 !method(massif::CelestialObject, setDirection, arg(azimuth, float), arg(altitude, float), arg(distance, float), returns(void))
+!method(massif::CelestialObject, setPosition, arg(pos, pos), arg(altitude, float), returns(void))
 !value_type(std::vector<std::shared_ptr<massif::CelestialObject> >, celestial.CelestialObjectVector)
 
 %attribute(massif::CelestialObject, bool, DirectionAnchored, isDirectionAnchored)

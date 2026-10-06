@@ -1088,8 +1088,11 @@ namespace massif {
         }
 
         // Click was ignored by layers, call map event listener, unless it never reached the ground:
-        // then the sky layers report it instead, having no ground position to give.
+        // then the sky layers report it instead, having no ground position to give - unless something was hit.
         if (!groundHit) {
+            if (!results.empty()) {
+                return;
+            }
             if (std::shared_ptr<Layers> layers = _mapRenderer->getLayers()) {
                 for (const std::shared_ptr<Layer>& layer : layers->getAll()) {
                     if (layer->processSkyClick(clickInfo, ray, viewState)) {

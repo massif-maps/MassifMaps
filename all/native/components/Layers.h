@@ -70,6 +70,7 @@ namespace massif {
         /**
          * Inserts a new layer at the specified position.
          * All previous layers starting from this index will be moved to the next position.
+         * A layer already added is moved there instead, never added twice.
          * @param index The layer index. Must be between 0 and count (inclusive).
          * @param layer The new layer.
          * @throws std::out_of_range If the index is out of range.

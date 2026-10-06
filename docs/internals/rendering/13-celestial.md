@@ -168,7 +168,7 @@ focus point on the ground. That was tried, and it is why the ceiling stood.
 
 What a negative tilt does instead: the camera **stays exactly where the tilt geometry left it** and
 only the view direction pitches up, about the camera (`ViewState::calculateLookatMat`, and
-`getCameraTilt()` — the tilt floored at 0 — is what positions the camera). `dist(camera, focus)` is
+`getCameraTilt()` — the tilt floored at `MIN_CAMERA_TILT` — is what positions the camera). `dist(camera, focus)` is
 untouched, so zoom, the visible tile set and the near/far budget all still mean what they meant.
 `CameraTiltEvent` spends only the part of the tilt at or above the horizon on moving the camera.
 
@@ -187,6 +187,12 @@ Two consequences had to be handled:
   `max(getTerrainMaxZoom(), zoom)`, so the bound can stop a zoom-in but never push the map out: no
   zoom clears the terrain at that tilt anyway, and keeping the camera the user asked for beats
   emptying the world.
+- **The camera never sits at exactly 0.** There the up vector is the surface normal and carries no
+  heading: the next tilt turned about a noise axis and the rotation read back from it was noise, so
+  coming back from a look up left the view pitched up and ~20° off its rotation (#285). The floor is
+  `Const::MIN_CAMERA_TILT` (1e-5°): enough heading for double precision, and a view ray flat enough
+  that `landFocusAlongView` never meets the ground through it - at 0.01° a look-up drag flung the
+  focus thousands of km.
 
 At tilt ≤ 0 the camera sits at the height of its focus, i.e. on the ground — which is exactly right
 for looking at the sky, and means the terrain is seen edge-on at the horizon.

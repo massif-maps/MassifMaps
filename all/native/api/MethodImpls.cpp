@@ -419,6 +419,17 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** setPosition([lon, lat], altitude) - above a place, altitude in metres above sea level. */
+        Result setCelestialPosition(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            MapPos pos;
+            double altitude = 0;
+            if (!args.getPosWgs84(0, pos) || !args.getDouble(1, altitude)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialObject*>(obj)->setPosition(pos, altitude);
+            return RESULT_OK;
+        }
+
         /** setDirections([az0, alt0, az1, alt1, ...]) - a path through the sky. */
         Result setArcDirections(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             std::vector<double> directions;
@@ -826,6 +837,7 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialLayer", "remove", &removeCelestialObject);
         registerMethod("massif::CelestialLayer", "clear", &clearCelestialObjects);
         registerMethod("massif::CelestialObject", "setDirection", &setCelestialDirection);
+        registerMethod("massif::CelestialObject", "setPosition", &setCelestialPosition);
         registerMethod("massif::CelestialArc", "setDirections", &setArcDirections);
         registerMethod("massif::CelestialArc", "setSegments", &setArcSegments);
         registerMethod("massif::CelestialArc", "setCircle", &setArcCircle);

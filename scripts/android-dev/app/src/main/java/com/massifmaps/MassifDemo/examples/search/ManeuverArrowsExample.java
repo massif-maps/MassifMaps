@@ -5,9 +5,14 @@ import com.massifmaps.MassifDemo.examples.ExampleInfo;
 import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.MassifDemo.examples.Sections;
 import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.MassifSource;
 import com.massifmaps.api.Position;
 import com.massifmaps.api.Spec;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * Turn arrows cut from a route at each maneuver, the head drawn by the line style itself.
@@ -67,8 +72,6 @@ public class ManeuverArrowsExample extends MapExample {
         "  [head='long'] { line-arrow-width: 1.9; line-arrow-length: 2.8; }",
         "}");
 
-    private static final double METRES_PER_DEGREE = 111319.5;
-
     private int step = -1;
     private int head = 0;
 
@@ -101,7 +104,9 @@ public class ManeuverArrowsExample extends MapExample {
         // A layer of its own, added last: it draws over the route and every layer before it.
         final MassifSource maneuvers = map.source("maneuver-data", Spec.of("geojson").set("maxZoom", 18));
         final int layer = maneuvers.createLayer("maneuver");
-        maneuvers.setLayerGeoJSON(layer, arrows(HEADS[head]));
+        final MassifObject builder = map.object("geometry", "maneuver-arrows", Spec.of("maneuver-arrow")
+            .set("lengthBefore", 30).set("lengthAfter", 30));
+        maneuvers.setLayerGeoJSON(layer, arrows(builder, HEADS[head]));
         map.addLayer("maneuver", Spec.of("vector")
             .set("source", "maneuver-data")
             .set("style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css", ARROW_STYLE))));
@@ -122,7 +127,7 @@ public class ManeuverArrowsExample extends MapExample {
             @Override
             public void run() {
                 head = (head + 1) % HEADS.length;
-                maneuvers.setLayerGeoJSON(layer, arrows(HEADS[head]));
+                maneuvers.setLayerGeoJSON(layer, arrows(builder, HEADS[head]));
                 host.caption(HEADS[head] + " head: line-arrow-width and -length, no marker and no bitmap.");
             }
         });
@@ -139,45 +144,21 @@ public class ManeuverArrowsExample extends MapExample {
         host.caption("One arrow per maneuver, cut from the route 30 m either side of the turn.");
     }
 
-    /**
-     * The route from {@code before} metres behind point {@code index} to {@code after} metres past it,
-     * clamped at the ends. The facade has no ManeuverArrowBuilder.buildArrow yet: this is its walk.
-     */
-    private static double[][] arrowAt(int index, double before, double after) {
-        double[][] back = walk(index, -1, before), ahead = walk(index, 1, after);
-        double[][] arrow = new double[back.length + 1 + ahead.length][];
-        for (int i = 0; i < back.length; i++) {
-            arrow[i] = back[back.length - 1 - i];
+    private static String arrows(MassifObject builder, String head) {
+        try {
+            JSONArray features = new JSONArray();
+            for (Object[] maneuver : MANEUVERS) {
+                MassifObject result = builder.call("buildArrowAtIndex", ROUTE, maneuver[0]);
+                JSONArray arrow = new JSONObject(result.json()).getJSONArray("features");
+                result.close();
+                for (int i = 0; i < arrow.length(); i++) {
+                    features.put(arrow.getJSONObject(i).put("properties", new JSONObject().put("head", head)));
+                }
+            }
+            return new JSONObject().put("type", "FeatureCollection").put("features", features).toString();
+        } catch (JSONException e) {
+            throw new IllegalStateException(e);
         }
-        arrow[back.length] = ROUTE[index];
-        System.arraycopy(ahead, 0, arrow, back.length + 1, ahead.length);
-        return arrow;
-    }
-
-    private static double[][] walk(int index, int step, double length) {
-        double k = Math.cos(Math.toRadians(ROUTE[index][1]));
-        java.util.List<double[]> out = new java.util.ArrayList<double[]>();
-        double[] at = ROUTE[index];
-        for (int i = index + step; i >= 0 && i < ROUTE.length && length > 0; i += step) {
-            double[] next = ROUTE[i];
-            double d = Math.hypot((next[0] - at[0]) * k, next[1] - at[1]) * METRES_PER_DEGREE;
-            double t = d > length ? length / d : 1;
-            out.add(new double[] { at[0] + (next[0] - at[0]) * t, at[1] + (next[1] - at[1]) * t });
-            length -= d;
-            at = next;
-        }
-        return out.toArray(new double[0][]);
-    }
-
-    private static String arrows(String head) {
-        StringBuilder json = new StringBuilder("{\"type\":\"FeatureCollection\",\"features\":[");
-        for (int i = 0; i < MANEUVERS.length; i++) {
-            json.append(i > 0 ? "," : "")
-                .append("{\"type\":\"Feature\",\"properties\":{\"head\":\"").append(head).append("\"},")
-                .append("\"geometry\":{\"type\":\"LineString\",\"coordinates\":")
-                .append(coordinates(arrowAt((Integer) MANEUVERS[i][0], 30, 30))).append("}}");
-        }
-        return json.append("]}").toString();
     }
 
     private static String coordinates(double[][] points) {

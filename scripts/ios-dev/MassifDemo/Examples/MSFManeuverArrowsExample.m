@@ -70,54 +70,28 @@ static NSString * const kArrowStyle =
     @"  [head='long'] { line-arrow-width: 1.9; line-arrow-length: 2.8; }\n"
     @"}";
 
-static const double kMetresPerDegree = 111319.5;
-
-/** Walks `length` metres from point `index` in `step`'s direction, writing the points it passes. */
-static int walk(int index, int step, double length, double out[][2]) {
-    double k = cos(kRoute[index][1] * M_PI / 180);
-    const double *at = kRoute[index];
-    int count = 0;
-    for (int i = index + step; i >= 0 && i < kRouteCount && length > 0; i += step) {
-        const double *next = kRoute[i];
-        double d = hypot((next[0] - at[0]) * k, next[1] - at[1]) * kMetresPerDegree;
-        double t = d > length ? length / d : 1;
-        out[count][0] = at[0] + (next[0] - at[0]) * t;
-        out[count][1] = at[1] + (next[1] - at[1]) * t;
-        count++;
-        length -= d;
-        at = next;
+static NSString *arrows(MSFMassifObject *builder, NSString *head) {
+    NSMutableArray *route = [NSMutableArray arrayWithCapacity:kRouteCount];
+    for (int i = 0; i < kRouteCount; i++) {
+        [route addObject:@[ @(kRoute[i][0]), @(kRoute[i][1]) ]];
     }
-    return count;
-}
-
-/**
- * The route from `before` metres behind point `index` to `after` metres past it, clamped at the ends,
- * as GeoJSON coordinates. The facade has no ManeuverArrowBuilder.buildArrow yet: this is its walk.
- */
-static NSString *arrowAt(int index, double before, double after) {
-    double back[kRouteCount][2], ahead[kRouteCount][2];
-    int backCount = walk(index, -1, before, back), aheadCount = walk(index, 1, after, ahead);
-    NSMutableString *json = [NSMutableString stringWithString:@"["];
-    for (int i = backCount - 1; i >= 0; i--) {
-        [json appendFormat:@"[%.6f,%.6f],", back[i][0], back[i][1]];
-    }
-    [json appendFormat:@"[%.6f,%.6f]", kRoute[index][0], kRoute[index][1]];
-    for (int i = 0; i < aheadCount; i++) {
-        [json appendFormat:@",[%.6f,%.6f]", ahead[i][0], ahead[i][1]];
-    }
-    [json appendString:@"]"];
-    return json;
-}
-
-static NSString *arrows(NSString *head) {
-    NSMutableString *json = [NSMutableString stringWithString:@"{\"type\":\"FeatureCollection\",\"features\":["];
+    NSMutableArray *features = [NSMutableArray array];
     for (int i = 0; i < kManeuverCount; i++) {
-        [json appendFormat:@"%@{\"type\":\"Feature\",\"properties\":{\"head\":\"%@\"},"
-                           @"\"geometry\":{\"type\":\"LineString\",\"coordinates\":%@}}",
-                           i > 0 ? @"," : @"", head, arrowAt(kManeuverIndex[i], 30, 30)];
+        MSFMassifObject *result = [builder call:@"buildArrowAtIndex" args:@[ route, @(kManeuverIndex[i]) ] error:nil];
+        NSDictionary *arrow = [NSJSONSerialization JSONObjectWithData:[result.json dataUsingEncoding:NSUTF8StringEncoding]
+                                                              options:0
+                                                                error:nil];
+        [result destroy];
+        for (NSDictionary *feature in arrow[@"features"]) {
+            NSMutableDictionary *withHead = [feature mutableCopy];
+            withHead[@"properties"] = @{ @"head" : head };
+            [features addObject:withHead];
+        }
     }
-    [json appendString:@"]}"];
-    return json;
+    NSData *json = [NSJSONSerialization dataWithJSONObject:@{ @"type" : @"FeatureCollection", @"features" : features }
+                                                   options:0
+                                                     error:nil];
+    return [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding];
 }
 
 static NSString *routeGeoJSON(void) {
@@ -177,8 +151,13 @@ static void overview(MSFMassifMap *map, id<MSFExampleHost> host, float seconds) 
                                         spec:[[MSFSpec of:@"geojson"] set:@"maxZoom" value:@18]
                                        error:nil];
     int layer = [maneuvers createLayer:@"maneuver"];
+    MSFMassifObject *builder = [map object:@"geometry"
+                                  objectId:@"maneuver-arrows"
+                                      spec:[[[MSFSpec of:@"maneuver-arrow"] set:@"lengthBefore" value:@30]
+                                               set:@"lengthAfter" value:@30]
+                                     error:nil];
     __block int head = 0;
-    [maneuvers setLayerGeoJSON:layer geoJson:arrows(kHeads[head])];
+    [maneuvers setLayerGeoJSON:layer geoJson:arrows(builder, kHeads[head])];
     [map addLayer:@"maneuver"
              spec:[[[MSFSpec of:@"vector"]
                      set:@"source" value:@"maneuver-data"]
@@ -201,7 +180,7 @@ static void overview(MSFMassifMap *map, id<MSFExampleHost> host, float seconds) 
     }];
     [host button:@"Head shape" action:^{
         head = (head + 1) % kHeadCount;
-        [maneuvers setLayerGeoJSON:layer geoJson:arrows(kHeads[head])];
+        [maneuvers setLayerGeoJSON:layer geoJson:arrows(builder, kHeads[head])];
         [host caption:[NSString stringWithFormat:@"%@ head: line-arrow-width and -length, no marker and no bitmap.",
                                                  kHeads[head]]];
     }];

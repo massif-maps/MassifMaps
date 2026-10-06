@@ -18,6 +18,20 @@ namespace massif::vt {
     std::vector<std::string> parseFontNames(const std::string& names);
 
     /**
+     * Chains a parsed list: the first name that resolves is the main font, the ones after it its glyph
+     * fallbacks. An unresolved name is skipped, and a list where nothing resolves returns baseFont.
+     */
+    template <typename FontPtr, typename Resolve>
+    FontPtr chainFontNames(const std::vector<std::string>& names, FontPtr baseFont, Resolve resolve) {
+        for (auto it = names.rbegin(); it != names.rend(); it++) {
+            if (FontPtr font = resolve(*it, baseFont)) {
+                baseFont = font;
+            }
+        }
+        return baseFont;
+    }
+
+    /**
      * Whether a face of a font collection (.ttc) is the one a name asks for: "Helvetica Neue Bold"
      * is the face named HelveticaNeue-Bold, not face 0. Case, spaces, dashes and a query are ignored.
      */

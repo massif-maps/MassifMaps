@@ -110,7 +110,7 @@ A face name is a CSS-like list, most preferred first, and an entry may say which
 `android:`, `ios:`, `macos:` and `windows:` are the tags; an entry tagged for another platform is
 dropped, an untagged one is kept everywhere. The first name the device has a font for becomes the
 main font and the rest are its glyph fallbacks. Resolution is cached, so a list costs nothing per
-tile.
+tile. `shield-icon-face-name` takes the same list, so an icon font can be named per platform too.
 
 The same list works for the font names of the **vector elements** — `BalloonPopupStyleBuilder`
 (title, description), `BalloonPopupButtonStyleBuilder` and `TextStyleBuilder` — which previously

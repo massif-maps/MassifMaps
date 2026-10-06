@@ -145029,7 +145029,7 @@
         "text-anchor": "top",
         "text-offset": [
           0,
-          0.5
+          0.75
         ],
         "text-max-width": 8,
         "text-optional": true
@@ -145263,7 +145263,7 @@
         "text-anchor": "top",
         "text-offset": [
           0,
-          0.5
+          0.75
         ],
         "text-max-width": 8,
         "text-optional": true

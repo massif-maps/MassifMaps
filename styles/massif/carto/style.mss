@@ -4678,7 +4678,7 @@ Map {
   shield-horizontal-alignment: 'middle';
   shield-vertical-alignment: 'top';
   shield-text-dx: 0;
-  shield-text-dy: 5.5;
+  shield-text-dy: 8.25;
   shield-wrap-width: @text_wrap_width;
   shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
@@ -4702,7 +4702,7 @@ Map {
   shield-horizontal-alignment: 'middle';
   shield-vertical-alignment: 'top';
   shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-text-dy: (0.75 * linear([view::zoom], (11, 10), (16, 12)));
   shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
   shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @label)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));
@@ -4726,7 +4726,7 @@ Map {
   shield-horizontal-alignment: 'middle';
   shield-vertical-alignment: 'top';
   shield-text-dx: (0 * linear([view::zoom], (11, 10), (16, 12)));
-  shield-text-dy: (0.5 * linear([view::zoom], (11, 10), (16, 12)));
+  shield-text-dy: (0.75 * linear([view::zoom], (11, 10), (16, 12)));
   shield-wrap-width: (8 * linear([view::zoom], (11, 10), (16, 12)));
   shield-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @label_night)) : linear([view::brightness], (0.25, @label_night), (0.3, @label_natural)));
   shield-halo-fill: (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));

@@ -1107,7 +1107,7 @@ namespace massif::vt {
 
         _rendererLayerFilter = filter;
         // The skip guard's set signature says nothing about the filter, which also decides the maps.
-        _labelTilesSignature = 0;
+        _labelTilesSignature.reset();
     }
 
     void GLTileRenderer::setRendererLayerIndexRange(const std::optional<std::pair<int, int>>& range) {

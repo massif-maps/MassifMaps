@@ -213,10 +213,7 @@ static NSString *labelStyle(BOOL freeSide, BOOL callouts) {
     [host caption:@"Names take the free side of their icon, summits lift theirs onto a leader line."];
 }
 
-/**
- * Placement is fixed when a tile is decoded, so a switch is a new layer. Hiding the old one
- * instead leaves its labels on screen.
- */
+/** Placement is fixed when a tile is decoded, so a switch is a new layer. */
 - (void)show {
     _generation++;
     [_map addLayer:[NSString stringWithFormat:@"labels.%d", _generation]

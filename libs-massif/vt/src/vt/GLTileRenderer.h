@@ -959,7 +959,7 @@ namespace massif::vt {
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
         // The label tile set the maps were last built from; prepareLabelMaps depends on nothing else.
-        long long _labelTilesSignature = 0;
+        std::optional<long long> _labelTilesSignature; // none = rebuild: 0 is the empty set's signature
         unsigned int _labelMapGeneration = 0; // bumped when the live maps are dropped under us
         mutable std::size_t _lastDrapeGlobalTerm = 0; // diagnostic only: see collectDrapeTiles
         std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;

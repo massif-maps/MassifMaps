@@ -112,6 +112,7 @@ def spec():
         ]},
         {'id': 'outdoor', 'label': 'Mountain', 'zoom': 14, 'items': [
             item('peak', 'Summit', 'mountain_peak', 'point', {'class': 'peak', 'name': 'Grand Veymont', 'ele': 2341, 'rank': 1}),
+            item('saddle', 'Pass, saddle', 'mountain_peak', 'point', {'class': 'saddle', 'name': 'Col Vert', 'ele': 1765, 'rank': 1}),
             item('alpine-hut', 'Alpine hut', 'poi', 'point', {'class': 'lodging', 'subclass': 'alpine_hut', 'name': 'Refuge'}),
             item('shelter', 'Shelter', 'poi', 'point', {'class': 'shelter', 'subclass': 'shelter', 'name': 'Cabane'}),
             item('viewpoint', 'Viewpoint', 'poi', 'point', {'class': 'attraction', 'subclass': 'viewpoint', 'name': 'Belvédère'}),

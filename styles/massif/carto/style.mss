@@ -4562,8 +4562,8 @@ Map {
 }
 #mountain_peak[zoom >= 13][class != 'cliff'][name != null][rank > 3]['param::trails' = 1]::peak_outdoor_minor {
   shield-placement: 'billboard';
-  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
-'), ('' + [ele])), ' m');
+  shield-name: ((('' + (([ele]) ?? (''))) = '') ? (([name]) ?? ([name_int])) : concat(concat(concat((([name]) ?? ([name_int])), '
+'), ('' + [ele])), ' m'));
   shield-face-name: @font_medium;
   shield-size: @text_size;
   shield-horizontal-alignment: 'middle';
@@ -4578,7 +4578,7 @@ Map {
   shield-placement-priority: (25000000 + ((get([param::poi-boost], [class])) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
-  shield-file: url('icons/peak.png');
+  shield-file: (get([param::peak-outdoor-minor-t0], [class]) ?? 'icons/peak.png');
   shield-unlock-image: true;
   shield-image-scale: ((0.8) / 2.0);
   shield-text-optional: true;
@@ -4586,8 +4586,8 @@ Map {
 }
 #mountain_peak[zoom >= 9][class != 'cliff'][name != null][rank <= 3]['param::trails' = 1]::peak_outdoor {
   shield-placement: 'billboard';
-  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
-'), ('' + [ele])), ' m');
+  shield-name: ((('' + (([ele]) ?? (''))) = '') ? (([name]) ?? ([name_int])) : concat(concat(concat((([name]) ?? ([name_int])), '
+'), ('' + [ele])), ' m'));
   shield-face-name: @font_medium;
   shield-size: linear([view::zoom], (11, 10), (16, 12));
   shield-horizontal-alignment: 'middle';
@@ -4602,7 +4602,7 @@ Map {
   shield-placement-priority: (25100000 + ((get([param::poi-boost], [class])) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
-  shield-file: url('icons/peak.png');
+  shield-file: (get([param::peak-outdoor-t0], [class]) ?? 'icons/peak.png');
   shield-unlock-image: true;
   shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
   shield-text-optional: true;
@@ -4610,8 +4610,8 @@ Map {
 }
 #mountain_peak[zoom >= 11][class != 'cliff'][name != null]['param::trails' = 0]::peak {
   shield-placement: 'billboard';
-  shield-name: concat(concat(concat((([name]) ?? ([name_int])), '
-'), ('' + [ele])), ' m');
+  shield-name: ((('' + (([ele]) ?? (''))) = '') ? (([name]) ?? ([name_int])) : concat(concat(concat((([name]) ?? ([name_int])), '
+'), ('' + [ele])), ' m'));
   shield-face-name: @font_medium;
   shield-size: linear([view::zoom], (11, 10), (16, 12));
   shield-horizontal-alignment: 'middle';
@@ -4626,7 +4626,7 @@ Map {
   shield-placement-priority: (25200000 + ((get([param::poi-boost], [class])) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
-  shield-file: url('icons/peak.png');
+  shield-file: (get([param::peak-t0], [class]) ?? 'icons/peak.png');
   shield-unlock-image: true;
   shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
   shield-text-optional: true;

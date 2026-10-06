@@ -132380,10 +132380,34 @@
         ]
       ],
       "layout": {
-        "icon-image": "peak",
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "saddle",
+          "saddle",
+          "peak"
+        ],
         "icon-size": 0.8,
         "text-field": [
-          "concat",
+          "case",
+          [
+            "==",
+            [
+              "to-string",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "ele"
+                ],
+                ""
+              ]
+            ],
+            ""
+          ],
           [
             "coalesce",
             [
@@ -132395,15 +132419,29 @@
               "name_int"
             ]
           ],
-          "\n",
           [
-            "to-string",
+            "concat",
             [
-              "get",
-              "ele"
-            ]
-          ],
-          " m"
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              [
+                "get",
+                "name_int"
+              ]
+            ],
+            "\n",
+            [
+              "to-string",
+              [
+                "get",
+                "ele"
+              ]
+            ],
+            " m"
+          ]
         ],
         "text-font": [
           "Noto Sans Regular"
@@ -132548,7 +132586,16 @@
         ]
       ],
       "layout": {
-        "icon-image": "peak",
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "saddle",
+          "saddle",
+          "peak"
+        ],
         "icon-size": [
           "interpolate",
           [
@@ -132563,7 +132610,22 @@
           1
         ],
         "text-field": [
-          "concat",
+          "case",
+          [
+            "==",
+            [
+              "to-string",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "ele"
+                ],
+                ""
+              ]
+            ],
+            ""
+          ],
           [
             "coalesce",
             [
@@ -132575,15 +132637,29 @@
               "name_int"
             ]
           ],
-          "\n",
           [
-            "to-string",
+            "concat",
             [
-              "get",
-              "ele"
-            ]
-          ],
-          " m"
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              [
+                "get",
+                "name_int"
+              ]
+            ],
+            "\n",
+            [
+              "to-string",
+              [
+                "get",
+                "ele"
+              ]
+            ],
+            " m"
+          ]
         ],
         "text-font": [
           "Noto Sans Regular"

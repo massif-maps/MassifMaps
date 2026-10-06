@@ -128,6 +128,7 @@ deeper woods (`OUTDOOR` in the palette):
   international and national networks.
 - **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
   before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
+  A saddle has its own glyph (`saddle`); a summit with no `ele` is named without a height.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z11; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, rock_shelter, weather_shelter, wilderness_hut: a
   badge on nature's green at a POI's size, named), campsites (a smaller glyph until z13, named from z13) and picnic sites from z13 (a picnic
@@ -663,7 +664,7 @@ is MIT-0 (`LICENSE`): use it for anything, no notice required.
 
 ## Licensing
 
-`sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
+`sprite-src/map/` — peak, saddle, city dots, oneway arrows — is drawn for this project.
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
 domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (eleven glyphs openstreetmap-carto's, twelve
 [Temaki](https://github.com/rapideditor/temaki)'s, the `default` dot drawn for this project), **CC0** — a public-domain

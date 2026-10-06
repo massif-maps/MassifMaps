@@ -8,7 +8,7 @@
     "visible": true
   },
   "dot": {
-    "x": 460,
+    "x": 474,
     "y": 2338,
     "width": 8,
     "height": 8,
@@ -16,7 +16,7 @@
     "visible": true
   },
   "oneway-reverse-ink": {
-    "x": 470,
+    "x": 484,
     "y": 2338,
     "width": 16,
     "height": 8,
@@ -24,14 +24,6 @@
     "visible": true
   },
   "oneway-reverse-dark": {
-    "x": 488,
-    "y": 2338,
-    "width": 16,
-    "height": 8,
-    "pixelRatio": 1,
-    "visible": true
-  },
-  "oneway-ink": {
     "x": 0,
     "y": 2388,
     "width": 16,
@@ -39,8 +31,16 @@
     "pixelRatio": 1,
     "visible": true
   },
-  "oneway-dark": {
+  "oneway-ink": {
     "x": 18,
+    "y": 2388,
+    "width": 16,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "oneway-dark": {
+    "x": 36,
     "y": 2388,
     "width": 16,
     "height": 8,
@@ -49,6 +49,14 @@
   },
   "peak": {
     "x": 446,
+    "y": 2338,
+    "width": 12,
+    "height": 10,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "saddle": {
+    "x": 460,
     "y": 2338,
     "width": 12,
     "height": 10,
@@ -88,7 +96,7 @@
     "visible": true
   },
   "pattern-park": {
-    "x": 36,
+    "x": 54,
     "y": 2388,
     "width": 8,
     "height": 8,

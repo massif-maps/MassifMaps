@@ -553,6 +553,18 @@
           }
         },
         {
+          "id": "saddle",
+          "label": "Pass, saddle",
+          "layer": "mountain_peak",
+          "geometry": "point",
+          "properties": {
+            "class": "saddle",
+            "name": "Col Vert",
+            "ele": 1765,
+            "rank": 1
+          }
+        },
+        {
           "id": "alpine-hut",
           "label": "Alpine hut",
           "layer": "poi",

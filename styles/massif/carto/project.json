@@ -285,6 +285,7 @@
         "oneway-ink": "icons-glyph/oneway-ink.png",
         "oneway-dark": "icons-glyph/oneway-dark.png",
         "peak": "icons-glyph/peak.png",
+        "saddle": "icons-glyph/saddle.png",
         "pattern-cemetery": "icons-glyph/pattern-cemetery.png",
         "pattern-glacier": "icons-glyph/pattern-glacier.png",
         "pattern-grass": "icons-glyph/pattern-grass.png",
@@ -707,6 +708,21 @@
     "label_occlusion": 1,
     "lighting": 1,
     "path_min_zoom": 12,
+    "peak-outdoor-minor-t0": {
+      "default": {
+        "saddle": "icons/saddle.png"
+      }
+    },
+    "peak-outdoor-t0": {
+      "default": {
+        "saddle": "icons/saddle.png"
+      }
+    },
+    "peak-t0": {
+      "default": {
+        "saddle": "icons/saddle.png"
+      }
+    },
     "place-city-dot-t0": {
       "default": {
         "2": "icons/dot-capital.png"

@@ -154,8 +154,17 @@ of the same screen-space extrusion the line itself uses — the offsets ride the
 which the vertex shader multiplies by the line width — so the head keeps its screen size at every
 zoom and needs no bitmap, no marker and no label.
 
-Two details are what make it usable rather than a triangle stuck on the end:
+These details are what make it usable rather than a triangle stuck on the end:
 
+- **An arrowed line is never a ring.** A line whose last vertex equals its first is otherwise read
+  as closed: no caps, and no end. A U-turn arrow cut the same length either side of the turn ends
+  exactly where it starts, and lost its head. maplibre decides closure by feature type rather than
+  coordinates; vt only sees vertices, so a line carrying an end arrow is simply always open.
+- **Only the feature's own end gets a head.** A source clips a line at its buffer, so a piece
+  crossing a tile edge ends just outside the tile; that end gets neither head nor pull-back. The
+  test is maplibre's for symbol anchors (`symbol_layout.ts`): the last vertex must lie in the
+  half-open tile `[0, 1)`, so an end on a shared edge is drawn by exactly one tile. Without it a
+  maneuver arrow crossing z18 tile edges grew a head at every crossing.
 - **The head hangs on its incenter**, and the line is pulled back to the head's base by the same
   amount. A homothety about the incenter moves every edge of a triangle by the same distance, so
   two heads about a common incenter stay a constant distance apart everywhere. Anchoring the tip
@@ -229,22 +238,30 @@ from the dot product of consecutive binormals. What is load-bearing in it:
   it. It used to (`asin(min(width/limit, 1))` as the half-angle), which cut in two wrong directions at
   once: a 0.8-wide contour kept mitering into a needle five half-widths long, while any line wider than
   the limit never mitered at all. `dot = 2/limit² − 1` is the whole rule.
-- **The INNER corner gets no miter at all** (`INNER_MITER_LIMIT` = 1). `line-miterlimit` only picks
-  which branch runs; the bevel/round branch it falls into still placed that corner at the true miter
-  point, `1/cos(turn/2)` half-widths out. At 161° — one notch short of the split branch's `−0.95` —
-  that is **6.06 half-widths**, and any segment shorter than it gets a needle out past its own end:
-  the spike roundabouts and slip roads grew at z11–12 and lost by z12.2, where the same geometry is
-  many half-widths long. Tesselating a 161° hairpin on segments of 1, 2 and 4 half-widths reached
-  5.08 / 4.10 / 2.21 half-widths, now 1.01 at every angle (`tests/vt/LineJoinTest.cpp`).
+- **The INNER corner reaches the true miter only as far as its segments have room**, and the cap
+  is applied in `lineVsh`, not at build time. `line-miterlimit` only picks which branch runs; the
+  bevel/round branch still has to put the inner corner somewhere. At the true miter point,
+  `1/cos(turn/2)` half-widths out, a 161° turn (one notch short of the split branch's `−0.95`) is
+  **6.06 half-widths**, and any segment shorter than that grows a needle past its own end: the spikes
+  that roundabouts and slip roads grew at z11–12. Clamped to one half-width (`INNER_MITER_LIMIT`, the
+  previous fix), the spikes went, but a right angle lost the last 0.41 of its corner: the line
+  narrowed into every turn, and where a tile edge cut the line next to a join, the neighbouring tile
+  drew the pieces without a join, at full width, so the inner edge stepped at the tile boundary.
+  A maneuver arrow showed both, since nothing crosses its turns to hide them.
 
-  **No build-time value smaller than the whole miter would do**, which is why this is 1 rather than
-  tangram's 3: the miter is in half-widths, a *screen* quantity, and the segment it has to fit inside
-  is in tile units, so the ratio is a zoom the tesselator does not have. Swept on device at
-  z9.58/tilt 89 over Paris with a 10 px round-joined motorway line, the spike is unchanged at a cap
-  of 4 or 3, small at 2 and gone only at 1. The overlap this trades it for costs nothing measured:
-  at `line-opacity: 0.45` the darkest blended pixel is `(193,58,44)` at a cap of 1 and of 4 alike.
-  A `line-join: miter` still reaches `line-miterlimit` — that is what the limit means, and only the
-  inner corner is capped.
+  The builder can't decide alone: the miter is in half-widths, a *screen* quantity, while the segment
+  is in tile units, and the zoom that relates the two is a draw-time value. So the inner vertex
+  carries the true miter in its binormal, plus a cap in the line's otherwise unused height slot. The
+  cap is the bisector distance at which the corner still fits its segments: all of a segment that
+  starts or ends the line, half of one shared with another join. `lineVsh` then extrudes to
+  `clamp(cap, 1 half-width, true miter)`. That is exact at every zoom where the segments allow it,
+  and never thinner than the old clamp. `tests/vt/LineJoinTest.cpp` runs the same clamp: 161° on
+  segments of 1, 2 and 4 half-widths still reaches no further than 1.05, and a right angle is now
+  painted to its miter point. Offset lines, and transformers that rescale vectors (the globe), keep
+  the one-half-width clamp: the cap is a tile-unit length, so it only holds where a binormal unit
+  and a coordinate unit are the same length. A `line-join: miter` still reaches `line-miterlimit`.
+  Cost: the height slot is 4 bytes after padding on a 16-byte line vertex, +25 % for every line
+  geometry that has at least one such corner. Not measured on device.
 - **A sharp join must not overlap itself.** Two full-width quads meeting at a point overlap in a lens on
   the inside of the turn, and every pixel of that lens blends twice — which is what darkened a line with
   `line-opacity` at each hairpin. The inner corners are collapsed onto the centre line instead (mapbox's

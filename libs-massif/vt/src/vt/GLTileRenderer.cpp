@@ -6691,10 +6691,11 @@ namespace massif::vt {
                 // Screen-space extrusion over terrain (lineVsh): the aspect converts NDC x into y's
                 // units, and a width unit is 1/halfResolution of NDC height, as on the flat map.
                 glUniform2f(shaderProgram.uniforms[U_SCREENSCALE], std::max(0.0001f, _viewState.aspect), 1.0f / std::max(1.0f, _halfResolution));
-                // Undoes the int16 binormal packing: line widths per vertex - 1 plain, more for a
-                // miter, a round cap corner or an arrow barb.
-                glUniform1f(shaderProgram.uniforms[U_BINORMALUNITSCALE], 1.0f / vertexGeomLayoutParams.binormalScale);
             }
+            // Undoes the int16 binormal packing: line widths per vertex - 1 plain, more for a miter, a
+            // round cap corner or an arrow barb. With uHeightScale it caps an inner corner (lineVsh).
+            glUniform1f(shaderProgram.uniforms[U_BINORMALUNITSCALE], 1.0f / vertexGeomLayoutParams.binormalScale);
+            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], vertexGeomLayoutParams.heightOffset >= 0 ? vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.heightScale : 0.0f);
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             if (styleOffsetting) {
                 glUniform1fv(shaderProgram.uniforms[U_OFFSETTABLE], styleParams.parameterCount, offsets.data());
@@ -7002,6 +7003,10 @@ namespace massif::vt {
 
         if (lit && !(vertexGeomLayoutParams.normalOffset >= 0)) {
             setConstVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL], 0, 0, 1);
+        }
+
+        if (geometry->getType() == TileGeometry::Type::LINE && !(vertexGeomLayoutParams.heightOffset >= 0)) {
+            setConstVertexAttrib(shaderProgram.attribs[A_VERTEXHEIGHT], 0, 0, 0); // no inner-corner caps
         }
     }
 

@@ -230,6 +230,9 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
   category colour and drawn larger; a glyph bare in both (furniture, landmarks, trees) keeps badge
   mode's size. It reads the class tables, so switching is a re-decode.
 - `poi_label_scale` (0.9) — every POI name's size, a landmark's and a named tree's too.
+- `poi_label_color` (`category`) — `neutral` draws every POI name in the map's label ink rather than
+  its category's colour. A string, not a 0/1 switch: the converter folds a match on a parameter into
+  its class tables only on string values.
 - `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
   drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
   e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`). Such a glyph
@@ -278,6 +281,10 @@ Switches (0/1):
 - `road_osm_low` (0) — motorway to tertiary drawn as OSM Carto (Alpimaps) draws them at low zoom:
   its wider lines below z11 and its outlines below z14, from z8 (the OSM example sets it); OSM
   Carto's zooms, one above Massif's.
+- `path_osm` (0) — footways (and, with `trails`, a paved path no harder than T1) drawn as OSM
+  Carto's: salmon dashes on a translucent white casing, where Massif draws a white ribbon or a T1
+  trail. The osm example sets it.
+- `mtb_markings` (1) — the MTB difficulty line beside a path (with `trails`).
 - `trails` (0; 1 on outdoor, topo, e-ink) — outdoor's paths by difficulty, MTB and SAC detail
   instead of streets' plain paths; the layers are gated on it rather than on the variant's name, so a
   child keeping streets' look (`examples/osm`) takes them with `trails: 1`.
@@ -409,7 +416,8 @@ decides. It is an ordinal over the whole z14 tile (1–390 over central Grenoble
 Liberty's 1–6 / 7–19 / rest at z15 / 16 / 17 admitted 3% and 11% of a city's POIs at z15 and z16
 (about 18 drawn in an app's z17 view, against 84 for Standard). The ladder is Alpimaps' OSM one:
 rank ≤ 10 at z14 (eating, bars, parking and schools at z15), ≤ 30 at z15 as icons, named from z16
-(shops at z16), ≤ 70 at z16, all at z17 — project constants `poi_rank10_minzoom`,
+(shops at z16), ≤ 70 at z16, all at z17 — project constants `poi_rank5_minzoom` (the first 5 but a
+park or a community centre; Alpimaps' OSM style, and the osm example, bring them a zoom earlier), `poi_rank10_minzoom`,
 `poi_rank30_minzoom`, `poi_rank30_label_minzoom`, `poi_rank70_minzoom`, `poi_rank_all_minzoom`. Standard's
 `poi-label` is built on `filterrank` the same way — a density rank OpenMapTiles does not carry,
 `rank` is the nearest thing. The exceptions are layers of their own, gated by mode as Standard's
@@ -624,7 +632,8 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
 
 [`examples/osm/`](examples/osm/) re-skins the family with OpenStreetMap Carto's colours as
 Alpimaps' OSM style has them (`?project=osm`): the palette redeclared (each road class its own casing,
-footways red, road colours ramped over zoom as Alpimaps ramps them, tertiaries white), Massif's
+road colours ramped over zoom as Alpimaps ramps them, tertiaries white), footways and paved paths
+as OSM Carto's salmon dashes (`path_osm`), Massif's
 widths kept, POIs as bare glyphs (`poiStyle: plain`), Alpimaps' textures on woods, scrub, wetland
 and rock. Its tracks and trails are Massif's outdoor ones (`trails: 1`) - grades, SAC and MTB
 details - in OSM's brown (`@track`); springs come in at z11 (`spring_min_zoom`).
@@ -632,8 +641,8 @@ Its zooms are the old OSM style's less one: Massif counts zooms as maplibre does
 SDK and that style on 256-px tiles, so the same view is numbered one lower here.
 Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z14 whatever
 their rank and hides pharmacies before z16 (`display: none`), `osm.json` brings campsites in at z9
-(`campsite_min_zoom`) and its `constants` bring the bus stops in at z14, named from z15, and
-public-transport shelters at z14.
+(`campsite_min_zoom`) and its `constants` bring the bus stops in at z14, named from z15,
+public-transport shelters at z14 and a tile's first 5 POIs at z13 (`poi_rank5_minzoom`).
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

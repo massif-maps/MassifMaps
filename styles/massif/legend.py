@@ -82,7 +82,9 @@ def spec():
         {'id': 'trails', 'label': 'Hiking difficulty (SAC scale)', 'zoom': 15, 'items': [
             line(id.replace('trail-', 'sac-'), SAC_LABELS[i], road('path', subclass='path', sac_scale=values[0]),
                  only('trail-halo', id))
-            for i, (id, values, _, _) in enumerate(outdoor.SAC)]},
+            for i, (id, values, _, _) in enumerate(outdoor.SAC)] + [
+            line('path-paved', 'Paved path', road('path', subclass='path', surface='paved'),
+                 only('path-osm-paved-casing', 'path-osm-paved'))]},
         {'id': 'mtb', 'label': 'Mountain bike difficulty (beside the path)', 'zoom': 15, 'items': [
             line(id, MTB_LABELS[id], road('path', subclass='path', mtb_scale=values[1]), only(id))
             for id, values, _, _ in outdoor.MTB]},

@@ -195,9 +195,17 @@ RANK_LADDER = [
     ('poi-rank-r30-shop', 16, ['all', ['>', RANK, 10], ['<=', RANK, 30], ['==', get('class'), 'shop']], 'poi_rank70_minzoom'),
 ]
 RANK30 = ['all', ['>', RANK, 10], ['<=', RANK, 30], ['!=', get('class'), 'shop']]
+NOT_LATE = [['!=', get('class'), c] for c in LATE]
+# the first 5 from `poi_rank5_minzoom` (Alpimaps' OSM style: a zoom before the rest), but a park or a
+# community centre, which crowd a town
 RANK10 = [
     ('poi-rank-r10-late', 15, ['all', ['<=', RANK, 10], ['in', get('class'), ['literal', LATE]]], 'poi_rank30_minzoom'),
-    ('poi-rank-r10', 14, ['all', ['<=', RANK, 10], *[['!=', get('class'), c] for c in LATE]], 'poi_rank10_minzoom'),
+    ('poi-rank-r10', 14, ['all', ['>', RANK, 5], ['<=', RANK, 10], *NOT_LATE], 'poi_rank10_minzoom'),
+    ('poi-rank-r5-park', 14, ['all', ['<=', RANK, 5], ['==', get('class'), 'park']], 'poi_rank10_minzoom'),
+    ('poi-rank-r5-community', 14, ['all', ['<=', RANK, 5], ['==', get('subclass'), 'community_centre']],
+     'poi_rank10_minzoom'),
+    ('poi-rank-r5', 14, ['all', ['<=', RANK, 5], *NOT_LATE, ['!=', get('class'), 'park'],
+                         ['!=', get('subclass'), 'community_centre']], 'poi_rank5_minzoom'),
 ]
 # The exceptions, each its own layer: stations and airports before the ladder starts, as Standard
 # draws them; the bus stop after it, as Standard does - icon at 17, name at 18.
@@ -392,6 +400,13 @@ def halo_width(mono, fixed, fixed_bare):
                                                                  fixed, fixed_bare), badge]
 
 
+def label_color(v, colored):
+    """`colored`, or the map's neutral label colour with `poi_label_color` neutral"""
+    c = v.palette
+    neutral = c['label-night'] if v.flags.get('dark_ground', False) else by_hour(c['label-night'], c['label'])
+    return ['match', ['config', 'poi_label_color'], 'neutral', neutral, colored]
+
+
 def poi_text(size):
     """a POI name's size, times `poi_label_scale`"""
     return ['*', size, ['config', 'poi_label_scale']]
@@ -472,7 +487,8 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
                  metadata={'massif:params': ['icon-image', 'text-color', 'icon-halo-width'],
                            'massif:template': 'poi', 'massif:attachment': 'poi',
                            'massif:layout': massif_layout,
-                           'massif:paint': {'text-color': MONO_INK if mono else night_color(category) if dark else text_color(category),
+                           'massif:paint': {'text-color': MONO_INK if mono else
+                                            label_color(v, night_color(category) if dark else text_color(category)),
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
                                             # `plain`: a bare glyph needs the halo its disc gave it
                                             'icon-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
@@ -515,7 +531,8 @@ def springs(v):
                  layout={'text-field': NAME, 'text-font': 'medium', 'text-size': poi_text(12), 'text-max-width': 9,
                          'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': True},
                  paint={'text-color': MONO_INK if mono else CATEGORY['water']['day'],
-                        'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH})
+                        'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH},
+                 metadata={} if mono else {'massif:paint': {'text-color': label_color(v, CATEGORY['water']['day'])}})
     # `highlight_drinking_water` draws springs in water_highlight() instead
     return [gate(dot, v, 'highlight_drinking_water', 0), gate(boosted(name, 'class'), v, 'highlight_drinking_water', 0)]
 

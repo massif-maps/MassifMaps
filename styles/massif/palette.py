@@ -91,6 +91,9 @@ STREETS = {
     'path': 'hsl(295, 10%, 97%)',
     'path-z16': 'hsl(295, 10%, 93%)',
     'path-case': 'hsl(0, 10%, 80%)',
+    # OSM Carto's footway, for `path_osm`
+    'path-osm': 'hsl(6, 93%, 71%)',
+    'path-osm-case': 'hsla(0, 0%, 100%, 0.5)',
     'cycleway': 'hsl(125, 50%, 55%)',
     'bridleway': 'hsl(30, 40%, 55%)',
     'track': 'hsl(30, 55%, 35%)', 'track-fill': 'hsl(0, 0%, 100%)',
@@ -245,7 +248,7 @@ EINK.update({
     'trunk': _W, 'trunk-case': _K, 'trunk-bridge-case': _K,
     'primary': _W, 'secondary': _W, 'tertiary': _W, 'road': _W, 'road-low': 'hsl(0, 0%, 30%)', 'minor-low': 'hsl(0, 0%, 30%)', 'secondary-low': 'hsl(0, 0%, 30%)', 'casing-low': True, 'casing-from': 13, 'road-case': 'hsl(0, 0%, 30%)',
     'primary-case': 'hsl(0, 0%, 30%)', 'secondary-case': 'hsl(0, 0%, 30%)', 'tertiary-case': 'hsl(0, 0%, 30%)', 'road-bridge-case': _K, 'casing-scale': 1.8,
-    'path': _W, 'path-z16': _W, 'path-case': 'hsl(0, 0%, 25%)', 'cycleway': 'hsl(0, 0%, 25%)',
+    'path': _W, 'path-z16': _W, 'path-case': 'hsl(0, 0%, 25%)', 'path-osm': _K, 'path-osm-case': _W, 'cycleway': 'hsl(0, 0%, 25%)',
     'bridleway': 'hsl(0, 0%, 35%)', 'track': _K, 'track-fill': _W, 'via-ferrata': _W, 'via-ferrata-case': _K,
     'no-access': 'hsla(0, 0%, 0%, 0.6)', 'construction': 'hsl(0, 0%, 60%)', 'ferry': 'hsl(0, 0%, 30%)',
     'aerialway': _K, 'aerialway-lift': _K, 'power': 'hsl(0, 0%, 45%)', 'rail': 'hsl(0, 0%, 15%)', 'rail-night': 'hsl(0, 0%, 15%)',

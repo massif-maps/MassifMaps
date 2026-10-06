@@ -129,8 +129,9 @@
 @parking: hsl(20, 3%, 93%);
 @path: hsl(295, 10%, 97%);
 @path_case: hsl(0, 10%, 80%);
+@path_osm: hsl(6, 93%, 71%);
+@path_osm_case: hsla(0, 0%, 100%, 0.5);
 @path_stroke: hsla(0, 0%, 100%, 0.4);
-@path_stroke_2: hsla(0, 0%, 100%, 0.5);
 @path_z16: hsl(295, 10%, 93%);
 @pitch: hsl(103, 70%, 86%);
 @pitch_line: hsl(115, 60%, 74%);
@@ -205,8 +206,8 @@
 @track_label: hsl(30, 50%, 30%);
 @track_stroke: hsla(35, 70%, 75%, 0.8);
 @trail_background_border_fill: #000000;
-@trail_fill: hsl(5, 72%, 45%);
-@trail_stroke: hsl(215, 70%, 42%);
+@trail_stroke: hsl(5, 72%, 45%);
+@trail_stroke_2: hsl(215, 70%, 42%);
 @trunk: hsl(235, 20%, 70%);
 @trunk_bridge_case: hsl(235, 20%, 50%);
 @trunk_case: hsl(235, 20%, 60%);

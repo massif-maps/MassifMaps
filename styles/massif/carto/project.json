@@ -95,6 +95,8 @@
     "transportation::road_bridge_casing_b2",
     "transportation::road_bridge_casing_b1",
     "transportation::bridge_steps",
+    "transportation::bridge_path_osm",
+    "transportation::bridge_path_osm_casing",
     "transportation::bridge_path",
     "transportation::bridge_path_casing",
     "transportation::tram_tracks",
@@ -181,6 +183,8 @@
     "transportation::track_grade2_casing",
     "transportation::track_grade1_casing",
     "transportation::track_halo",
+    "transportation::path_osm_paved",
+    "transportation::path_osm_paved_casing",
     "transportation::trail_t5",
     "transportation::trail_t4",
     "transportation::trail_t3",
@@ -188,8 +192,12 @@
     "transportation::trail_t1",
     "transportation::trail_halo",
     "transportation::steps",
+    "transportation::path_osm",
+    "transportation::path_osm_casing",
     "transportation::path",
     "transportation::path_casing",
+    "transportation::urban_path_osm",
+    "transportation::urban_path_osm_casing",
     "transportation::urban_path",
     "transportation::urban_path_casing",
     "route",
@@ -209,6 +217,8 @@
     "transportation::road_tunnel_casing_b1",
     "transportation::tunnel_cycleway",
     "transportation::tunnel_steps",
+    "transportation::tunnel_path_osm",
+    "transportation::tunnel_path_osm_casing",
     "transportation::tunnel_path",
     "transportation::tunnel_path_casing",
     "transportation::rail_tunnel",
@@ -707,7 +717,9 @@
     "hillshade_max_zoom": 16,
     "label_occlusion": 1,
     "lighting": 1,
+    "mtb_markings": 1,
     "path_min_zoom": 12,
+    "path_osm": 0,
     "peak-outdoor-minor-t0": {
       "default": {
         "saddle": "icons/saddle.png"
@@ -3156,6 +3168,13 @@
         "plain": "plain"
       }
     },
+    "poi_label_color": {
+      "default": "category",
+      "values": {
+        "category": "category",
+        "neutral": "neutral"
+      }
+    },
     "poi_label_scale": 0.9,
     "poi_on_roof": 1,
     "polygons_border": 0,
@@ -3194,6 +3213,7 @@
     "poi_rank10_minzoom": 14,
     "poi_rank30_label_minzoom": 16,
     "poi_rank30_minzoom": 15,
+    "poi_rank5_minzoom": 14,
     "poi_rank70_minzoom": 16,
     "poi_rank_all_minzoom": 17,
     "poi_tram_label_minzoom": 16,

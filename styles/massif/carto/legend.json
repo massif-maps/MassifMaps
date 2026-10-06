@@ -242,6 +242,18 @@
             "sac_scale": "difficult_alpine_hiking"
           },
           "attachment": "^(trail_halo|trail_t6)(_b[0-9]+)?$"
+        },
+        {
+          "id": "path-paved",
+          "label": "Paved path",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "surface": "paved"
+          },
+          "attachment": "^(path_osm_paved_casing|path_osm_paved)(_b[0-9]+)?$"
         }
       ]
     },

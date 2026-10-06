@@ -199,9 +199,10 @@ def low_casing(v, filter, id='road-casing-low', maxzoom=14):
                        metadata=draw_once(c, id), emissive=0), v, 'road_osm_low')]
 
 
-def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
+def paths(v, brunnel_test, prefix='', minzoom=12, trails=False):
     """footways, cycleways, bridleways and steps, Standard's white ribbon with a hairline case. With
     `trails` the paths and bridleways are left to outdoor.trails, which draws them by difficulty."""
+    c = v.palette
     walk = ['all', ['==', get('class'), 'path'], ['!=', get('subclass'), 'steps'], brunnel_test]
     if trails:
         walk = ['all', ['==', get('class'), 'path'], ['!', in_class(['steps'] + outdoor.TRAILS, 'subclass')],
@@ -213,19 +214,34 @@ def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
     color = zoom_ramp(*[x for z, key in ((15, 'path'), (16, 'path-z16')) for x in (
         z, ['match', get('subclass'), 'bridleway', c['bridleway'], c[key]])])
     return [
-        layer(walk_prefix + 'path-casing', 'line', 'transportation', minzoom=15, filter=walk,
-              metadata=draw_once(c, walk_prefix + 'path'), layout={'line-join': 'round'},
-              paint={'line-color': c['path-case'], 'line-gap-width': PATH_WIDTH,
-                     'line-width': zoom_ramp(14, 0.5, 18, 1, 22, 2, base=1.5)}, emissive=0.15),
-        layer(walk_prefix + 'path', 'line', 'transportation', minzoom=minzoom, filter=walk,
-              metadata=draw_once(c, walk_prefix + 'path', {'massif:minzoom-param': 'path_min_zoom'}),
-              layout={'line-cap': 'round', 'line-join': 'round'},
-              paint={'line-color': color, 'line-width': PATH_WIDTH}, emissive=0.25),
+        gate(layer(walk_prefix + 'path-casing', 'line', 'transportation', minzoom=15, filter=walk,
+                   metadata=draw_once(c, walk_prefix + 'path'), layout={'line-join': 'round'},
+                   paint={'line-color': c['path-case'], 'line-gap-width': PATH_WIDTH,
+                          'line-width': zoom_ramp(14, 0.5, 18, 1, 22, 2, base=1.5)}, emissive=0.15), v, 'path_osm', 0),
+        gate(layer(walk_prefix + 'path', 'line', 'transportation', minzoom=minzoom, filter=walk,
+                   metadata=draw_once(c, walk_prefix + 'path', {'massif:minzoom-param': 'path_min_zoom'}),
+                   layout={'line-cap': 'round', 'line-join': 'round'},
+                   paint={'line-color': color, 'line-width': PATH_WIDTH}, emissive=0.25), v, 'path_osm', 0),
+        *osm_footway(c, walk_prefix + 'path-osm', walk, minzoom, v, ['!=', get('subclass'), 'cycleway']),
         layer(prefix + 'steps', 'line', 'transportation', minzoom=14, filter=steps,
               paint={'line-color': c['path-case'], 'line-width': PATH_WIDTH,
                      'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 17, ['literal', [0.2, 0.2]],
                                         19, ['literal', [0.1, 0.1]]]}, emissive=0.25),
     ]
+
+
+def osm_footway(c, id, filter, minzoom, v, dashed=None):
+    """`path_osm`: OSM Carto's footway, dashes on a translucent white casing, growing in as a path's
+    ribbon does; `dashed` narrows the dashes, a cycleway keeping its own blue ones over the casing"""
+    meta = {'massif:minzoom-param': 'path_min_zoom'}
+    return [gate(layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, filter=filter,
+                       layout={'line-join': 'round'}, metadata=dict(meta),
+                       paint={'line-color': c['path-osm-case'], 'line-width': zoom_ramp(12, 0, 14, 1.5, 15, 2.5, 18, 5)},
+                       emissive=0.25), v, 'path_osm'),
+            gate(layer(id, 'line', 'transportation', minzoom=minzoom, filter=['all', filter, dashed] if dashed else filter,
+                       layout={'line-join': 'round'}, metadata=dict(meta),
+                       paint={'line-color': c['path-osm'], 'line-width': zoom_ramp(12, 0, 14, 0.8, 15, 1.2, 18, 2),
+                              'line-dasharray': [1.3, 2.3]}, emissive=0.4), v, 'path_osm')]
 
 
 def cycleway(c, brunnel_test, prefix=''):
@@ -275,7 +291,7 @@ def tracks(c, brunnel_test):
 def tunnels(v):
     c = v.palette
     tunnel = ['==', get('brunnel'), 'tunnel']
-    return (paths(c, tunnel, 'tunnel-') + cycleway(c, tunnel, 'tunnel-') +
+    return (paths(v, tunnel, 'tunnel-') + cycleway(c, tunnel, 'tunnel-') +
             road_pair(c, 'road-tunnel', ['all', in_class(CLASSES), tunnel], 12, WIDTH, CASING_WIDTH,
                       dash=[3, 3], fill_opacity=0.5, minzoom_param='tunnel_min_zoom',
                       layout={'line-join': 'miter', 'line-cap': 'butt', 'line-sort-key': SORT_KEY}))
@@ -302,8 +318,8 @@ def ground(v):
     no_ramp = ['!=', get('ramp'), 1]
     via_ferrata = ['all', ['==', get('class'), 'via_ferrata'], not_tunnel]
     trails = v.flags.get('trails', False)
-    return (paths(c, surface, trails=trails) + (outdoor.trails(c, not_tunnel) if trails else []) + tracks(c, not_tunnel)
-            + (outdoor.mtb(c, not_tunnel) if trails else []) + [
+    return (paths(v, surface, trails=trails) + (outdoor.trails(v, not_tunnel) if trails else []) + tracks(c, not_tunnel)
+            + (outdoor.mtb(v, not_tunnel) if trails else []) + [
         # a chain, MapTiler's beads on a yellow core: no other way is drawn with a dot
         layer('via-ferrata-casing', 'line', 'transportation', minzoom=13, filter=via_ferrata,
               paint={'line-color': c['via-ferrata-case'], 'line-width': VIA_FERRATA_CASING}, emissive=0.25),
@@ -353,7 +369,7 @@ def oneway(c):
 def bridges(v):
     c = v.palette
     bridge = ['==', get('brunnel'), 'bridge']
-    return (paths(c, bridge, 'bridge-') +
+    return (paths(v, bridge, 'bridge-') +
             road_pair(c, 'road-bridge', ['all', in_class(CLASSES), bridge], 12, WIDTH,
                       zoom_ramp(12, 0.8, 14, 1.2, 22, 3, base=1.5), case_key='bridge-case',
                       # Standard's: a round casing rings the bridge's end over the road it lands on

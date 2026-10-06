@@ -27,6 +27,9 @@
       "sac_scale_labels",
       "trails",
       "road_osm_low",
+      "path_osm",
+      "mtb_markings",
+      "poi_label_color",
       "track_min_zoom",
       "path_min_zoom",
       "tunnel_min_zoom",
@@ -4030,7 +4033,8 @@
         ]
       ],
       "layout": {
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "visible"
       },
       "paint": {
         "line-color": "hsl(0, 0%, 25%)",
@@ -4095,6 +4099,17 @@
             0.3,
             "hsl(0, 0%, 25%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
       }
     },
@@ -4133,7 +4148,8 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "visible"
       },
       "paint": {
         "line-color": [
@@ -4274,6 +4290,228 @@
               ]
             ]
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "tunnel-path-osm-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "steps"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 100%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          1.5,
+          15,
+          2.5,
+          18,
+          5
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "tunnel-path-osm",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "path"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "steps"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "brunnel"
+            ],
+            "tunnel"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "cycleway"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 0%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          0.8,
+          15,
+          1.2,
+          18,
+          2
+        ],
+        "line-dasharray": [
+          1.3,
+          2.3
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
       }
     },
@@ -5498,7 +5736,8 @@
         ]
       ],
       "layout": {
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "visible"
       },
       "paint": {
         "line-color": "hsl(0, 0%, 25%)",
@@ -5563,6 +5802,17 @@
             0.3,
             "hsl(0, 0%, 25%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
       }
     },
@@ -5620,7 +5870,8 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "visible"
       },
       "paint": {
         "line-color": [
@@ -5761,6 +6012,266 @@
               ]
             ]
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "urban-path-osm-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "literal",
+              [
+                "steps",
+                "path",
+                "bridleway"
+              ]
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "brunnel"
+            ],
+            [
+              "literal",
+              [
+                "tunnel",
+                "bridge"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 100%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          1.5,
+          15,
+          2.5,
+          18,
+          5
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "urban-path-osm",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "path"
+          ],
+          [
+            "!",
+            [
+              "in",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "literal",
+                [
+                  "steps",
+                  "path",
+                  "bridleway"
+                ]
+              ]
+            ]
+          ],
+          [
+            "!",
+            [
+              "in",
+              [
+                "get",
+                "brunnel"
+              ],
+              [
+                "literal",
+                [
+                  "tunnel",
+                  "bridge"
+                ]
+              ]
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "cycleway"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 0%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          0.8,
+          15,
+          1.2,
+          18,
+          2
+        ],
+        "line-dasharray": [
+          1.3,
+          2.3
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
       }
     },
@@ -6014,6 +6525,14 @@
               ]
             ]
           ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "surface"
+          ],
+          "paved"
         ]
       ],
       "layout": {
@@ -6073,6 +6592,132 @@
       }
     },
     {
+      "id": "trail-t1-paved",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "path"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "sac_scale"
+            ],
+            [
+              "literal",
+              [
+                "mountain_hiking",
+                1,
+                "demanding_mountain_hiking",
+                2,
+                "alpine_hiking",
+                3,
+                "demanding_alpine_hiking",
+                4,
+                "difficult_alpine_hiking",
+                5
+              ]
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "surface"
+          ],
+          "paved"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 0%)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.3
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.96,
+          15,
+          2.2399999999999998,
+          18,
+          4.16
+        ],
+        "line-dasharray": [
+          4,
+          2
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
       "id": "trail-t1-bridleway",
       "type": "line",
       "source": "openmaptiles",
@@ -6120,6 +6765,14 @@
               ]
             ]
           ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "surface"
+          ],
+          "paved"
         ]
       ],
       "layout": {
@@ -6175,6 +6828,132 @@
             0.3,
             "hsl(0, 0%, 0%)"
           ]
+        }
+      }
+    },
+    {
+      "id": "trail-t1-paved-bridleway",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "bridleway"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "sac_scale"
+            ],
+            [
+              "literal",
+              [
+                "mountain_hiking",
+                1,
+                "demanding_mountain_hiking",
+                2,
+                "alpine_hiking",
+                3,
+                "demanding_alpine_hiking",
+                4,
+                "difficult_alpine_hiking",
+                5
+              ]
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "surface"
+          ],
+          "paved"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 0%)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.3
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.96,
+          15,
+          2.2399999999999998,
+          18,
+          4.16
+        ],
+        "line-dasharray": [
+          4,
+          2
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
       }
     },
@@ -7129,6 +7908,272 @@
       }
     },
     {
+      "id": "path-osm-paved-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "path"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "surface"
+          ],
+          "paved"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "sac_scale"
+            ],
+            [
+              "literal",
+              [
+                "mountain_hiking",
+                1,
+                "demanding_mountain_hiking",
+                2,
+                "alpine_hiking",
+                3,
+                "demanding_alpine_hiking",
+                4,
+                "difficult_alpine_hiking",
+                5
+              ]
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 100%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          1.5,
+          15,
+          2.5,
+          18,
+          5
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "path-osm-paved",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "path"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "surface"
+          ],
+          "paved"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "sac_scale"
+            ],
+            [
+              "literal",
+              [
+                "mountain_hiking",
+                1,
+                "demanding_mountain_hiking",
+                2,
+                "alpine_hiking",
+                3,
+                "demanding_alpine_hiking",
+                4,
+                "difficult_alpine_hiking",
+                5
+              ]
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "brunnel"
+          ],
+          "tunnel"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 0%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          0.8,
+          15,
+          1.2,
+          18,
+          2
+        ],
+        "line-dasharray": [
+          1.3,
+          2.3
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
       "id": "track-halo",
       "type": "line",
       "source": "openmaptiles",
@@ -8050,7 +9095,21 @@
             0.3,
             "hsl(0, 0%, 0%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "mtb_markings"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "visible"
       }
     },
     {
@@ -8145,7 +9204,21 @@
             0.3,
             "hsl(0, 0%, 0%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "mtb_markings"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "visible"
       }
     },
     {
@@ -8240,7 +9313,21 @@
             0.3,
             "hsl(0, 0%, 0%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "mtb_markings"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "visible"
       }
     },
     {
@@ -8339,7 +9426,21 @@
             0.3,
             "hsl(0, 0%, 0%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "mtb_markings"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "visible"
       }
     },
     {
@@ -13073,7 +14174,8 @@
         ]
       ],
       "layout": {
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "visible"
       },
       "paint": {
         "line-color": "hsl(0, 0%, 25%)",
@@ -13138,6 +14240,17 @@
             0.3,
             "hsl(0, 0%, 25%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
       }
     },
@@ -13176,7 +14289,8 @@
       ],
       "layout": {
         "line-cap": "round",
-        "line-join": "round"
+        "line-join": "round",
+        "visibility": "visible"
       },
       "paint": {
         "line-color": [
@@ -13317,6 +14431,228 @@
               ]
             ]
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bridge-path-osm-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "steps"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "brunnel"
+          ],
+          "bridge"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 100%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          1.5,
+          15,
+          2.5,
+          18,
+          5
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bridge-path-osm",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "path"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "steps"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "brunnel"
+            ],
+            "bridge"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "cycleway"
+        ]
+      ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 0%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          14,
+          0.8,
+          15,
+          1.2,
+          18,
+          2
+        ],
+        "line-dasharray": [
+          1.3,
+          2.3
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
+        "massif:paint": {
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ],
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "path_osm"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
       }
     },
@@ -47878,6 +49214,14 @@
         [
           "all",
           [
+            ">",
+            [
+              "get",
+              "rank"
+            ],
+            5
+          ],
+          [
             "<=",
             [
               "get",
@@ -49185,6 +50529,4291 @@
           ]
         },
         "massif:minzoom-const": "poi_rank10_minzoom"
+      }
+    },
+    {
+      "id": "poi-rank-r5-park",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "aerialway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airfield"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cairn"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cross"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "ferry"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "guidepost"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "harbor"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lighthouse"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "mast"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "power_tower"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "pylon"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_light"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_metro"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "rock"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stone"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wayside_cross"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wayside_shrine"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wilderness_hut"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wind_turbine"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "kindergarten"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "viewpoint"
+          ]
+        ],
+        [
+          "all",
+          [
+            "<=",
+            [
+              "get",
+              "rank"
+            ],
+            5
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "park"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "coalesce",
+          [
+            "image",
+            [
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
+            ]
+          ],
+          [
+            "image",
+            [
+              "concat",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
+              ],
+              "-mono"
+            ]
+          ],
+          [
+            "image",
+            "default-mono"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "*",
+          12,
+          0.9
+        ],
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color",
+          "icon-halo-width"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "coalesce",
+            [
+              "image",
+              [
+                "get",
+                "subclass"
+              ],
+              {
+                "params": {
+                  "background": [
+                    "match",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "allotments",
+                      "artwork",
+                      "biergarten",
+                      "convenience",
+                      "deli",
+                      "food_court",
+                      "gallery",
+                      "greengrocer",
+                      "kindergarten",
+                      "nature_reserve",
+                      "picnic_table",
+                      "pub",
+                      "supermarket",
+                      "theme_park"
+                    ],
+                    "hsl(0, 0%, 100%)",
+                    "viewpoint",
+                    "transparent",
+                    [
+                      "match",
+                      [
+                        "get",
+                        "shelter_type"
+                      ],
+                      [
+                        "basic_hut",
+                        "lean_to",
+                        "picnic_shelter",
+                        "rock_shelter",
+                        "weather_shelter",
+                        "wilderness_hut"
+                      ],
+                      "hsl(0, 0%, 100%)",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "class"
+                        ],
+                        [
+                          "adit",
+                          "aerialway",
+                          "airfield",
+                          "airport",
+                          "alcohol_shop",
+                          "alpine_hut",
+                          "american_football",
+                          "amusement_park",
+                          "aquarium",
+                          "archaeological_site",
+                          "art_gallery",
+                          "atm",
+                          "attraction",
+                          "bakery",
+                          "bank",
+                          "bar",
+                          "baseball",
+                          "basketball",
+                          "beach",
+                          "beer",
+                          "bicycle",
+                          "bicycle_rental",
+                          "bird_hide",
+                          "bus",
+                          "butcher",
+                          "cafe",
+                          "campsite",
+                          "car",
+                          "castle",
+                          "cave_entrance",
+                          "cemetery",
+                          "cinema",
+                          "clothing_store",
+                          "college",
+                          "cricket",
+                          "dentist",
+                          "doctors",
+                          "dog_park",
+                          "embassy",
+                          "fast_food",
+                          "ferry",
+                          "fire_station",
+                          "florist",
+                          "fort",
+                          "fountain",
+                          "fuel",
+                          "furniture",
+                          "gift",
+                          "golf",
+                          "grocery",
+                          "hairdresser",
+                          "harbor",
+                          "heliport",
+                          "hospital",
+                          "ice_cream",
+                          "information",
+                          "laundry",
+                          "library",
+                          "lighthouse",
+                          "lodging",
+                          "monument",
+                          "mountain",
+                          "museum",
+                          "music",
+                          "nightclub",
+                          "park",
+                          "parking",
+                          "parking_garage",
+                          "pharmacy",
+                          "pitch",
+                          "place_of_worship",
+                          "playground",
+                          "police",
+                          "post",
+                          "prison",
+                          "railway",
+                          "railway_light",
+                          "railway_metro",
+                          "ranger_station",
+                          "restaurant",
+                          "ruins",
+                          "school",
+                          "shop",
+                          "skiing",
+                          "soccer",
+                          "spring",
+                          "stadium",
+                          "sushi",
+                          "swimming",
+                          "tennis",
+                          "theatre",
+                          "town_hall",
+                          "veterinary",
+                          "volcano",
+                          "water",
+                          "waterfall",
+                          "wetland",
+                          "wilderness_hut",
+                          "windmill",
+                          "zoo"
+                        ],
+                        "hsl(0, 0%, 100%)",
+                        "transparent"
+                      ]
+                    ]
+                  ],
+                  "background-stroke": [
+                    "match",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "allotments",
+                      "artwork",
+                      "biergarten",
+                      "convenience",
+                      "deli",
+                      "food_court",
+                      "gallery",
+                      "greengrocer",
+                      "kindergarten",
+                      "nature_reserve",
+                      "picnic_table",
+                      "pub",
+                      "supermarket",
+                      "theme_park"
+                    ],
+                    "hsl(0, 0%, 0%)",
+                    "viewpoint",
+                    "transparent",
+                    [
+                      "match",
+                      [
+                        "get",
+                        "shelter_type"
+                      ],
+                      [
+                        "basic_hut",
+                        "lean_to",
+                        "picnic_shelter",
+                        "rock_shelter",
+                        "weather_shelter",
+                        "wilderness_hut"
+                      ],
+                      "hsl(0, 0%, 0%)",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "class"
+                        ],
+                        [
+                          "adit",
+                          "aerialway",
+                          "airfield",
+                          "airport",
+                          "alcohol_shop",
+                          "alpine_hut",
+                          "american_football",
+                          "amusement_park",
+                          "aquarium",
+                          "archaeological_site",
+                          "art_gallery",
+                          "atm",
+                          "attraction",
+                          "bakery",
+                          "bank",
+                          "bar",
+                          "baseball",
+                          "basketball",
+                          "beach",
+                          "beer",
+                          "bicycle",
+                          "bicycle_rental",
+                          "bird_hide",
+                          "bus",
+                          "butcher",
+                          "cafe",
+                          "campsite",
+                          "car",
+                          "castle",
+                          "cave_entrance",
+                          "cemetery",
+                          "cinema",
+                          "clothing_store",
+                          "college",
+                          "cricket",
+                          "dentist",
+                          "doctors",
+                          "dog_park",
+                          "embassy",
+                          "fast_food",
+                          "ferry",
+                          "fire_station",
+                          "florist",
+                          "fort",
+                          "fountain",
+                          "fuel",
+                          "furniture",
+                          "gift",
+                          "golf",
+                          "grocery",
+                          "hairdresser",
+                          "harbor",
+                          "heliport",
+                          "hospital",
+                          "ice_cream",
+                          "information",
+                          "laundry",
+                          "library",
+                          "lighthouse",
+                          "lodging",
+                          "monument",
+                          "mountain",
+                          "museum",
+                          "music",
+                          "nightclub",
+                          "park",
+                          "parking",
+                          "parking_garage",
+                          "pharmacy",
+                          "pitch",
+                          "place_of_worship",
+                          "playground",
+                          "police",
+                          "post",
+                          "prison",
+                          "railway",
+                          "railway_light",
+                          "railway_metro",
+                          "ranger_station",
+                          "restaurant",
+                          "ruins",
+                          "school",
+                          "shop",
+                          "skiing",
+                          "soccer",
+                          "spring",
+                          "stadium",
+                          "sushi",
+                          "swimming",
+                          "tennis",
+                          "theatre",
+                          "town_hall",
+                          "veterinary",
+                          "volcano",
+                          "water",
+                          "waterfall",
+                          "wetland",
+                          "wilderness_hut",
+                          "windmill",
+                          "zoo"
+                        ],
+                        "hsl(0, 0%, 0%)",
+                        "transparent"
+                      ]
+                    ]
+                  ],
+                  "icon": "hsl(0, 0%, 0%)",
+                  "radius": [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "airfield",
+                    8,
+                    "airport",
+                    8,
+                    "heliport",
+                    8,
+                    "railway",
+                    5,
+                    "railway_light",
+                    11,
+                    21
+                  ],
+                  "background-stroke-width": [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "airfield",
+                    1.75,
+                    "airport",
+                    1.75,
+                    "heliport",
+                    1.75,
+                    "railway",
+                    1.5,
+                    "railway_light",
+                    2,
+                    3
+                  ]
+                }
+              }
+            ],
+            [
+              "image",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
+              ]
+            ],
+            [
+              "image",
+              "default"
+            ]
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-width": [
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "allotments",
+              "artwork",
+              "biergarten",
+              "convenience",
+              "deli",
+              "food_court",
+              "gallery",
+              "greengrocer",
+              "kindergarten",
+              "nature_reserve",
+              "picnic_table",
+              "pub",
+              "supermarket",
+              "theme_park"
+            ],
+            0,
+            "viewpoint",
+            1,
+            [
+              "match",
+              [
+                "get",
+                "shelter_type"
+              ],
+              [
+                "basic_hut",
+                "lean_to",
+                "picnic_shelter",
+                "rock_shelter",
+                "weather_shelter",
+                "wilderness_hut"
+              ],
+              0,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "adit",
+                  "aerialway",
+                  "airfield",
+                  "airport",
+                  "alcohol_shop",
+                  "alpine_hut",
+                  "american_football",
+                  "amusement_park",
+                  "aquarium",
+                  "archaeological_site",
+                  "art_gallery",
+                  "atm",
+                  "attraction",
+                  "bakery",
+                  "bank",
+                  "bar",
+                  "baseball",
+                  "basketball",
+                  "beach",
+                  "beer",
+                  "bicycle",
+                  "bicycle_rental",
+                  "bird_hide",
+                  "bus",
+                  "butcher",
+                  "cafe",
+                  "campsite",
+                  "car",
+                  "castle",
+                  "cave_entrance",
+                  "cemetery",
+                  "cinema",
+                  "clothing_store",
+                  "college",
+                  "cricket",
+                  "dentist",
+                  "doctors",
+                  "dog_park",
+                  "embassy",
+                  "fast_food",
+                  "ferry",
+                  "fire_station",
+                  "florist",
+                  "fort",
+                  "fountain",
+                  "fuel",
+                  "furniture",
+                  "gift",
+                  "golf",
+                  "grocery",
+                  "hairdresser",
+                  "harbor",
+                  "heliport",
+                  "hospital",
+                  "ice_cream",
+                  "information",
+                  "laundry",
+                  "library",
+                  "lighthouse",
+                  "lodging",
+                  "monument",
+                  "mountain",
+                  "museum",
+                  "music",
+                  "nightclub",
+                  "park",
+                  "parking",
+                  "parking_garage",
+                  "pharmacy",
+                  "pitch",
+                  "place_of_worship",
+                  "playground",
+                  "police",
+                  "post",
+                  "prison",
+                  "railway",
+                  "railway_light",
+                  "railway_metro",
+                  "ranger_station",
+                  "restaurant",
+                  "ruins",
+                  "school",
+                  "shop",
+                  "skiing",
+                  "soccer",
+                  "spring",
+                  "stadium",
+                  "sushi",
+                  "swimming",
+                  "tennis",
+                  "theatre",
+                  "town_hall",
+                  "veterinary",
+                  "volcano",
+                  "water",
+                  "waterfall",
+                  "wetland",
+                  "wilderness_hut",
+                  "windmill",
+                  "zoo"
+                ],
+                0,
+                1
+              ]
+            ]
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_rank10_minzoom"
+      }
+    },
+    {
+      "id": "poi-rank-r5-community",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "aerialway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airfield"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cairn"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cross"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "ferry"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "guidepost"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "harbor"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lighthouse"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "mast"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "power_tower"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "pylon"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_light"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_metro"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "rock"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stone"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wayside_cross"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wayside_shrine"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wilderness_hut"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wind_turbine"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "kindergarten"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "viewpoint"
+          ]
+        ],
+        [
+          "all",
+          [
+            "<=",
+            [
+              "get",
+              "rank"
+            ],
+            5
+          ],
+          [
+            "==",
+            [
+              "get",
+              "subclass"
+            ],
+            "community_centre"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "coalesce",
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
+              ]
+            ],
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ],
+                "-mono"
+              ]
+            ]
+          ],
+          17,
+          [
+            "coalesce",
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
+              ]
+            ],
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ],
+                "-mono"
+              ]
+            ],
+            [
+              "image",
+              "default-mono"
+            ]
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "case",
+            [
+              "any",
+              [
+                "in",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "literal",
+                  [
+                    "adit",
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "alcohol_shop",
+                    "alpine_hut",
+                    "american_football",
+                    "amusement_park",
+                    "aquarium",
+                    "archaeological_site",
+                    "art_gallery",
+                    "atm",
+                    "attraction",
+                    "bakery",
+                    "bank",
+                    "bar",
+                    "barrier",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "beer",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bird_hide",
+                    "bollard",
+                    "border_control",
+                    "bus",
+                    "butcher",
+                    "cafe",
+                    "cairn",
+                    "campsite",
+                    "car",
+                    "castle",
+                    "cave_entrance",
+                    "cemetery",
+                    "cinema",
+                    "clothing_store",
+                    "college",
+                    "cricket",
+                    "cross",
+                    "cycle_barrier",
+                    "dentist",
+                    "doctors",
+                    "dog_park",
+                    "drinking_water",
+                    "embassy",
+                    "fast_food",
+                    "ferry",
+                    "fire_station",
+                    "florist",
+                    "fort",
+                    "fountain",
+                    "fuel",
+                    "furniture",
+                    "garden",
+                    "gate",
+                    "gift",
+                    "golf",
+                    "grocery",
+                    "guidepost",
+                    "hairdresser",
+                    "harbor",
+                    "heliport",
+                    "hospital",
+                    "ice_cream",
+                    "information",
+                    "laundry",
+                    "library",
+                    "lift_gate",
+                    "lighthouse",
+                    "lodging",
+                    "mast",
+                    "monument",
+                    "mountain",
+                    "museum",
+                    "music",
+                    "nightclub",
+                    "park",
+                    "parking",
+                    "parking_garage",
+                    "pharmacy",
+                    "picnic_site",
+                    "pitch",
+                    "place_of_worship",
+                    "playground",
+                    "police",
+                    "post",
+                    "power_tower",
+                    "prison",
+                    "pylon",
+                    "railway",
+                    "railway_light",
+                    "railway_metro",
+                    "ranger_station",
+                    "restaurant",
+                    "rock",
+                    "ruins",
+                    "sally_port",
+                    "school",
+                    "shelter",
+                    "shop",
+                    "skiing",
+                    "soccer",
+                    "spring",
+                    "stadium",
+                    "stile",
+                    "stone",
+                    "sushi",
+                    "swimming",
+                    "telephone",
+                    "tennis",
+                    "theatre",
+                    "toilets",
+                    "toll_booth",
+                    "town_hall",
+                    "tree",
+                    "veterinary",
+                    "viewpoint",
+                    "volcano",
+                    "waste_basket",
+                    "water",
+                    "waterfall",
+                    "wayside_cross",
+                    "wayside_shrine",
+                    "wetland",
+                    "wilderness_hut",
+                    "wind_turbine",
+                    "windmill",
+                    "zoo"
+                  ]
+                ]
+              ],
+              [
+                "in",
+                [
+                  "get",
+                  "subclass"
+                ],
+                [
+                  "literal",
+                  [
+                    "adit",
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "alcohol_shop",
+                    "alpine_hut",
+                    "american_football",
+                    "amusement_park",
+                    "aquarium",
+                    "archaeological_site",
+                    "art_gallery",
+                    "atm",
+                    "attraction",
+                    "bakery",
+                    "bank",
+                    "bar",
+                    "barrier",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "beer",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bird_hide",
+                    "bollard",
+                    "border_control",
+                    "bus",
+                    "butcher",
+                    "cafe",
+                    "cairn",
+                    "campsite",
+                    "car",
+                    "castle",
+                    "cave_entrance",
+                    "cemetery",
+                    "cinema",
+                    "clothing_store",
+                    "college",
+                    "cricket",
+                    "cross",
+                    "cycle_barrier",
+                    "dentist",
+                    "doctors",
+                    "dog_park",
+                    "drinking_water",
+                    "embassy",
+                    "fast_food",
+                    "ferry",
+                    "fire_station",
+                    "florist",
+                    "fort",
+                    "fountain",
+                    "fuel",
+                    "furniture",
+                    "garden",
+                    "gate",
+                    "gift",
+                    "golf",
+                    "grocery",
+                    "guidepost",
+                    "hairdresser",
+                    "harbor",
+                    "heliport",
+                    "hospital",
+                    "ice_cream",
+                    "information",
+                    "laundry",
+                    "library",
+                    "lift_gate",
+                    "lighthouse",
+                    "lodging",
+                    "mast",
+                    "monument",
+                    "mountain",
+                    "museum",
+                    "music",
+                    "nightclub",
+                    "park",
+                    "parking",
+                    "parking_garage",
+                    "pharmacy",
+                    "picnic_site",
+                    "pitch",
+                    "place_of_worship",
+                    "playground",
+                    "police",
+                    "post",
+                    "power_tower",
+                    "prison",
+                    "pylon",
+                    "railway",
+                    "railway_light",
+                    "railway_metro",
+                    "ranger_station",
+                    "restaurant",
+                    "rock",
+                    "ruins",
+                    "sally_port",
+                    "school",
+                    "shelter",
+                    "shop",
+                    "skiing",
+                    "soccer",
+                    "spring",
+                    "stadium",
+                    "stile",
+                    "stone",
+                    "sushi",
+                    "swimming",
+                    "telephone",
+                    "tennis",
+                    "theatre",
+                    "toilets",
+                    "toll_booth",
+                    "town_hall",
+                    "tree",
+                    "veterinary",
+                    "viewpoint",
+                    "volcano",
+                    "waste_basket",
+                    "water",
+                    "waterfall",
+                    "wayside_cross",
+                    "wayside_shrine",
+                    "wetland",
+                    "wilderness_hut",
+                    "wind_turbine",
+                    "windmill",
+                    "zoo"
+                  ]
+                ]
+              ]
+            ],
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              [
+                "get",
+                "name_int"
+              ]
+            ],
+            ""
+          ],
+          17,
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "*",
+          12,
+          0.9
+        ],
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color",
+          "icon-halo-width"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "step",
+            [
+              "zoom"
+            ],
+            [
+              "coalesce",
+              [
+                "image",
+                [
+                  "get",
+                  "subclass"
+                ],
+                {
+                  "params": {
+                    "background": [
+                      "match",
+                      [
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "allotments",
+                        "artwork",
+                        "biergarten",
+                        "convenience",
+                        "deli",
+                        "food_court",
+                        "gallery",
+                        "greengrocer",
+                        "kindergarten",
+                        "nature_reserve",
+                        "picnic_table",
+                        "pub",
+                        "supermarket",
+                        "theme_park"
+                      ],
+                      "hsl(0, 0%, 100%)",
+                      "viewpoint",
+                      "transparent",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "shelter_type"
+                        ],
+                        [
+                          "basic_hut",
+                          "lean_to",
+                          "picnic_shelter",
+                          "rock_shelter",
+                          "weather_shelter",
+                          "wilderness_hut"
+                        ],
+                        "hsl(0, 0%, 100%)",
+                        [
+                          "match",
+                          [
+                            "get",
+                            "class"
+                          ],
+                          [
+                            "adit",
+                            "aerialway",
+                            "airfield",
+                            "airport",
+                            "alcohol_shop",
+                            "alpine_hut",
+                            "american_football",
+                            "amusement_park",
+                            "aquarium",
+                            "archaeological_site",
+                            "art_gallery",
+                            "atm",
+                            "attraction",
+                            "bakery",
+                            "bank",
+                            "bar",
+                            "baseball",
+                            "basketball",
+                            "beach",
+                            "beer",
+                            "bicycle",
+                            "bicycle_rental",
+                            "bird_hide",
+                            "bus",
+                            "butcher",
+                            "cafe",
+                            "campsite",
+                            "car",
+                            "castle",
+                            "cave_entrance",
+                            "cemetery",
+                            "cinema",
+                            "clothing_store",
+                            "college",
+                            "cricket",
+                            "dentist",
+                            "doctors",
+                            "dog_park",
+                            "embassy",
+                            "fast_food",
+                            "ferry",
+                            "fire_station",
+                            "florist",
+                            "fort",
+                            "fountain",
+                            "fuel",
+                            "furniture",
+                            "gift",
+                            "golf",
+                            "grocery",
+                            "hairdresser",
+                            "harbor",
+                            "heliport",
+                            "hospital",
+                            "ice_cream",
+                            "information",
+                            "laundry",
+                            "library",
+                            "lighthouse",
+                            "lodging",
+                            "monument",
+                            "mountain",
+                            "museum",
+                            "music",
+                            "nightclub",
+                            "park",
+                            "parking",
+                            "parking_garage",
+                            "pharmacy",
+                            "pitch",
+                            "place_of_worship",
+                            "playground",
+                            "police",
+                            "post",
+                            "prison",
+                            "railway",
+                            "railway_light",
+                            "railway_metro",
+                            "ranger_station",
+                            "restaurant",
+                            "ruins",
+                            "school",
+                            "shop",
+                            "skiing",
+                            "soccer",
+                            "spring",
+                            "stadium",
+                            "sushi",
+                            "swimming",
+                            "tennis",
+                            "theatre",
+                            "town_hall",
+                            "veterinary",
+                            "volcano",
+                            "water",
+                            "waterfall",
+                            "wetland",
+                            "wilderness_hut",
+                            "windmill",
+                            "zoo"
+                          ],
+                          "hsl(0, 0%, 100%)",
+                          "transparent"
+                        ]
+                      ]
+                    ],
+                    "background-stroke": [
+                      "match",
+                      [
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "allotments",
+                        "artwork",
+                        "biergarten",
+                        "convenience",
+                        "deli",
+                        "food_court",
+                        "gallery",
+                        "greengrocer",
+                        "kindergarten",
+                        "nature_reserve",
+                        "picnic_table",
+                        "pub",
+                        "supermarket",
+                        "theme_park"
+                      ],
+                      "hsl(0, 0%, 0%)",
+                      "viewpoint",
+                      "transparent",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "shelter_type"
+                        ],
+                        [
+                          "basic_hut",
+                          "lean_to",
+                          "picnic_shelter",
+                          "rock_shelter",
+                          "weather_shelter",
+                          "wilderness_hut"
+                        ],
+                        "hsl(0, 0%, 0%)",
+                        [
+                          "match",
+                          [
+                            "get",
+                            "class"
+                          ],
+                          [
+                            "adit",
+                            "aerialway",
+                            "airfield",
+                            "airport",
+                            "alcohol_shop",
+                            "alpine_hut",
+                            "american_football",
+                            "amusement_park",
+                            "aquarium",
+                            "archaeological_site",
+                            "art_gallery",
+                            "atm",
+                            "attraction",
+                            "bakery",
+                            "bank",
+                            "bar",
+                            "baseball",
+                            "basketball",
+                            "beach",
+                            "beer",
+                            "bicycle",
+                            "bicycle_rental",
+                            "bird_hide",
+                            "bus",
+                            "butcher",
+                            "cafe",
+                            "campsite",
+                            "car",
+                            "castle",
+                            "cave_entrance",
+                            "cemetery",
+                            "cinema",
+                            "clothing_store",
+                            "college",
+                            "cricket",
+                            "dentist",
+                            "doctors",
+                            "dog_park",
+                            "embassy",
+                            "fast_food",
+                            "ferry",
+                            "fire_station",
+                            "florist",
+                            "fort",
+                            "fountain",
+                            "fuel",
+                            "furniture",
+                            "gift",
+                            "golf",
+                            "grocery",
+                            "hairdresser",
+                            "harbor",
+                            "heliport",
+                            "hospital",
+                            "ice_cream",
+                            "information",
+                            "laundry",
+                            "library",
+                            "lighthouse",
+                            "lodging",
+                            "monument",
+                            "mountain",
+                            "museum",
+                            "music",
+                            "nightclub",
+                            "park",
+                            "parking",
+                            "parking_garage",
+                            "pharmacy",
+                            "pitch",
+                            "place_of_worship",
+                            "playground",
+                            "police",
+                            "post",
+                            "prison",
+                            "railway",
+                            "railway_light",
+                            "railway_metro",
+                            "ranger_station",
+                            "restaurant",
+                            "ruins",
+                            "school",
+                            "shop",
+                            "skiing",
+                            "soccer",
+                            "spring",
+                            "stadium",
+                            "sushi",
+                            "swimming",
+                            "tennis",
+                            "theatre",
+                            "town_hall",
+                            "veterinary",
+                            "volcano",
+                            "water",
+                            "waterfall",
+                            "wetland",
+                            "wilderness_hut",
+                            "windmill",
+                            "zoo"
+                          ],
+                          "hsl(0, 0%, 0%)",
+                          "transparent"
+                        ]
+                      ]
+                    ],
+                    "icon": "hsl(0, 0%, 0%)",
+                    "radius": [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      "airfield",
+                      8,
+                      "airport",
+                      8,
+                      "heliport",
+                      8,
+                      "railway",
+                      5,
+                      "railway_light",
+                      11,
+                      21
+                    ],
+                    "background-stroke-width": [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      "airfield",
+                      1.75,
+                      "airport",
+                      1.75,
+                      "heliport",
+                      1.75,
+                      "railway",
+                      1.5,
+                      "railway_light",
+                      2,
+                      3
+                    ]
+                  }
+                }
+              ],
+              [
+                "image",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ]
+              ]
+            ],
+            17,
+            [
+              "coalesce",
+              [
+                "image",
+                [
+                  "get",
+                  "subclass"
+                ]
+              ],
+              [
+                "image",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ]
+              ],
+              [
+                "image",
+                "default"
+              ]
+            ]
+          ],
+          "text-field": [
+            "step",
+            [
+              "zoom"
+            ],
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "glyph"
+                    ]
+                  ],
+                  [
+                    "get",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "glyph"
+                    ]
+                  ],
+                  ""
+                ],
+                ""
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  "name"
+                ],
+                [
+                  "get",
+                  "name_int"
+                ]
+              ],
+              ""
+            ],
+            17,
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              [
+                "get",
+                "name_int"
+              ]
+            ]
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-width": [
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "allotments",
+              "artwork",
+              "biergarten",
+              "convenience",
+              "deli",
+              "food_court",
+              "gallery",
+              "greengrocer",
+              "kindergarten",
+              "nature_reserve",
+              "picnic_table",
+              "pub",
+              "supermarket",
+              "theme_park"
+            ],
+            0,
+            "viewpoint",
+            1,
+            [
+              "match",
+              [
+                "get",
+                "shelter_type"
+              ],
+              [
+                "basic_hut",
+                "lean_to",
+                "picnic_shelter",
+                "rock_shelter",
+                "weather_shelter",
+                "wilderness_hut"
+              ],
+              0,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "adit",
+                  "aerialway",
+                  "airfield",
+                  "airport",
+                  "alcohol_shop",
+                  "alpine_hut",
+                  "american_football",
+                  "amusement_park",
+                  "aquarium",
+                  "archaeological_site",
+                  "art_gallery",
+                  "atm",
+                  "attraction",
+                  "bakery",
+                  "bank",
+                  "bar",
+                  "baseball",
+                  "basketball",
+                  "beach",
+                  "beer",
+                  "bicycle",
+                  "bicycle_rental",
+                  "bird_hide",
+                  "bus",
+                  "butcher",
+                  "cafe",
+                  "campsite",
+                  "car",
+                  "castle",
+                  "cave_entrance",
+                  "cemetery",
+                  "cinema",
+                  "clothing_store",
+                  "college",
+                  "cricket",
+                  "dentist",
+                  "doctors",
+                  "dog_park",
+                  "embassy",
+                  "fast_food",
+                  "ferry",
+                  "fire_station",
+                  "florist",
+                  "fort",
+                  "fountain",
+                  "fuel",
+                  "furniture",
+                  "gift",
+                  "golf",
+                  "grocery",
+                  "hairdresser",
+                  "harbor",
+                  "heliport",
+                  "hospital",
+                  "ice_cream",
+                  "information",
+                  "laundry",
+                  "library",
+                  "lighthouse",
+                  "lodging",
+                  "monument",
+                  "mountain",
+                  "museum",
+                  "music",
+                  "nightclub",
+                  "park",
+                  "parking",
+                  "parking_garage",
+                  "pharmacy",
+                  "pitch",
+                  "place_of_worship",
+                  "playground",
+                  "police",
+                  "post",
+                  "prison",
+                  "railway",
+                  "railway_light",
+                  "railway_metro",
+                  "ranger_station",
+                  "restaurant",
+                  "ruins",
+                  "school",
+                  "shop",
+                  "skiing",
+                  "soccer",
+                  "spring",
+                  "stadium",
+                  "sushi",
+                  "swimming",
+                  "tennis",
+                  "theatre",
+                  "town_hall",
+                  "veterinary",
+                  "volcano",
+                  "water",
+                  "waterfall",
+                  "wetland",
+                  "wilderness_hut",
+                  "windmill",
+                  "zoo"
+                ],
+                0,
+                1
+              ]
+            ]
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_rank10_minzoom"
+      }
+    },
+    {
+      "id": "poi-rank-r5",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "aerialway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airfield"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "airport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bollard"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "border_control"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cairn"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "campsite"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cross"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "cycle_barrier"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "drinking_water"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "ferry"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "guidepost"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "harbor"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "heliport"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lift_gate"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "lighthouse"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "mast"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "power_tower"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "pylon"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_light"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "railway_metro"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "rock"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "sally_port"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "shelter"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "spring"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stile"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "stone"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "toll_booth"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "tree"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wayside_cross"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wayside_shrine"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wilderness_hut"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "wind_turbine"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "kindergarten"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "viewpoint"
+          ]
+        ],
+        [
+          "all",
+          [
+            "<=",
+            [
+              "get",
+              "rank"
+            ],
+            5
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "bar"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "college"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "parking"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "restaurant"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "school"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "class"
+            ],
+            "park"
+          ],
+          [
+            "!=",
+            [
+              "get",
+              "subclass"
+            ],
+            "community_centre"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "coalesce",
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
+              ]
+            ],
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ],
+                "-mono"
+              ]
+            ]
+          ],
+          17,
+          [
+            "coalesce",
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "get",
+                  "subclass"
+                ],
+                "-mono"
+              ]
+            ],
+            [
+              "image",
+              [
+                "concat",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ],
+                "-mono"
+              ]
+            ],
+            [
+              "image",
+              "default-mono"
+            ]
+          ]
+        ],
+        "icon-size": [
+          "*",
+          0.4,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "barrier",
+              "bench",
+              "garden",
+              "picnic_site",
+              "telephone",
+              "toilets",
+              "viewpoint",
+              "waste_basket"
+            ],
+            1.3,
+            1
+          ]
+        ],
+        "text-field": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "case",
+            [
+              "any",
+              [
+                "in",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "literal",
+                  [
+                    "adit",
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "alcohol_shop",
+                    "alpine_hut",
+                    "american_football",
+                    "amusement_park",
+                    "aquarium",
+                    "archaeological_site",
+                    "art_gallery",
+                    "atm",
+                    "attraction",
+                    "bakery",
+                    "bank",
+                    "bar",
+                    "barrier",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "beer",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bird_hide",
+                    "bollard",
+                    "border_control",
+                    "bus",
+                    "butcher",
+                    "cafe",
+                    "cairn",
+                    "campsite",
+                    "car",
+                    "castle",
+                    "cave_entrance",
+                    "cemetery",
+                    "cinema",
+                    "clothing_store",
+                    "college",
+                    "cricket",
+                    "cross",
+                    "cycle_barrier",
+                    "dentist",
+                    "doctors",
+                    "dog_park",
+                    "drinking_water",
+                    "embassy",
+                    "fast_food",
+                    "ferry",
+                    "fire_station",
+                    "florist",
+                    "fort",
+                    "fountain",
+                    "fuel",
+                    "furniture",
+                    "garden",
+                    "gate",
+                    "gift",
+                    "golf",
+                    "grocery",
+                    "guidepost",
+                    "hairdresser",
+                    "harbor",
+                    "heliport",
+                    "hospital",
+                    "ice_cream",
+                    "information",
+                    "laundry",
+                    "library",
+                    "lift_gate",
+                    "lighthouse",
+                    "lodging",
+                    "mast",
+                    "monument",
+                    "mountain",
+                    "museum",
+                    "music",
+                    "nightclub",
+                    "park",
+                    "parking",
+                    "parking_garage",
+                    "pharmacy",
+                    "picnic_site",
+                    "pitch",
+                    "place_of_worship",
+                    "playground",
+                    "police",
+                    "post",
+                    "power_tower",
+                    "prison",
+                    "pylon",
+                    "railway",
+                    "railway_light",
+                    "railway_metro",
+                    "ranger_station",
+                    "restaurant",
+                    "rock",
+                    "ruins",
+                    "sally_port",
+                    "school",
+                    "shelter",
+                    "shop",
+                    "skiing",
+                    "soccer",
+                    "spring",
+                    "stadium",
+                    "stile",
+                    "stone",
+                    "sushi",
+                    "swimming",
+                    "telephone",
+                    "tennis",
+                    "theatre",
+                    "toilets",
+                    "toll_booth",
+                    "town_hall",
+                    "tree",
+                    "veterinary",
+                    "viewpoint",
+                    "volcano",
+                    "waste_basket",
+                    "water",
+                    "waterfall",
+                    "wayside_cross",
+                    "wayside_shrine",
+                    "wetland",
+                    "wilderness_hut",
+                    "wind_turbine",
+                    "windmill",
+                    "zoo"
+                  ]
+                ]
+              ],
+              [
+                "in",
+                [
+                  "get",
+                  "subclass"
+                ],
+                [
+                  "literal",
+                  [
+                    "adit",
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "alcohol_shop",
+                    "alpine_hut",
+                    "american_football",
+                    "amusement_park",
+                    "aquarium",
+                    "archaeological_site",
+                    "art_gallery",
+                    "atm",
+                    "attraction",
+                    "bakery",
+                    "bank",
+                    "bar",
+                    "barrier",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "beer",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bird_hide",
+                    "bollard",
+                    "border_control",
+                    "bus",
+                    "butcher",
+                    "cafe",
+                    "cairn",
+                    "campsite",
+                    "car",
+                    "castle",
+                    "cave_entrance",
+                    "cemetery",
+                    "cinema",
+                    "clothing_store",
+                    "college",
+                    "cricket",
+                    "cross",
+                    "cycle_barrier",
+                    "dentist",
+                    "doctors",
+                    "dog_park",
+                    "drinking_water",
+                    "embassy",
+                    "fast_food",
+                    "ferry",
+                    "fire_station",
+                    "florist",
+                    "fort",
+                    "fountain",
+                    "fuel",
+                    "furniture",
+                    "garden",
+                    "gate",
+                    "gift",
+                    "golf",
+                    "grocery",
+                    "guidepost",
+                    "hairdresser",
+                    "harbor",
+                    "heliport",
+                    "hospital",
+                    "ice_cream",
+                    "information",
+                    "laundry",
+                    "library",
+                    "lift_gate",
+                    "lighthouse",
+                    "lodging",
+                    "mast",
+                    "monument",
+                    "mountain",
+                    "museum",
+                    "music",
+                    "nightclub",
+                    "park",
+                    "parking",
+                    "parking_garage",
+                    "pharmacy",
+                    "picnic_site",
+                    "pitch",
+                    "place_of_worship",
+                    "playground",
+                    "police",
+                    "post",
+                    "power_tower",
+                    "prison",
+                    "pylon",
+                    "railway",
+                    "railway_light",
+                    "railway_metro",
+                    "ranger_station",
+                    "restaurant",
+                    "rock",
+                    "ruins",
+                    "sally_port",
+                    "school",
+                    "shelter",
+                    "shop",
+                    "skiing",
+                    "soccer",
+                    "spring",
+                    "stadium",
+                    "stile",
+                    "stone",
+                    "sushi",
+                    "swimming",
+                    "telephone",
+                    "tennis",
+                    "theatre",
+                    "toilets",
+                    "toll_booth",
+                    "town_hall",
+                    "tree",
+                    "veterinary",
+                    "viewpoint",
+                    "volcano",
+                    "waste_basket",
+                    "water",
+                    "waterfall",
+                    "wayside_cross",
+                    "wayside_shrine",
+                    "wetland",
+                    "wilderness_hut",
+                    "wind_turbine",
+                    "windmill",
+                    "zoo"
+                  ]
+                ]
+              ]
+            ],
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              [
+                "get",
+                "name_int"
+              ]
+            ],
+            ""
+          ],
+          17,
+          [
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "*",
+          12,
+          0.9
+        ],
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color",
+          "icon-halo-width"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "step",
+            [
+              "zoom"
+            ],
+            [
+              "coalesce",
+              [
+                "image",
+                [
+                  "get",
+                  "subclass"
+                ],
+                {
+                  "params": {
+                    "background": [
+                      "match",
+                      [
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "allotments",
+                        "artwork",
+                        "biergarten",
+                        "convenience",
+                        "deli",
+                        "food_court",
+                        "gallery",
+                        "greengrocer",
+                        "kindergarten",
+                        "nature_reserve",
+                        "picnic_table",
+                        "pub",
+                        "supermarket",
+                        "theme_park"
+                      ],
+                      "hsl(0, 0%, 100%)",
+                      "viewpoint",
+                      "transparent",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "shelter_type"
+                        ],
+                        [
+                          "basic_hut",
+                          "lean_to",
+                          "picnic_shelter",
+                          "rock_shelter",
+                          "weather_shelter",
+                          "wilderness_hut"
+                        ],
+                        "hsl(0, 0%, 100%)",
+                        [
+                          "match",
+                          [
+                            "get",
+                            "class"
+                          ],
+                          [
+                            "adit",
+                            "aerialway",
+                            "airfield",
+                            "airport",
+                            "alcohol_shop",
+                            "alpine_hut",
+                            "american_football",
+                            "amusement_park",
+                            "aquarium",
+                            "archaeological_site",
+                            "art_gallery",
+                            "atm",
+                            "attraction",
+                            "bakery",
+                            "bank",
+                            "bar",
+                            "baseball",
+                            "basketball",
+                            "beach",
+                            "beer",
+                            "bicycle",
+                            "bicycle_rental",
+                            "bird_hide",
+                            "bus",
+                            "butcher",
+                            "cafe",
+                            "campsite",
+                            "car",
+                            "castle",
+                            "cave_entrance",
+                            "cemetery",
+                            "cinema",
+                            "clothing_store",
+                            "college",
+                            "cricket",
+                            "dentist",
+                            "doctors",
+                            "dog_park",
+                            "embassy",
+                            "fast_food",
+                            "ferry",
+                            "fire_station",
+                            "florist",
+                            "fort",
+                            "fountain",
+                            "fuel",
+                            "furniture",
+                            "gift",
+                            "golf",
+                            "grocery",
+                            "hairdresser",
+                            "harbor",
+                            "heliport",
+                            "hospital",
+                            "ice_cream",
+                            "information",
+                            "laundry",
+                            "library",
+                            "lighthouse",
+                            "lodging",
+                            "monument",
+                            "mountain",
+                            "museum",
+                            "music",
+                            "nightclub",
+                            "park",
+                            "parking",
+                            "parking_garage",
+                            "pharmacy",
+                            "pitch",
+                            "place_of_worship",
+                            "playground",
+                            "police",
+                            "post",
+                            "prison",
+                            "railway",
+                            "railway_light",
+                            "railway_metro",
+                            "ranger_station",
+                            "restaurant",
+                            "ruins",
+                            "school",
+                            "shop",
+                            "skiing",
+                            "soccer",
+                            "spring",
+                            "stadium",
+                            "sushi",
+                            "swimming",
+                            "tennis",
+                            "theatre",
+                            "town_hall",
+                            "veterinary",
+                            "volcano",
+                            "water",
+                            "waterfall",
+                            "wetland",
+                            "wilderness_hut",
+                            "windmill",
+                            "zoo"
+                          ],
+                          "hsl(0, 0%, 100%)",
+                          "transparent"
+                        ]
+                      ]
+                    ],
+                    "background-stroke": [
+                      "match",
+                      [
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "allotments",
+                        "artwork",
+                        "biergarten",
+                        "convenience",
+                        "deli",
+                        "food_court",
+                        "gallery",
+                        "greengrocer",
+                        "kindergarten",
+                        "nature_reserve",
+                        "picnic_table",
+                        "pub",
+                        "supermarket",
+                        "theme_park"
+                      ],
+                      "hsl(0, 0%, 0%)",
+                      "viewpoint",
+                      "transparent",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "shelter_type"
+                        ],
+                        [
+                          "basic_hut",
+                          "lean_to",
+                          "picnic_shelter",
+                          "rock_shelter",
+                          "weather_shelter",
+                          "wilderness_hut"
+                        ],
+                        "hsl(0, 0%, 0%)",
+                        [
+                          "match",
+                          [
+                            "get",
+                            "class"
+                          ],
+                          [
+                            "adit",
+                            "aerialway",
+                            "airfield",
+                            "airport",
+                            "alcohol_shop",
+                            "alpine_hut",
+                            "american_football",
+                            "amusement_park",
+                            "aquarium",
+                            "archaeological_site",
+                            "art_gallery",
+                            "atm",
+                            "attraction",
+                            "bakery",
+                            "bank",
+                            "bar",
+                            "baseball",
+                            "basketball",
+                            "beach",
+                            "beer",
+                            "bicycle",
+                            "bicycle_rental",
+                            "bird_hide",
+                            "bus",
+                            "butcher",
+                            "cafe",
+                            "campsite",
+                            "car",
+                            "castle",
+                            "cave_entrance",
+                            "cemetery",
+                            "cinema",
+                            "clothing_store",
+                            "college",
+                            "cricket",
+                            "dentist",
+                            "doctors",
+                            "dog_park",
+                            "embassy",
+                            "fast_food",
+                            "ferry",
+                            "fire_station",
+                            "florist",
+                            "fort",
+                            "fountain",
+                            "fuel",
+                            "furniture",
+                            "gift",
+                            "golf",
+                            "grocery",
+                            "hairdresser",
+                            "harbor",
+                            "heliport",
+                            "hospital",
+                            "ice_cream",
+                            "information",
+                            "laundry",
+                            "library",
+                            "lighthouse",
+                            "lodging",
+                            "monument",
+                            "mountain",
+                            "museum",
+                            "music",
+                            "nightclub",
+                            "park",
+                            "parking",
+                            "parking_garage",
+                            "pharmacy",
+                            "pitch",
+                            "place_of_worship",
+                            "playground",
+                            "police",
+                            "post",
+                            "prison",
+                            "railway",
+                            "railway_light",
+                            "railway_metro",
+                            "ranger_station",
+                            "restaurant",
+                            "ruins",
+                            "school",
+                            "shop",
+                            "skiing",
+                            "soccer",
+                            "spring",
+                            "stadium",
+                            "sushi",
+                            "swimming",
+                            "tennis",
+                            "theatre",
+                            "town_hall",
+                            "veterinary",
+                            "volcano",
+                            "water",
+                            "waterfall",
+                            "wetland",
+                            "wilderness_hut",
+                            "windmill",
+                            "zoo"
+                          ],
+                          "hsl(0, 0%, 0%)",
+                          "transparent"
+                        ]
+                      ]
+                    ],
+                    "icon": "hsl(0, 0%, 0%)",
+                    "radius": [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      "airfield",
+                      8,
+                      "airport",
+                      8,
+                      "heliport",
+                      8,
+                      "railway",
+                      5,
+                      "railway_light",
+                      11,
+                      21
+                    ],
+                    "background-stroke-width": [
+                      "match",
+                      [
+                        "get",
+                        "class"
+                      ],
+                      "airfield",
+                      1.75,
+                      "airport",
+                      1.75,
+                      "heliport",
+                      1.75,
+                      "railway",
+                      1.5,
+                      "railway_light",
+                      2,
+                      3
+                    ]
+                  }
+                }
+              ],
+              [
+                "image",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ]
+              ]
+            ],
+            17,
+            [
+              "coalesce",
+              [
+                "image",
+                [
+                  "get",
+                  "subclass"
+                ]
+              ],
+              [
+                "image",
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "border_control",
+                    "sally_port"
+                  ],
+                  "barrier",
+                  "spring",
+                  "water",
+                  [
+                    "get",
+                    "class"
+                  ]
+                ]
+              ],
+              [
+                "image",
+                "default"
+              ]
+            ]
+          ],
+          "text-field": [
+            "step",
+            [
+              "zoom"
+            ],
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "glyph"
+                    ]
+                  ],
+                  [
+                    "get",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    [
+                      "config",
+                      "glyph"
+                    ]
+                  ],
+                  ""
+                ],
+                ""
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  "name"
+                ],
+                [
+                  "get",
+                  "name_int"
+                ]
+              ],
+              ""
+            ],
+            17,
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              [
+                "get",
+                "name_int"
+              ]
+            ]
+          ],
+          "icon-size": [
+            "*",
+            0.4,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "barrier",
+                "bench",
+                "garden",
+                "picnic_site",
+                "telephone",
+                "toilets",
+                "viewpoint",
+                "waste_basket"
+              ],
+              [
+                "config",
+                "bare_icon_scale"
+              ],
+              1
+            ]
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-width": [
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "allotments",
+              "artwork",
+              "biergarten",
+              "convenience",
+              "deli",
+              "food_court",
+              "gallery",
+              "greengrocer",
+              "kindergarten",
+              "nature_reserve",
+              "picnic_table",
+              "pub",
+              "supermarket",
+              "theme_park"
+            ],
+            0,
+            "viewpoint",
+            1,
+            [
+              "match",
+              [
+                "get",
+                "shelter_type"
+              ],
+              [
+                "basic_hut",
+                "lean_to",
+                "picnic_shelter",
+                "rock_shelter",
+                "weather_shelter",
+                "wilderness_hut"
+              ],
+              0,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "adit",
+                  "aerialway",
+                  "airfield",
+                  "airport",
+                  "alcohol_shop",
+                  "alpine_hut",
+                  "american_football",
+                  "amusement_park",
+                  "aquarium",
+                  "archaeological_site",
+                  "art_gallery",
+                  "atm",
+                  "attraction",
+                  "bakery",
+                  "bank",
+                  "bar",
+                  "baseball",
+                  "basketball",
+                  "beach",
+                  "beer",
+                  "bicycle",
+                  "bicycle_rental",
+                  "bird_hide",
+                  "bus",
+                  "butcher",
+                  "cafe",
+                  "campsite",
+                  "car",
+                  "castle",
+                  "cave_entrance",
+                  "cemetery",
+                  "cinema",
+                  "clothing_store",
+                  "college",
+                  "cricket",
+                  "dentist",
+                  "doctors",
+                  "dog_park",
+                  "embassy",
+                  "fast_food",
+                  "ferry",
+                  "fire_station",
+                  "florist",
+                  "fort",
+                  "fountain",
+                  "fuel",
+                  "furniture",
+                  "gift",
+                  "golf",
+                  "grocery",
+                  "hairdresser",
+                  "harbor",
+                  "heliport",
+                  "hospital",
+                  "ice_cream",
+                  "information",
+                  "laundry",
+                  "library",
+                  "lighthouse",
+                  "lodging",
+                  "monument",
+                  "mountain",
+                  "museum",
+                  "music",
+                  "nightclub",
+                  "park",
+                  "parking",
+                  "parking_garage",
+                  "pharmacy",
+                  "pitch",
+                  "place_of_worship",
+                  "playground",
+                  "police",
+                  "post",
+                  "prison",
+                  "railway",
+                  "railway_light",
+                  "railway_metro",
+                  "ranger_station",
+                  "restaurant",
+                  "ruins",
+                  "school",
+                  "shop",
+                  "skiing",
+                  "soccer",
+                  "spring",
+                  "stadium",
+                  "sushi",
+                  "swimming",
+                  "tennis",
+                  "theatre",
+                  "town_hall",
+                  "veterinary",
+                  "volcano",
+                  "water",
+                  "waterfall",
+                  "wetland",
+                  "wilderness_hut",
+                  "windmill",
+                  "zoo"
+                ],
+                0,
+                1
+              ]
+            ]
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        },
+        "massif:minzoom-const": "poi_rank5_minzoom"
       }
     },
     {
@@ -59142,6 +64771,27 @@
       "values": [
         0,
         1
+      ]
+    },
+    "path_osm": {
+      "default": 0,
+      "values": [
+        0,
+        1
+      ]
+    },
+    "mtb_markings": {
+      "default": 1,
+      "values": [
+        0,
+        1
+      ]
+    },
+    "poi_label_color": {
+      "default": "category",
+      "values": [
+        "category",
+        "neutral"
       ]
     },
     "track_min_zoom": {

@@ -587,6 +587,9 @@ namespace massif {
                 std::shared_ptr<CullState> lastCullState = layer->getLastCullState();
                 if (layer->isVisible() && lastCullState && layer->getVisibleZoomRange().inRange(lastCullState->getViewState().getZoom())) {
                     cullState = lastCullState;
+                } else {
+                    // Same lock as the check: a setVisible(true) task finishing in between would be emptied.
+                    billboardsChanged = layer->refreshRendererElements();
                 }
             }
             if (cullState) {
@@ -596,9 +599,6 @@ namespace massif {
                 catch (const std::exception& ex) {
                     Log::Errorf("VectorLayer::FetchTask: Exception while loading elements: %s", ex.what());
                 }
-            } else {
-                std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
-                billboardsChanged = layer->refreshRendererElements();
             }
 
             layer->_fetchingTasks.remove(std::static_pointer_cast<FetchTask>(shared_from_this()));
@@ -646,8 +646,11 @@ namespace massif {
         const ViewState& viewState = cullState->getViewState();
 
         std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
-        for (const std::shared_ptr<VectorElement>& element : vectorData->getElements()) {
-            layer->addRendererElement(element, viewState);
+        // setVisible(false) may have emptied the renderers while the source was loading.
+        if (layer->isVisible()) {
+            for (const std::shared_ptr<VectorElement>& element : vectorData->getElements()) {
+                layer->addRendererElement(element, viewState);
+            }
         }
         return layer->refreshRendererElements();
     }

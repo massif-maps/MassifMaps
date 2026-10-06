@@ -10,12 +10,12 @@
 
 namespace massif {
 
-    TerrainProjectionSurface::TerrainProjectionSurface(const std::shared_ptr<ProjectionSurface>& base, const std::shared_ptr<ElevationProvider>& elevationManager) :
+    TerrainProjectionSurface::TerrainProjectionSurface(const std::shared_ptr<ProjectionSurface>& base, const std::shared_ptr<ElevationProvider>& elevationManager, double liftScale) :
         _base(base),
         _elevationManager(elevationManager),
         _elevationVersion(elevationManager->getVersion()),
         _splitThreshold(CalculateSplitThreshold(elevationManager)),
-        _heightLift(CalculateSplitThreshold(elevationManager) * 0.2)
+        _heightLift(CalculateSplitThreshold(elevationManager) * 0.2 * std::max(0.0, liftScale))
     {
     }
 

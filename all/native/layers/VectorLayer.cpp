@@ -43,6 +43,16 @@
 
 #include <vector>
 
+namespace {
+
+    // Markers, labels and popups draw without a depth test: a lift does not save them from the mesh,
+    // it only floats them. A 3D model is depth-tested and keeps it.
+    bool IsFlatBillboard(const std::shared_ptr<massif::VectorElement>& element) {
+        return std::dynamic_pointer_cast<massif::Billboard>(element) && !std::dynamic_pointer_cast<massif::NMLModel>(element);
+    }
+
+}
+
 namespace massif {
 
     VectorLayer::VectorLayer(const std::shared_ptr<VectorDataSource>& dataSource) :
@@ -294,7 +304,7 @@ namespace massif {
             return;
         }
 
-        std::shared_ptr<ProjectionSurface> projectionSurface = getElementProjectionSurface(viewState.getProjectionSurface());
+        std::shared_ptr<ProjectionSurface> projectionSurface = getElementProjectionSurface(viewState.getProjectionSurface(), IsFlatBillboard(element));
         if (!projectionSurface) {
             return;
         }
@@ -365,7 +375,7 @@ namespace massif {
         return billboardsChanged;
     }
     
-    std::shared_ptr<ProjectionSurface> VectorLayer::getElementProjectionSurface(const std::shared_ptr<ProjectionSurface>& baseProjectionSurface) const {
+    std::shared_ptr<ProjectionSurface> VectorLayer::getElementProjectionSurface(const std::shared_ptr<ProjectionSurface>& baseProjectionSurface, bool billboard) const {
         std::shared_ptr<Options> options = getOptions();
         if (!options || !baseProjectionSurface) {
             return baseProjectionSurface;
@@ -378,19 +388,22 @@ namespace massif {
         // Elements are placed on the displaced terrain surface. A new surface instance is
         // created when the elevation data changes; the projection-surface identity checks
         // then trigger a rebuild of the element draw data.
+        // The drape lift keeps geometry clear of a concave mesh, a gap that grows with the exaggeration and is
+        // gone on flattened terrain; an exaggeration change bumps the version, so the lift follows the ramp.
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (!_terrainProjectionSurface || _terrainProjectionSurface->getBase() != baseProjectionSurface || _terrainProjectionSurface->getElevationManager() != elevationManager || _terrainProjectionSurface->getElevationVersion() != elevationManager->getVersion()) {
-            _terrainProjectionSurface = std::make_shared<TerrainProjectionSurface>(baseProjectionSurface, elevationManager);
+        std::shared_ptr<TerrainProjectionSurface>& surface = billboard ? _terrainBillboardSurface : _terrainProjectionSurface;
+        if (!surface || surface->getBase() != baseProjectionSurface || surface->getElevationManager() != elevationManager || surface->getElevationVersion() != elevationManager->getVersion()) {
+            surface = std::make_shared<TerrainProjectionSurface>(baseProjectionSurface, elevationManager, billboard ? 0.0 : elevationManager->getExaggeration());
         }
-        return _terrainProjectionSurface;
+        return surface;
     }
 
     bool VectorLayer::syncRendererElement(const std::shared_ptr<VectorElement>& element, const ViewState& viewState, bool remove) {
         bool visible = element->isVisible() && isVisible() && getVisibleZoomRange().inRange(viewState.getZoom());
         bool billboardsChanged = false;
 
-        std::shared_ptr<ProjectionSurface> projectionSurface = getElementProjectionSurface(viewState.getProjectionSurface());
+        std::shared_ptr<ProjectionSurface> projectionSurface = getElementProjectionSurface(viewState.getProjectionSurface(), IsFlatBillboard(element));
         if (!projectionSurface) {
             return false;
         }

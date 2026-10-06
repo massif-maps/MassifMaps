@@ -181,7 +181,7 @@ namespace massif {
         virtual bool refreshRendererElements();
         virtual bool syncRendererElement(const std::shared_ptr<VectorElement>& element, const ViewState& viewState, bool remove);
 
-        std::shared_ptr<ProjectionSurface> getElementProjectionSurface(const std::shared_ptr<ProjectionSurface>& baseProjectionSurface) const;
+        std::shared_ptr<ProjectionSurface> getElementProjectionSurface(const std::shared_ptr<ProjectionSurface>& baseProjectionSurface, bool billboard = false) const;
         
         virtual void registerDataSourceListener();
         virtual void unregisterDataSourceListener();
@@ -194,6 +194,7 @@ namespace massif {
         FetchingTasks _fetchingTasks;
 
         mutable std::shared_ptr<TerrainProjectionSurface> _terrainProjectionSurface;
+        mutable std::shared_ptr<TerrainProjectionSurface> _terrainBillboardSurface;
 
     private:
         ThreadSafeDirectorPtr<VectorElementEventListener> _vectorElementEventListener;

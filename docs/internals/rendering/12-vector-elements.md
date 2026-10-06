@@ -65,6 +65,14 @@ Their clip-space slack is **not** scaled with `MeshResolution` the way tile cont
 element's chord error follows its own tesselation, not the terrain mesh's — scaling it over-clipped
 lines on shoulders when it was tried.
 
+They are also **lifted** a fifth of a DEM texel (`TerrainProjectionSurface`'s `_heightLift`, up to
+~8 m on a z12 DEM) to stay clear of a concave mesh. The lift is scaled by the current exaggeration,
+so on flattened terrain - the app's "2D", terrain still enabled - it is 0, and the flatten ramp's
+version bumps carry it along. Billboards (markers, labels, popups) get **no** lift: they draw without
+a depth test, so it could only float them - a marker sat metres above a flattened map. Their
+occlusion already gives a terrain anchor `MIN_OCCLUSION_TOLERANCE` of slack. 3D models are
+depth-tested and keep it.
+
 If a vector line disappears into the terrain or shows through it, read
 [05-depth-model.md](05-depth-model.md) before touching any constant here.
 

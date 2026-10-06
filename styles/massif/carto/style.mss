@@ -4669,7 +4669,7 @@ Map {
   shield-allow-overlap: true;
   @extend %poi;
 }
-#mountain_peak[zoom >= 13][class != 'cliff'][name != null][rank > 3]['param::trails' = 1]::peak_outdoor_minor {
+#mountain_peak[zoom >= 0][class != 'cliff'][name != null][rank > 3]['param::trails' = 1]::peak_outdoor_minor {
   shield-placement: 'billboard';
   shield-name: ((('' + (([ele]) ?? (''))) = '') ? (([name]) ?? ([name_int])) : concat(concat(concat((([name]) ?? ([name_int])), '
 '), ('' + [ele])), ' m'));
@@ -4687,13 +4687,13 @@ Map {
   shield-placement-priority: (26500000 + ((get([param::poi-boost], [class])) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
-  shield-file: (get([param::peak-outdoor-minor-t0], [class]) ?? 'icons/peak.png');
+  shield-file: (((([param::variant] = 'eink')) ? get([param::peak-outdoor-minor-t1], [class]) ?? 'icons/peak-mono.png' : get([param::peak-outdoor-minor-t0], [class]) ?? 'icons/peak-brown.png'));
   shield-unlock-image: true;
-  shield-image-scale: ((0.8) / 2.0);
+  shield-image-scale: ((linear([view::zoom], (8, 0.6), (11, 0.8), (13, 1.2), (16, 1.4))) / 2.0);
   shield-text-optional: true;
   shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
-#mountain_peak[zoom >= 9][class != 'cliff'][name != null][rank <= 3]['param::trails' = 1]::peak_outdoor {
+#mountain_peak[zoom >= 0][class != 'cliff'][name != null][rank <= 3]['param::trails' = 1]::peak_outdoor {
   shield-placement: 'billboard';
   shield-name: ((('' + (([ele]) ?? (''))) = '') ? (([name]) ?? ([name_int])) : concat(concat(concat((([name]) ?? ([name_int])), '
 '), ('' + [ele])), ' m'));
@@ -4711,9 +4711,9 @@ Map {
   shield-placement-priority: (26600000 + ((get([param::poi-boost], [class])) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
-  shield-file: (get([param::peak-outdoor-t0], [class]) ?? 'icons/peak.png');
+  shield-file: (((([param::variant] = 'eink')) ? get([param::peak-outdoor-t1], [class]) ?? 'icons/peak-mono.png' : get([param::peak-outdoor-t0], [class]) ?? 'icons/peak-brown.png'));
   shield-unlock-image: true;
-  shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
+  shield-image-scale: ((linear([view::zoom], (8, 0.6), (11, 0.8), (13, 1.2), (16, 1.4))) / 2.0);
   shield-text-optional: true;
   shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
@@ -4735,9 +4735,9 @@ Map {
   shield-placement-priority: (26700000 + ((get([param::poi-boost], [class])) ?? (0)));
   shield-collision-padding: 2;
   shield-wrap-before: true;
-  shield-file: (get([param::peak-t0], [class]) ?? 'icons/peak.png');
+  shield-file: (get([param::peak-t0], [class]) ?? 'icons/peak-brown.png');
   shield-unlock-image: true;
-  shield-image-scale: ((linear([view::zoom], (11, 0.7), (15, 1))) / 2.0);
+  shield-image-scale: ((linear([view::zoom], (8, 0.6), (11, 0.8), (13, 1.2), (16, 1.4))) / 2.0);
   shield-text-optional: true;
   shield-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }

@@ -120149,8 +120149,8 @@
             "class"
           ],
           "saddle",
-          "saddle",
-          "peak"
+          "saddle-brown",
+          "peak-brown"
         ],
         "icon-size": [
           "interpolate",
@@ -120160,10 +120160,14 @@
           [
             "zoom"
           ],
+          8,
+          0.6,
           11,
-          0.7,
-          15,
-          1
+          0.8,
+          13,
+          1.2,
+          16,
+          1.4
         ],
         "text-field": [
           "case",

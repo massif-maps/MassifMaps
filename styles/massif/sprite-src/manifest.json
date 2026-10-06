@@ -9,6 +9,8 @@
     "shield-us-highway-3":    { "content": [3, 5, 23, 14.5] }
   },
   "variants": {
+    "peak":           { "brown": { "FILL": "#8a6e55" }, "mono": { "FILL": "#000000" } },
+    "saddle":         { "brown": { "FILL": "#8a6e55" }, "mono": { "FILL": "#000000" } },
     "oneway":         { "ink": { "STROKE": "#3c4250", "HALO": "#ffffff" }, "dark": { "STROKE": "#1a1a1a", "HALO": "#ffffff" } },
     "oneway-reverse": { "ink": { "STROKE": "#3c4250", "HALO": "#ffffff" }, "dark": { "STROKE": "#1a1a1a", "HALO": "#ffffff" } },
     "shield-plate": {

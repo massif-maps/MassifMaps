@@ -294,8 +294,10 @@
         "oneway-reverse-dark": "icons-glyph/oneway-reverse-dark.png",
         "oneway-ink": "icons-glyph/oneway-ink.png",
         "oneway-dark": "icons-glyph/oneway-dark.png",
-        "peak": "icons-glyph/peak.png",
-        "saddle": "icons-glyph/saddle.png",
+        "peak-brown": "icons-glyph/peak-brown.png",
+        "peak-mono": "icons-glyph/peak-mono.png",
+        "saddle-brown": "icons-glyph/saddle-brown.png",
+        "saddle-mono": "icons-glyph/saddle-mono.png",
         "pattern-cemetery": "icons-glyph/pattern-cemetery.png",
         "pattern-glacier": "icons-glyph/pattern-glacier.png",
         "pattern-grass": "icons-glyph/pattern-grass.png",
@@ -722,17 +724,27 @@
     "path_osm": 0,
     "peak-outdoor-minor-t0": {
       "default": {
-        "saddle": "icons/saddle.png"
+        "saddle": "icons/saddle-brown.png"
+      }
+    },
+    "peak-outdoor-minor-t1": {
+      "default": {
+        "saddle": "icons/saddle-mono.png"
       }
     },
     "peak-outdoor-t0": {
       "default": {
-        "saddle": "icons/saddle.png"
+        "saddle": "icons/saddle-brown.png"
+      }
+    },
+    "peak-outdoor-t1": {
+      "default": {
+        "saddle": "icons/saddle-mono.png"
       }
     },
     "peak-t0": {
       "default": {
-        "saddle": "icons/saddle.png"
+        "saddle": "icons/saddle-brown.png"
       }
     },
     "place-city-dot-t0": {

@@ -126,9 +126,11 @@ deeper woods (`OUTDOOR` in the palette):
   hybrid draw them too.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
-- **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
-  before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
-  A saddle has its own glyph (`saddle`); a summit with no `ele` is named without a height.
+- **Peaks from the tiles' first zoom** (with `trails`; z11 otherwise), the three most prominent per
+  tile first. A summit, saddle or volcano is placed before every POI and road or trail name, after
+  the place names, as MapTiler outdoor orders them. A saddle has its own glyph (`saddle`); a summit
+  with no `ele` is named without a height. The glyph is small from afar, a POI's weight by z13, and
+  black on e-ink (`peak-mono`, a sprite variant).
 - **A walker's POIs early**, in every variant: huts and bivouacs from z11; shelters
   a walker uses (`shelter_type` basic_hut, lean_to, rock_shelter, weather_shelter, wilderness_hut: a
   badge on nature's green at a POI's size, named), campsites (a smaller glyph until z13, named from z13) and picnic sites from z13 (a picnic

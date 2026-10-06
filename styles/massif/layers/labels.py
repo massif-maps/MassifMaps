@@ -4,7 +4,14 @@ NAME = ['coalesce', get('name'), get('name_int')]
 # a summit's name over its height, the name alone where the tiles carry no height
 PEAK_TEXT = ['case', ['==', ['to-string', ['coalesce', get('ele'), '']], ''], NAME,
              ['concat', NAME, '\n', ['to-string', get('ele')], ' m']]
-PEAK_ICON = ['match', get('class'), 'saddle', 'saddle', 'peak']
+# small from afar, a POI's weight by z13 (an app's z14 on 256-px tiles)
+PEAK_SIZE = zoom_ramp(8, 0.6, 11, 0.8, 13, 1.2, 16, 1.4)
+
+
+def peak_icon(c):
+    """brown, black on e-ink (`peak-icon`): a sprite variant, as the oneway arrow's"""
+    suffix = '-' + c.get('peak-icon', 'brown')
+    return ['match', get('class'), 'saddle', 'saddle' + suffix, 'peak' + suffix]
 REGULAR, MEDIUM, BOLD, ITALIC = 'regular', 'medium', 'bold', 'italic'
 
 
@@ -80,19 +87,19 @@ def peaks(v):
     c = v.palette
     outdoor = v.flags.get('trails', False)
     return ([
-        boosted(layer('peak-outdoor-minor', 'symbol', 'mountain_peak', minzoom=13,
+        boosted(layer('peak-outdoor-minor', 'symbol', 'mountain_peak', minzoom=0,
               filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['>', get('rank'), 3]],
-              layout={'icon-image': PEAK_ICON, 'icon-size': 0.8, 'text-field': PEAK_TEXT,
+              layout={'icon-image': peak_icon(c), 'icon-size': PEAK_SIZE, 'text-field': PEAK_TEXT,
                       'text-font': MEDIUM, 'text-size': 11, 'text-anchor': 'top', 'text-offset': [0, 0.5],
                       'text-max-width': 8, 'text-optional': True},
               **text(c, 'label-natural')), 'class'),
     ] if outdoor else []) + [
         # Medium, Standard's natural labels': a regular weight on a white halo was lost over shaded relief
-        # outdoor brings the summits in from 9
-        boosted(layer('peak-outdoor' if outdoor else 'peak', 'symbol', 'mountain_peak', minzoom=9 if outdoor else 11,
+        # outdoor draws a summit from the tiles' first zoom
+        boosted(layer('peak-outdoor' if outdoor else 'peak', 'symbol', 'mountain_peak', minzoom=0 if outdoor else 11,
               filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name']] if not outdoor else
               ['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['<=', get('rank'), 3]],
-              layout={'icon-image': PEAK_ICON, 'icon-size': zoom_ramp(11, 0.7, 15, 1), 'text-field': PEAK_TEXT,
+              layout={'icon-image': peak_icon(c), 'icon-size': PEAK_SIZE, 'text-field': PEAK_TEXT,
                       'text-font': MEDIUM, 'text-size': zoom_ramp(11, 10, 16, 12),
                       'text-anchor': 'top', 'text-offset': [0, 0.5], 'text-max-width': 8,
                       'text-optional': True},

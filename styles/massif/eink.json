@@ -62764,7 +62764,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "mountain_peak",
-      "minzoom": 13,
+      "minzoom": 0,
       "filter": [
         "all",
         [
@@ -62796,10 +62796,26 @@
             "class"
           ],
           "saddle",
-          "saddle",
-          "peak"
+          "saddle-mono",
+          "peak-mono"
         ],
-        "icon-size": 0.8,
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.6,
+          11,
+          0.8,
+          13,
+          1.2,
+          16,
+          1.4
+        ],
         "text-field": [
           "case",
           [
@@ -62970,7 +62986,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "mountain_peak",
-      "minzoom": 9,
+      "minzoom": 0,
       "filter": [
         "all",
         [
@@ -63002,8 +63018,8 @@
             "class"
           ],
           "saddle",
-          "saddle",
-          "peak"
+          "saddle-mono",
+          "peak-mono"
         ],
         "icon-size": [
           "interpolate",
@@ -63013,10 +63029,14 @@
           [
             "zoom"
           ],
+          8,
+          0.6,
           11,
-          0.7,
-          15,
-          1
+          0.8,
+          13,
+          1.2,
+          16,
+          1.4
         ],
         "text-field": [
           "case",

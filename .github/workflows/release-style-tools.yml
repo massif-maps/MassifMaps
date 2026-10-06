@@ -115,6 +115,10 @@ jobs:
             ../../libs-massif/cartocss/util/fixtures/roundtrip/project.json \
             /tmp/roundtrip.xml
           test -s /tmp/roundtrip.xml
+          node dist/cli.js css2xml \
+            ../../libs-massif/cartocss/util/fixtures/undefined-variable/project.json \
+            /tmp/undefined-variable.xml
+          test -s /tmp/undefined-variable.xml
           node dist/cli.js mapbox2css test/fixtures/style.json /tmp/mapbox2css --validate
 
       # The patch after npm's `latest`, as a prerelease: above every release so far, below the next one

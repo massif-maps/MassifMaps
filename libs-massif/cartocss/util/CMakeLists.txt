@@ -29,6 +29,10 @@ endif()
 if(EMSCRIPTEN)
   add_compile_options(-Oz)
   add_link_options(-Oz)
+  # the translator throws and catches on a bad property (an undefined @variable): emcc's default
+  # aborts on any throw, which took down every style the native css2xml compiles with an error logged
+  add_compile_options(-fexceptions)
+  add_link_options(-fexceptions)
 elseif(NOT MSVC AND NOT NO_SIZE_FLAGS)
   add_compile_options(-ffunction-sections -fdata-sections)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

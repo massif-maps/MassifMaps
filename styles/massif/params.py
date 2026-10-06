@@ -29,7 +29,7 @@ PARAMS = {
     'trails': {'default': 0, 'values': SWITCH},
     'road_osm_low': {'default': 0, 'values': SWITCH},
     'path_osm': {'default': 0, 'values': SWITCH},
-    'mtb_markings': {'default': 1, 'values': SWITCH},
+    'mtb_markings': {'default': 0, 'values': SWITCH},
     # a string: the converter folds a match on a config into tables only on string labels
     'poi_label_color': {'default': 'category', 'values': ['category', 'neutral']},
     'track_min_zoom': {'default': 12},

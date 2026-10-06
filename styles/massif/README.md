@@ -286,7 +286,7 @@ Switches (0/1):
 - `path_osm` (0) — footways (and, with `trails`, a paved path no harder than T1) drawn as OSM
   Carto's: salmon dashes on a translucent white casing, where Massif draws a white ribbon or a T1
   trail. The osm example sets it.
-- `mtb_markings` (1) — the MTB difficulty line beside a path (with `trails`).
+- `mtb_markings` (0) — the MTB difficulty line beside a path (with `trails`).
 - `trails` (0; 1 on outdoor, topo, e-ink) — outdoor's paths by difficulty, MTB and SAC detail
   instead of streets' plain paths; the layers are gated on it rather than on the variant's name, so a
   child keeping streets' look (`examples/osm`) takes them with `trails: 1`.

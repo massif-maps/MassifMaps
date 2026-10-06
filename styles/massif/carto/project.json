@@ -719,7 +719,7 @@
     "hillshade_max_zoom": 16,
     "label_occlusion": 1,
     "lighting": 1,
-    "mtb_markings": 1,
+    "mtb_markings": 0,
     "path_min_zoom": 12,
     "path_osm": 0,
     "peak-outdoor-minor-t0": {

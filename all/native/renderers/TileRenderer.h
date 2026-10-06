@@ -254,6 +254,7 @@ namespace massif {
         Color _normalMapContourColor;
         float _normalMapContourWidth = 0.75f; // contour half-width in screen pixels
         std::optional<std::regex> _rendererLayerFilter;
+        std::weak_ptr<vt::GLTileRenderer> _rendererLayerFilterTarget;
         std::optional<std::regex> _clickHandlerLayerFilter;
 
         double _horizontalLayerOffset;

@@ -238,6 +238,7 @@ namespace massif {
     void TileRenderer::setRendererLayerFilter(const std::optional<std::regex>& filter) {
         std::lock_guard<std::mutex> lock(_mutex);
         _rendererLayerFilter = filter;
+        _rendererLayerFilterTarget.reset();
     }
 
     void TileRenderer::setClickHandlerLayerFilter(const std::optional<std::regex>& filter) {
@@ -846,7 +847,11 @@ namespace massif {
         tileRenderer->setRasterFilterMode(_rasterFilterMode);
         tileRenderer->setLayerBlendingSpeed(_layerBlendingSpeed);
         tileRenderer->setLabelBlendingSpeed(_labelBlendingSpeed);
-        tileRenderer->setRendererLayerFilter(_rendererLayerFilter);
+        // Pushing the filter resets the label maps' skip guard, so only a new filter or renderer gets it.
+        if (_rendererLayerFilterTarget.lock() != tileRenderer) {
+            tileRenderer->setRendererLayerFilter(_rendererLayerFilter);
+            _rendererLayerFilterTarget = tileRenderer;
+        }
 
         // Surface rebuilds on elevation changes are debounced: the initial load changes it almost every frame.
         bool terrainMode = false;

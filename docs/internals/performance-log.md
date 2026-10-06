@@ -2517,3 +2517,19 @@ tiles at z15/z16, Release, best of 3 decodes, median of 9 interleaved rounds).
 Every tile and label of the five variants is identical (`content` plus a label hash over priority,
 colours, plates and glyph pixels), and a boost moves the same labels in both shapes. The per-frame
 style functions are the same count, so the tables add nothing to a frame either.
+
+## 42. The per-frame layer filter push re-armed every label map rebuild (2026-10-06)
+
+`TileRenderer` handed its renderer layer filter to `GLTileRenderer` on every frame, and that setter
+clears `_labelTilesSignature`, so `setVisibleTiles` never skipped a label map rebuild after a drawn
+frame. It is now pushed only when the filter or the `GLTileRenderer` changes. Web build
+(`standard`, RelWithDebInfo, `MASSIF_VT_RENDER_STATS=1`), headless Chromium on SwiftShader,
+`display-a-map`, 20 s pan at zoom 11 (camera stepped 0.004° east every 50 ms):
+
+| | tile set changes | label map rebuilds | `labelMapSkips` |
+|---|---|---|---|
+| before | 112 | 112 | 0 |
+| after (2 runs) | 110 | 84 | 26 |
+
+A still map draws no frames, so it moves neither counter. Hiding the layer still drops its labels,
+and a filter change still rebuilds the maps.

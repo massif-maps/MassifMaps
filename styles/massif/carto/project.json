@@ -3130,8 +3130,7 @@
       "default": {
         "border_control": "icons-glyph/barrier.png",
         "sally_port": "icons-glyph/barrier.png",
-        "spring": "icons-glyph/water.png",
-        "lodging": "icons-glyph/alpine_hut.png"
+        "spring": "icons-glyph/water.png"
       }
     },
     "poiStyle": {

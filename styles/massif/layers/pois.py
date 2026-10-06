@@ -480,25 +480,24 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
                    'subclass', 'class')
 
 
-# A walker's POIs, each until its category layer takes over, water from `water_min_zoom`.
-# data-driven even for the hut layer: a constant icon-image is not one mapbox2css recolours
-MOUNTAIN_ICON = class_icon({**ALIAS, 'lodging': 'alpine_hut'})
+# A walker's POIs, each until its category layer takes over, water from `water_min_zoom`. ICON, the
+# shared one: every POI layer folds into one icon table, so an alias here redrew every hostel as a hut
 MOUNTAIN_LAYERS = [
     ('poi-mountain-sight', 14, 16, ['in', get('class'), ['literal', ['adit', 'archaeological_site', 'castle',
                                                                       'cave_entrance', 'fort', 'waterfall']]], ICON, None),
     # a named park early and over the sights, as Standard gives park_like a wider filterrank
     ('poi-mountain-park', 14, 16, ['all', ['in', get('class'), ['literal', ['park', 'garden']]], ['has', 'name']], ICON, None),
-    ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], MOUNTAIN_ICON, None),
+    ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], ICON, None),
     # a picnic shelter is a park bench's roof: a walker's shelter's look, but late and under the huts
     ('poi-mountain-picnic-shelter', 16, None, ['all', ['==', get('class'), 'shelter'],
-                                               ['==', get('shelter_type'), 'picnic_shelter']], MOUNTAIN_ICON, None),
+                                               ['==', get('shelter_type'), 'picnic_shelter']], ICON, None),
     ('poi-mountain-shelter', 13, None, ['all', ['==', get('class'), 'shelter'],
-                                        ['in', get('shelter_type'), ['literal', HUT_SHELTERS]]], MOUNTAIN_ICON, None),
-    ('poi-mountain-water', 12, None, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
+                                        ['in', get('shelter_type'), ['literal', HUT_SHELTERS]]], ICON, None),
+    ('poi-mountain-water', 12, None, ['==', get('class'), 'drinking_water'], ICON, 'water_min_zoom'),
     # huts from 11: the old Alpimaps OSM style's 12, which counted zooms on 256-px tiles
-    ('poi-mountain', 11, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
-    # OpenMapTiles files a hut under lodging, whose glyph is a bed
-    ('poi-mountain-hut', 11, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),
+    ('poi-mountain', 11, None, ['==', get('class'), 'wilderness_hut'], ICON, None),
+    # OpenMapTiles files a hut under lodging, whose glyph is a bed: the subclass's own glyph draws it
+    ('poi-mountain-hut', 11, 15, ['==', get('subclass'), 'alpine_hut'], ICON, None),
 ]
 
 
@@ -578,7 +577,7 @@ def water_highlight(v):
     """`highlight_drinking_water`, Alpimaps': water points larger, never hidden by another label, and
     from z12 whatever `water_min_zoom` says"""
     lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], v,
-                    icon=MOUNTAIN_ICON, overlap=True, scale=1.4)
+                    icon=ICON, overlap=True, scale=1.4)
     return [gate(lay, v, 'highlight_drinking_water')]
 
 

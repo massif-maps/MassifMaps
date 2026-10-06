@@ -4853,7 +4853,40 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::ManeuverArrowBuilder",
+          "name": "buildArrow",
+          "args": [
+            {
+              "name": "points",
+              "type": "positions"
+            },
+            {
+              "name": "maneuverPos",
+              "type": "pos"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::ManeuverArrowBuilder",
+          "name": "buildArrowAtIndex",
+          "args": [
+            {
+              "name": "points",
+              "type": "positions"
+            },
+            {
+              "name": "maneuverIndex",
+              "type": "int"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::MapBounds": {
@@ -11678,6 +11711,18 @@
         ]
       ],
       [
+        "maneuver-arrow",
+        "massif__ManeuverArrowBuilder",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
         "point",
         "massif__PointGeometry",
         [
@@ -12874,6 +12919,7 @@
     "massif::LocalVectorDataSource": "source",
     "massif::MBTilesTileDataSource": "source",
     "massif::MBVectorTileDecoder": "style",
+    "massif::ManeuverArrowBuilder": "geometry",
     "massif::MapTilerOnlineTileDataSource": "source",
     "massif::Marker": "element",
     "massif::MarkerStyle": "elementstyle",
@@ -13671,6 +13717,16 @@
             "required": true
           }
         ]
+      ]
+    },
+    {
+      "cppClass": "massif::ManeuverArrowBuilder",
+      "kind": "geometry",
+      "type": "maneuver-arrow",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
       ]
     },
     {

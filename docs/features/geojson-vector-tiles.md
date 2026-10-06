@@ -64,7 +64,7 @@ Style it by layer name, like any other vector source:
 | Method | Does |
 |---|---|
 | `createLayer(name)` / `deleteLayer(index)` | add / drop a named layer |
-| `setLayerGeoJSON` / `setLayerGeoJSONString` | replace a layer's whole content |
+| `setLayerGeoJSON` / `setLayerGeoJSONString` | replace a layer's whole content, from a FeatureCollection or a single Feature |
 | `setLayerFeatureCollection(index, projection, collection)` | replace it from SDK geometry |
 | `addGeoJSONFeature` / `updateGeoJSONFeature` / `removeGeoJSONFeature` | incremental edits (also `…StringFeature`) |
 | `SimplifyTolerance` | Douglas-Peucker tolerance, in **tile pixels** |

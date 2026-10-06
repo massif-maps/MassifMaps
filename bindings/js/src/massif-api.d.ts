@@ -10228,6 +10228,14 @@ export interface GeometrySpec_line {
     poses: Json;
 }
 
+export interface GeometrySpec_maneuver_arrow {
+    type: 'maneuver-arrow';
+    /** Returns the length of the arrow after the maneuver point. */
+    lengthAfter?: number;
+    /** Returns the length of the arrow before the maneuver point. */
+    lengthBefore?: number;
+}
+
 export interface GeometrySpec_point {
     type: 'point';
     pos: Position;
@@ -10252,7 +10260,7 @@ export interface GeometrySpec_geojson {
     projection?: ProjectionName;
 }
 
-export type GeometrySpec = GeometrySpec_line | GeometrySpec_point | GeometrySpec_polygon | GeometrySpec_geojson;
+export type GeometrySpec = GeometrySpec_line | GeometrySpec_maneuver_arrow | GeometrySpec_point | GeometrySpec_polygon | GeometrySpec_geojson;
 
 export interface LayerSpec_celestial {
     type: 'celestial';
@@ -11145,6 +11153,7 @@ export interface SpecClass {
     };
     'geometry': {
         'line': 'massif::LineGeometry';
+        'maneuver-arrow': 'massif::ManeuverArrowBuilder';
         'point': 'massif::PointGeometry';
         'polygon': 'massif::PolygonGeometry';
         'geojson': 'massif::Geometry';
@@ -11480,6 +11489,8 @@ export interface MethodTypes {
         setStyleParameters: { args: [params: Json]; result: void };
     };
     'massif::ManeuverArrowBuilder': {
+        buildArrow: { args: [points: Position[], maneuverPos: Position]; result: Json };
+        buildArrowAtIndex: { args: [points: Position[], maneuverIndex: number]; result: Json };
     };
     'massif::MapBounds': {
     };

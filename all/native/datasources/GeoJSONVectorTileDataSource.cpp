@@ -115,7 +115,7 @@ namespace massif
         {
             std::lock_guard<std::mutex> lock(_mutex);
             _tileBuilder->clearLayer(layerIndex);
-            _tileBuilder->importGeoJSONFeatureCollection(layerIndex, geoJSON.toPicoJSON());
+            _tileBuilder->importGeoJSON(layerIndex, geoJSON.toPicoJSON());
         }
         catch (const std::exception &ex)
         {
@@ -167,7 +167,7 @@ namespace massif
             }
             std::lock_guard<std::mutex> lock(_mutex);
             _tileBuilder->clearLayer(layerIndex);
-            _tileBuilder->importGeoJSONFeatureCollection(layerIndex, val);
+            _tileBuilder->importGeoJSON(layerIndex, val);
         }
         catch (const std::exception &ex)
         {

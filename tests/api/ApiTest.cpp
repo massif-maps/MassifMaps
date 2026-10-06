@@ -42,6 +42,8 @@ void testCallAsync();
 void testCallCancel();
 void testCallConcurrency();
 void testCollections();
+void testManeuverArrowFacade();
+void testGeoJSONBareFeature();
 void testRouting();
 void testStatics();
 void testGeneratedFactories();
@@ -436,6 +438,8 @@ int main() {
     testCallCancel();
     testCallConcurrency();
     testCollections();
+    testManeuverArrowFacade();
+    testGeoJSONBareFeature();
     testRouting();
     testStatics();
     testGeneratedFactories();

@@ -27,7 +27,9 @@ elseif(NOT SHARED_LIBRARY)
 endif()
 
 # C++ compiler flags
-add_definitions("${SDK_CPP_DEFINES}" "-DBOOST_ALL_NO_LIB" "-DHAVE_ZSTD")
+# One string from the build scripts: split it, or a first -DNAME=value swallows the rest as its value.
+separate_arguments(SDK_CPP_DEFINE_LIST UNIX_COMMAND "${SDK_CPP_DEFINES}")
+add_definitions(${SDK_CPP_DEFINE_LIST} "-DBOOST_ALL_NO_LIB" "-DHAVE_ZSTD")
 
 if(CMAKE_BUILD_TYPE MATCHES "Release|RELEASE")
   add_definitions("-DNDEBUG")

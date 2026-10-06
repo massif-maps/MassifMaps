@@ -154,8 +154,13 @@ of the same screen-space extrusion the line itself uses — the offsets ride the
 which the vertex shader multiplies by the line width — so the head keeps its screen size at every
 zoom and needs no bitmap, no marker and no label.
 
-Two details are what make it usable rather than a triangle stuck on the end:
+Three details are what make it usable rather than a triangle stuck on the end:
 
+- **Only the feature's own end gets a head.** A source clips a line at its buffer, so a piece
+  crossing a tile edge ends just outside the tile; that end gets neither head nor pull-back. The
+  test is maplibre's for symbol anchors (`symbol_layout.ts`): the last vertex must lie in the
+  half-open tile `[0, 1)`, so an end on a shared edge is drawn by exactly one tile. Without it a
+  maneuver arrow crossing z18 tile edges grew a head at every crossing.
 - **The head hangs on its incenter**, and the line is pulled back to the head's base by the same
   amount. A homothety about the incenter moves every edge of a triangle by the same distance, so
   two heads about a common incenter stay a constant distance apart everywhere. Anchoring the tip

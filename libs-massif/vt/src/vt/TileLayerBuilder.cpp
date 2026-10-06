@@ -1899,11 +1899,16 @@ namespace massif::vt {
 
         bool cycle = points[0] == points[points.size() - 1];
 
+        // A piece the source clipped at its buffer ends outside the tile, where the feature does not end.
+        // Half-open like maplibre's symbol anchors (symbol_layout.ts), so an end on a tile edge gets one head.
+        const cglib::vec2<float>& lastPoint = linePoints.back();
+        bool ownEnd = lastPoint(0) >= 0 && lastPoint(0) < 1 && lastPoint(1) >= 0 && lastPoint(1) < 1;
+
         // 'arrow only' emits the head and nothing else, so a style can paint it OVER the shaft and the
         // head keeps its own outline where it overlaps its line. Drawn from the last segment with a
         // direction, hung on the last vertex with no pull-back - there is no line here to pull back.
         if (style.endArrowOnly) {
-            if (cycle || !style.hasEndArrow()) {
+            if (cycle || !ownEnd || !style.hasEndArrow()) {
                 return false;
             }
             for (std::size_t k = points.size() - 1; k > 0; k--) {
@@ -2210,7 +2215,7 @@ namespace massif::vt {
             // An arrow head replaces the cap and pulls the line's last vertices back by its own length,
             // so the line stops where the head starts. The pull-back rides the binormal attribute, which
             // the shader scales by the line width - the head's size is in pixels, not metres.
-            bool endArrow = !cycle && style.hasEndArrow();
+            bool endArrow = !cycle && ownEnd && style.hasEndArrow();
             cglib::vec2<float> setback = endArrow ? tangent * lineEndArrowInradius(style) : cglib::vec2<float>(0, 0);
 
             _coords.append(p0, p0);

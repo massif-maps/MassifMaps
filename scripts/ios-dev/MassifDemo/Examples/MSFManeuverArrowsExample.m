@@ -23,27 +23,45 @@
 static NSString * const kUserAgent =
     @"MassifMapsExamples/1.0 (+https://github.com/massif-maps/MassifMaps)";
 
-/** A drive through the Eixample, Barcelona, along its one-way streets. */
+/** A drive round Annecy station, as OSRM routes it: roundabouts, a U-turn, both turns. */
 static const double kRoute[][2] = {
-    { 2.16274, 41.39225 }, { 2.16321, 41.39260 }, { 2.16365, 41.39294 }, { 2.16422, 41.39249 }, { 2.16433, 41.39244 },
-    { 2.16476, 41.39210 }, { 2.16493, 41.39196 }, { 2.16522, 41.39168 }, { 2.16583, 41.39119 }, { 2.16597, 41.39130 },
-    { 2.16606, 41.39136 }, { 2.16613, 41.39141 }, { 2.16615, 41.39143 }, { 2.16657, 41.39174 }, { 2.16697, 41.39204 },
-    { 2.16729, 41.39229 }, { 2.16755, 41.39229 }, { 2.16763, 41.39233 }, { 2.16813, 41.39195 }, { 2.16861, 41.39158 },
-    { 2.16940, 41.39098 }, { 2.16971, 41.39075 }, { 2.16987, 41.39063 }, { 2.17061, 41.39117 }, { 2.17077, 41.39135 },
-    { 2.17097, 41.39153 }, { 2.17086, 41.39162 }, { 2.17016, 41.39215 },
+    { 6.121812, 45.901688 }, { 6.121752, 45.901660 }, { 6.121601, 45.901624 }, { 6.120724, 45.901472 }, { 6.119987, 45.901336 },
+    { 6.119685, 45.901347 }, { 6.119667, 45.901362 }, { 6.119623, 45.901381 }, { 6.119589, 45.901386 }, { 6.119537, 45.901382 },
+    { 6.119480, 45.901356 }, { 6.119457, 45.901330 }, { 6.119447, 45.901301 }, { 6.119213, 45.901192 }, { 6.118270, 45.901021 },
+    { 6.118021, 45.900993 }, { 6.118270, 45.901021 }, { 6.119213, 45.901192 }, { 6.119505, 45.901219 }, { 6.119555, 45.901205 },
+    { 6.119609, 45.901206 }, { 6.119664, 45.901077 }, { 6.119682, 45.901049 }, { 6.119713, 45.901022 }, { 6.119974, 45.900895 },
+    { 6.120225, 45.900750 }, { 6.120287, 45.900686 }, { 6.120363, 45.900643 }, { 6.120416, 45.900599 }, { 6.120501, 45.900591 },
+    { 6.120565, 45.900594 }, { 6.121097, 45.900714 }, { 6.121143, 45.900719 }, { 6.121209, 45.900716 }, { 6.121222, 45.900697 },
+    { 6.121259, 45.900678 }, { 6.121321, 45.900679 }, { 6.121345, 45.900689 }, { 6.121366, 45.900709 }, { 6.121374, 45.900734 },
+    { 6.121366, 45.900758 }, { 6.121409, 45.900806 }, { 6.121458, 45.900838 }, { 6.121733, 45.900903 }, { 6.121889, 45.900912 },
+    { 6.121956, 45.900900 }, { 6.122027, 45.900879 }, { 6.122141, 45.900825 }, { 6.122171, 45.900807 }, { 6.122211, 45.900767 },
+    { 6.122356, 45.900473 }, { 6.122629, 45.899880 }, { 6.122331, 45.899798 }, { 6.121724, 45.899628 }, { 6.121764, 45.899520 },
+    { 6.122008, 45.899000 }, { 6.122070, 45.898810 }, { 6.121217, 45.898719 },
 };
 enum { kRouteCount = sizeof(kRoute) / sizeof(kRoute[0]) };
 
-/** Route point index of each maneuver, as a routing engine reports it. */
-static const int kManeuverIndex[] = { 2, 8, 17, 22, 25 };
-static NSString * const kManeuverText[] = {
-    @"Turn right onto Passeig de Gràcia",
-    @"Turn left onto Carrer del Consell de Cent",
-    @"Turn right onto Carrer de Pau Claris",
-    @"Turn left onto Gran Via de les Corts Catalanes",
-    @"Turn left onto Carrer de Roger de Llúria",
+/**
+ * Route point index of each maneuver as a routing engine reports it, the metres of route kept
+ * before and after it, and a sideways shift in metres for a lane change (0 = follow the route).
+ */
+typedef struct { int index; double before, after, shift; } MSFManeuver;
+static const MSFManeuver kManeuvers[] = {
+    { 3, 30, 35, 3.5 }, { 5, 20, 45, 0 }, { 15, 30, 30, 0 }, { 18, 30, 30, 0 },
+    { 33, 25, 45, 0 }, { 51, 30, 30, 0 }, { 53, 30, 30, 0 }, { 56, 30, 30, 0 },
 };
-enum { kManeuverCount = sizeof(kManeuverIndex) / sizeof(kManeuverIndex[0]) };
+static NSString * const kManeuverText[] = {
+    @"Move to the left lane on Rue de l'Industrie",
+    @"At the roundabout, take the exit onto Avenue de Chevêne",
+    @"Make a U-turn on Avenue de Chevêne",
+    @"At the small roundabout, keep right on Avenue de Chevêne",
+    @"At the roundabout, take the exit onto Rue Vaugelas",
+    @"Turn right onto Rue Royale",
+    @"Turn left onto Rue de la Gare",
+    @"Turn right: you have arrived",
+};
+enum { kManeuverCount = sizeof(kManeuvers) / sizeof(kManeuvers[0]) };
+
+static const double kMetresPerDegree = 111319.5;
 
 static NSString * const kHeads[] = { @"classic", @"wide", @"long" };
 static const int kHeadCount = 3;
@@ -70,6 +88,20 @@ static NSString * const kArrowStyle =
     @"  [head='long'] { line-arrow-width: 1.9; line-arrow-length: 2.8; }\n"
     @"}";
 
+/** Ahead of point `index` along its segment, moving `shift` metres left over the first 40%. */
+static NSArray *laneChange(int index, double after, double shift) {
+    const double *at = kRoute[index], *next = kRoute[index + 1];
+    double k = cos(at[1] * M_PI / 180);
+    double dx = (next[0] - at[0]) * k, dy = next[1] - at[1], d = hypot(dx, dy);
+    double left = shift / kMetresPerDegree;
+    NSMutableArray *out = [NSMutableArray arrayWithCapacity:2];
+    for (int i = 0; i < 2; i++) {
+        double along = (i == 0 ? 0.4 : 1.0) * after / kMetresPerDegree;
+        [out addObject:@[ @(at[0] + (dx * along - dy * left) / d / k), @(at[1] + (dy * along + dx * left) / d) ]];
+    }
+    return out;
+}
+
 static NSString *arrows(MSFMassifObject *builder, NSString *head) {
     NSMutableArray *route = [NSMutableArray arrayWithCapacity:kRouteCount];
     for (int i = 0; i < kRouteCount; i++) {
@@ -77,7 +109,11 @@ static NSString *arrows(MSFMassifObject *builder, NSString *head) {
     }
     NSMutableArray *features = [NSMutableArray array];
     for (int i = 0; i < kManeuverCount; i++) {
-        MSFMassifObject *result = [builder call:@"buildArrowAtIndex" args:@[ route, @(kManeuverIndex[i]) ] error:nil];
+        MSFManeuver maneuver = kManeuvers[i];
+        // A lane change leaves the route: the builder walks the part behind, the shift is drawn ahead.
+        [builder set:@"lengthBefore" value:@(maneuver.before)];
+        [builder set:@"lengthAfter" value:@(maneuver.shift != 0 ? 0 : maneuver.after)];
+        MSFMassifObject *result = [builder call:@"buildArrowAtIndex" args:@[ route, @(maneuver.index) ] error:nil];
         NSDictionary *arrow = [NSJSONSerialization JSONObjectWithData:[result.json dataUsingEncoding:NSUTF8StringEncoding]
                                                               options:0
                                                                 error:nil];
@@ -85,6 +121,15 @@ static NSString *arrows(MSFMassifObject *builder, NSString *head) {
         for (NSDictionary *feature in arrow[@"features"]) {
             NSMutableDictionary *withHead = [feature mutableCopy];
             withHead[@"properties"] = @{ @"head" : head };
+            if (maneuver.shift != 0) {
+                NSMutableArray *coordinates = [feature[@"geometry"][@"coordinates"] mutableCopy];
+                NSArray *last = coordinates.lastObject;
+                if (fabs([last[0] doubleValue] - kRoute[maneuver.index][0]) + fabs([last[1] doubleValue] - kRoute[maneuver.index][1]) < 1e-9) {
+                    [coordinates removeLastObject];
+                }
+                [coordinates addObjectsFromArray:laneChange(maneuver.index, maneuver.after, maneuver.shift)];
+                withHead[@"geometry"] = @{ @"type" : @"LineString", @"coordinates" : coordinates };
+            }
             [features addObject:withHead];
         }
     }
@@ -111,8 +156,8 @@ static double bearing(int index) {
 }
 
 static void overview(MSFMassifMap *map, id<MSFExampleHost> host, float seconds) {
-    [[map.camera animate:seconds] moveTo:[MSFPosition positionWithLng:2.1674 lat:41.3916] zoom:16.1 rotation:0 tilt:80];
-    [host caption:@"One arrow per maneuver, cut from the route 30 m either side of the turn."];
+    [[map.camera animate:seconds] moveTo:[MSFPosition positionWithLng:6.1203 lat:45.9002] zoom:16.3 rotation:0 tilt:80];
+    [host caption:@"One arrow per maneuver, cut from the route either side of it."];
 }
 
 - (void)startWithHost:(id<MSFExampleHost>)host {
@@ -153,8 +198,7 @@ static void overview(MSFMassifMap *map, id<MSFExampleHost> host, float seconds) 
     int layer = [maneuvers createLayer:@"maneuver"];
     MSFMassifObject *builder = [map object:@"geometry"
                                   objectId:@"maneuver-arrows"
-                                      spec:[[[MSFSpec of:@"maneuver-arrow"] set:@"lengthBefore" value:@30]
-                                               set:@"lengthAfter" value:@30]
+                                      spec:[MSFSpec of:@"maneuver-arrow"]
                                      error:nil];
     __block int head = 0;
     [maneuvers setLayerGeoJSON:layer geoJson:arrows(builder, kHeads[head])];
@@ -170,7 +214,7 @@ static void overview(MSFMassifMap *map, id<MSFExampleHost> host, float seconds) 
     __block int step = -1;
     [host button:@"Next maneuver" action:^{
         step = (step + 1) % kManeuverCount;
-        int index = kManeuverIndex[step];
+        int index = kManeuvers[step].index;
         [[map.camera animate:1.5]
             moveTo:[MSFPosition positionWithLng:kRoute[index][0] lat:kRoute[index][1]]
               zoom:17

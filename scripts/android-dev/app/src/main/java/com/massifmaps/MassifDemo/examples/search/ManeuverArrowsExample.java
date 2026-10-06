@@ -20,8 +20,9 @@ import org.json.JSONObject;
 @ExampleInfo(
     id = "maneuver-arrows",
     title = "Navigation maneuver arrows",
-    description = "The route cut 30 m either side of each turn, drawn as one line whose head is a "
-                + "line property: no marker, no bitmap, and a casing that outlines shaft and head alike.",
+    description = "A drive round Annecy station - turns, roundabouts, a U-turn and a lane change - each "
+                + "cut from the route and drawn as one line whose head is a line property: no marker, no "
+                + "bitmap, and a casing that outlines shaft and head alike.",
     section = Sections.SEARCH,
     order = 30)
 public class ManeuverArrowsExample extends MapExample {
@@ -29,24 +30,38 @@ public class ManeuverArrowsExample extends MapExample {
     /** A tile server wants to know who is asking: a real app identifies itself. */
     private static final String UA = "MassifMapsExamples/1.0 (+https://github.com/massif-maps/MassifMaps)";
 
-    /** A drive through the Eixample, Barcelona, along its one-way streets. */
+    /** A drive round Annecy station, as OSRM routes it: roundabouts, a U-turn, both turns. */
     private static final double[][] ROUTE = {
-        { 2.16274, 41.39225 }, { 2.16321, 41.39260 }, { 2.16365, 41.39294 }, { 2.16422, 41.39249 }, { 2.16433, 41.39244 },
-        { 2.16476, 41.39210 }, { 2.16493, 41.39196 }, { 2.16522, 41.39168 }, { 2.16583, 41.39119 }, { 2.16597, 41.39130 },
-        { 2.16606, 41.39136 }, { 2.16613, 41.39141 }, { 2.16615, 41.39143 }, { 2.16657, 41.39174 }, { 2.16697, 41.39204 },
-        { 2.16729, 41.39229 }, { 2.16755, 41.39229 }, { 2.16763, 41.39233 }, { 2.16813, 41.39195 }, { 2.16861, 41.39158 },
-        { 2.16940, 41.39098 }, { 2.16971, 41.39075 }, { 2.16987, 41.39063 }, { 2.17061, 41.39117 }, { 2.17077, 41.39135 },
-        { 2.17097, 41.39153 }, { 2.17086, 41.39162 }, { 2.17016, 41.39215 },
+        { 6.121812, 45.901688 }, { 6.121752, 45.901660 }, { 6.121601, 45.901624 }, { 6.120724, 45.901472 }, { 6.119987, 45.901336 },
+        { 6.119685, 45.901347 }, { 6.119667, 45.901362 }, { 6.119623, 45.901381 }, { 6.119589, 45.901386 }, { 6.119537, 45.901382 },
+        { 6.119480, 45.901356 }, { 6.119457, 45.901330 }, { 6.119447, 45.901301 }, { 6.119213, 45.901192 }, { 6.118270, 45.901021 },
+        { 6.118021, 45.900993 }, { 6.118270, 45.901021 }, { 6.119213, 45.901192 }, { 6.119505, 45.901219 }, { 6.119555, 45.901205 },
+        { 6.119609, 45.901206 }, { 6.119664, 45.901077 }, { 6.119682, 45.901049 }, { 6.119713, 45.901022 }, { 6.119974, 45.900895 },
+        { 6.120225, 45.900750 }, { 6.120287, 45.900686 }, { 6.120363, 45.900643 }, { 6.120416, 45.900599 }, { 6.120501, 45.900591 },
+        { 6.120565, 45.900594 }, { 6.121097, 45.900714 }, { 6.121143, 45.900719 }, { 6.121209, 45.900716 }, { 6.121222, 45.900697 },
+        { 6.121259, 45.900678 }, { 6.121321, 45.900679 }, { 6.121345, 45.900689 }, { 6.121366, 45.900709 }, { 6.121374, 45.900734 },
+        { 6.121366, 45.900758 }, { 6.121409, 45.900806 }, { 6.121458, 45.900838 }, { 6.121733, 45.900903 }, { 6.121889, 45.900912 },
+        { 6.121956, 45.900900 }, { 6.122027, 45.900879 }, { 6.122141, 45.900825 }, { 6.122171, 45.900807 }, { 6.122211, 45.900767 },
+        { 6.122356, 45.900473 }, { 6.122629, 45.899880 }, { 6.122331, 45.899798 }, { 6.121724, 45.899628 }, { 6.121764, 45.899520 },
+        { 6.122008, 45.899000 }, { 6.122070, 45.898810 }, { 6.121217, 45.898719 },
     };
 
-    /** Route point index of each maneuver, as a routing engine reports it. */
+    /**
+     * Route point index of each maneuver as a routing engine reports it, the metres of route kept
+     * before and after it, and a sideways shift in metres for a lane change (0 = follow the route).
+     */
     private static final Object[][] MANEUVERS = {
-        { 2, "Turn right onto Passeig de Gràcia" },
-        { 8, "Turn left onto Carrer del Consell de Cent" },
-        { 17, "Turn right onto Carrer de Pau Claris" },
-        { 22, "Turn left onto Gran Via de les Corts Catalanes" },
-        { 25, "Turn left onto Carrer de Roger de Llúria" },
+        { 3, 30.0, 35.0, 3.5, "Move to the left lane on Rue de l'Industrie" },
+        { 5, 20.0, 45.0, 0.0, "At the roundabout, take the exit onto Avenue de Chevêne" },
+        { 15, 30.0, 30.0, 0.0, "Make a U-turn on Avenue de Chevêne" },
+        { 18, 30.0, 30.0, 0.0, "At the small roundabout, keep right on Avenue de Chevêne" },
+        { 33, 25.0, 45.0, 0.0, "At the roundabout, take the exit onto Rue Vaugelas" },
+        { 51, 30.0, 30.0, 0.0, "Turn right onto Rue Royale" },
+        { 53, 30.0, 30.0, 0.0, "Turn left onto Rue de la Gare" },
+        { 56, 30.0, 30.0, 0.0, "Turn right: you have arrived" },
     };
+
+    private static final double METRES_PER_DEGREE = 111319.5;
 
     private static final String[] HEADS = { "classic", "wide", "long" };
 
@@ -104,8 +119,7 @@ public class ManeuverArrowsExample extends MapExample {
         // A layer of its own, added last: it draws over the route and every layer before it.
         final MassifSource maneuvers = map.source("maneuver-data", Spec.of("geojson").set("maxZoom", 18));
         final int layer = maneuvers.createLayer("maneuver");
-        final MassifObject builder = map.object("geometry", "maneuver-arrows", Spec.of("maneuver-arrow")
-            .set("lengthBefore", 30).set("lengthAfter", 30));
+        final MassifObject builder = map.object("geometry", "maneuver-arrows", Spec.of("maneuver-arrow"));
         maneuvers.setLayerGeoJSON(layer, arrows(builder, HEADS[head]));
         map.addLayer("maneuver", Spec.of("vector")
             .set("source", "maneuver-data")
@@ -120,7 +134,7 @@ public class ManeuverArrowsExample extends MapExample {
                 int index = (Integer) MANEUVERS[step][0];
                 map.camera().animate(1.5f).moveTo(new Position(ROUTE[index][0], ROUTE[index][1]),
                                                   17, (float) -bearing(index), 70);
-                host.caption((step + 1) + "/" + MANEUVERS.length + ": " + MANEUVERS[step][1] + ".");
+                host.caption((step + 1) + "/" + MANEUVERS.length + ": " + MANEUVERS[step][4] + ".");
             }
         });
         host.button("Head shape", new Runnable() {
@@ -140,25 +154,54 @@ public class ManeuverArrowsExample extends MapExample {
     }
 
     private static void overview(MassifMap map, ExampleHost host, float seconds) {
-        map.camera().animate(seconds).moveTo(new Position(2.1674, 41.3916), 16.1f, 0, 80);
-        host.caption("One arrow per maneuver, cut from the route 30 m either side of the turn.");
+        map.camera().animate(seconds).moveTo(new Position(6.1203, 45.9002), 16.3f, 0, 80);
+        host.caption("One arrow per maneuver, cut from the route either side of it.");
     }
 
     private static String arrows(MassifObject builder, String head) {
         try {
             JSONArray features = new JSONArray();
             for (Object[] maneuver : MANEUVERS) {
-                MassifObject result = builder.call("buildArrowAtIndex", ROUTE, maneuver[0]);
+                int index = (Integer) maneuver[0];
+                double after = (Double) maneuver[2], shift = (Double) maneuver[3];
+                // A lane change leaves the route: the builder walks the part behind, the shift is drawn ahead.
+                builder.set("lengthBefore", maneuver[1]).set("lengthAfter", shift != 0 ? 0.0 : after);
+                MassifObject result = builder.call("buildArrowAtIndex", ROUTE, index);
                 JSONArray arrow = new JSONObject(result.json()).getJSONArray("features");
                 result.close();
                 for (int i = 0; i < arrow.length(); i++) {
-                    features.put(arrow.getJSONObject(i).put("properties", new JSONObject().put("head", head)));
+                    JSONObject feature = arrow.getJSONObject(i);
+                    if (shift != 0) {
+                        JSONArray coordinates = feature.getJSONObject("geometry").getJSONArray("coordinates");
+                        JSONArray last = coordinates.getJSONArray(coordinates.length() - 1);
+                        if (Math.abs(last.getDouble(0) - ROUTE[index][0]) + Math.abs(last.getDouble(1) - ROUTE[index][1]) < 1e-9) {
+                            coordinates.remove(coordinates.length() - 1);
+                        }
+                        for (double[] point : laneChange(index, after, shift)) {
+                            coordinates.put(new JSONArray().put(point[0]).put(point[1]));
+                        }
+                    }
+                    features.put(feature.put("properties", new JSONObject().put("head", head)));
                 }
             }
             return new JSONObject().put("type", "FeatureCollection").put("features", features).toString();
         } catch (JSONException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /** Ahead of point {@code index} along its segment, moving {@code shift} metres left over the first 40%. */
+    private static double[][] laneChange(int index, double after, double shift) {
+        double[] at = ROUTE[index], next = ROUTE[index + 1];
+        double k = Math.cos(Math.toRadians(at[1]));
+        double dx = (next[0] - at[0]) * k, dy = next[1] - at[1], d = Math.hypot(dx, dy);
+        double left = shift / METRES_PER_DEGREE;
+        double[][] out = new double[2][];
+        for (int i = 0; i < 2; i++) {
+            double along = (i == 0 ? 0.4 : 1.0) * after / METRES_PER_DEGREE;
+            out[i] = new double[] { at[0] + (dx * along - dy * left) / d / k, at[1] + (dy * along + dx * left) / d };
+        }
+        return out;
     }
 
     private static String coordinates(double[][] points) {

@@ -24,6 +24,8 @@ set(TEST_MODULES
   # what the property declares - the case the chain walk exists for.
   "${SDK_BASE_DIR}/all/modules/projections/EPSG3857.i"
   "${SDK_BASE_DIR}/all/modules/geometry/GeoJSONGeometryWriter.i"
+  # The facade's maneuver-arrow spec and its two build calls; geometry only.
+  "${SDK_BASE_DIR}/all/modules/geometry/ManeuverArrowBuilder.i"
   # For call/getData: TileData is the lightest class with a BinaryData property.
   "${SDK_BASE_DIR}/all/modules/datasources/components/TileData.i"
   # The class a custom source registers AS - getObject checks it against the table, so without
@@ -154,6 +156,11 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/rastertiles/TerrariumElevationDataDecoder.cpp"
   # The per-source overzoom cut: header-only mapnikvt (MBVTSubtile.h) plus zlib for gzipped tiles.
   "${SDK_BASE_DIR}/all/native/datasources/MergedMBVTTileDataSource.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/ManeuverArrowBuilder.cpp"
+  # A bare GeoJSON Feature on setLayerGeoJSON: the source plus mbvtbuilder and geojson-vt's headers.
+  "${SDK_BASE_DIR}/all/native/datasources/GeoJSONVectorTileDataSource.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mbvtbuilder/src/mbvtbuilder/MBVTTileBuilder.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mbvtbuilder/src/mbvtbuilder/MBVTLayerEncoder.cpp"
 )
 
 set(TEST_TABLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/api")
@@ -295,6 +302,7 @@ add_executable(api_tests
   FogPitchFadeTest.cpp
   # Same: TerrainOcclusion.h is the label-vs-terrain depth compare, and nothing else.
   TerrainOcclusionTest.cpp
+  ManeuverArrowTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"
@@ -318,6 +326,11 @@ target_include_directories(api_tests PRIVATE
   # DrapeStandIn.h is written in tile ids, which live in vt.
   "${SDK_BASE_DIR}/libs-massif/vt/src"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src"
+  "${SDK_BASE_DIR}/libs-massif/mbvtbuilder/src"
+  "${SDK_BASE_DIR}/libs-external/pbf"
+  "${SDK_BASE_DIR}/libs-external/geojsonvt/geojson-vt-cpp/include"
+  "${SDK_BASE_DIR}/libs-external/geojsonvt/geometry.hpp/include"
+  "${SDK_BASE_DIR}/libs-external/geojsonvt/variant/include"
   # RoutingRequest uses boost::algorithm for its parameter paths - see ../../BUILDING.md for the
   # symlink this expects.
   "${SDK_BASE_DIR}/libs-external/boost"

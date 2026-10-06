@@ -1,6 +1,11 @@
 #include "api/GeometryMethods.h"
+#include "core/MapPos.h"
 #include "geometry/FeatureCollection.h"
+#include "geometry/GeoJSONGeometryWriter.h"
+#include "geometry/ManeuverArrowBuilder.h"
 #include "geometry/VectorTileFeatureCollection.h"
+
+#include <vector>
 
 namespace massif { namespace api {
 
@@ -53,12 +58,44 @@ namespace massif { namespace api {
                                 result);
         }
 
+        // GeoJSON, not a handle: what a binding does with an arrow is hand it to setLayerGeoJSON.
+        Result arrowResult(const std::shared_ptr<FeatureCollection>& arrow, PropertyValue& result) {
+            result = PropertyValue::ofString(GeoJSONGeometryWriter().writeFeatureCollection(arrow));
+            result.type = PT_VARIANT;
+            return RESULT_OK;
+        }
+
+        /** buildArrow(points, maneuverPos) -> a GeoJSON FeatureCollection in WGS84. */
+        Result buildArrow(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::vector<MapPos> points;
+            MapPos maneuverPos;
+            if (!args.getPositionsWgs84(0, points) || !args.getPosWgs84(1, maneuverPos)) {
+                return RESULT_BAD_SPEC;
+            }
+            return arrowResult(static_cast<ManeuverArrowBuilder*>(obj)->buildArrow(
+                std::shared_ptr<Projection>(), points, maneuverPos), result);
+        }
+
+        /** buildArrowAtIndex(points, maneuverIndex) -> the same, at a routing instruction's point index. */
+        Result buildArrowAtIndex(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::vector<MapPos> points;
+            long long index = 0;
+            if (!args.getPositionsWgs84(0, points) || !args.getLong(1, index)) {
+                return RESULT_BAD_SPEC;
+            }
+            return arrowResult(static_cast<ManeuverArrowBuilder*>(obj)->buildArrowAtIndex(
+                std::shared_ptr<Projection>(), points, static_cast<int>(index)), result);
+        }
+
     }
 
     void registerGeometryMethods() {
         Methods::registerMethod("massif::FeatureCollection", "getFeature", &getFeature);
         Methods::registerMethod("massif::VectorTileFeatureCollection", "getFeature",
                                 &getVectorTileFeature);
+        Methods::registerMethod("massif::ManeuverArrowBuilder", "buildArrow", &buildArrow);
+        Methods::registerMethod("massif::ManeuverArrowBuilder", "buildArrowAtIndex",
+                                &buildArrowAtIndex);
     }
 
 } }

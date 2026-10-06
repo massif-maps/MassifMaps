@@ -69,7 +69,7 @@ namespace massif {
         /**
          * Sets the features of the specified layer.
          * @param layerIndex The index of the layer. A layer with empty name will be created if it does not exist yet.
-         * @param geoJSON A geojson type variant that MUST contain single FeatureColletion element.
+         * @param geoJSON A geojson type variant: a FeatureCollection or a single Feature.
          * @throws std::runtime_error If an error occured during updating the layer.
          */
         void setLayerGeoJSON(int layerIndex, const Variant& geoJSON);
@@ -93,7 +93,7 @@ namespace massif {
         /**
          * Sets the features of the specified layer.
          * @param layerIndex The index of the layer. A layer with empty name will be created if it does not exist yet.
-         * @param geoJSON A geojson string that MUST contain single FeatureColletion element.
+         * @param geoJSON A geojson string: a FeatureCollection or a single Feature.
          * @throws std::runtime_error If an error occured during updating the layer.
          */
         void setLayerGeoJSONString(int layerIndex, const std::string& geoJSON);

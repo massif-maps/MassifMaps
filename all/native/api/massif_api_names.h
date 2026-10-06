@@ -543,6 +543,8 @@ const char* massif_property_name(massif_property property);
 #define MASSIF_METHOD_ADD_FEATURE "addFeature"
 #define MASSIF_METHOD_ADD_LOCALE "addLocale"
 #define MASSIF_METHOD_ADD_VECTOR_DATA_SOURCE "addVectorDataSource"
+#define MASSIF_METHOD_BUILD_ARROW "buildArrow"
+#define MASSIF_METHOD_BUILD_ARROW_AT_INDEX "buildArrowAtIndex"
 #define MASSIF_METHOD_CALCULATE_ADDRESSES "calculateAddresses"
 #define MASSIF_METHOD_CALCULATE_HORIZON "calculateHorizon"
 #define MASSIF_METHOD_CALCULATE_ROUTE "calculateRoute"

@@ -1025,6 +1025,7 @@ namespace massif::vt {
             for (const std::shared_ptr<Label>& label : _labels) {
                 label->updateElevation(label->isZElevated() ? flatRoof : flat);
                 label->setElevationDirty(false);
+                label->clearElevationAnchor();
             }
         }
     }

@@ -1207,7 +1207,13 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
   occlusion test skips it: it still carries its flat decode height, and judging that against the
   terrain hides it under ground it is not behind. Anchoring is sticky — a later miss does not
-  un-anchor a label that already has a real height.
+  un-anchor a label that already has a real height — with one exception: going flat. Withdrawing
+  the provider drops every label to 0 (`setLabelElevationProvider`) and **clears its anchor**,
+  because an anchored label draws at its CPU height, not the GPU's (`labelBatchTileId`): kept
+  anchored, a label that missed its first sample back in 3D sat at the flat map's 0, under the
+  ground, until its DEM tile landed and it jumped up. And while flat, `TileRenderer` counts the
+  exaggeration as **0**: an instant switch (`flattenRatio` 1 → 0 in one frame) restores the
+  pre-flatten value, which compared equal and re-anchored nothing (#353).
 
   **The anchor's RENDER height now comes from the GPU**, so none of the above can misplace a label on
   screen — it only decides what the culler sees. `labelVsh` calls the surface's own `applyTerrain` on

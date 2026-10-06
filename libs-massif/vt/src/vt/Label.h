@@ -126,6 +126,8 @@ namespace massif::vt {
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
         // False while the label still carries its flat decode height, which the terrain occlusion test must not judge.
         bool isElevationAnchored() const { return _elevationAnchored; }
+        // Dropped flat, the label holds no terrain height: back in 3D a miss must leave it to the GPU, not at 0.
+        void clearElevationAnchor() { _elevationAnchored = false; }
         // The anchor stands on a deck: its span-chord height is CPU-only, so the GPU must not replace it with the terrain's.
         bool hasAbsoluteHeight() const { return _absoluteHeight; }
         void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }

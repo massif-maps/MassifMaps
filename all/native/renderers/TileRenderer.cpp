@@ -934,6 +934,10 @@ namespace massif {
                 }
             }
         }
+        if (!terrainMode) {
+            // Flat is exaggeration 0: an instant switch back to 3D restores the old value, and must still re-anchor.
+            _elevationExaggeration = 0.0f;
+        }
         // GPU draping needs vertex texture fetch; without it CPU displacement with polygon offsets stays.
         vt::GLTileRenderer::TerrainTextureProvider terrainTextureProvider;
         if (terrainMode && activeTerrainOptions) {

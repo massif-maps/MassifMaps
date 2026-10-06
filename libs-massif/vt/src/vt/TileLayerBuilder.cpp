@@ -33,6 +33,10 @@ namespace {
     // a near-reversal and needles out past any shorter segment, and no build-time value can bound it -
     // the miter is a SCREEN quantity while the segment is in tile units. 1 holds at every zoom.
     static const float INNER_MITER_LIMIT = 1.0f;
+    // Bounds of the inner-corner cap a line vertex carries in its height slot (tile units): lineVsh
+    // reads 0 as "no cap", so the floor keeps a tiny cap off zero after int16 packing.
+    static const float INNER_REACH_MIN = 1.0f / 8192.0f;
+    static const float INNER_REACH_MAX = 1.0f;
 
     static float calculateScale(const massif::vt::VertexArray<float>& values, const massif::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
@@ -999,8 +1003,16 @@ namespace massif::vt {
         // Transform heights
         VertexArray<float> heights;
         heights.reserve(_heights.size());
-        for (std::size_t i = 0; i < _heights.size(); i++) {
-            heights.append(_transformer->calculateHeight(_coords[i], _heights[i]));
+        if (_builderParameters.type == TileGeometry::Type::LINE) {
+            // A line's height slot is its inner-corner cap, a tile-unit length (see tesselateLine).
+            if (!_heights.empty()) {
+                heights.copy(_heights, 0, _heights.size());
+                heights.fill(0.0f, _coords.size() - heights.size());
+            }
+        } else {
+            for (std::size_t i = 0; i < _heights.size(); i++) {
+                heights.append(_transformer->calculateHeight(_coords[i], _heights[i]));
+            }
         }
 
         // Compress attributes
@@ -1927,6 +1939,8 @@ namespace massif::vt {
         // vertex with a zero binormal is not offset at all: the sharp-join fix below can not be
         // applied to it and such a line keeps the plain (overlapping) split.
         bool offsetLine = !(style.offsetFunc == FloatFunction(0));
+        // The shader caps the inner corner in tile units against an extrusion in coord units: one scale only.
+        bool exactInnerCorners = !offsetLine && std::abs(cglib::length(_transformer->calculateVector(points[0], cglib::vec2<float>(1, 0))) - 1.0f) < 1.0e-3f;
         float linePos = 0;
 
         std::size_t i = 1;
@@ -1952,12 +1966,16 @@ namespace massif::vt {
         }
 
         cglib::vec2<float> binormal(0, 0), tangent(0, 0);
+        // How far an inner corner may reach back along the segment it closes: all of it when that
+        // segment starts at a line end, half when another join shares it.
+        float prevSegmentRoom = 0;
         {
             const cglib::vec2<float>& p0 = points[j];
             const cglib::vec2<float>& p1 = points[i];
             float u0 = linePos * du_dl;
             cglib::vec2<float> dp(p1 - p0);
             linePos += cglib::length(dp);
+            prevSegmentRoom = cglib::length(dp) * (cycle ? 0.5f : 1.0f);
 
             tangent = cglib::unit(dp);
             binormal = cglib::vec2<float>(tangent(1), -tangent(0));
@@ -1982,6 +2000,9 @@ namespace massif::vt {
             float u0 = linePos * du_dl;
             cglib::vec2<float> dp(p1 - p0);
             linePos += cglib::length(dp);
+            float segmentLength = cglib::length(dp);
+            float segmentRoom = std::min(prevSegmentRoom, segmentLength * (!cycle && i + 1 == points.size() ? 1.0f : 0.5f));
+            prevSegmentRoom = segmentLength * 0.5f;
 
             cglib::vec2<float> prevBinormal = binormal;
             cglib::vec2<float> prevTangent = tangent;
@@ -2087,9 +2108,22 @@ namespace massif::vt {
                 // angle, so it does not wait for the miter limit the way a bevel does.
                 cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal);
                 std::int8_t sin = static_cast<std::int8_t>(127.0f * cglib::dot_product(prevTangent, lerpedBinormal));
-                // Only the INNER corner uses this here - see INNER_MITER_LIMIT.
-                cglib::vec2<float> lerpedScaledBinormal = lerpedBinormal * std::min(1 / std::sqrt((1 + dot) * 0.5f), INNER_MITER_LIMIT);
+                // Only the INNER corner uses this here. Clamped to INNER_MITER_LIMIT, unless the shader can
+                // cap the true miter at the room the segments leave (innerReach, in the height slot).
+                float miter = 1 / std::sqrt((1 + dot) * 0.5f);
+                float halfTurnSin = std::sqrt(std::max(0.0f, (1 - dot) * 0.5f));
+                bool exactInner = exactInnerCorners && miter > INNER_MITER_LIMIT && halfTurnSin > 0;
+                float innerReach = exactInner ? std::min(std::max(segmentRoom / halfTurnSin, INNER_REACH_MIN), INNER_REACH_MAX) : 0.0f;
+                cglib::vec2<float> lerpedScaledBinormal = lerpedBinormal * (exactInner ? miter : std::min(miter, INNER_MITER_LIMIT));
                 bool innerSecond = cglib::dot_product(prevTangent, binormal) < 0;
+                auto setInnerReach = [this, innerReach](std::size_t index) {
+                    if (innerReach > 0) {
+                        if (_heights.size() <= index) {
+                            _heights.fill(0.0f, index + 1 - _heights.size());
+                        }
+                        _heights[index] = innerReach;
+                    }
+                };
 
                 // The cross-section that ENDS the incoming quad. The next loop iteration links the
                 // outgoing quad to the LAST TWO vertices written here, so whatever a round join adds
@@ -2102,6 +2136,7 @@ namespace massif::vt {
                 } else {
                     _binormals.append(-lerpedScaledBinormal, prevBinormal);
                 }
+                setInnerReach(i0 + (innerSecond ? 1 : 0));
 
                 // Round join: a fan across the outer corner, tangram's addFan but hubbed on the CENTRE
                 // LINE rather than the miter point - which sits at a full half-width, where the antialias
@@ -2164,6 +2199,7 @@ namespace massif::vt {
                 } else {
                     _binormals.append(-lerpedScaledBinormal, binormal);
                 }
+                setInnerReach(i1 + (innerSecond ? 1 : 0));
 
                 if (innerSecond) {
                     _indices.append(innerIndex, lastRimIndex, i1 + 0);

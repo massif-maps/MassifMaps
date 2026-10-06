@@ -62,8 +62,15 @@ namespace {
                 const std::uint8_t* vertex = vertexData + i * layout.vertexSize;
                 const std::int16_t* coord = reinterpret_cast<const std::int16_t*>(vertex + layout.coordOffset);
                 const std::int16_t* binormal = reinterpret_cast<const std::int16_t*>(vertex + layout.binormalOffset);
-                vertices.emplace_back(coord[0] / layout.coordScale + binormal[0] / layout.binormalScale * halfWidth,
-                                      coord[1] / layout.coordScale + binormal[1] / layout.binormalScale * halfWidth);
+                cglib::vec2<float> delta(binormal[0] / layout.binormalScale * halfWidth, binormal[1] / layout.binormalScale * halfWidth);
+                // lineVsh's inner-corner cap: the true miter, inside the room the segments leave, never under one half-width.
+                float innerReach = (layout.heightOffset >= 0 ? reinterpret_cast<const std::int16_t*>(vertex + layout.heightOffset)[0] / layout.heightScale : 0.0f);
+                float deltaLength = cglib::length(delta);
+                if (innerReach > 0 && deltaLength > 0) {
+                    float miter = deltaLength / halfWidth;
+                    delta = delta * (std::max(deltaLength / miter, std::min(innerReach, deltaLength)) / deltaLength);
+                }
+                vertices.emplace_back(coord[0] / layout.coordScale + delta(0), coord[1] / layout.coordScale + delta(1));
             }
             const VertexArray<std::uint16_t>& indices = geometry->getIndices();
             for (std::size_t i = 0; i + 2 < indices.size(); i += 3) {
@@ -143,6 +150,25 @@ namespace {
         float turn = turnDegrees * boost::math::constants::pi<float>() / 180.0f;
         return { { 0.5f - length, 0.5f }, { 0.5f, 0.5f }, { 0.5f + length * std::cos(turn), 0.5f + length * std::sin(turn) } };
     }
+
+    // Whether the inside of the turn is painted out to 'fraction' of the true inner miter point.
+    bool coversInnerCorner(float turnDegrees, float segmentHalfWidths, float halfWidth, float fraction) {
+        std::vector<cglib::vec2<float>> points = hairpin(turnDegrees, segmentHalfWidths, halfWidth);
+        std::vector<Triangle> triangles = tesselate(points, halfWidth, LineJoinMode::ROUND, miterDotLimitFor(LineJoinMode::ROUND));
+        // The tile transformer flips y; the inside of the turn is between the two segments.
+        cglib::vec2<float> corner(points[1](0), 1.0f - points[1](1));
+        cglib::vec2<float> in = cglib::unit(cglib::vec2<float>(points[0](0), 1.0f - points[0](1)) - corner);
+        cglib::vec2<float> out = cglib::unit(cglib::vec2<float>(points[2](0), 1.0f - points[2](1)) - corner);
+        float halfTurn = turnDegrees * 0.5f * boost::math::constants::pi<float>() / 180.0f;
+        cglib::vec2<float> innerMiter = corner + cglib::unit(in + out) * (halfWidth / std::cos(halfTurn));
+        cglib::vec2<float> p = corner + (innerMiter - corner) * fraction;
+        for (const Triangle& triangle : triangles) {
+            if (covers(triangle, p)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 void testLineJoinReach() {
@@ -169,6 +195,14 @@ void testLineJoinReach() {
     }
     TEST_CHECK(worstRound < INNER_MITER_LIMIT, "no turn angle makes a round join reach past the inner miter limit");
     TEST_CHECK(worstBevel < INNER_MITER_LIMIT, "no turn angle makes a bevel join reach past the inner miter limit");
+
+    // The inside of a turn is painted to the true miter point when the segments have room for it.
+    // Clamped to one half-width, a right angle lost the corner's last 0.41 and the line narrowed
+    // into every turn - a maneuver arrow read thinner at its turn, and stepped where a tile edge
+    // cut the line next to the join.
+    TEST_CHECK(coversInnerCorner(90.0f, 40.0f, halfWidth, 0.95f), "a right-angle round join paints its inner corner out to the miter point");
+    TEST_CHECK(coversInnerCorner(120.0f, 40.0f, halfWidth, 0.95f), "so does a sharper one with room for it");
+    TEST_CHECK(!coversInnerCorner(161.0f, 2.0f, halfWidth, 0.95f), "a near-reversal on a short segment is still capped by its room");
 
     // A MITER join is the one that IS allowed to reach out - up to stroke-miterlimit and no
     // further, which is what the limit means. This is the check that the clamp above did not

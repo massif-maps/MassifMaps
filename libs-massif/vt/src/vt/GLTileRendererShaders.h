@@ -1821,6 +1821,10 @@ namespace massif::vt {
         #endif
         attribute vec3 aVertexBinormal;
         attribute vec4 aVertexAttribs;
+        // An inner join corner's cap in tile units (TileLayerBuilder::tesselateLine); 0 elsewhere.
+        attribute float aVertexHeight;
+        uniform float uHeightScale;
+        uniform highp float uBinormalUnitScale; // packed binormal -> its length in line widths
         #ifdef PATTERN
         attribute vec2 aVertexUV;
         uniform vec2 uUVScale;
@@ -1829,7 +1833,6 @@ namespace massif::vt {
         uniform float uBinormalScale;
         #ifdef TERRAIN
         uniform highp vec2 uScreenScale; // x = viewport aspect (w/h), y = NDC height of one line-width unit
-        uniform highp float uBinormalUnitScale; // packed binormal -> its length in line widths
         #endif
         // Position in the target tile, for lineFsh's clip.
         varying mediump vec2 vTileUnit;
@@ -1873,6 +1876,13 @@ namespace massif::vt {
             float gamma = 0.5;
             vec3 pos = aVertexPosition;
             vec3 delta = aVertexBinormal * (uBinormalScale * roundedWidth);
+            // The true miter, kept inside the segments it joins and never under one half-width.
+            float innerReach = aVertexHeight * uHeightScale;
+            float deltaLen = length(delta);
+            if (innerReach > 0.0 && deltaLen > 0.0) {
+                float miter = length(aVertexBinormal) * uBinormalUnitScale;
+                delta *= clamp(innerReach, deltaLen / miter, deltaLen) / deltaLen;
+            }
         #ifdef OFFSET
             float offset = uOffsetTable[styleIndex];
             delta = delta - aVertexBinormal * (uBinormalScale * offset * aVertexAttribs[2]);

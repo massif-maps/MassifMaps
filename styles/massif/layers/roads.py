@@ -289,6 +289,11 @@ def plain_brunnels(v, no_ramp):
     return road_pair(c, 'road-brunnel-low', brunnel, 3, WIDTH, CASING_WIDTH, maxzoom=12)
 
 
+# a trail's weight from afar, the full chain from z15
+VIA_FERRATA_CASING = zoom_ramp(13, 1.6, 15, 4, 18, 8)
+VIA_FERRATA_WIDTH = zoom_ramp(13, 0.8, 15, 2.4, 18, 5)
+
+
 def ground(v):
     c = v.palette
     surface = ['!', ['in', get('brunnel'), ['literal', ['tunnel', 'bridge']]]]
@@ -301,11 +306,11 @@ def ground(v):
             + (outdoor.mtb(c, not_tunnel) if trails else []) + [
         # a chain, MapTiler's beads on a yellow core: no other way is drawn with a dot
         layer('via-ferrata-casing', 'line', 'transportation', minzoom=13, filter=via_ferrata,
-              paint={'line-color': c['via-ferrata-case'], 'line-width': zoom_ramp(13, 3, 15, 5, 18, 8)}, emissive=0.25),
+              paint={'line-color': c['via-ferrata-case'], 'line-width': VIA_FERRATA_CASING}, emissive=0.25),
         layer('via-ferrata', 'line', 'transportation', minzoom=13, filter=via_ferrata,
-              paint={'line-color': c['via-ferrata'], 'line-width': zoom_ramp(13, 1.6, 15, 3, 18, 5)}, emissive=0.25),
+              paint={'line-color': c['via-ferrata'], 'line-width': VIA_FERRATA_WIDTH}, emissive=0.25),
         layer('via-ferrata-dots', 'line', 'transportation', minzoom=13, filter=via_ferrata,
-              paint={'line-color': c['via-ferrata-case'], 'line-width': zoom_ramp(13, 1.6, 15, 3, 18, 5),
+              paint={'line-color': c['via-ferrata-case'], 'line-width': VIA_FERRATA_WIDTH,
                      'line-dasharray': [0.5, 1.5]}, emissive=0.25),
     ] + [
         # our fork flags construction on the way, stock OMT suffixes the class

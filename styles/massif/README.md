@@ -59,7 +59,7 @@ palette plus the modules it adds.
   a track reads as a road. It cannot fold into a `line-border`: the SDK draws a border with its
   line's own dash.
 - **A via ferrata is a chain**: a yellow core in a dark edge, dark dots along it, from z13 - no
-  other way is drawn with a dot. **Aerialways** are a solid line.
+  other way is drawn with a dot. Thin from afar, a trail's weight at z13, the full chain from z15. **Aerialways** are a solid line.
 - `access` in `no`/`private` lays red dashes over the road from z14, as MapTiler does. Our fork's
   `construction` flag and stock OMT's `*_construction` classes both draw.
 - **An unpaved minor or service road has a dashed casing** from z14, OSM Carto's convention, read

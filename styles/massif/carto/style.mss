@@ -1151,15 +1151,15 @@ Map {
 }
 #transportation[zoom >= 13][class = 'via_ferrata'][brunnel != 'tunnel']::via_ferrata {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @via_ferrata);
-  line-width: linear([view::zoom], (13, 1.6), (15, 3), (18, 5));
+  line-width: linear([view::zoom], (13, 0.8), (15, 2.4), (18, 5));
   line-border-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @via_ferrata_case);
-  line-border-width: ((linear([view::zoom], (13, 3), (15, 5), (18, 8)) - linear([view::zoom], (13, 1.6), (15, 3), (18, 5))) / 2);
+  line-border-width: ((linear([view::zoom], (13, 1.6), (15, 4), (18, 8)) - linear([view::zoom], (13, 0.8), (15, 2.4), (18, 5))) / 2);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 13][class = 'via_ferrata'][brunnel != 'tunnel']::via_ferrata_dots {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @via_ferrata_case);
-  line-width: linear([view::zoom], (13, 1.6), (15, 3), (18, 5));
-  line-dasharray: step([zoom], (13, '1.33,3.97'), (16, '2.17,6.5'));
+  line-width: linear([view::zoom], (13, 0.8), (15, 2.4), (18, 5));
+  line-dasharray: step([zoom], (13, '1,2.2'), (15, '1.63,4.9'), (17, '2.28,6.85'));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][construction = 1]::road_construction {

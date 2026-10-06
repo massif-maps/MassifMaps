@@ -68,6 +68,12 @@ def overhead(v):
                      'line-opacity': zoom_ramp(8, 0, 10, 1),
                      'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 13, ['literal', [12, 4]]]},
               emissive=0.5),
+        # a hairline where it first shows, so a ski area's lifts do not net the whole slope
         layer('aerialway', 'line', 'transportation', minzoom=12, filter=['==', get('class'), 'aerialway'],
-              paint={'line-color': ['match', get('subclass'), 'zip_line', c['aerialway'], c['aerialway-lift']], 'line-width': zoom_ramp(14, 1, 20, 2, base=1.5)}, emissive=1),
+              paint={'line-color': ['match', get('subclass'), 'zip_line', c['aerialway'], c['aerialway-lift']],
+                     'line-width': zoom_ramp(12, 0.4, 15, 1, 20, 2, base=1.5)}, emissive=1),
+        # the tiles carry power lines from z14 only: drawn from 13, an app on the SDK's 256-px tiles (its
+        # zoom one above maplibre's) shows them from its 14, from the z14 tiles it already reads there
+        layer('power-line', 'line', 'power', minzoom=13,
+              paint={'line-color': c['power'], 'line-width': zoom_ramp(13, 0.8, 16, 1, 20, 1.5, base=1.5)}, emissive=0.5),
     ]

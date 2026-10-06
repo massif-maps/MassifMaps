@@ -82,7 +82,9 @@ def spec():
         {'id': 'trails', 'label': 'Hiking difficulty (SAC scale)', 'zoom': 15, 'items': [
             line(id.replace('trail-', 'sac-'), SAC_LABELS[i], road('path', subclass='path', sac_scale=values[0]),
                  only('trail-halo', id))
-            for i, (id, values, _, _) in enumerate(outdoor.SAC)]},
+            for i, (id, values, _, _) in enumerate(outdoor.SAC)] + [
+            line('path-paved', 'Paved path', road('path', subclass='path', surface='paved'),
+                 only('path-osm-paved-casing', 'path-osm-paved'))]},
         {'id': 'mtb', 'label': 'Mountain bike difficulty (beside the path)', 'zoom': 15, 'items': [
             line(id, MTB_LABELS[id], road('path', subclass='path', mtb_scale=values[1]), only(id))
             for id, values, _, _ in outdoor.MTB]},
@@ -91,6 +93,7 @@ def spec():
             line('aerialway', 'Cable car, ski lift', road('aerialway', subclass='cable_car')),
             line('ferry', 'Ferry', road('ferry')),
             line('via-ferrata', 'Via ferrata', road('via_ferrata')),
+            line('power-line', 'Power line', {'class': 'line'}, layer='power'),
         ]},
         {'id': 'water', 'label': 'Water', 'zoom': 14, 'items': [
             item('water', 'Lake, river', 'water', 'polygon', {'class': 'lake'}),
@@ -111,6 +114,7 @@ def spec():
         ]},
         {'id': 'outdoor', 'label': 'Mountain', 'zoom': 14, 'items': [
             item('peak', 'Summit', 'mountain_peak', 'point', {'class': 'peak', 'name': 'Grand Veymont', 'ele': 2341, 'rank': 1}),
+            item('saddle', 'Pass, saddle', 'mountain_peak', 'point', {'class': 'saddle', 'name': 'Col Vert', 'ele': 1765, 'rank': 1}),
             item('alpine-hut', 'Alpine hut', 'poi', 'point', {'class': 'lodging', 'subclass': 'alpine_hut', 'name': 'Refuge'}),
             item('shelter', 'Shelter', 'poi', 'point', {'class': 'shelter', 'subclass': 'shelter', 'name': 'Cabane'}),
             item('viewpoint', 'Viewpoint', 'poi', 'point', {'class': 'attraction', 'subclass': 'viewpoint', 'name': 'Belvédère'}),

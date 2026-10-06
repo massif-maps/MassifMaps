@@ -242,6 +242,18 @@
             "sac_scale": "difficult_alpine_hiking"
           },
           "attachment": "^(trail_halo|trail_t6)(_b[0-9]+)?$"
+        },
+        {
+          "id": "path-paved",
+          "label": "Paved path",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "surface": "paved"
+          },
+          "attachment": "^(path_osm_paved_casing|path_osm_paved)(_b[0-9]+)?$"
         }
       ]
     },
@@ -341,6 +353,15 @@
           "geometry": "line",
           "properties": {
             "class": "via_ferrata"
+          }
+        },
+        {
+          "id": "power-line",
+          "label": "Power line",
+          "layer": "power",
+          "geometry": "line",
+          "properties": {
+            "class": "line"
           }
         }
       ]
@@ -540,6 +561,18 @@
             "class": "peak",
             "name": "Grand Veymont",
             "ele": 2341,
+            "rank": 1
+          }
+        },
+        {
+          "id": "saddle",
+          "label": "Pass, saddle",
+          "layer": "mountain_peak",
+          "geometry": "point",
+          "properties": {
+            "class": "saddle",
+            "name": "Col Vert",
+            "ele": 1765,
             "rank": 1
           }
         },

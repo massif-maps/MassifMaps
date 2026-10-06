@@ -70,6 +70,7 @@
     "boundary",
     "mountain_peak::cliff_teeth",
     "mountain_peak::cliff",
+    "power",
     "transportation::aerialway",
     "transportation::ferry",
     "transportation::bridge_tram_tracks",
@@ -94,6 +95,8 @@
     "transportation::road_bridge_casing_b2",
     "transportation::road_bridge_casing_b1",
     "transportation::bridge_steps",
+    "transportation::bridge_path_osm",
+    "transportation::bridge_path_osm_casing",
     "transportation::bridge_path",
     "transportation::bridge_path_casing",
     "transportation::tram_tracks",
@@ -123,20 +126,6 @@
     "transportation::road_casing_b3",
     "transportation::road_casing_b2",
     "transportation::road_casing_b1",
-    "transportation::road_tunnel_low_b7",
-    "transportation::road_tunnel_low_b6",
-    "transportation::road_tunnel_low_b5",
-    "transportation::road_tunnel_low_b4",
-    "transportation::road_tunnel_low_b3",
-    "transportation::road_tunnel_low_b2",
-    "transportation::road_tunnel_low_b1",
-    "transportation::road_tunnel_low_casing_b7",
-    "transportation::road_tunnel_low_casing_b6",
-    "transportation::road_tunnel_low_casing_b5",
-    "transportation::road_tunnel_low_casing_b4",
-    "transportation::road_tunnel_low_casing_b3",
-    "transportation::road_tunnel_low_casing_b2",
-    "transportation::road_tunnel_low_casing_b1",
     "transportation::road_brunnel_low_b7",
     "transportation::road_brunnel_low_b6",
     "transportation::road_brunnel_low_b5",
@@ -194,6 +183,8 @@
     "transportation::track_grade2_casing",
     "transportation::track_grade1_casing",
     "transportation::track_halo",
+    "transportation::path_osm_paved",
+    "transportation::path_osm_paved_casing",
     "transportation::trail_t5",
     "transportation::trail_t4",
     "transportation::trail_t3",
@@ -201,8 +192,12 @@
     "transportation::trail_t1",
     "transportation::trail_halo",
     "transportation::steps",
+    "transportation::path_osm",
+    "transportation::path_osm_casing",
     "transportation::path",
     "transportation::path_casing",
+    "transportation::urban_path_osm",
+    "transportation::urban_path_osm_casing",
     "transportation::urban_path",
     "transportation::urban_path_casing",
     "route",
@@ -222,6 +217,8 @@
     "transportation::road_tunnel_casing_b1",
     "transportation::tunnel_cycleway",
     "transportation::tunnel_steps",
+    "transportation::tunnel_path_osm",
+    "transportation::tunnel_path_osm_casing",
     "transportation::tunnel_path",
     "transportation::tunnel_path_casing",
     "transportation::rail_tunnel",
@@ -297,7 +294,10 @@
         "oneway-reverse-dark": "icons-glyph/oneway-reverse-dark.png",
         "oneway-ink": "icons-glyph/oneway-ink.png",
         "oneway-dark": "icons-glyph/oneway-dark.png",
-        "peak": "icons-glyph/peak.png",
+        "peak-brown": "icons-glyph/peak-brown.png",
+        "peak-mono": "icons-glyph/peak-mono.png",
+        "saddle-brown": "icons-glyph/saddle-brown.png",
+        "saddle-mono": "icons-glyph/saddle-mono.png",
         "pattern-cemetery": "icons-glyph/pattern-cemetery.png",
         "pattern-glacier": "icons-glyph/pattern-glacier.png",
         "pattern-grass": "icons-glyph/pattern-grass.png",
@@ -719,7 +719,34 @@
     "hillshade_max_zoom": 16,
     "label_occlusion": 1,
     "lighting": 1,
+    "mtb_markings": 0,
     "path_min_zoom": 12,
+    "path_osm": 0,
+    "peak-outdoor-minor-t0": {
+      "default": {
+        "saddle": "icons/saddle-brown.png"
+      }
+    },
+    "peak-outdoor-minor-t1": {
+      "default": {
+        "saddle": "icons/saddle-mono.png"
+      }
+    },
+    "peak-outdoor-t0": {
+      "default": {
+        "saddle": "icons/saddle-brown.png"
+      }
+    },
+    "peak-outdoor-t1": {
+      "default": {
+        "saddle": "icons/saddle-mono.png"
+      }
+    },
+    "peak-t0": {
+      "default": {
+        "saddle": "icons/saddle-brown.png"
+      }
+    },
     "place-city-dot-t0": {
       "default": {
         "2": "icons/dot-capital.png"
@@ -3143,8 +3170,7 @@
       "default": {
         "border_control": "icons-glyph/barrier.png",
         "sally_port": "icons-glyph/barrier.png",
-        "spring": "icons-glyph/water.png",
-        "lodging": "icons-glyph/alpine_hut.png"
+        "spring": "icons-glyph/water.png"
       }
     },
     "poiStyle": {
@@ -3154,6 +3180,14 @@
         "plain": "plain"
       }
     },
+    "poi_label_color": {
+      "default": "category",
+      "values": {
+        "category": "category",
+        "neutral": "neutral"
+      }
+    },
+    "poi_label_scale": 0.9,
     "poi_on_roof": 1,
     "polygons_border": 0,
     "river_label_min_zoom": 9,
@@ -3166,8 +3200,10 @@
     "show_caravan_site": 1,
     "show_tram": 1,
     "show_underground": 1,
+    "spring_min_zoom": 17,
     "sub_boundaries": 1,
     "track_min_zoom": 12,
+    "trails": 0,
     "tunnel_min_zoom": 12,
     "variant": {
       "default": "streets",
@@ -3189,6 +3225,7 @@
     "poi_rank10_minzoom": 14,
     "poi_rank30_label_minzoom": 16,
     "poi_rank30_minzoom": 15,
+    "poi_rank5_minzoom": 14,
     "poi_rank70_minzoom": 16,
     "poi_rank_all_minzoom": 17,
     "poi_tram_label_minzoom": 16,

@@ -17,7 +17,6 @@
         "eink": "eink"
       }
     },
-    "track_min_zoom": 24,
     "poiStyle": {
       "default": "plain",
       "values": {
@@ -25,13 +24,17 @@
         "plain": "plain"
       }
     },
+    "trails": 1,
     "road_osm_low": 1,
-    "tunnel_min_zoom": 13,
-    "water_min_zoom": 16
+    "path_osm": 1,
+    "water_min_zoom": 16,
+    "spring_min_zoom": 11,
+    "campsite_min_zoom": 9
   },
   "constants": {
-    "poi_bus_minzoom": 15,
-    "poi_bus_label_minzoom": 16,
-    "poi_pt_shelter_minzoom": 15
+    "poi_bus_minzoom": 14,
+    "poi_bus_label_minzoom": 15,
+    "poi_pt_shelter_minzoom": 14,
+    "poi_rank5_minzoom": 13
   }
 }

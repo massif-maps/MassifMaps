@@ -7,6 +7,7 @@ SWITCH = [0, 1]
 PARAMS = {
     'poiStyle': {'default': 'badge', 'values': ['badge', 'plain']},
     'bare_icon_scale': {'default': 1.3},
+    'poi_label_scale': {'default': 0.9},
     'building_opacity': {'default': 1},
     'buildings': {'default': 2, 'values': [0, 1, 2]},
     'contour_opacity': {'default': 1},
@@ -24,11 +25,18 @@ PARAMS = {
     'polygons_border': {'default': 0, 'values': SWITCH},
     'lighting': {'default': 1, 'values': SWITCH},
     'sac_scale_labels': {'default': 0, 'values': SWITCH},
+    # outdoor's trails (by difficulty, MTB, SAC grades) rather than streets' paths: 1 on outdoor, topo, e-ink
+    'trails': {'default': 0, 'values': SWITCH},
     'road_osm_low': {'default': 0, 'values': SWITCH},
+    'path_osm': {'default': 0, 'values': SWITCH},
+    'mtb_markings': {'default': 0, 'values': SWITCH},
+    # a string: the converter folds a match on a config into tables only on string labels
+    'poi_label_color': {'default': 'category', 'values': ['category', 'neutral']},
     'track_min_zoom': {'default': 12},
     'path_min_zoom': {'default': 12},
     'tunnel_min_zoom': {'default': 12},
     'water_min_zoom': {'default': 17},
+    'spring_min_zoom': {'default': 17},
     'campsite_min_zoom': {'default': 15},
     'building_min_zoom': {'default': 14},
     'city_min_zoom': {'default': 3},

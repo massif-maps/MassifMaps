@@ -11,7 +11,9 @@
       },
       "default": "topo"
     },
+    "trails": 1,
     "water_min_zoom": 16,
+    "spring_min_zoom": 16,
     "campsite_min_zoom": 13
   }
 }

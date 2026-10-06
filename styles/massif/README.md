@@ -33,7 +33,8 @@ The converter runs with `--fold-casings --tile-draw-size 512 --live-light`.
 One module per layer family under [`layers/`](layers/), stacked bottom to top in
 `build.py`: land, water, rail and road tunnels, the roads on the ground, rail, bridges, lifts and
 ferries (a cable car or a ski lift in black, `aerialway-lift`, a zip line in the aerialway blue; hybrid
-keeps the blue on imagery), boundaries, buildings, then the labels. Colours are **named** in
+keeps the blue on imagery; a hairline at z12 growing to 1 px by z15), power lines (thin grey from z13, though Alpimaps' tiles carry their `power` layer from z14 only:
+an app on 256-px tiles reads those at its own z14, maplibre's z13), boundaries, buildings, then the labels. Colours are **named** in
 [`palette.py`](palette.py) and the rules only name them, so a variant is a
 palette plus the modules it adds.
 
@@ -58,7 +59,7 @@ palette plus the modules it adds.
   a track reads as a road. It cannot fold into a `line-border`: the SDK draws a border with its
   line's own dash.
 - **A via ferrata is a chain**: a yellow core in a dark edge, dark dots along it, from z13 - no
-  other way is drawn with a dot. **Aerialways** are a solid line.
+  other way is drawn with a dot. Thin from afar, a trail's weight at z13, the full chain from z15. **Aerialways** are a solid line.
 - `access` in `no`/`private` lays red dashes over the road from z14, as MapTiler does. Our fork's
   `construction` flag and stock OMT's `*_construction` classes both draw.
 - **An unpaved minor or service road has a dashed casing** from z14, OSM Carto's convention, read
@@ -125,15 +126,19 @@ deeper woods (`OUTDOOR` in the palette):
   hybrid draw them too.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
-- **Peaks from z9**, the three most prominent per tile first. A summit, saddle or volcano is placed
-  before every POI and road or trail name, after the place names, as MapTiler outdoor orders them.
-- **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters
-  a walker uses (`shelter_type` basic_hut, lean_to, picnic_shelter, rock_shelter, weather_shelter,
-  wilderness_hut: a badge on nature's green at a POI's size, named), campsites and picnic sites from z13; caves (named from
+- **Peaks from the tiles' first zoom** (with `trails`; z11 otherwise), the three most prominent per
+  tile first. A summit, saddle or volcano is placed before every POI and road or trail name, after
+  the place names, as MapTiler outdoor orders them. A saddle has its own glyph (`saddle`); a summit
+  with no `ele` is named without a height. The glyph is small from afar, a POI's weight by z13, and
+  black on e-ink (`peak-mono`, a sprite variant).
+- **A walker's POIs early**, in every variant: huts and bivouacs from z11; shelters
+  a walker uses (`shelter_type` basic_hut, lean_to, rock_shelter, weather_shelter, wilderness_hut: a
+  badge on nature's green at a POI's size, named), campsites (a smaller glyph until z13, named from z13) and picnic sites from z13 (a picnic
+  shelter, the same badge, from z16 and under the huts); caves (named from
   z15), adits, ruins, castles, forts, archaeological sites, waterfalls (in the water's blue) and named parks and
-  gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z14 under every POI
+  gardens (Standard shows park_like early too) from z14, parks over the sights; viewpoints from z15 under every POI
   (below); drinking water
-  and springs only from `water_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
+  and springs only from `water_min_zoom` and `spring_min_zoom`, at every zoom (the rank ladder leaves them out); the rest
   each until its ordinary POI layer takes over. A spring is
   Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17. Water points have their own
   category, in the water's blue. A hut draws the hut glyph, where
@@ -224,7 +229,12 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
   the style adds the footprints past z15 for 1.
 - `building_tilt_drop` (90), `building_ao` (1) — the converter's own, the same in every converted style.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
-  category colour and drawn larger. It reads the class tables, so switching is a re-decode.
+  category colour and drawn larger; a glyph bare in both (furniture, landmarks, trees) keeps badge
+  mode's size. It reads the class tables, so switching is a re-decode.
+- `poi_label_scale` (0.9) — every POI name's size, a landmark's and a named tree's too.
+- `poi_label_color` (`category`) — `neutral` draws every POI name in the map's label ink rather than
+  its category's colour. A string, not a 0/1 switch: the converter folds a match on a parameter into
+  its class tables only on string values.
 - `bare_icon_scale` (1.3) — the size of a glyph that is not a place (street furniture, barriers,
   drinking water, trees, viewpoints, landmarks: `NO_BACKGROUND`) against a badge's, in `badge` and on
   e-ink. A layer tests only the bare classes its filter lets through (`pois.bare_scale`). Such a glyph
@@ -241,9 +251,10 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
-  bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
-- `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water and springs; 12 to plan a hike by its water.
-- `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
+  bridge is drawn as the road it carries (OSM Carto's 13 is Massif's 12, the default).
+- `water_min_zoom` (17; 16 on outdoor, topo, e-ink and the osm example) — drinking water; 12 to plan a hike by its water.
+- `spring_min_zoom` (17; 16 on outdoor, topo, e-ink; 11 in the osm example, the old OSM style's 12) — springs.
+- `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink; 9 at the lowest, the OSM example's), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
   `wetland_pattern_zoom` (13) — where e-ink's textures start.
@@ -270,7 +281,15 @@ Switches (0/1):
 - `lighting` (1; 0 on e-ink) — 0 draws every colour as stated, lit by no hour: a flat page, the
   OSM example's look.
 - `road_osm_low` (0) — motorway to tertiary drawn as OSM Carto (Alpimaps) draws them at low zoom:
-  its wider lines below z12 and its outlines below z14 (the OSM example sets it).
+  its wider lines below z11 and its outlines below z14, from z8 (the OSM example sets it); OSM
+  Carto's zooms, one above Massif's.
+- `path_osm` (0) — footways (and, with `trails`, a paved path no harder than T1) drawn as OSM
+  Carto's: salmon dashes on a translucent white casing, where Massif draws a white ribbon or a T1
+  trail. The osm example sets it.
+- `mtb_markings` (0) — the MTB difficulty line beside a path (with `trails`).
+- `trails` (0; 1 on outdoor, topo, e-ink) — outdoor's paths by difficulty, MTB and SAC detail
+  instead of streets' plain paths; the layers are gated on it rather than on the variant's name, so a
+  child keeping streets' look (`examples/osm`) takes them with `trails: 1`.
 - `sac_scale_labels` (0; 1 on e-ink) — the SAC grade (T1..T6) on a small plate along each trail
   from z14, where a dash alone is hard to read. A path with no `sac_scale` gets none.
 
@@ -399,7 +418,8 @@ decides. It is an ordinal over the whole z14 tile (1–390 over central Grenoble
 Liberty's 1–6 / 7–19 / rest at z15 / 16 / 17 admitted 3% and 11% of a city's POIs at z15 and z16
 (about 18 drawn in an app's z17 view, against 84 for Standard). The ladder is Alpimaps' OSM one:
 rank ≤ 10 at z14 (eating, bars, parking and schools at z15), ≤ 30 at z15 as icons, named from z16
-(shops at z16), ≤ 70 at z16, all at z17 — project constants `poi_rank10_minzoom`,
+(shops at z16), ≤ 70 at z16, all at z17 — project constants `poi_rank5_minzoom` (the first 5 but a
+park or a community centre; Alpimaps' OSM style, and the osm example, bring them a zoom earlier), `poi_rank10_minzoom`,
 `poi_rank30_minzoom`, `poi_rank30_label_minzoom`, `poi_rank70_minzoom`, `poi_rank_all_minzoom`. Standard's
 `poi-label` is built on `filterrank` the same way — a density rank OpenMapTiles does not carry,
 `rank` is the nearest thing. The exceptions are layers of their own, gated by mode as Standard's
@@ -456,7 +476,8 @@ from z14, a bare glyph in nature's green, sunk with the trees (`pois.landmarks`)
 spot on the ground rather than names one, from a tileset built with planetiler's `poi_landmarks` and
 `poi_guideposts` (packed as the trees are): a bare glyph in the `landmark` category's dark neutral,
 named if it is, from the zoom its size reads at — `power_tower` and `wind_turbine` from z13 (the tiles
-carry them from z14), `pylon`
+carry them from z14, which an app on 256-px tiles reads there), at 0.7 of their size growing to it
+by z16, `pylon`
 (aerialway), `mast` and `cross` (a summit cross) from z15, `wayside_cross`, `wayside_shrine`,
 `cairn`, `stone` and `rock` from z16, `guidepost` from z17 — growing with the zoom as a tree does.
 They are references, not places, so no disc. The ladder excludes every landmark class.
@@ -613,13 +634,17 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
 
 [`examples/osm/`](examples/osm/) re-skins the family with OpenStreetMap Carto's colours as
 Alpimaps' OSM style has them (`?project=osm`): the palette redeclared (each road class its own casing,
-footways red, road colours ramped over zoom as Alpimaps ramps them, tertiaries white), Massif's
+road colours ramped over zoom as Alpimaps ramps them, tertiaries white), footways and paved paths
+as OSM Carto's salmon dashes (`path_osm`), Massif's
 widths kept, POIs as bare glyphs (`poiStyle: plain`), Alpimaps' textures on woods, scrub, wetland
-and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
-reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
-Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z15 whatever
-their rank and hides pharmacies before z17 (`display: none`), and `osm.json`'s `constants` bring the
-bus stops in at z15, named from z16, and public-transport shelters at z15.
+and rock. Its tracks and trails are Massif's outdoor ones (`trails: 1`) - grades, SAC and MTB
+details - in OSM's brown (`@track`); springs come in at z11 (`spring_min_zoom`).
+Its zooms are the old OSM style's less one: Massif counts zooms as maplibre does (512-px tiles), the
+SDK and that style on 256-px tiles, so the same view is numbered one lower here.
+Its POIs are an OSM map's: `osm-rules.mss` extends `%poi` to bring bakeries in from z14 whatever
+their rank and hides pharmacies before z16 (`display: none`), `osm.json` brings campsites in at z9
+(`campsite_min_zoom`) and its `constants` bring the bus stops in at z14, named from z15,
+public-transport shelters at z14 and a tile's first 5 POIs at z13 (`poi_rank5_minzoom`).
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.
@@ -650,7 +675,7 @@ is MIT-0 (`LICENSE`): use it for anything, no notice required.
 
 ## Licensing
 
-`sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
+`sprite-src/map/` — peak, saddle, city dots, oneway arrows — is drawn for this project.
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
 domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (eleven glyphs openstreetmap-carto's, twelve
 [Temaki](https://github.com/rapideditor/temaki)'s, the `default` dot drawn for this project), **CC0** — a public-domain

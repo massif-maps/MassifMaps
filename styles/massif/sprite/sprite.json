@@ -8,7 +8,7 @@
     "visible": true
   },
   "dot": {
-    "x": 460,
+    "x": 502,
     "y": 2338,
     "width": 8,
     "height": 8,
@@ -16,22 +16,6 @@
     "visible": true
   },
   "oneway-reverse-ink": {
-    "x": 470,
-    "y": 2338,
-    "width": 16,
-    "height": 8,
-    "pixelRatio": 1,
-    "visible": true
-  },
-  "oneway-reverse-dark": {
-    "x": 488,
-    "y": 2338,
-    "width": 16,
-    "height": 8,
-    "pixelRatio": 1,
-    "visible": true
-  },
-  "oneway-ink": {
     "x": 0,
     "y": 2388,
     "width": 16,
@@ -39,7 +23,7 @@
     "pixelRatio": 1,
     "visible": true
   },
-  "oneway-dark": {
+  "oneway-reverse-dark": {
     "x": 18,
     "y": 2388,
     "width": 16,
@@ -47,8 +31,48 @@
     "pixelRatio": 1,
     "visible": true
   },
-  "peak": {
+  "oneway-ink": {
+    "x": 36,
+    "y": 2388,
+    "width": 16,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "oneway-dark": {
+    "x": 54,
+    "y": 2388,
+    "width": 16,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "peak-brown": {
     "x": 446,
+    "y": 2338,
+    "width": 12,
+    "height": 10,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "peak-mono": {
+    "x": 460,
+    "y": 2338,
+    "width": 12,
+    "height": 10,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "saddle-brown": {
+    "x": 474,
+    "y": 2338,
+    "width": 12,
+    "height": 10,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "saddle-mono": {
+    "x": 488,
     "y": 2338,
     "width": 12,
     "height": 10,
@@ -88,7 +112,7 @@
     "visible": true
   },
   "pattern-park": {
-    "x": 36,
+    "x": 72,
     "y": 2388,
     "width": 8,
     "height": 8,

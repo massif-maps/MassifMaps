@@ -195,9 +195,17 @@ RANK_LADDER = [
     ('poi-rank-r30-shop', 16, ['all', ['>', RANK, 10], ['<=', RANK, 30], ['==', get('class'), 'shop']], 'poi_rank70_minzoom'),
 ]
 RANK30 = ['all', ['>', RANK, 10], ['<=', RANK, 30], ['!=', get('class'), 'shop']]
+NOT_LATE = [['!=', get('class'), c] for c in LATE]
+# the first 5 from `poi_rank5_minzoom` (Alpimaps' OSM style: a zoom before the rest), but a park or a
+# community centre, which crowd a town
 RANK10 = [
     ('poi-rank-r10-late', 15, ['all', ['<=', RANK, 10], ['in', get('class'), ['literal', LATE]]], 'poi_rank30_minzoom'),
-    ('poi-rank-r10', 14, ['all', ['<=', RANK, 10], *[['!=', get('class'), c] for c in LATE]], 'poi_rank10_minzoom'),
+    ('poi-rank-r10', 14, ['all', ['>', RANK, 5], ['<=', RANK, 10], *NOT_LATE], 'poi_rank10_minzoom'),
+    ('poi-rank-r5-park', 14, ['all', ['<=', RANK, 5], ['==', get('class'), 'park']], 'poi_rank10_minzoom'),
+    ('poi-rank-r5-community', 14, ['all', ['<=', RANK, 5], ['==', get('subclass'), 'community_centre']],
+     'poi_rank10_minzoom'),
+    ('poi-rank-r5', 14, ['all', ['<=', RANK, 5], *NOT_LATE, ['!=', get('class'), 'park'],
+                         ['!=', get('subclass'), 'community_centre']], 'poi_rank5_minzoom'),
 ]
 # The exceptions, each its own layer: stations and airports before the ladder starts, as Standard
 # draws them; the bus stop after it, as Standard does - icon at 17, name at 18.
@@ -214,6 +222,7 @@ PT_SHELTER = ['all', ['==', get('class'), 'shelter'], ['==', get('shelter_type')
 # the shelter_type values Alpimaps' tiles carry for a walker's shelter: named, from z13. Any other (none,
 # sun_shelter, building...) is an icon from z17, as a public-transport one in a city
 OUTDOOR_SHELTERS = ['basic_hut', 'lean_to', 'picnic_shelter', 'rock_shelter', 'weather_shelter', 'wilderness_hut']
+HUT_SHELTERS = [t for t in OUTDOOR_SHELTERS if t != 'picnic_shelter']
 # (category, bare) looked up before the class, so a child rule extending %poi draws a viewpoint (an
 # attraction to OpenMapTiles) or a walker's shelter as Massif's own layers do
 SUBCLASS_LOOK = {**{sub: (cat, False) for cat, subs in SUBCLASS.items() for sub in subs},
@@ -391,6 +400,31 @@ def halo_width(mono, fixed, fixed_bare):
                                                                  fixed, fixed_bare), badge]
 
 
+def label_color(v, colored):
+    """`colored`, or the map's neutral label colour with `poi_label_color` neutral"""
+    c = v.palette
+    neutral = c['label-night'] if v.flags.get('dark_ground', False) else by_hour(c['label-night'], c['label'])
+    return ['match', ['config', 'poi_label_color'], 'neutral', neutral, colored]
+
+
+def poi_text(size):
+    """a POI name's size, times `poi_label_scale`"""
+    return ['*', size, ['config', 'poi_label_scale']]
+
+
+def plain_size(scale, bare_size):
+    """`poiStyle` plain: a place's glyph at 0.6, a bare one (furniture, landmarks) as badge mode draws it"""
+    def size(e):
+        if e == ['config', 'bare_icon_scale']:
+            return ['*', 0.4, e]
+        if e == 1:
+            return 0.6
+        if isinstance(e, list) and e[0] == 'match':
+            return e[:2] + [x if i % 2 == 0 else size(x) for i, x in enumerate(e[2:-1])] + [size(e[-1])]
+        raise ValueError(f'bare_scale shape: {e}')
+    return times(scale, size(bare_size)) if scale != 1 else size(bare_size)
+
+
 def times(size, factor):
     """`size` (a number or a zoom ramp) times a per-feature `factor`: inside the ramp's outputs, where
     MapLibre wants the zoom on top"""
@@ -417,7 +451,7 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
     bare_size = bare_scale(filter, bare)
     gated = lambda known: until_known(['case', known, text, ''], text, minzoom, maxzoom) if unknown and text else text
     maplibre_icon = chain(baked)
-    if 'basic_hut' in json.dumps(filter):
+    if any(c[0] in ('==', 'in') and c[1] == get('shelter_type') for c in (filter[1:] if filter[0] == 'all' else [filter])):
         # a walker's shelter is a badge (SHELTER_LOOK): the sprite bakes it as `shelter-<shelter_type>`
         maplibre_icon = ['coalesce', baked(['concat', 'shelter-', get('shelter_type')]), *maplibre_icon[1:]]
     layout = {
@@ -426,7 +460,7 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
         'text-field': gated(KNOWN_MAPLIBRE),
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
         'text-font': 'medium',
-        'text-size': 12,
+        'text-size': poi_text(12),
         'text-max-width': 9,
         'text-padding': 2,
         'text-variable-anchor': ['top', 'left', 'right'],
@@ -444,7 +478,7 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
     massif_layout = {'icon-image': massif_icon, **({'text-field': gated(KNOWN_SDK)} if unknown else {})}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
     massif_layout['icon-size'] = times(scaled(scale, 0.4), bare_size) if mono else \
-        ['match', ['config', 'poiStyle'], 'plain', scaled(scale, 0.6), times(scaled(scale, 0.4), bare_size)]
+        ['match', ['config', 'poiStyle'], 'plain', plain_size(scale, bare_size), times(scaled(scale, 0.4), bare_size)]
     return boosted(layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
                  paint={'text-color': MONO_INK if mono else night_color(category) if dark else day_color(category),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
@@ -453,7 +487,8 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
                  metadata={'massif:params': ['icon-image', 'text-color', 'icon-halo-width'],
                            'massif:template': 'poi', 'massif:attachment': 'poi',
                            'massif:layout': massif_layout,
-                           'massif:paint': {'text-color': MONO_INK if mono else night_color(category) if dark else text_color(category),
+                           'massif:paint': {'text-color': MONO_INK if mono else
+                                            label_color(v, night_color(category) if dark else text_color(category)),
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
                                             # `plain`: a bare glyph needs the halo its disc gave it
                                             'icon-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
@@ -461,21 +496,24 @@ def poi_layer(id, minzoom, filter, v, icon=ICON, maxzoom=None, text=NAME, overla
                    'subclass', 'class')
 
 
-# A walker's POIs, each until its category layer takes over, water from `water_min_zoom`.
-# data-driven even for the hut layer: a constant icon-image is not one mapbox2css recolours
-MOUNTAIN_ICON = class_icon({**ALIAS, 'lodging': 'alpine_hut'})
+# A walker's POIs, each until its category layer takes over, water from `water_min_zoom`. ICON, the
+# shared one: every POI layer folds into one icon table, so an alias here redrew every hostel as a hut
 MOUNTAIN_LAYERS = [
     ('poi-mountain-sight', 14, 16, ['in', get('class'), ['literal', ['adit', 'archaeological_site', 'castle',
                                                                       'cave_entrance', 'fort', 'waterfall']]], ICON, None),
     # a named park early and over the sights, as Standard gives park_like a wider filterrank
     ('poi-mountain-park', 14, 16, ['all', ['in', get('class'), ['literal', ['park', 'garden']]], ['has', 'name']], ICON, None),
-    ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], MOUNTAIN_ICON, None),
+    ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], ICON, None),
+    # a picnic shelter is a park bench's roof: a walker's shelter's look, but late and under the huts
+    ('poi-mountain-picnic-shelter', 16, None, ['all', ['==', get('class'), 'shelter'],
+                                               ['==', get('shelter_type'), 'picnic_shelter']], ICON, None),
     ('poi-mountain-shelter', 13, None, ['all', ['==', get('class'), 'shelter'],
-                                        ['in', get('shelter_type'), ['literal', OUTDOOR_SHELTERS]]], MOUNTAIN_ICON, None),
-    ('poi-mountain-water', 12, None, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
-    ('poi-mountain', 12, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
-    # OpenMapTiles files a hut under lodging, whose glyph is a bed
-    ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),
+                                        ['in', get('shelter_type'), ['literal', HUT_SHELTERS]]], ICON, None),
+    ('poi-mountain-water', 12, None, ['==', get('class'), 'drinking_water'], ICON, 'water_min_zoom'),
+    # huts from 11: the old Alpimaps OSM style's 12, which counted zooms on 256-px tiles
+    ('poi-mountain', 11, None, ['==', get('class'), 'wilderness_hut'], ICON, None),
+    # OpenMapTiles files a hut under lodging, whose glyph is a bed: the subclass's own glyph draws it
+    ('poi-mountain-hut', 11, 15, ['==', get('subclass'), 'alpine_hut'], ICON, None),
 ]
 
 
@@ -484,16 +522,17 @@ def springs(v):
     never hidden by another label; named from z17"""
     mono = v.flags.get('mono', False)
     spring = ['==', get('class'), 'spring']
-    dot = layer('poi-spring', 'circle', 'poi', minzoom=12, filter=spring,
+    dot = layer('poi-spring', 'circle', 'poi', minzoom=11, filter=spring,
                 paint={'circle-color': MONO_INK if mono else CATEGORY['water']['disc'],
                        'circle-radius': zoom_ramp(12, 1.5, 14, 2, 16, 5),
                        'circle-stroke-color': HALO_DAY, 'circle-stroke-width': zoom_ramp(13.5, 0, 14, 1)},
-                metadata={'massif:minzoom-param': 'water_min_zoom'})
+                metadata={'massif:minzoom-param': 'spring_min_zoom'})
     name = layer('poi-spring-label', 'symbol', 'poi', minzoom=17, filter=spring,
-                 layout={'text-field': NAME, 'text-font': 'medium', 'text-size': 12, 'text-max-width': 9,
+                 layout={'text-field': NAME, 'text-font': 'medium', 'text-size': poi_text(12), 'text-max-width': 9,
                          'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': True},
                  paint={'text-color': MONO_INK if mono else CATEGORY['water']['day'],
-                        'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH})
+                        'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH},
+                 metadata={} if mono else {'massif:paint': {'text-color': label_color(v, CATEGORY['water']['day'])}})
     # `highlight_drinking_water` draws springs in water_highlight() instead
     return [gate(dot, v, 'highlight_drinking_water', 0), gate(boosted(name, 'class'), v, 'highlight_drinking_water', 0)]
 
@@ -506,7 +545,7 @@ def mountain(v):
     out = []
     for id, minzoom, maxzoom, filter, icon, param in MOUNTAIN_LAYERS:
         lay = poi_layer(id, minzoom, filter, v, icon=icon, maxzoom=maxzoom,
-                        category='park_like' if id == 'poi-mountain-shelter' else None,
+                        category='park_like' if id in ('poi-mountain-shelter', 'poi-mountain-picnic-shelter') else None,
                         text=CAVE_NAME if id == 'poi-mountain-sight' else NAME)
         if param:
             lay['metadata']['massif:minzoom-param'] = param
@@ -519,6 +558,11 @@ def mountain(v):
     return out
 
 
+# a campsite seen from afar is a small glyph, at a POI's size by z13 where its name joins it
+CAMPSITE_SCALE = zoom_ramp(10, 0.6, 13, 1)
+CAMPSITE_NAME = ['step', ['zoom'], '', 13, NAME]
+
+
 def campsites(v):
     """From `campsite_min_zoom`, a caravan site only with `show_caravan_site`; each twice, placed
     with and without `campsite_allow_overlap`, since overlap is decided per layer."""
@@ -528,7 +572,9 @@ def campsites(v):
                                ('poi-caravan-site', ['all', camp, ['==', get('subclass'), 'caravan_site']],
                                 'show_caravan_site')):
         for overlap in (0, 1):
-            lay = poi_layer(id + ('-overlap' if overlap else ''), 12, filter, v, overlap=bool(overlap))
+            # z9: the tiles carry campsites from z10, which an app on 256-px tiles reads at maplibre's z9 scale
+            lay = poi_layer(id + ('-overlap' if overlap else ''), 9, filter, v, overlap=bool(overlap),
+                            text=CAMPSITE_NAME, scale=CAMPSITE_SCALE)
             lay['metadata']['massif:minzoom-param'] = 'campsite_min_zoom'
             gate(lay, v, 'campsite_allow_overlap', overlap)
             if switch:
@@ -548,7 +594,7 @@ def water_highlight(v):
     """`highlight_drinking_water`, Alpimaps': water points larger, never hidden by another label, and
     from z12 whatever `water_min_zoom` says"""
     lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], v,
-                    icon=MOUNTAIN_ICON, overlap=True, scale=1.4)
+                    icon=ICON, overlap=True, scale=1.4)
     return [gate(lay, v, 'highlight_drinking_water')]
 
 
@@ -556,6 +602,8 @@ TREE = ['==', get('class'), 'tree']
 TREE_DOT = 'hsl(100, 45%, 60%)'
 # a 0.4 badge's glyph at z17, growing with the zoom
 TREE_SCALE = zoom_ramp(17, 1, 22, 2)
+# a power tower or a wind turbine seen from afar is small, at a landmark's size by z16
+FAR_LANDMARK_SCALE = zoom_ramp(13, 0.7, 16, 1, 17, 1, 22, 2)
 # under every label on the SDK: the layers must sit with the other POIs, `poi` cannot be split (README)
 TREE_SINK = 10000000
 
@@ -572,7 +620,7 @@ def trees(v):
     the glyph from z18, a named one the glyph and its name from z17, every other label winning over
     them. Hybrid draws only the named ones: the imagery shows the rest."""
     named = sunk(poi_layer('poi-tree-named', 17, ['all', TREE, ['has', 'name']], v, scale=TREE_SCALE,
-                           extra={'text-font': 'italic', 'text-size': 11, 'text-variable-anchor': ['top']}))
+                           extra={'text-font': 'italic', 'text-size': poi_text(11), 'text-variable-anchor': ['top']}))
     if v.flags.get('dark_ground'):
         return [named]
     unnamed = ['all', TREE, ['!', ['has', 'name']]]
@@ -599,7 +647,7 @@ def barriers(v):
         for suffix, named, text in (('', ['!', ['has', 'name']], ''), ('-named', ['has', 'name'], NAME)):
             out.append(reference(poi_layer('poi-barrier-%s%s' % (tier, suffix), 17, ['all', cls, named], v,
                                            text=text,
-                                           extra={'text-size': 11, 'text-variable-anchor': ['top']}), v))
+                                           extra={'text-size': poi_text(11), 'text-variable-anchor': ['top']}), v))
     return out
 
 
@@ -623,12 +671,13 @@ LANDMARK_TIERS = [(17, ['guidepost']),
 def landmarks(v):
     """a viewpoint, then what marks a spot on the ground rather than names one (Alpimaps' `poi_landmarks`,
     `poi_guideposts`): bare glyphs over the trees and under the barriers, so they never hide a POI"""
-    out = [reference(poi_layer('poi-viewpoint', 14, ['==', get('subclass'), 'viewpoint'], v, category='park_like',
+    out = [reference(poi_layer('poi-viewpoint', 15, ['==', get('subclass'), 'viewpoint'], v, category='park_like',
                                bare=True), v, 'park_like')]
     for minzoom, classes in LANDMARK_TIERS:
         cls = ['==', get('class'), classes[0]] if len(classes) == 1 else ['in', get('class'), ['literal', classes]]
-        out.append(reference(poi_layer('poi-landmark-z%d' % minzoom, minzoom, cls, v, scale=TREE_SCALE,
-                                       extra={'text-size': 11, 'text-variable-anchor': ['top']}), v))
+        out.append(reference(poi_layer('poi-landmark-z%d' % minzoom, minzoom, cls, v,
+                                       scale=FAR_LANDMARK_SCALE if minzoom < 15 else TREE_SCALE,
+                                       extra={'text-size': poi_text(11), 'text-variable-anchor': ['top']}), v))
     return out
 
 

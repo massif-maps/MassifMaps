@@ -1,6 +1,21 @@
 from lib import boosted, by_hour, get, in_class, layer, zoom_ramp
 
 NAME = ['coalesce', get('name'), get('name_int')]
+# a summit's name over its height, the name alone where the tiles carry no height
+PEAK_TEXT = ['case', ['==', ['to-string', ['coalesce', get('ele'), '']], ''], NAME,
+             ['concat', NAME, '\n', ['to-string', get('ele')], ' m']]
+# small from afar, a POI's weight by z13 (an app's z14 on 256-px tiles)
+PEAK_SIZE = zoom_ramp(8, 0.6, 11, 0.8, 13, 1.2, 16, 1.4)
+# the name clear of that glyph at its largest: the converter carries a literal offset only
+PEAK_GAP = [0, 0.75]
+
+
+def peak_icon(c):
+    """brown, black on e-ink (`peak-icon`): a sprite variant, as the oneway arrow's"""
+    suffix = '-' + c.get('peak-icon', 'brown')
+    return ['match', get('class'), 'saddle', 'saddle' + suffix, 'peak' + suffix]
+
+
 REGULAR, MEDIUM, BOLD, ITALIC = 'regular', 'medium', 'bold', 'italic'
 
 
@@ -63,7 +78,9 @@ def low(v):
         boosted(layer('airport-label', 'symbol', 'aerodrome_label', minzoom=10,
               layout={'icon-image': 'airport', 'icon-size': 0.4,
                       'text-field': ['coalesce', get('iata'), NAME], 'text-font': BOLD, 'text-size': 12,
-                      'text-anchor': 'top', 'text-offset': [0, 0.9], 'text-optional': True},
+                      # anchors and a radial offset, as a POI's: the SDK spaces those from the icon,
+                      # where a text-offset drew the name over it
+                      'text-variable-anchor': ['top'], 'text-radial-offset': 1.0, 'text-optional': True},
               **text(c, 'label-airport')), name='airport'),
     ]
 
@@ -74,22 +91,21 @@ def peaks(v):
     c = v.palette
     outdoor = v.flags.get('trails', False)
     return ([
-        boosted(layer('peak-outdoor-minor', 'symbol', 'mountain_peak', minzoom=13,
+        boosted(layer('peak-outdoor-minor', 'symbol', 'mountain_peak', minzoom=0,
               filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['>', get('rank'), 3]],
-              layout={'icon-image': 'peak', 'icon-size': 0.8,
-                      'text-field': ['concat', NAME, '\n', ['to-string', get('ele')], ' m'],
-                      'text-font': REGULAR, 'text-size': 11, 'text-anchor': 'top', 'text-offset': [0, 0.5],
+              layout={'icon-image': peak_icon(c), 'icon-size': PEAK_SIZE, 'text-field': PEAK_TEXT,
+                      'text-font': MEDIUM, 'text-size': 11, 'text-anchor': 'top', 'text-offset': PEAK_GAP,
                       'text-max-width': 8, 'text-optional': True},
               **text(c, 'label-natural')), 'class'),
     ] if outdoor else []) + [
-        # outdoor brings the summits in from 9
-        boosted(layer('peak-outdoor' if outdoor else 'peak', 'symbol', 'mountain_peak', minzoom=9 if outdoor else 11,
+        # Medium, Standard's natural labels': a regular weight on a white halo was lost over shaded relief
+        # outdoor draws a summit from the tiles' first zoom
+        boosted(layer('peak-outdoor' if outdoor else 'peak', 'symbol', 'mountain_peak', minzoom=0 if outdoor else 11,
               filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name']] if not outdoor else
               ['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['<=', get('rank'), 3]],
-              layout={'icon-image': 'peak', 'icon-size': zoom_ramp(11, 0.7, 15, 1),
-                      'text-field': ['concat', NAME, '\n', ['to-string', get('ele')], ' m'],
-                      'text-font': REGULAR, 'text-size': zoom_ramp(11, 10, 16, 12),
-                      'text-anchor': 'top', 'text-offset': [0, 0.5], 'text-max-width': 8,
+              layout={'icon-image': peak_icon(c), 'icon-size': PEAK_SIZE, 'text-field': PEAK_TEXT,
+                      'text-font': MEDIUM, 'text-size': zoom_ramp(11, 10, 16, 12),
+                      'text-anchor': 'top', 'text-offset': PEAK_GAP, 'text-max-width': 8,
                       'text-optional': True},
               **text(c, 'label-natural')), 'class'),
     ]
@@ -105,7 +121,8 @@ def place(id, classes, minzoom, maxzoom, size, c, font=REGULAR, color='label', e
     layout = {'text-field': NAME, 'text-font': font, 'text-size': size, 'text-max-width': 7}
     layout.update(extra or {})
     return layer(id, 'symbol', 'place', minzoom=minzoom, maxzoom=maxzoom,
-                 filter=filter or in_class(classes), layout=layout, **text(c, color, halo_width=1.25))
+                 # a regular weight's halo is Standard's minor settlements' 1 px: wider, it smeared the letters
+                 filter=filter or in_class(classes), layout=layout, **text(c, color, halo_width=1 if font == REGULAR else 1.25))
 
 
 def places(v):

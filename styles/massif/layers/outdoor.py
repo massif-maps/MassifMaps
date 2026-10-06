@@ -77,9 +77,9 @@ def contour_labels(v):
                   layout={'symbol-placement': 'line', 'text-field': ['to-string', get('ele')],
                           'text-font': 'italic', 'text-size': zoom_ramp(13, 9, 17, 11),
                           'text-padding': 4, 'text-max-angle': 25},
-                  paint={'text-color': c['contour-label'], 'text-halo-color': c['halo'], 'text-halo-width': 1},
+                  paint={'text-color': c['contour-label'], 'text-halo-color': c['contour-halo'], 'text-halo-width': 0.8},
                   metadata={'massif:paint': {'text-color': by_hour(c['label-night'], c['contour-label']),
-                                             'text-halo-color': by_hour(c['halo-night'], c['halo'])}})]
+                                             'text-halo-color': by_hour(c['halo-night'], c['contour-halo'])}})]
 
 
 def cliffs(v):
@@ -97,20 +97,37 @@ def cliffs(v):
     ]
 
 
-def trails(c, brunnel_test):
+def trails(v, brunnel_test):
+    c = v.palette
     width = scaled(TRAIL_WIDTH, c.get('track-scale', 1))
     out = halo(c, 'trail-halo', ['all', ['==', get('class'), 'path'], in_class(TRAILS, 'subclass'), brunnel_test],
                width, 'path_min_zoom')
+    paved = ['==', get('surface'), 'paved']
     # one layer per subclass: with both scale spellings the scale is a set, and two sets are a when()
-    return out + [layer(id + ('' if sub == 'path' else '-' + sub), 'line', 'transportation', minzoom=12,
-                  filter=['all', ['==', get('subclass'), sub], brunnel_test,
-                          ['in', get('sac_scale'), ['literal', values]] if id != 'trail-t1' else
-                          ['!', ['in', get('sac_scale'), ['literal', [v for _, vs, _, _ in SAC[1:] for v in vs]]]]],
-                  layout={'line-join': 'round'},
-                  paint={'line-color': c[key], 'line-width': width, 'line-dasharray': dash},
-                  metadata={'massif:minzoom-param': 'path_min_zoom'},
-                  emissive=0.4)
-            for id, values, key, dash in SAC for sub in TRAILS]
+    for id, values, key, dash in SAC:
+        for sub in TRAILS:
+            scale = ['in', get('sac_scale'), ['literal', values]] if id != 'trail-t1' else \
+                ['!', ['in', get('sac_scale'), ['literal', [v for _, vs, _, _ in SAC[1:] for v in vs]]]]
+            # T1 split on the surface, so `path_osm` can draw a paved one as OSM Carto's footway
+            for suffix, surface in ((('', ['!=', get('surface'), 'paved']), ('-paved', paved))
+                                    if id == 'trail-t1' else (('', None),)):
+                lay = layer(id + suffix + ('' if sub == 'path' else '-' + sub), 'line', 'transportation', minzoom=12,
+                            filter=['all', ['==', get('subclass'), sub], brunnel_test, scale, *([surface] if surface else [])],
+                            layout={'line-join': 'round'},
+                            paint={'line-color': c[key], 'line-width': width, 'line-dasharray': dash},
+                            metadata={'massif:minzoom-param': 'path_min_zoom'},
+                            emissive=0.4)
+                out.append(gate(lay, v, 'path_osm', 0) if suffix else lay)
+    return out + osm_paved(v, brunnel_test)
+
+
+def osm_paved(v, brunnel_test):
+    """`path_osm`: a paved path no harder than T1 drawn as a footway (roads.osm_footway)"""
+    from layers.roads import osm_footway
+    scale = ['!', ['in', get('sac_scale'), ['literal', [v for _, vs, _, _ in SAC[1:] for v in vs]]]]
+    test = ['all', ['==', get('class'), 'path'], ['==', get('subclass'), 'path'], ['==', get('surface'), 'paved'],
+            scale, brunnel_test]
+    return osm_footway(v.palette, 'path-osm-paved', test, 12, v)
 
 
 def sac_labels(v):
@@ -128,16 +145,18 @@ def sac_labels(v):
             for grade, (id, values, key, _) in enumerate(SAC, 1) for sub in TRAILS]
 
 
-def mtb(c, brunnel_test):
+def mtb(v, brunnel_test):
+    """the MTB line beside the path, while `mtb_markings` is on"""
+    c = v.palette
     out = []
     for id, values, key, dash in MTB:
         paint = {'line-color': c[key], 'line-width': zoom_ramp(14, 0.8, 18, 2),
                  'line-offset': zoom_ramp(14, 2.5, 18, 6, base=1.3)}
         if dash:
             paint['line-dasharray'] = dash
-        out.append(layer(id, 'line', 'transportation', minzoom=14,
-                         filter=['all', brunnel_test, ['in', get('mtb_scale'), ['literal', values]]],
-                         paint=paint, emissive=0.4))
+        out.append(gate(layer(id, 'line', 'transportation', minzoom=14,
+                              filter=['all', brunnel_test, ['in', get('mtb_scale'), ['literal', values]]],
+                              paint=paint, emissive=0.4), v, 'mtb_markings'))
     return out
 
 

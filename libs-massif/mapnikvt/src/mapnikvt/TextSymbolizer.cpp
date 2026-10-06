@@ -476,14 +476,9 @@ namespace massif::mvt {
             }
         }
 
-        // Built from the back, so the first name that resolves becomes the main font and the ones
-        // after it its glyph fallbacks. An unresolved name is skipped, and a list where nothing
-        // resolves keeps the fallback font.
-        for (auto it = faceNames.rbegin(); it != faceNames.rend(); it++) {
-            if (std::shared_ptr<const vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(*it, font)) {
-                font = mainFont;
-            }
-        }
+        font = vt::chainFontNames(faceNames, font, [&](const std::string& name, const std::shared_ptr<const vt::Font>& baseFont) {
+            return symbolizerContext.getFontManager()->getFont(name, baseFont);
+        });
 
         // Rasterize the glyphs at a size that covers the label instead of magnifying one raster to every
         // size, which left large text soft (tangram's s_fontRasterSizes ladder). The style keeps the last

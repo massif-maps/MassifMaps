@@ -1,4 +1,5 @@
 #include "ShieldSymbolizer.h"
+#include "vt/FontNames.h"
 
 #include <vector>
 #include <tuple>
@@ -80,7 +81,9 @@ namespace massif::mvt {
 
         // The icon face has to be reached THROUGH the label font, or its glyphs land in an atlas of
         // its own and the label - which is drawn from a single atlas - cannot show them.
-        std::shared_ptr<const vt::Font> iconFace = symbolizerContext.getFontManager()->getFont(iconFaceName, std::shared_ptr<const vt::Font>());
+        std::shared_ptr<const vt::Font> iconFace = vt::chainFontNames(vt::parseFontNames(iconFaceName), std::shared_ptr<const vt::Font>(), [&](const std::string& name, const std::shared_ptr<const vt::Font>& baseFont) {
+            return symbolizerContext.getFontManager()->getFont(name, baseFont);
+        });
         if (!iconFace) {
             _logger->write(Logger::Severity::ERROR, "Failed to load shield icon font " + iconFaceName);
             return glyphs;

@@ -156,6 +156,10 @@ zoom and needs no bitmap, no marker and no label.
 
 These details are what make it usable rather than a triangle stuck on the end:
 
+- **An arrowed line is never a ring.** A line whose last vertex equals its first is otherwise read
+  as closed: no caps, and no end. A U-turn arrow cut the same length either side of the turn ends
+  exactly where it starts, and lost its head. maplibre decides closure by feature type rather than
+  coordinates; vt only sees vertices, so a line carrying an end arrow is simply always open.
 - **Only the feature's own end gets a head.** A source clips a line at its buffer, so a piece
   crossing a tile edge ends just outside the tile; that end gets neither head nor pull-back. The
   test is maplibre's for symbol anchors (`symbol_layout.ts`): the last vertex must lie in the

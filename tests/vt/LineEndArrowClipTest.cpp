@@ -62,6 +62,13 @@ void testLineEndArrowClip() {
     TEST_CHECK(build({ { 0.7f, 0.5f }, { 0.5f, 0.3f }, { 0.0f, 0.5f } }, arrowStyle(true)).indices > 0, "an end on the left edge is this tile's");
     TEST_CHECK(build(bendEndingAt(1.0f), arrowStyle(true)).indices == 0, "an end on the right edge is the next tile's");
 
+    // A U-turn cut evenly either side of the turn ends on its own first vertex. That is not a ring:
+    // read as one, the line had no end and drew no head.
+    std::vector<cglib::vec2<float>> uTurn = { { 0.5f, 0.7f }, { 0.5f, 0.4f }, { 0.5f, 0.7f } };
+    TEST_CHECK(build(uTurn, arrowStyle(true)).indices > 0, "a U-turn arrow ending on its first vertex still gets its head");
+    std::vector<cglib::vec2<float>> uTurnShort = { { 0.5f, 0.7f }, { 0.5f, 0.4f }, { 0.5f, 0.69f } };
+    TEST_CHECK(build(uTurn, arrowStyle(false)).indices == build(uTurnShort, arrowStyle(false)).indices, "a full line with a head ending on its first vertex is built like one ending short of it");
+
     // A full line with a head pulls its last vertex back to the head's base; at a cut end it must
     // stay a plain line, or the shaft gets a gap and a stray head at every tile edge.
     Built cutWithArrow = build(bendEndingAt(1.0f + SOURCE_BUFFER), arrowStyle(false));

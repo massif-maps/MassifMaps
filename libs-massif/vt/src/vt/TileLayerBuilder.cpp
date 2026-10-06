@@ -1909,7 +1909,8 @@ namespace massif::vt {
         points.reserve(linePoints.size());
         _transformer->tesselateLineString(linePoints.data(), linePoints.size(), points);
 
-        bool cycle = points[0] == points[points.size() - 1];
+        // An arrowed line always has an end: a U-turn arrow cut evenly either side ends on its first vertex.
+        bool cycle = points[0] == points[points.size() - 1] && !style.hasEndArrow();
 
         // A piece the source clipped at its buffer ends outside the tile, where the feature does not end.
         // Half-open like maplibre's symbol anchors (symbol_layout.ts), so an end on a tile edge gets one head.

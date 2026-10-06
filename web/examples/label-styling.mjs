@@ -144,8 +144,7 @@ export default async function start(host) {
   let callouts = true;
   let labels = null;
   let generation = 0;
-  // Placement is fixed when a tile is decoded, so a switch is a new layer. Hiding the old one
-  // instead leaves its labels on screen.
+  // Placement is fixed when a tile is decoded, so a switch is a new layer.
   const show = () => {
     const next = map.addLayer(`labels.${++generation}`, {
       type: 'vector',

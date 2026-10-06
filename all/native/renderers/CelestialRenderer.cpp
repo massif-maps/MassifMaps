@@ -126,7 +126,8 @@ namespace massif {
         if (!options) {
             return false;
         }
-        MapPos internalPos = options->getBaseProjection()->toInternal(object->getPosition());
+        std::shared_ptr<Projection> baseProjection = options->getBaseProjection();
+        MapPos internalPos = baseProjection->toInternal(baseProjection->fromWgs84(object->getPosition()));
         cglib::vec3<double> surfacePos = projectionSurface->calculatePosition(internalPos);
         cglib::vec3<double> normal = projectionSurface->calculateNormal(internalPos);
         double altitude = object->getPositionAltitude() * Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE;

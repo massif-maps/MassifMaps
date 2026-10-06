@@ -98,7 +98,7 @@ namespace massif {
         // Only the part of the tilt at or above the horizon moves the camera: a negative tilt is a
         // look UP from where the camera already is, and rotating it on under the ground instead
         // flips the view over.
-        float groundTilt = std::max(tilt, 0.0f);
+        float groundTilt = std::max(tilt, Const::MIN_CAMERA_TILT);
         cglib::mat4x4<double> tiltTransform = cglib::rotate4_matrix(axis, (groundTilt - viewState.getCameraTilt()) * Const::DEG_TO_RAD);
         cameraPos = focusPos + cglib::transform_vector(cameraPos - focusPos, tiltTransform);
         upVec = cglib::transform_vector(upVec, tiltTransform);

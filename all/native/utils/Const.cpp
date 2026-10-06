@@ -24,5 +24,6 @@ namespace massif {
     const float Const::MIN_HEIGHT = (1 << 20) * 0.9988f - (1 << 20); // approx 64 subdivide levels
     const float Const::MAX_HEIGHT = (1 << 20) * 0.5f / 6400.0f; // approx 0.5km
     const float Const::MIN_NEAR = 1.0f / 16.0f;
+    const float Const::MIN_CAMERA_TILT = 1.0e-5f;
     
 }

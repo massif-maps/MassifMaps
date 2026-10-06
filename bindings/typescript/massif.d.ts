@@ -8385,6 +8385,7 @@ export interface MethodTypes {
     setCircle: (axisAzimuth: number, axisAltitude: number, radius: number) => void;
     setDirection: (azimuth: number, altitude: number, distance: number) => void;
     setDirections: (directions: Json) => void;
+    setPosition: (pos: Position, altitude: number) => void;
     setSegments: (directions: Json) => void;
   };
   "massif::CelestialClickInfo": {
@@ -8394,11 +8395,13 @@ export interface MethodTypes {
   "massif::CelestialImage": {
     setAnchors: (anchors: Json) => void;
     setDirection: (azimuth: number, altitude: number, distance: number) => void;
+    setPosition: (pos: Position, altitude: number) => void;
   };
   "massif::CelestialLabel": {
     setAnchorPoint: (x: number, y: number) => void;
     setDirection: (azimuth: number, altitude: number, distance: number) => void;
     setOffset: (x: number, y: number) => void;
+    setPosition: (pos: Position, altitude: number) => void;
   };
   "massif::CelestialLayer": {
     add: (object: Handle) => void;
@@ -8408,9 +8411,11 @@ export interface MethodTypes {
   };
   "massif::CelestialObject": {
     setDirection: (azimuth: number, altitude: number, distance: number) => void;
+    setPosition: (pos: Position, altitude: number) => void;
   };
   "massif::CelestialSprite": {
     setDirection: (azimuth: number, altitude: number, distance: number) => void;
+    setPosition: (pos: Position, altitude: number) => void;
   };
   "massif::ClickInfo": {
   };

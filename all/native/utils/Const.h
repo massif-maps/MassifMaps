@@ -48,6 +48,9 @@ namespace massif {
         static const float MAX_HEIGHT;
         // Minimum near plane distance, used to avoid visual artifacts on large zoom levels
         static const float MIN_NEAR;
+        // Lowest tilt of the camera POSITION, degrees: at 0 the up vector holds no heading and the next tilt
+        // turned about noise (#285). Tiny on purpose: at 0.01 a look-up drag landed the focus far away.
+        static const float MIN_CAMERA_TILT;
     };
     
 }

@@ -579,6 +579,7 @@ MassifMethod const MassifMethodSetFloatParameter = @"setFloatParameter";
 MassifMethod const MassifMethodSetLayerGeoJSON = @"setLayerGeoJSON";
 MassifMethod const MassifMethodSetMetaDataElement = @"setMetaDataElement";
 MassifMethod const MassifMethodSetOffset = @"setOffset";
+MassifMethod const MassifMethodSetPosition = @"setPosition";
 MassifMethod const MassifMethodSetSegments = @"setSegments";
 MassifMethod const MassifMethodSetStyleParameter = @"setStyleParameter";
 MassifMethod const MassifMethodSetStyleParameters = @"setStyleParameters";

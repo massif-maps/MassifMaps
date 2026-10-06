@@ -501,7 +501,7 @@ export const METHODS: { [cls: string]: string } = {
     'massif::CelestialImage': 'setAnchors,v',
     'massif::CelestialLabel': 'setAnchorPoint,v;setOffset,v',
     'massif::CelestialLayer': 'add,v;clear,v;remove,b',
-    'massif::CelestialObject': 'setDirection,v',
+    'massif::CelestialObject': 'setDirection,v;setPosition,v',
     'massif::CompositeVectorTileLayer': 'addExternalDataSource,v;addVectorDataSource,v;getExternalChildLayer,o,massif::Layer;getExternalDataSourceNames,j;removeExternalDataSource,b;setExternalDataSourceMaxOverzoomLevel,v;setExternalDataSourceZoomLevelBias,v',
     'massif::FeatureCollection': 'getFeature,o,massif::Feature',
     'massif::FeatureCollectionSearchService': 'findFeatures,o,massif::FeatureCollection',

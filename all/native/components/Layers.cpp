@@ -122,8 +122,13 @@ namespace massif {
                 throw OutOfRangeException("Layer index out of range");
             }
 
-            if (std::find(_layers.begin(), _layers.end(), layer) == _layers.end()) {
+            // A layer already in the stack moves: a second copy drew and reported every click twice (#285).
+            auto it = std::find(_layers.begin(), _layers.end(), layer);
+            if (it == _layers.end()) {
                 layer->setComponents(_envelopeThreadPool, _tileThreadPool, _options, _mapRenderer, _touchHandler);
+            } else {
+                _layers.erase(it);
+                index = std::min(index, static_cast<int>(_layers.size()));
             }
             _layers.insert(_layers.begin() + index, layer);
 

@@ -1472,7 +1472,10 @@ overdraw. Tangram's sky mesh spans the top half and is translated onto the horiz
 (`core/src/util/skyManager.cpp`). A generous margin is kept below it for the fog band. The clip
 applies only when the horizon is what bounds the ground; when the terrain path draws the sky
 although the flat horizon says it is not visible (a peak exposing it), the quad stays full screen.
-`debug.massif.skyclip 0` turns it off, which is the measurement A/B (a `MASSIF_DEBUG_PROPERTIES`
+The horizon is bisected from a ray that sees ground: the screen centre, or, when the camera looks
+up (negative tilt), the bottom of each column. Bisected from a centre in the sky, it clipped the
+quad at the middle row and left a black band under it, where sky labels looked drawn over a
+mountain (#285). `debug.massif.skyclip 0` turns it off, which is the measurement A/B (a `MASSIF_DEBUG_PROPERTIES`
 build only, see [runtime switches](10-performance.md#runtime-switches-no-rebuild)).
 
 ## Fog: one block, every renderer

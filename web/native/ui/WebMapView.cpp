@@ -234,8 +234,13 @@ namespace massif {
             rotation = (curX - lastX) * ROTATE_SPEED * (curY < centerY ? 1.0f : -1.0f);
         }
 
-        rotate(rotation, 0);
-        tilt((curY - lastY) * PITCH_SPEED, 0);
+        float tiltDelta = (curY - lastY) * PITCH_SPEED;
+        if (_orbitPivot) {
+            orbit(rotation, tiltDelta, *_orbitPivot);
+        } else {
+            rotate(rotation, 0);
+            tilt(tiltDelta, 0);
+        }
         _lastPointerX = x;
         _lastPointerY = y;
     }
@@ -311,6 +316,10 @@ namespace massif {
                     view->onInputEvent(INPUT_EVENT_POINTER2_DOWN, x, y, x + FIRST_PERSON_POINTER_GAP, y);
                 } else {
                     view->setDragRotating(true);
+                    view->_orbitPivot.reset();
+                    if (view->getOptions()->isOrbitAroundPivot()) {
+                        view->_orbitPivot = view->calculateOrbitPivot(x, y);
+                    }
                 }
             } else {
                 view->_pointerDown = true;

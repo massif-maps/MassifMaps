@@ -61,6 +61,7 @@ public final class DemoLive extends BroadcastReceiver {
     // Style PARAMETERS: live, no re-decode - so they are not in STYLE_KEYS.
     private static final String[] PARAM_KEYS = { "bldTiltDrop", "bldAo", "bldOpacity", "bldEdgeRadius", "bldRoundedRoof" };
     private static final String[] CAMERA_KEYS = { "lon", "lat", "zoom", "tilt", "rotation" };
+    private static final String[] GESTURE_KEYS = { "orbitPivot" };
 
     private final DemoMap demo;
 
@@ -109,6 +110,9 @@ public final class DemoLive extends BroadcastReceiver {
         }
         if (has(extras, CAMERA_KEYS)) {
             demo.applyCamera();
+        }
+        if (has(extras, GESTURE_KEYS)) {
+            demo.applyLookRange();
         }
         if (extras.containsKey("apiCreate")) {
             // The map's layer list, so a layer built from a spec can be put on the map.

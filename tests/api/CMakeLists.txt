@@ -267,6 +267,8 @@ add_executable(api_tests
   PrefetchOrderTest.cpp
   # Same: ZoomPivot.h is the zoom gesture's pivot shift, cglib only.
   ZoomPivotTest.cpp
+  # Same: OrbitPivot.h is the tilt-about-a-point step, cglib only.
+  OrbitPivotTest.cpp
   # Same: TerrainSkirts.h is the skirt drop per cover tile edge, cglib and vt's TileId only.
   TerrainSkirtsTest.cpp
   # Same: SmoothBaseLevel.h is the level a building base reads its ground at, nothing else.

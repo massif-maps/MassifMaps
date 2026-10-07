@@ -134,6 +134,13 @@ public class Terrain3DExample extends MapExample {
                 map.layer("labels").visible(on);
             }
         });
+        // The two-finger tilt turns about the ground between the fingers, not the screen centre.
+        host.toggle("Orbit pointer", false, new ExampleHost.OnToggle() {
+            @Override
+            public void onToggle(boolean on) {
+                map.set("orbitAroundPivot", on);
+            }
+        });
         host.button("Exaggerate", new Runnable() {
             @Override
             public void run() {

@@ -300,6 +300,7 @@ static const char* const kNames[] = {
     "offsetY",
     "opacity",
     "open",
+    "orbitAroundPivot",
     "orientationMode",
     "packageId",
     "packageManager",

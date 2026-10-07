@@ -299,6 +299,7 @@ MassifProperty const MassifPropertyOffsetX = @"offsetX";
 MassifProperty const MassifPropertyOffsetY = @"offsetY";
 MassifProperty const MassifPropertyOpacity = @"opacity";
 MassifProperty const MassifPropertyOpen = @"open";
+MassifProperty const MassifPropertyOrbitAroundPivot = @"orbitAroundPivot";
 MassifProperty const MassifPropertyOrientationMode = @"orientationMode";
 MassifProperty const MassifPropertyPackageId = @"packageId";
 MassifProperty const MassifPropertyPackageManager = @"packageManager";

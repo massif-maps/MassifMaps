@@ -167,6 +167,29 @@ because it is displaced. It therefore adapts to how mountainous the data is and 
 transition is animated (`AutoFlattenDuration`), `isFlattened()` tells you what the map is doing, and
 `isEnabled()` keeps returning whatever you set, so your own terrain toggle still works.
 
+## Orbiting the point under the pointer
+
+A tilt gesture turns the camera about the centre of the screen, as in maplibre and mapbox. With
+`Options.OrbitAroundPivot` (off by default) it turns about the terrain point under the pointer
+instead, and that point stays where it is on screen:
+
+- **Two-finger tilt** (Android, iOS): about the ground between the fingers when they went down. The
+  two-finger rotate already turns about that point.
+- **Right-drag or ctrl-drag** (web): the rotation and the tilt both turn about the ground under the
+  mouse where the drag started.
+
+```java
+mapView.getOptions().setOrbitAroundPivot(true);
+```
+
+```js
+map.set('orbitAroundPivot', true);
+```
+
+`PIVOT_MODE_CENTERPOINT` keeps the centre as the pivot either way. The zoom is the distance to the
+ground at the centre of the screen, so it is read again when the gesture ends: after an orbit towards
+the horizon the picture stays put, but labels and tile detail can drop a level.
+
 ## Querying elevation
 
 `TerrainOptions` can return heights for map positions:

@@ -485,6 +485,9 @@ public final class DemoConfig {
      *  (the speed a gesture starts with, kept for the whole gesture) or "constant" (always the
      *  scale at the centre of the screen). '--es panSpeed map|anchored|constant'. */
     public static String PANNING_SPEED_MODE = "anchored";
+    /** The two-finger tilt turns about the ground between the fingers, not the screen centre
+     *  (Options.setOrbitAroundPivot). '--es orbitPivot true'. */
+    public static boolean ORBIT_AROUND_PIVOT = false;
     /** Degrees of turn per inch of drag. */
     public static float FREE_ROAM_LOOK_SENSITIVITY = 90f;
     /** How far an inch of two-finger drag moves, as a fraction of the camera to focus distance. */
@@ -1364,6 +1367,7 @@ public final class DemoConfig {
             FREE_ROAM_MODE = "off";
         }
         PANNING_SPEED_MODE = DemoCfg.cfgStr("panSpeed", PANNING_SPEED_MODE);
+        ORBIT_AROUND_PIVOT = DemoCfg.cfgBool("orbitPivot", ORBIT_AROUND_PIVOT);
         FREE_ROAM_LOOK_SENSITIVITY = DemoCfg.cfgFloat("lookSensitivity", FREE_ROAM_LOOK_SENSITIVITY);
         FREE_ROAM_MOVE_SPEED = DemoCfg.cfgFloat("moveSpeed", FREE_ROAM_MOVE_SPEED);
         LOOK_UP_LIMIT = DemoCfg.cfgFloat("lookUp", LOOK_UP_LIMIT);

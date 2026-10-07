@@ -595,6 +595,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyOffsetY;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyOpacity;
 /** Returns the status of the cache database. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyOpen;
+/** Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyOrbitAroundPivot;
 /** Returns the orientation mode of the label. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyOrientationMode;
 /** Returns the internal package id. This should not be displayed to the user. */

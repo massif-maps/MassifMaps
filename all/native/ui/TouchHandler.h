@@ -192,6 +192,7 @@ namespace massif {
         // terrain point stays under the finger. 0 when terrain is not enabled.
         std::atomic<double> _gestureAnchorHeight;
         std::atomic<double> _panScale; // internal units per screen pixel, frozen when a pan starts
+        MapPos _dualPointerPivotPos; // the ground under the fingers' midpoint when two went down
 
         ScreenPos _prevScreenPos1;
         ScreenPos _prevScreenPos2;

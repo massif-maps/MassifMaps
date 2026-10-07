@@ -595,6 +595,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> OPACITY = MassifObject.key("opacity");
     /** Returns the status of the cache database. */
     public static final MassifObject.Key<Boolean> OPEN = MassifObject.key("open");
+    /** Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre. */
+    public static final MassifObject.Key<Boolean> ORBIT_AROUND_PIVOT = MassifObject.key("orbitAroundPivot");
     /** Returns the orientation mode of the label. */
     public static final MassifObject.Key<String> ORIENTATION_MODE = MassifObject.key("orientationMode");
     /** Returns the internal package id. This should not be displayed to the user. */

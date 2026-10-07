@@ -7,6 +7,7 @@
 #ifndef _MASSIF_CAMERATILTEVENT_H_
 #define _MASSIF_CAMERATILTEVENT_H_
 
+#include "core/MapPos.h"
 #include "renderers/cameraevents/CameraEvent.h"
 
 namespace massif {
@@ -26,6 +27,9 @@ namespace massif {
         void setTiltDelta(float tiltDelta);
     
         bool isUseDelta() const;
+
+        // Tilts about this internal point instead of the focus, keeping it at its screen position.
+        void setTargetPos(const MapPos& targetPos);
     
         void calculate(Options& options, ViewState& viewState);
 
@@ -37,6 +41,10 @@ namespace massif {
         float _tiltDelta;
     
         bool _useDelta;
+
+        MapPos _targetPos;
+
+        bool _useTarget;
     };
     
 }

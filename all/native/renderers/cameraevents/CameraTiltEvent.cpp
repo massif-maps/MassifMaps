@@ -1,5 +1,6 @@
 #include "CameraTiltEvent.h"
 #include "CameraRotationEvent.h"
+#include "OrbitPivot.h"
 #include "components/Options.h"
 #include "graphics/ViewState.h"
 #include "projections/Projection.h"
@@ -17,7 +18,9 @@ namespace massif {
         _keepRotation(false),
         _tilt(0),
         _tiltDelta(0),
-        _useDelta(true)
+        _useDelta(true),
+        _targetPos(),
+        _useTarget(false)
     {
     }
     
@@ -52,6 +55,11 @@ namespace massif {
     
     bool CameraTiltEvent::isUseDelta() const {
         return _useDelta;
+    }
+
+    void CameraTiltEvent::setTargetPos(const MapPos& targetPos) {
+        _targetPos = targetPos;
+        _useTarget = true;
     }
     
     void CameraTiltEvent::calculate(Options& options, ViewState& viewState) {
@@ -99,11 +107,11 @@ namespace massif {
         // look UP from where the camera already is, and rotating it on under the ground instead
         // flips the view over.
         float groundTilt = std::max(tilt, Const::MIN_CAMERA_TILT);
-        cglib::mat4x4<double> tiltTransform = cglib::rotate4_matrix(axis, (groundTilt - viewState.getCameraTilt()) * Const::DEG_TO_RAD);
-        cameraPos = focusPos + cglib::transform_vector(cameraPos - focusPos, tiltTransform);
-        upVec = cglib::transform_vector(upVec, tiltTransform);
+        cglib::vec3<double> pivotPos = (_useTarget ? projectionSurface->calculatePosition(_targetPos) : focusPos);
+        orbitAboutPivot(pivotPos, axis, (groundTilt - viewState.getCameraTilt()) * Const::DEG_TO_RAD, cameraPos, focusPos, upVec);
     
         viewState.setCameraPos(cameraPos);
+        viewState.setFocusPos(focusPos);
         viewState.setUpVec(upVec);
         viewState.setTilt(tilt);
 
@@ -116,6 +124,9 @@ namespace massif {
         if (_keepRotation) {
             CameraRotationEvent cameraRotationEvent;
             cameraRotationEvent.setRotation(rotation);
+            if (_useTarget) {
+                cameraRotationEvent.setTargetPos(_targetPos);
+            }
             cameraRotationEvent.calculate(options, viewState);
         }
     }

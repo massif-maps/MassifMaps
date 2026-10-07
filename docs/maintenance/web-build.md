@@ -122,7 +122,7 @@ knows pinch and two-finger rotate. The speeds are **ported from maplibre-gl-js**
 | Drag | Pan | the SDK's own |
 | Wheel | Zoom toward the pointer | `1/450`, sigmoid `2/(1+exp(-abs(Δ·rate)))` |
 | Trackpad pinch (wheel + ctrl) | Zoom toward the pointer | `1/100` |
-| Right-drag, or ctrl-drag | Rotate and tilt | `0.8` and `0.5` degrees per CSS pixel |
+| Right-drag, or ctrl-drag | Rotate and tilt; about the ground under the pointer with `Options.OrbitAroundPivot` | `0.8` and `0.5` degrees per CSS pixel |
 | Double-click | Zoom in 1, shift for out, toward the pointer | 0.3 s |
 
 Two sign traps, both found by feel and then explained:

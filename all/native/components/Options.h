@@ -475,6 +475,20 @@ namespace massif {
          * @param pivotMode The new pivot mode.
          */
         void setPivotMode(PivotMode::PivotMode pivotMode);
+
+        /**
+         * Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre.
+         * @return True if tilt gestures orbit the pivot point.
+         */
+        bool isOrbitAroundPivot() const;
+        /**
+         * Sets whether a tilt gesture turns the view about the terrain point under the pointer (the touch midpoint,
+         * or the mouse at the start of a right-drag on the web) rather than the screen centre. That point stays still
+         * on screen while the view tilts, and on the web while it rotates too. Needs PIVOT_MODE_TOUCHPOINT.
+         * The default is false.
+         * @param enabled True to orbit the pivot point.
+         */
+        void setOrbitAroundPivot(bool enabled);
     
         /**
          * Returns the state of seamless horizontal panning flag.
@@ -913,6 +927,7 @@ namespace massif {
         PanningMode::PanningMode _panningMode;
         
         PivotMode::PivotMode _pivotMode;
+        bool _orbitAroundPivot;
     
         bool _seamlessPanning;
         bool _restrictedPanning;

@@ -862,6 +862,9 @@ public final class DemoPanel {
         choice(context, "free roam", roamModes, currentRoam, new IntSetting() {
             public void set(int index) { DemoConfig.FREE_ROAM_MODE = roamModes[index]; demo.applyLookRange(); }
         });
+        check(context, "tilt orbits the fingers", DemoConfig.ORBIT_AROUND_PIVOT, new BoolSetting() {
+            public void set(boolean value) { DemoConfig.ORBIT_AROUND_PIVOT = value; demo.applyLookRange(); }
+        });
         slider(context, "look sensitivity (deg/inch)", 20, 200, DemoConfig.FREE_ROAM_LOOK_SENSITIVITY, false, new FloatSetting() {
             public void set(float value) { DemoConfig.FREE_ROAM_LOOK_SENSITIVITY = value; demo.applyLookRange(); }
         });

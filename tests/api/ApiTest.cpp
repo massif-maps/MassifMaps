@@ -92,6 +92,7 @@ void testFlattenSwitch();
 void testTerrainDecodeWait();
 void testPrefetchOrder();
 void testZoomPivot();
+void testOrbitPivot();
 void testTerrainSkirts();
 void testSmoothBaseLevel();
 void testPointGridMemo();
@@ -495,6 +496,7 @@ int main() {
     testTerrainDecodeWait();
     testPrefetchOrder();
     testZoomPivot();
+    testOrbitPivot();
     testTerrainSkirts();
     testSmoothBaseLevel();
     testPointGridMemo();

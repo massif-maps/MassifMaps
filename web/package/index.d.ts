@@ -17,3 +17,9 @@ export interface CreateMapOptions {
 
 /** Loads the SDK module and starts a map on `canvas`. One per page. */
 export declare function createMap(canvas: HTMLCanvasElement, options?: CreateMapOptions): Promise<MassifMap & { module: any }>;
+
+/**
+ * Keeps a directory of `module`'s filesystem (`map.module`) in the origin private file system: restored
+ * now, written back every `interval` ms (default 10000) and on `pagehide`. Resolves to a flush function.
+ */
+export declare function persistDirectory(module: any, path: string, options?: { interval?: number }): Promise<() => Promise<void>>;

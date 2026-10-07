@@ -9,6 +9,8 @@ import { attach, setBridge } from '@massif-maps/api';
 import { createBridge } from './bridge.mjs';
 import { canvasSelector, loadModule } from './massif.mjs';
 
+export { persistDirectory } from './massif.mjs';
+
 export * from '@massif-maps/api';
 
 let created = false;
@@ -35,7 +37,7 @@ export async function createMap(canvas, { id = 'map', projection = 'EPSG:4326', 
     getMeasuredHeight: () => canvas.height,
   };
   const map = attach(view, { id, projection });
-  // The emscripten module, for what the facade does not cover (its FS, to mount an IndexedDB cache).
+  // The emscripten module, for what the facade does not cover (its FS, persistDirectory).
   map.module = module;
   return map;
 }

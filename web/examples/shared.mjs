@@ -2,47 +2,20 @@
  * What every ported example needs - the web twin of the NativeScript examples' shared.ts. Sources
  * carry no User-Agent: a page cannot set one.
  */
+import { persistDirectory } from '@massif-maps/web';
 
 const CACHE = '/tile-cache';
 const CACHES = ['openfreemap', 'world-imagery', 'mapterhorn-dem'];
 
 /**
- * Mounts the IndexedDB folders the tile caches below live in; the page awaits it once, before the
- * example builds a source (run.html). Every example on the site shares them.
+ * Restores the tile caches below from OPFS and keeps writing them back; the page awaits it once,
+ * before the example builds a source (run.html). Every example on the site shares them.
  */
 export async function mountTileCaches(module) {
-  const { FS } = module;
-  // One IndexedDB database per cache, written back only by a page that changed it: a sync replaces
-  // the stored copy with this page's, so an untouched one would revert or delete another tab's.
-  const caches = CACHES.map((name) => {
-    const path = `${CACHE}/${name}`;
-    FS.mkdirTree(path);
-    FS.mount(FS.filesystems.IDBFS, {}, path);
-    return { path, written: 0, syncing: false };
-  });
-  await new Promise((resolve) => FS.syncfs(true, resolve));
-  const changed = (cache) => {
-    const file = FS.analyzePath(`${cache.path}/tiles.db`);
-    return file.exists ? FS.stat(file.path).mtime.getTime() : 0;
-  };
-  for (const cache of caches) {
-    cache.written = changed(cache);
+  await persistDirectory(module, CACHE);
+  for (const name of CACHES) {
+    module.FS.mkdirTree(`${CACHE}/${name}`);
   }
-  const persist = () => {
-    for (const cache of caches) {
-      const time = changed(cache);
-      if (time !== cache.written && !cache.syncing) {
-        cache.syncing = true;
-        const mount = FS.lookupPath(cache.path).node.mount;
-        mount.type.syncfs(mount, false, () => {
-          cache.written = time;
-          cache.syncing = false;
-        });
-      }
-    }
-  };
-  setInterval(persist, 10000);
-  addEventListener('pagehide', persist);
 }
 
 /** A persistent tile cache in front of a remote source, so a demo does not re-fetch a free service's tiles on every run. */

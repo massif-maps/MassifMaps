@@ -465,8 +465,9 @@ if(EMSCRIPTEN)
     # mm_on and mm_source_create_custom take a caller's function pointer, which on the web means a
     # JavaScript one added to the table at runtime.
     "-sALLOW_TABLE_GROWTH=1"
-    # IndexedDB behind a mounted directory, so a page can keep its tile caches across reloads.
-    "-lidbfs.js"
+    # Files in wasm memory, so a worker's file I/O does not queue behind the frame on the main thread;
+    # persistDirectory (web/js/massif.mjs) keeps a directory in OPFS. docs/maintenance/web-build.md.
+    "-sWASMFS"
     # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
     # /fonts in the virtual filesystem. web/fonts is TRACKED - without it no label draws at all.
     "SHELL:--preload-file ${SDK_BASE_DIR}/web/fonts@/fonts")

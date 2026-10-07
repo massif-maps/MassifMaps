@@ -389,3 +389,80 @@ export async function loadModule({ variant, moduleUrl = new URL(`${MODULE_NAME}$
 export async function loadMassif(options = {}) {
   return new Massif(await loadModule(options));
 }
+
+const S_IFMT = 0o170000;
+const S_IFDIR = 0o040000;
+// WASMFS stats in whole seconds; the legacy FS gave a Date.
+const statSeconds = (time) => (typeof time === 'number' ? time : Math.floor(time.getTime() / 1000));
+
+/**
+ * Keeps `path` of the module's filesystem in OPFS: restored now, written back every `interval` ms and on pagehide.
+ * The files stay in wasm memory, so a tile cache never waits on storage. Resolves to flush().
+ */
+export async function persistDirectory(module, path, { interval = 10000 } = {}) {
+  const { FS } = module;
+  FS.mkdirTree(path);
+  let root = await navigator.storage.getDirectory();
+  for (const name of path.split('/').filter(Boolean)) {
+    root = await root.getDirectoryHandle(name, { create: true });
+  }
+  // Per file, the mtime OPFS holds and the second it was copied: an mtime in that second may postdate the copy.
+  const written = new Map();
+  const unchanged = (child, mtime) => {
+    const entry = written.get(child);
+    return entry !== undefined && entry.mtime === mtime && mtime < entry.at;
+  };
+
+  async function restore(handle, dir) {
+    for await (const [name, entry] of handle.entries()) {
+      const child = `${dir}/${name}`;
+      if (entry.kind === 'directory') {
+        FS.mkdirTree(child);
+        await restore(entry, child);
+      } else {
+        FS.writeFile(child, new Uint8Array(await (await entry.getFile()).arrayBuffer()));
+        written.set(child, { mtime: statSeconds(FS.stat(child).mtime), at: Infinity });
+      }
+    }
+  }
+
+  async function save(handle, dir) {
+    const names = new Set(FS.readdir(dir).filter((name) => name !== '.' && name !== '..'));
+    // A stale sqlite journal restored beside a newer database rolls it back. Only what this page knew, not another tab's.
+    for (const child of [...written.keys()]) {
+      const name = child.slice(dir.length + 1);
+      if (child.startsWith(`${dir}/`) && !name.includes('/') && !names.has(name)) {
+        await handle.removeEntry(name).catch(() => {});
+        written.delete(child);
+      }
+    }
+    for (const name of names) {
+      const child = `${dir}/${name}`;
+      const stat = FS.stat(child);
+      if ((stat.mode & S_IFMT) === S_IFDIR) {
+        await save(await handle.getDirectoryHandle(name, { create: true }), child);
+        continue;
+      }
+      const mtime = statSeconds(stat.mtime);
+      if (unchanged(child, mtime)) {
+        continue;
+      }
+      const at = Math.floor(Date.now() / 1000);
+      const data = FS.readFile(child);
+      const writable = await (await handle.getFileHandle(name, { create: true })).createWritable();
+      await writable.write(data);
+      await writable.close();
+      written.set(child, { mtime, at });
+    }
+  }
+
+  await restore(root, path.replace(/\/+$/, ''));
+  let saving = null;
+  const flush = () => {
+    saving ??= save(root, path.replace(/\/+$/, '')).finally(() => { saving = null; });
+    return saving;
+  };
+  setInterval(flush, interval);
+  addEventListener('pagehide', flush);
+  return flush;
+}

@@ -345,7 +345,7 @@ SWIG bindings and is meant to be driven through the facade's C ABI.
 
 | File | What it does |
 |---|---|
-| `network/HTTPClientEmscriptenImpl` | The Fetch API, called synchronously |
+| `network/HTTPClientEmscriptenImpl` | A synchronous `XMLHttpRequest`, from a worker |
 | `ui/WebMapView` | The canvas host: WebGL 2 context, `requestAnimationFrame`, pointer/touch/wheel events |
 | `utils/AssetUtils` | Assets from the emscripten virtual filesystem, under `/assets` by default |
 | `utils/SystemFontUtils` | Fonts from `/fonts` — a browser has no font API to read outlines out of |
@@ -442,16 +442,47 @@ which side of the fence you are on.
 `PTHREAD_POOL_SIZE=8` covers the pools plus the three workers. The pool is pre-warmed because
 `pthread_create` on the main browser thread cannot block waiting for a worker to spawn.
 
-A synchronous `emscripten_fetch` is illegal on the main thread and legal on a worker, which is
-exactly where the SDK does its blocking tile loads — so the arrangement above is what makes the
+A synchronous `XMLHttpRequest` is illegal on the main thread and legal on a worker, which is
+exactly where the SDK does its blocking tile loads - so the arrangement above is what makes the
 HTTP client work at all.
 
-### emscripten's response headers need trimming
+### The stale heap view after a synchronous XHR
 
-`emscripten_fetch_unpack_response_headers` keeps the space after the colon and copies one character
-too many, so every value arrives as `" 32818\n"`. `Content-Length` then fails
-`boost::lexical_cast<uint64_t>` and every tile load dies as `bad lexical cast`. The impl trims both
-key and value.
+A worker that comes back from a synchronous XHR still sees the wasm memory at the size it had when
+the request started: V8 refreshes a thread's view of a shared memory another thread grew only when
+that thread handles an interrupt, and a blocking XHR handles none. `emscripten_fetch` then copied
+the response through the stale view, `RangeError: offset is out of bounds` was thrown inside it,
+and the tile failed to decode (and stayed failed for the failure marker's 30 s). Measured on the
+WASMFS build, terrain-3d with 6 headless Chromiums in parallel: 5 runs in ~40 failed; the copy
+target was at 42 MB through a view still 38 MB long, in a heap of 600+ MB. Reproduced alone with a
+shared `WebAssembly.Memory`, a worker in a synchronous XHR and the main thread growing the memory:
+`memory.buffer.byteLength` reads the old size after the XHR and the new one after `memory.grow(0)`
+(Chrome 149, 3 of 3).
+
+The client is therefore its own `EM_JS` XHR, not `emscripten_fetch`, and calls `wasmMemory.grow(0)`
+before it touches the heap after the request (0 failures in 27 runs since). `-sGROWABLE_ARRAYBUFFERS`
+would remove the class of bug, but WebGL refuses views of a resizable buffer (`uniformMatrix4fv`:
+"The provided ArrayBuffer value must not be resizable"), which is why emscripten reverted its
+default (#27260).
+
+### The filesystem is WASMFS
+
+The build links `-sWASMFS`. With the legacy JS filesystem every file operation from a worker ran on
+the main thread, queued behind the frame, and a `persistent-cache` source does a sqlite read and a
+write per tile under one lock: terrain-3d at (7.45, 45.85) z9 tilt 35, 1920x1080, cold cache, the
+DEM's HTTP request took **28 ms** and the tile load around it **525 ms** with 3 loader threads,
+**2 s** with 16 - more threads, a longer queue. WASMFS keeps the files in wasm memory, where a worker
+reads them itself: **31 ms** a tile, the DEM loaded in 3.2 s instead of 26-36 s. The same view
+uncached loads in 4.6-6.1 s with 3 threads or 16, so the thread count was never the limit.
+
+WASMFS has no IndexedDB backend, and its OPFS backend cannot be created on the main thread, where a
+source opens its database. `persistDirectory(module, path)` (`web/js/massif.mjs`) keeps a directory
+in OPFS from JavaScript instead: restored once, written back every 10 s and on `pagehide`, whole
+files whose mtime moved. A file deleted in the module is deleted in OPFS too - a stale sqlite
+journal restored beside a newer database would roll it back - but only one this page wrote, so two
+tabs do not delete each other's. The cache files count against the wasm heap, up to each cache's
+capacity. A copy taken mid-transaction is the database plus its journal, which sqlite rolls back
+on the next open.
 
 ## The SDK module
 
@@ -538,7 +569,7 @@ What it has to get right, and each was a bug first:
 ## What the build does not carry
 
 - **Routing, geocoding and offline packages.** The release and the site build the `standard`
-  profile: sqlite (so the persistent tile cache, on IndexedDB) but no Valhalla, no geocoder and no
+  profile: sqlite (so the persistent tile cache, kept in OPFS) but no Valhalla, no geocoder and no
   package manager. `--profile full` builds and runs; nothing ships it.
 - **Shadows and the sky** are barely tested here. 3D terrain, the depth pre-pass and a post-process
   effect are exercised by the peak finder example; shadows are not.

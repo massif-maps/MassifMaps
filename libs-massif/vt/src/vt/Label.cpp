@@ -444,24 +444,25 @@ namespace massif::vt {
         return false;
     }
 
-    bool Label::updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) {
+    bool Label::updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)>& anchorFunc) {
         return applyElevation(sampleElevation(anchorFunc));
     }
 
-    std::vector<cglib::vec3<double>> Label::sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const {
+    std::vector<cglib::vec3<double>> Label::sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)>& anchorFunc) const {
+        int tileZoom = getTileId().zoom;
         std::vector<cglib::vec3<double>> positions;
         positions.reserve(_tilePoints.size() + _tileLines.size() * 4 + 1);
         for (const TilePoint& tilePoint : _tilePoints) {
-            positions.push_back(anchorFunc(tilePoint.position));
+            positions.push_back(anchorFunc(tilePoint.position, tileZoom));
         }
         for (const TileLine& tileLine : _tileLines) {
             for (const cglib::vec3<double>& vertex : tileLine.vertices) {
-                positions.push_back(anchorFunc(vertex));
+                positions.push_back(anchorFunc(vertex, tileZoom));
             }
         }
         // The placement's own anchor last, for a point placement (see applyElevation).
         if (_placement) {
-            positions.push_back(anchorFunc(_placement->position));
+            positions.push_back(anchorFunc(_placement->position, tileZoom));
         }
         return positions;
     }

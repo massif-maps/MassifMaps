@@ -1251,6 +1251,16 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   landing texture re-anchors it, so a cover that refines over textures already held leaves the label
   one level low until something lands.
 
+  **The fallback never reads finer than the label's own tile.** The camera-zoom fallback also
+  prefetched at the camera zoom, wherever the label stood: a label in a far z9 tile, or in one of the
+  z5–z8 stand-ins kept under the view ([02-tiles.md](02-tiles.md)), fetched full-detail DEM at its
+  position, all over an area 64 z11 tiles wide. The anchor function now carries the zoom of the
+  label's tile (`Label::sampleElevation`), and the provider asks the fallback at
+  `min(camera zoom, tile zoom)`. Measured on the Crosscall, terrain-3d at Innsbruck (z12.05, tilt 25),
+  cold cache, still camera, 60 s: DEM tiles 161–183 (89–103 of them z11, spread over 45 × 38 tiles
+  where the view covers 2 × 3) down to **71–85** (12 at z11), app PSS 514–527 MB down to 432–444 MB;
+  after two 360° turns 727–753 MB down to 675–690 MB, still no blank tile.
+
   A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
   occlusion test skips it: it still carries its flat decode height, and judging that against the
   terrain hides it under ground it is not behind. A later miss **un-anchors** the label: it was

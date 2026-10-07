@@ -41,6 +41,7 @@
 #include <vt/GLExtensions.h>
 #include <vt/NormalMapBuilder.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <unordered_map>
@@ -995,13 +996,14 @@ namespace massif {
                 firstPerson = options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
             }
             int firstPersonZoom = elevationManager->getDetailZoomLimit();
-            tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos) {
+            tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos, int tileZoom) {
                 double height = 0;
                 // Bounded ancestor walk, or POIs hang off a coarse ancestor. First person reads only what is held,
                 // at the finest zoom: its cut ignores the camera zoom, and per-label prefetch evicted the DEM.
                 if (labelTextureCache && !firstPerson) {
+                    // Never finer than the label's tile: a far or stand-in tile's labels fetched camera-zoom DEM over its whole area.
                     if (labelTextureCache->getDrawnDisplayHeight(pos(0), pos(1), labelZoom, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, height)
-                        || labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
+                        || labelTextureCache->getDisplayHeight(pos(0), pos(1), std::min(labelZoom, tileZoom), false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
                         return height;
                     }
                 } else {
@@ -1042,7 +1044,7 @@ namespace massif {
                 }
             }
         } else {
-            tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
+            tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&, int)>());
             if (_extrusionProviderKey.first || _extrusionProviderKey.second) {
                 _extrusionProviderKey = { nullptr, nullptr };
                 tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());

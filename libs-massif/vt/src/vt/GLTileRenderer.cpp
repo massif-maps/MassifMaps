@@ -1013,7 +1013,7 @@ namespace massif::vt {
         _terrainBackgroundColor = color;
     }
 
-    void GLTileRenderer::setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider) {
+    void GLTileRenderer::setLabelElevationProvider(std::function<double(const cglib::vec3<double>&, int)> provider) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         bool had = static_cast<bool>(_labelElevationProvider);
@@ -1022,8 +1022,8 @@ namespace massif::vt {
         // anchor the labels again, so drop them to the flat ground here.
         if (had && !_labelElevationProvider) {
             std::shared_ptr<const TileTransformer> transformer = _transformer;
-            std::function<cglib::vec3<double>(const cglib::vec3<double>&)> flat = [transformer](const cglib::vec3<double>& pos) { return transformer->calculateElevatedPos(pos, 0.0); };
-            std::function<cglib::vec3<double>(const cglib::vec3<double>&)> flatRoof = roofAnchorFunc(flat);
+            std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> flat = [transformer](const cglib::vec3<double>& pos, int) { return transformer->calculateElevatedPos(pos, 0.0); };
+            std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> flatRoof = roofAnchorFunc(flat);
             for (const std::shared_ptr<Label>& label : _labels) {
                 label->updateElevation(label->isZElevated() ? flatRoof : flat);
                 label->setElevationDirty(false);
@@ -1256,7 +1256,7 @@ namespace massif::vt {
         VT_STAT_CLOCK(visibleClock);
         std::vector<std::shared_ptr<Label>> dirtyLabels;
         unsigned int labelElevationGeneration = 0;
-        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc;
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> anchorFunc;
         {
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_SPLIT(setVisibleTilesLockNs, visibleClock);
@@ -4487,20 +4487,20 @@ namespace massif::vt {
         _pendingLabelElevationTiles.clear();
     }
 
-    std::function<cglib::vec3<double>(const cglib::vec3<double>&)> GLTileRenderer::labelAnchorFunc() const {
+    std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> GLTileRenderer::labelAnchorFunc() const {
         // A label ON a bridge belongs to the deck (road names, POIs, one-way arrows alike). Chords
         // and provider are copied: the sampler outlives the lock it was made under.
         std::vector<SpanResolver::SpanChord> chords = _spanResolver.chords(_extrusionBaseVersion.load(std::memory_order_relaxed));
-        std::function<double(const cglib::vec3<double>&)> provider = _labelElevationProvider;
+        std::function<double(const cglib::vec3<double>&, int)> provider = _labelElevationProvider;
         std::shared_ptr<const TileTransformer> transformer = _transformer;
         double scale = _labelPositionScale;
         // A world anchor in, a world anchor ON the terrain out: the lookup is keyed by internal
         // Mercator and the lift is along the surface, neither of which is the vertex z on a globe.
-        return [chords, provider, transformer, scale](const cglib::vec3<double>& pos) {
+        return [chords, provider, transformer, scale](const cglib::vec3<double>& pos, int tileZoom) {
             cglib::vec3<double> mercatorPos = transformer->calculateMercatorPos(pos);
             double height = 0;
             if (!(!chords.empty() && SpanResolver::chordHeightAt(chords, cglib::vec2<double>(mercatorPos(0) * scale, mercatorPos(1) * scale), height))) {
-                height = provider ? provider(mercatorPos) : 0.0;
+                height = provider ? provider(mercatorPos, tileZoom) : 0.0;
             }
             return transformer->calculateElevatedPos(pos, height);
         };
@@ -4519,8 +4519,8 @@ namespace massif::vt {
         }
         markPendingLabelsDirty();
         VT_STAT_SPLIT(prepElevDirtyNs, anchorClock);
-        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc = labelAnchorFunc();
-        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> roofFunc = roofAnchorFunc(anchorFunc);
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> anchorFunc = labelAnchorFunc();
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> roofFunc = roofAnchorFunc(anchorFunc);
         bool anchored = false;
         std::vector<std::shared_ptr<Label>> dirty;
         for (const std::shared_ptr<Label>& label : _labels) {
@@ -5458,9 +5458,9 @@ namespace massif::vt {
         return height;
     }
 
-    std::function<cglib::vec3<double>(const cglib::vec3<double>&)> GLTileRenderer::roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc) const {
-        return [this, anchorFunc](const cglib::vec3<double>& pos) {
-            cglib::vec3<double> anchored = anchorFunc(pos);
+    std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> GLTileRenderer::roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> anchorFunc) const {
+        return [this, anchorFunc](const cglib::vec3<double>& pos, int tileZoom) {
+            cglib::vec3<double> anchored = anchorFunc(pos, tileZoom);
             std::optional<double> roof = roofHeightAt(anchored);
             if (roof && *roof > anchored(2)) {
                 anchored(2) = *roof;

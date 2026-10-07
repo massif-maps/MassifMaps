@@ -300,7 +300,7 @@ void testLineLabel() {
         bool kept = true;
         for (int step = 1; step <= 8; step++) {
             double depth = -40.0 - step;
-            label->updateElevation([depth](const cglib::vec3<double>& pos) { return cglib::vec3<double>(pos(0), pos(1), depth); });
+            label->updateElevation([depth](const cglib::vec3<double>& pos, int) { return cglib::vec3<double>(pos(0), pos(1), depth); });
             std::array<cglib::vec3<float>, 4> envelope;
             kept = label->calculateEnvelope(viewState, envelope) && kept;
         }

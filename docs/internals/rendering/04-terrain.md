@@ -30,6 +30,21 @@ startup** on a Crosscall. The cache now grows on the first decoded grid to hold 
 loads equalled distinct tiles (128 still re-decoded ~20%). `TerrainOptions::setElevationCacheCapacity`
 still wins over the rule, for an app that cannot spend the memory.
 
+**What a frame uses is held past the LRU** (`RecentUseHold`, the same split as the layers'
+`TileCacheHold`). Zoomed out in 3D the grid working set outgrew 192: web, terrain-3d at the Aosta
+valley (7.45, 45.85) z9 tilt 35, 1920x1080, cold cache, read ~220 distinct grids a frame. Every
+load then evicted a grid still drawn, the drawn tile fell back to an ancestor (peaks dropping and
+rising), was asked for again and evicted the next: 2500-6400 reloads in 150 s, the same ~700 tiles
+up to 199 times each, and the loading never ended. A grid read by a `CACHED_ONLY` lookup in the last
+`RECENT_USE_HOLD_TIME` (1 s) is now found after the LRU dropped it - the same object, no reload and no
+version bump - so the LRU's budget only bounds what nothing uses. Measured on the same camera: 0-53
+reloads, loading done at ~100 s. `ALLOW_LOAD` reads are not held, or a bulk elevation query would
+pin every grid it walked. `ElevationTextureCache` does the same for its textures: an entry used in
+the last second is never evicted, the cache overflows `MAX_CACHED_TEXTURES` instead and trims back
+in `beginFrame` once the view moved on. Still open: while tiles land, frames that resolve 500+ fine
+target tiles encode ~200 textures nothing draws again (~4000 encodes over the load at 1920x1080);
+wasted work, not a visible fallback, and over when loading ends.
+
 **A decoded tile asks for a frame.** Every consumer reads the elevation version from *inside* a
 frame (`TileRenderer::onDrawFrame` compares it and invalidates the surfaces it covers), so a tile
 that lands after the last drawn frame is never applied: the map goes idle on a half-displaced mesh —
@@ -95,14 +110,13 @@ entry's position in the deque (`push_front` for 0, `push_back` otherwise, draine
 nearest-first scan would have erased that distinction silently, so the priority now travels with the
 entry.
 
-**A neighbour is only asked for within `NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW` (2) levels of the
-camera's zoom.** A tilted view's far ground is covered by very coarse tiles — at Grenoble z14.5
-tilt 65 the cover reaches z3 — and `resolveEntry` asked each of them for its 8 border neighbours.
-Measured on the Crosscall over a warm cache: **219 tile loads in 7.7 s, 129 of them those coarse
-neighbours**, and the near ground the user is looking at waited behind them. Bounded, the same start
-is 121 loads in 5.9 s (turning the neighbour prefetch off entirely: 94 in 4.1 s, which is the floor).
-A border texel of a tile four levels coarser is far below a pixel; the tiles that matter for seams
-are the ones the camera is on.
+**A neighbour is never fetched for its border alone**, as maplibre and mapbox backfill a DEM border
+only from tiles already loaded. `resolveEntry` reads the neighbours the cache holds; a same-level
+neighbour of a drawn tile is either drawn too (so loaded for itself) or sits outside the cover or
+under a coarser tile, where its data would not match what is drawn next to it anyway. Bounding the
+fetch to 2 levels of the camera's zoom was the first step (Grenoble z14.5 tilt 65, Crosscall, warm
+cache: 219 loads in 7.7 s, 121 bounded, 94 with no neighbour fetch). Dropping it was forced by the
+cache thrash below: zoomed out over the Alps the neighbours alone outgrew the grid cache.
 
 ### CPU height queries
 

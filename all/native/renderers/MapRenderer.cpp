@@ -2880,7 +2880,7 @@ namespace massif {
                         if (auto elevationTextureCache = getElevationTextureCache(elevationManager)) {
                             // Before the frame's uploads: a new reach re-pads every texture.
                             elevationTextureCache->setBorderMetres(terrainOptions->getNormalSampleDistance());
-                            elevationTextureCache->beginFrame(viewState.getZoom());
+                            elevationTextureCache->beginFrame();
                         }
                         if (_redrawElevationManager.lock() != elevationManager) {
                             std::weak_ptr<MapRenderer> mapRendererWeak = shared_from_this();

@@ -10,6 +10,7 @@
 #include "components/ElevationProvider.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
+#include "terrain/RecentUseHold.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -295,8 +296,11 @@ namespace massif {
         /** The source maximum, or the MaxDataZoom cap where one is set and is lower. */
         int dataMaxZoom() const;
         static int nodeBoxCells();
-        /** Cache read that honours the failure marker's expiry, which read() alone does not. */
-        bool readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid) const;
+        /**
+         * Cache read that honours the failure marker's expiry, which read() alone does not. `hold` keeps a hit past
+         * the LRU's eviction for RECENT_USE_HOLD_TIME.
+         */
+        bool readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid, bool hold = false) const;
         std::shared_ptr<ElevationTileGrid> lookupTileGrid(const MapTile& dataTile, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> getGridForInternalPos(double internalX, double internalY, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> loadTileGrid(const MapTile& mapTile) const;
@@ -330,6 +334,9 @@ namespace massif {
 
         mutable cache::timed_lru_cache<long long, std::shared_ptr<ElevationTileGrid> > _gridCache;
         bool _gridCacheCapacityFixed = false; // set through setCacheCapacity: the app's number wins over the grid-count rule
+        // What CACHED_ONLY reads used lately, kept past the LRU's eviction (RecentUseHold). Under _mutex.
+        mutable RecentUseHold<long long, std::shared_ptr<ElevationTileGrid> > _gridHold;
+        mutable std::chrono::steady_clock::time_point _gridHoldExpired;
 #if MASSIF_VT_RENDER_STATS
         mutable std::set<long long> _everLoadedTiles; // diagnostics only: tells an eviction reload from a first load
 #endif

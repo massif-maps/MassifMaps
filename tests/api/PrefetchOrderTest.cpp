@@ -23,6 +23,8 @@
 
 #include "terrain/PrefetchOrder.h"
 
+#include <algorithm>
+
 using namespace massif;
 
 #include "TestCheck.h"
@@ -97,4 +99,21 @@ void testPrefetchOrder() {
     // by priority rather than leaving it to the distance.
     double diagonal = prefetchTileDistance(MapTile(9, 9, 4, 0), u, v);
     TEST_CHECK(diagonal > neighbour, "a diagonal neighbour is further than an edge neighbour");
+
+    // coarseCoverTiles: the grids that give tiles with no cached ancestor a height, fetched ahead of their own.
+    std::vector<MapTile> unelevated = { MapTile(4268, 2921, 13, 0), MapTile(4269, 2921, 13, 0), MapTile(2134, 1460, 12, 0), MapTile(1067, 730, 11, 0) };
+    std::vector<MapTile> coarse = coarseCoverTiles(unelevated, 2, 1);
+    bool oneLevel = !coarse.empty();
+    bool covering = true;
+    for (const MapTile& tile : coarse) {
+        oneLevel = oneLevel && tile.getZoom() == 9;
+    }
+    for (const MapTile& tile : unelevated) {
+        int dz = tile.getZoom() - 9;
+        covering = covering && std::find(coarse.begin(), coarse.end(), MapTile(tile.getX() >> dz, tile.getY() >> dz, 9, 0)) != coarse.end();
+    }
+    TEST_CHECK(oneLevel, "the coarse cover is one level, two above the coarsest tile without a height");
+    TEST_CHECK(covering && coarse.size() <= 2, "and every such tile has its ancestor in it, a view collapsing to one or two fetches");
+    TEST_CHECK(coarseCoverTiles(unelevated, 20, 3).front().getZoom() == 3, "never below the source's min zoom");
+    TEST_CHECK(coarseCoverTiles(std::vector<MapTile>(), 2, 1).empty(), "nothing without a height asks for nothing");
 }

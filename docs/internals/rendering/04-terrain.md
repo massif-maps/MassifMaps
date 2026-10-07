@@ -418,6 +418,23 @@ grids of the previous generation and its lookup only ever walks *up*, so every n
 misses until its own DEM tile loads. When *nothing* has elevation (cold start, or ground the DEM
 does not cover) the scene is flat and internally consistent, so the flat draw stays.
 
+**The first rise into 3D used to drop most of the map for a few hundred ms.** The DEM tiles under the
+focus land first, the scene turns displaced on them, and every coarser leaf with no cached ancestor
+goes blank until its own grid lands (cold start at Châtillon 7.62/45.78 z12.5 tilt 25, SwiftShader:
+17-51 leaves skipped for up to ~365 ms, ended by the z5-z8 tiles arriving). Two changes in the drape
+pass, both in `MapRenderer`:
+
+- leaves without a height request one shared coarse level, two above the coarsest of their grids
+  (`coarseCoverTiles`, `PrefetchOrder.h`), at priority 3, above any tile's own level - one or two
+  fetches give every leaf an ancestor;
+- the first rise waits for those requests (`ElevationManager::isTileGridPending`), every tile held
+  flat meanwhile (`ElevationTextureCache::setHeld`), at most `TERRAIN_RISE_HOLD_MAX` 1.5 s. A failed
+  or shed request is not pending, so it cannot hold the map flat; once risen, later leaves keep the
+  skip rule above.
+
+After: 0 leaves skipped in any frame over three cold runs, the scene going from all flat to all
+displaced at once.
+
 ### Normalizing the cover to a quadtree partition
 
 The collected set is a **union across layers**, and layers do not agree on a zoom level — a

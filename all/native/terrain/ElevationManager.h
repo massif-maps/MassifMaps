@@ -202,6 +202,8 @@ namespace massif {
 
         /** The same queueing for a tile a consumer needs; ignores TerrainOptions::ElevationPrefetchEnabled. */
         void requestTileGrid(const MapTile& dataTile, int priority) const;
+        /** Whether the elevation tile is queued or loading: a failure, a shed request or a landed grid is not. */
+        bool isTileGridPending(const MapTile& dataTile) const;
 
         /**
          * Requests the finest elevation tile under a point unless 'resolvedZoom' (a cached read's, -1 for none)

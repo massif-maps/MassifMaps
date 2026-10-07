@@ -9,7 +9,9 @@
 
 #include "core/MapTile.h"
 
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace massif {
 
@@ -24,6 +26,33 @@ namespace massif {
         du -= std::floor(du + 0.5); // the short way round, for a view sitting on the antimeridian
         double dv = (tile.getY() + 0.5) / extent - focusV; // mercator y does not wrap
         return std::sqrt(du * du + dv * dv) * extent;
+    }
+
+    /**
+     * One shared level of ancestors over `dataTiles`, `levelsUp` above the coarsest and not below `minZoom`:
+     * the grid lookup walks up only, so a view collapses to the one or two fetches that give every tile a height.
+     */
+    inline std::vector<MapTile> coarseCoverTiles(const std::vector<MapTile>& dataTiles, int levelsUp, int minZoom) {
+        std::vector<MapTile> result;
+        if (dataTiles.empty()) {
+            return result;
+        }
+        int zoom = dataTiles.front().getZoom();
+        for (const MapTile& tile : dataTiles) {
+            zoom = std::min(zoom, tile.getZoom());
+        }
+        zoom = std::max(minZoom, zoom - levelsUp);
+        for (const MapTile& tile : dataTiles) {
+            if (tile.getZoom() < zoom) {
+                continue;
+            }
+            int dz = tile.getZoom() - zoom;
+            MapTile ancestor(tile.getX() >> dz, tile.getY() >> dz, zoom, 0);
+            if (std::find(result.begin(), result.end(), ancestor) == result.end()) {
+                result.push_back(ancestor);
+            }
+        }
+        return result;
     }
 
 }

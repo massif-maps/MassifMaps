@@ -78,6 +78,7 @@ namespace massif::vt {
         U_DRAPEBAKE,
         U_ELEVATIONNODETEXELSIZE,
         U_TERRAINEDGECOARSENING,
+        U_TERRAINSKIRTDROP,
         U_LAYERDEPTHOFFSET,
         U_DEPTHSHIFT,
         U_DEPTHCLEARANCE,
@@ -249,6 +250,7 @@ namespace massif::vt {
         { "uDrapeBake",            U_DRAPEBAKE },
         { "uElevationNodeTexelSize", U_ELEVATIONNODETEXELSIZE },
         { "uTerrainEdgeCoarsening", U_TERRAINEDGECOARSENING },
+        { "uTerrainSkirtDrop",  U_TERRAINSKIRTDROP },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
         { "uDepthShift",        U_DEPTHSHIFT },
         { "uDepthClearance",    U_DEPTHCLEARANCE },
@@ -560,6 +562,7 @@ namespace massif::vt {
         uniform highp vec4 uTerrainSphereElevUV;
         #endif
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
+        uniform highp vec4 uTerrainSkirtDrop;      // metres the grid skirt hangs under the west/east/south/north edge
         // DEM box-filtered to one texel per mesh node: point-sampling the full DEM aliases relief
         // finer than a cell. The full texture is for the fragment stage.
         uniform highp sampler2D uElevationNodeTexture;
@@ -635,7 +638,11 @@ namespace massif::vt {
             // lose the sphere point.
             return pos + normalize(terrainSpherePoint(pos)) * (z - aVertexSkirt);
         #else
-            if (pos.z < -900000.0) {
+            if (pos.z < -1900000.0) {
+                // grid skirt bottom vertex: z encodes -2000000 - edge
+                highp vec4 edge = vec4(equal(vec4(-pos.z - 2000000.0), vec4(0.0, 1.0, 2.0, 3.0)));
+                z -= dot(uTerrainSkirtDrop, edge) * uElevationScale.x * coshMY;
+            } else if (pos.z < -900000.0) {
                 // skirt bottom vertex: z encodes -1000000 - drop, hiding cracks between LODs
                 z += pos.z + 1000000.0;
             }

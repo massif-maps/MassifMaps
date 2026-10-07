@@ -82,6 +82,37 @@ namespace massif {
     }
 
     bool ElevationTextureCache::getTexture(const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
+        CacheEntry* entry = findDrawnEntry(tileId);
+        if (!entry) {
+            return false;
+        }
+        fillTexture(*entry, static_cast<float>(_elevationManager->getExaggeration() * Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE), terrainTexture);
+        return true;
+    }
+
+    bool ElevationTextureCache::getDrawnNodeField(const vt::TileId& tileId, NodeFieldView& field) {
+        CacheEntry* entry = findDrawnEntry(tileId);
+        if (!entry || !entry->grid || !entry->nodeBitmap || entry->grid->getNodesPerEdge() < 1) {
+            return false;
+        }
+        std::shared_ptr<ElevationTileGrid> grid = entry->grid;
+        std::shared_ptr<BorderBitmap> bitmap = entry->nodeBitmap;
+        const MapBounds& bounds = grid->getInternalBounds();
+        field.minX = bounds.getMin().getX();
+        field.minY = bounds.getMin().getY();
+        field.maxX = bounds.getMax().getX();
+        field.maxY = bounds.getMax().getY();
+        field.nodes = grid->getNodesPerEdge();
+        field.source = grid->getTile().getTileId();
+        int bytesPerTexel = grid->getBytesPerTexel();
+        int stride = (field.nodes + 1) * bytesPerTexel;
+        field.height = [grid, bitmap, bytesPerTexel, stride](int i, int j) {
+            return static_cast<double>(grid->decodeEncodedTexel(bitmap->getPixelData().data() + static_cast<std::size_t>(j) * stride + static_cast<std::size_t>(i) * bytesPerTexel));
+        };
+        return true;
+    }
+
+    ElevationTextureCache::CacheEntry* ElevationTextureCache::findDrawnEntry(const vt::TileId& tileId) {
         int tileMask = (1 << tileId.zoom) - 1;
         MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
         long long mapTileId = mapTile.getTileId();
@@ -109,7 +140,7 @@ namespace massif {
             _frameResolved[mapTileId] = (resolved ? gridTile : MapTile(0, 0, -1, 0));
         }
         if (!resolved) {
-            return false;
+            return nullptr;
         }
 
         // The exact grid's texture if it is on the GPU, otherwise the nearest ancestor's: a tile
@@ -119,11 +150,10 @@ namespace massif {
             auto it = _cache.find(tile.getTileId());
             if (it != _cache.end() && it->second.texture && it->second.texture->getTexId() != 0) {
                 it->second.lastUsed = ++_accessCounter;
-                fillTexture(it->second, static_cast<float>(_elevationManager->getExaggeration() * Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE), terrainTexture);
-                return true;
+                return &it->second;
             }
             if (tile.getZoom() <= 0) {
-                return false;
+                return nullptr;
             }
         }
     }
@@ -413,6 +443,7 @@ namespace massif {
             VT_STAT_SPLIT(demUploadNs, uploadClock);
             VT_STAT_INC(demUploads);
             _cache.insert_or_assign(encoded.gridTileId, std::move(entry));
+            _drawnVersion++;
             if (encoded.grid) { _contentChanges.push_back(encoded.grid->getTile()); }
         }
     }
@@ -478,6 +509,7 @@ namespace massif {
             VT_STAT_INC(demPatchUploads);
             it->second.borderQuality = patch.borderQuality;
             it->second.neighbours = patch.neighbours;
+            _drawnVersion++;
         }
     }
 
@@ -501,6 +533,7 @@ namespace massif {
         }
         if (lru != _cache.end()) {
             _cache.erase(lru);
+            _drawnVersion++;
         }
     }
 

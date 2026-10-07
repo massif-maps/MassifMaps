@@ -49,6 +49,11 @@ namespace massif::vt {
         static constexpr int GRID_CULL_BLOCKS = 4;
         static int gridBlockStart(int resolution, int block) { return resolution * block / GRID_CULL_BLOCKS; }
 
+        // A wall under each edge of the same grid, W, E, S, N, `resolution * 6` indices each. Its bottom vertices
+        // carry z = GRID_SKIRT_SENTINEL - edge; the shader drops them by the tile's uTerrainSkirtDrop for that edge.
+        std::shared_ptr<TileSurface> buildRegularGridSkirtSurface(int resolution) const;
+        static constexpr float GRID_SKIRT_SENTINEL = -2000000.0f;
+
     private:
         using TileNeighbours = std::array<std::vector<TileId>, 4>; // left, right, up, down
         

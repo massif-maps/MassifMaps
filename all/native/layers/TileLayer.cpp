@@ -1255,6 +1255,10 @@ namespace massif {
         _tileRenderer->setTerrainGroundTiles(tileIds, proxyDepths);
     }
 
+    void TileLayer::setTerrainSkirtDrops(const std::map<vt::TileId, cglib::vec4<float>>& drops) {
+        _tileRenderer->setTerrainSkirtDrops(drops);
+    }
+
     void TileLayer::setTerrainLayerOrdinalBase(int base) {
         _tileRenderer->setTerrainLayerOrdinalBase(base);
     }

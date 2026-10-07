@@ -52,6 +52,7 @@
 %ignore massif::TileLayer::castsExtrusionShadows;
 %ignore massif::TileLayer::setTerrainPaintTiles;
 %ignore massif::TileLayer::setTerrainGroundTiles;
+%ignore massif::TileLayer::setTerrainSkirtDrops;
 %ignore massif::TileLayer::setTerrainLayerOrdinalBase;
 %ignore massif::TileLayer::setTerrainStackOrdinalSpan;
 %ignore massif::TileLayer::getStyleLayerCount;

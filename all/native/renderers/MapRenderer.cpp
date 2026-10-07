@@ -45,6 +45,7 @@
 #include "terrain/DrapeTuning.h"
 #include "terrain/ShadowCasterRing.h"
 #include "terrain/ElevationManager.h"
+#include "terrain/TerrainSkirts.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
 #include "renderers/workers/BillboardPlacementWorker.h"
@@ -933,6 +934,25 @@ namespace massif {
         }
         if (shellFocusZ > focusMapPos.getZ()) {
             _viewState.setFocusHeight(shellFocusZ);
+        }
+    }
+
+    void MapRenderer::updateTerrainSkirts(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& cover, const std::shared_ptr<TerrainOptions>& terrainOptions) {
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        std::shared_ptr<ElevationTextureCache> cache = (elevationManager ? getElevationTextureCache(elevationManager) : std::shared_ptr<ElevationTextureCache>());
+        bool planar = static_cast<bool>(std::dynamic_pointer_cast<PlanarProjectionSurface>(_options->getProjectionSurface()));
+        if (!cache || !planar) {
+            _skirtDrops.clear();
+        } else if (cache != _skirtCache || cache->getDrawnVersion() != _skirtDrawnVersion || cover != _skirtCover) {
+            _skirtCache = cache;
+            _skirtDrawnVersion = cache->getDrawnVersion();
+            _skirtCover = cover;
+            _skirtDrops = TerrainSkirts::drops(cover, Const::WORLD_SIZE, [&cache](const vt::TileId& tileId, NodeFieldView& field) {
+                return cache->getDrawnNodeField(tileId, field);
+            });
+        }
+        for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
+            tileLayer->setTerrainSkirtDrops(_skirtDrops);
         }
     }
 
@@ -3162,6 +3182,7 @@ namespace massif {
                         // Skipped when the surface shader already painted this ground (TerrainOptions::
                         // setSharedGroundEnabled); the ground tiles and ordinals above are still published.
                         int groundDraws = 0;
+                        updateTerrainSkirts(groundLayers, groundTileIds, terrainOptions);
                         if (terrainOptions->isSharedGroundEnabled()) {
                             groundDraws = groundDrawer->renderTerrainGround(groundColor);
                         }
@@ -3870,6 +3891,7 @@ namespace massif {
                     std::array<double, TerrainShadowMap::MAX_CASCADES> shadowTexelMeters = { };
                     applyTerrainShadows(drapeLayers, drapeTileIds, terrainOptions, viewState, prevFBO, bakedThisFrame > 0, true, lighting, shadowTexelMeters);
 
+                    updateTerrainSkirts(drapeLayers, leaves, terrainOptions);
                     // GL_LEQUAL: the background already wrote the same meshes' depth.
                     glEnable(GL_DEPTH_TEST);
                     glDepthFunc(GL_LEQUAL);
@@ -3980,6 +4002,7 @@ namespace massif {
                 tileLayer->setExternalDrapeTarget(false);
                 // Release a stale cover, or a layer keeps suppressing its own depth pre-pass.
                 tileLayer->setTerrainGroundTiles(std::vector<vt::TileId>(), std::vector<int>());
+                tileLayer->setTerrainSkirtDrops(std::map<vt::TileId, cglib::vec4<float> >());
             }
             if (terrainMode) {
                 static bool noDrapeLogged = false;

@@ -355,12 +355,30 @@ a zoom out; 16x-32x for ~200 ms after a z9 -> z14 jump (a z15 leaf beside z10, ~
 not the network is held. No frame inside those windows showed a wall. A cover balanced to one level
 between neighbours would remove them, at a drape cache cost; not done without a frame that needs it.
 
-### Skirts: absent from the shared ground only
+### Skirts: on the shared ground, only where two tiles are drawn from different data
 
-The ground the map is drawn on — vt's shared regular grid — has **no** skirts (walls dropped at tile
-edges to hide cracks). Textured with stretched edge pixels, they rasterized over neighbouring content
-wherever a displaced tile edge leans off-nadir — solid fill-coloured patches that grow with the tile
-size. Tangram has none either. Cross-LOD cracks there are handled by stitching instead.
+The ground the map is drawn on — vt's shared regular grid — had **no** skirts (walls dropped at tile
+edges to hide cracks). Textured with stretched edge pixels, skirts on every edge rasterized over
+neighbouring content wherever a displaced tile edge leans off-nadir — solid fill-coloured patches
+that grow with the tile size. Tangram has none either.
+
+Stitching does not close every crack, though: it puts a fine edge on a coarser neighbour's lattice,
+which only meets when both sides read the same heights. Two cover tiles drawn from different DEM
+levels do not. Settled, a z12 tile on z11 data beside a z10 tile on z9 data disagreed by 70-150 m
+along the shared edge (Châtillon, 7.62/45.78 z12.5 tilt 25): the thin see-through slivers along LOD
+seams. While loading, a tile beside one still standing on a coarse ancestor showed 200-500 m: the
+hole that replaced the curtain of
+[the edge box section](#the-edge-box-widens-one-level-not-to-a-stand-ins-cell).
+
+So a skirt hangs from an edge only where a gap is: `TerrainSkirts::drops` samples the shared edge in
+both tiles' **drawn** node fields (`ElevationTextureCache::getDrawnNodeField` - the uploaded node
+bytes, ring patches included) and hangs one from the HIGHER side, 1.25x the largest gap plus 1 m. The
+lower side's would sit under its own ground; the higher side's is invisible from where the step only
+hides ground, and fills the hole from where it is one. Two tiles on one grid get none. The mesh is a
+separate surface (`buildRegularGridSkirtSurface`, its bottom vertices at `GRID_SKIRT_SENTINEL - edge`)
+drawn after the grid with `uTerrainSkirtDrop` per edge, recomputed only when the cover or
+`ElevationTextureCache::getDrawnVersion` changes. Planar only. Measured at that camera, settled:
+see-through pixels 674 -> 61 (the rest is dark label text).
 
 `TerrainRenderer`'s own meshes keep them: `buildTileMesh` appends walls `SKIRT_DEPTH_METERS` (500 m)
 below the tile's lowest point, in metres so coarse horizon tiles do not get kilometre-deep walls.

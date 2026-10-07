@@ -50,6 +50,10 @@ namespace massif {
              */
             CACHED_ONLY,
             /**
+             * Only the tile itself, or the grid the data source answered it with. Never blocks.
+             */
+            CACHED_EXACT,
+            /**
              * The elevation tile may be synchronously loaded from the data source. May block on IO/network.
              */
             ALLOW_LOAD,

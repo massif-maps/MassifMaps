@@ -47,6 +47,7 @@ public final class ExampleLive extends BroadcastReceiver {
     static {
         // terrain
         knob("terrain", "terrain", "enabled");
+        knob("flattened", "terrain", "flattened");
         knob("exaggeration", "terrain", "exaggeration");
         knob("meshResolution", "terrain", "meshResolution");
         knob("drape", "terrain", "drapeFillsEnabled");

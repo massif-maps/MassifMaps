@@ -768,6 +768,15 @@ from.** `ElevationTextureCache::getDisplayHeight(..., smooth = true)` samples th
 `SMOOTH_BASE_POSTING` (50 m), bilinear, from the grid LRU — an ancestor level answers too, and is
 asked for if none is there; the arrival bumps the elevation version and every base moves together.
 
+**An ancestor answers only within `BASE_MAX_ANCESTOR_LEVELS` of that level** (`SmoothBaseLevel.h`).
+Further than that it is a level not loaded yet, and a coarse grid averages a valley with its peaks.
+On the first 2D→3D switch at Zermatt the only cached grid was z5 (1.7 km posting): bases stood
+550 m above the 1600 m valley floor, and the walls stretched from the ground up to them — a whole
+town of towers until z10 landed. Now the wanted level is requested (`requestTileGrid`) and the
+base keeps the sentinel, drawn on the per-vertex ground, until it lands. An ALIAS — the source
+answered that level with an ancestor (`LoadMode::CACHED_EXACT` finds it) — is final, or a level the
+source does not have would leave every building on the sentinel for good.
+
 The **level is derived from the grid's own resolution**, never fixed: the search starts at
 `SMOOTH_BASE_ZOOM_HINT` and walks coarser until the posting reaches 50 m. A hardcoded z12 was
 50 m only for a source serving 256 px tiles at the equator — mapterhorn serves 512 px, so z12 is

@@ -477,6 +477,14 @@ fatal rather than wasteful, because every leaf takes a drape cache entry: two su
 cache and the eviction pass drops the *entire* previous generation, which is what both the seed and
 the stand-in read from. The symptom is `seeded 0, blank 16` and a screen of flat fills.
 
+**...and a split-off child the camera cannot see is dropped** (`terrain/DrapeCoverLeaves.h`), as
+maplibre's terrain tiles stop at the frustum. A layer's first tiles on a cold start are z1 parents
+standing in while z12 loads, and splitting one down to the view left three sibling leaves per level,
+almost all off-screen, each fetching its own DEM. Measured on the Crosscall, terrain-3d at Innsbruck
+(z12.05, tilt 25), cold cache, still camera, 5 runs each: the largest cover 65–77 leaves down to
+16–26, DEM z1–z5 20 down to 11, z6–z10 43–50 down to 28–36; the settled frame is identical. The test
+is the tile's bbox with its cached DEM height range against the cull frustum.
+
 **...but the camera seeds the levels the data does not reach.** Built from the collected tiles alone
 the cover cannot split past the deepest tile a source gave, so once the camera zooms past a source's
 maxzoom the drape's metres-per-texel freeze: the ground goes soft and *stays* soft while the live

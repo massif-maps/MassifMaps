@@ -52,6 +52,12 @@ void testTerrainOcclusion() {
 
     TEST_CHECK(TerrainOcclusion::isBehind(5000.0f, 1000.0f, 300.0f, tolerance), "a label far behind is still occluded");
 
+    // Measured at the Matterhorn on the web build (w in internal units, ~26 m each); 1.05 is the default slack.
+    TEST_CHECK(TerrainOcclusion::isBehind(225.3f, 193.4f, 0.8f, 1.05f), "Zmuttgrat seen from the south: the face 900 m in front hides it");
+    TEST_CHECK(!TerrainOcclusion::isBehind(225.3f, 193.4f, 0.8f, 1.2f), "the old 0.2 slack let it through");
+    TEST_CHECK(!TerrainOcclusion::isBehind(186.4f, 241.6f, 55.0f, 1.05f), "Hoernlihuette on the face toward the camera is seen");
+    TEST_CHECK(TerrainOcclusion::isBehind(261.0f, 188.7f, 4.4f, 1.05f), "and hidden from the far side of the summit");
+
     bool wasBehind = false;
     for (float labelW = 900.0f; labelW <= 5000.0f; labelW += 50.0f) {
         bool behind = TerrainOcclusion::isBehind(labelW, 1000.0f, 120.0f, tolerance);

@@ -663,12 +663,12 @@ namespace massif {
 
         /**
          * Returns the billboard/label terrain occlusion tolerance.
-         * @return The relative depth tolerance. The default is 0.2.
+         * @return The relative depth tolerance. The default is 0.05.
          */
         float getBillboardOcclusionTolerance() const;
         /**
          * Sets how far behind the terrain a billboard or label anchor may sit and still count as visible, as a fraction
-         * of its distance from the camera. The default is 0.2; 0 hides a label the moment its anchor goes behind the
+         * of its distance from the camera. The default is 0.05; 0 hides a label the moment its anchor goes behind the
          * relief; larger values let a summit just behind a nearer ridge keep its name.
          * @param tolerance The new relative tolerance (clamped to 0..1).
          */

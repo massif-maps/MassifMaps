@@ -351,6 +351,8 @@ namespace massif::vt {
 
         void initializeRenderer();
         void resetRenderer();
+        // Keeps the uploaded tiles and their blend state: a new renderer fades every tile in from nothing.
+        void setTransformer(std::shared_ptr<const TileTransformer> transformer);
         void resetTileSurfaces();
         void invalidateTileSurfaces(const std::vector<TileId>& tileIds);
         void deinitializeRenderer();
@@ -574,6 +576,7 @@ namespace massif::vt {
             unsigned int generation = 0;   // of the maps oldLabelMap was taken from
             std::map<int, GlobalIdLabelMap> oldLabelMap;
             std::optional<std::regex> layerFilter;
+            std::shared_ptr<const TileTransformer> transformer; // setTransformer may swap it while the prepare runs
             std::map<int, std::unordered_map<long long, std::pair<long long, int>>> signatures;
             std::map<int, GlobalIdLabelMap> labelMap;
             std::map<int, std::unordered_set<long long>> reusedIds;
@@ -1035,7 +1038,7 @@ namespace massif::vt {
         VertexArray<std::uint16_t> _labelIndices;
 
         const std::shared_ptr<GLExtensions> _glExtensions;
-        const std::shared_ptr<const TileTransformer> _transformer;
+        std::shared_ptr<const TileTransformer> _transformer;
         const float _scale;
 
         mutable std::mutex _mutex;

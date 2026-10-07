@@ -25,6 +25,7 @@ namespace massif::vt {
     public:
         explicit TileSurfaceBuilder(std::shared_ptr<const TileTransformer> transformer);
 
+        void setTransformer(std::shared_ptr<const TileTransformer> transformer);
         void setOrigin(const cglib::vec3<double>& origin);
         void setVisibleTiles(const std::set<TileId>& tileIds);
         void setTerrainSkirts(bool terrainSkirts);
@@ -68,7 +69,7 @@ namespace massif::vt {
 
         mutable std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceCache;
 
-        const std::shared_ptr<const TileTransformer> _transformer;
+        std::shared_ptr<const TileTransformer> _transformer;
     };
 }
 

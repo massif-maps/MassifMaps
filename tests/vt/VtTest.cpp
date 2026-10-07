@@ -30,6 +30,7 @@ void testSpanResolver();
 void testSphericalTerrain();
 void testExtrusionOccluder();
 void testGridIndexOrder();
+void testSurfaceTransformerSwap();
 void testRenderTileBlend();
 void testGroundCover();
 void testLabelSlice();
@@ -78,6 +79,7 @@ int main() {
     testSphericalTerrain();
     testExtrusionOccluder();
     testGridIndexOrder();
+    testSurfaceTransformerSwap();
     testRenderTileBlend();
     testGroundCover();
     testLabelSlice();

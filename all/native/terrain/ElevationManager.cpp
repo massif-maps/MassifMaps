@@ -620,6 +620,18 @@ namespace massif {
         _prefetchCondition.notify_one();
     }
 
+    bool ElevationManager::isTileGridPending(const MapTile& dataTile) const {
+        long long tileId = clampDataTileZoom(dataTile).getTileId();
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_pendingLoads.find(tileId) != _pendingLoads.end()) {
+                return true;
+            }
+        }
+        std::lock_guard<std::mutex> lock(_prefetchMutex);
+        return _prefetchTileIds.count(tileId) > 0;
+    }
+
     void ElevationManager::requestTileGridAt(double internalX, double internalY, int resolvedZoom, int priority) const {
         MapTile tile = getDataTile(getTileForInternalPos(internalX, internalY));
         if (resolvedZoom < tile.getZoom()) {

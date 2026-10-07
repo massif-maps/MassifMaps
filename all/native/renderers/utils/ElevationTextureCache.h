@@ -56,6 +56,8 @@ namespace massif {
         bool getDrawnNodeField(const vt::TileId& tileId, NodeFieldView& field);
         /** Changes whenever an upload or a border patch changes what some tile is drawn with. */
         unsigned int getDrawnVersion() const { return _drawnVersion; }
+        /** While held every tile renders flat, as before any elevation landed (MapRenderer's first rise). */
+        void setHeld(bool held) { _held = held; }
 
         /**
          * Uploads what the worker encoded (within budget) and drops the per-frame tile resolution memo,
@@ -188,6 +190,7 @@ namespace massif {
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         float _viewZoom = 0.0f; // the camera's zoom this frame, for the border prefetch bound
         unsigned int _drawnVersion = 0;
+        bool _held = false;
         std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
 
         // Coarser far tiles skip neighbour prefetch: it delayed the near ground, and their seam is sub-pixel.

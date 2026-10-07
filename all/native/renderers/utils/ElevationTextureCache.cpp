@@ -113,6 +113,9 @@ namespace massif {
     }
 
     ElevationTextureCache::CacheEntry* ElevationTextureCache::findDrawnEntry(const vt::TileId& tileId) {
+        if (_held) {
+            return nullptr;
+        }
         int tileMask = (1 << tileId.zoom) - 1;
         MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
         long long mapTileId = mapTile.getTileId();

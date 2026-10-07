@@ -46,6 +46,7 @@
 #include "terrain/ShadowCasterRing.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/TerrainSkirts.h"
+#include "terrain/PrefetchOrder.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
 #include "renderers/workers/BillboardPlacementWorker.h"
@@ -953,6 +954,16 @@ namespace massif {
         }
         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
             tileLayer->setTerrainSkirtDrops(_skirtDrops);
+        }
+    }
+
+    void MapRenderer::releaseTerrainRiseHold() {
+        if (std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions()) {
+            if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                if (std::shared_ptr<ElevationTextureCache> cache = getElevationTextureCache(elevationManager)) {
+                    cache->setHeld(false);
+                }
+            }
         }
     }
 
@@ -3045,6 +3056,7 @@ namespace massif {
                     FRAME_PROF_ADD(preTailWalkMs, profTailWalkStart);
                 } else {
                     // No drape (tangram): one shared cover, ground drawn once, layers composited straight onto it.
+                    releaseTerrainRiseHold();
                     std::vector<std::shared_ptr<TileLayer> > groundLayers;
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         layer->collectDrapeLayers(groundLayers, viewState);
@@ -3299,6 +3311,22 @@ namespace massif {
                         fingerprint ^= _drapeBakeZoomTerm + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
                         drapeTiles[tileId] = fingerprint;
                     }
+                    // A leaf with no cached ancestor is skipped in a displaced scene until its own grid lands: a coarse
+                    // grid over all of them, ahead of the fine ones, gives each a height from the first 3D frame.
+                    bool coarsePending = false;
+                    if (drapeElevationManager) {
+                        std::vector<MapTile> unelevated;
+                        for (auto it = leafElevation.begin(); it != leafElevation.end(); it++) {
+                            if (!it->second) {
+                                int tileMask = (1 << it->first.zoom) - 1;
+                                unelevated.push_back(drapeElevationManager->getDataTile(MapTile(it->first.x & tileMask, std::min(std::max(it->first.y, 0), tileMask), it->first.zoom, 0)));
+                            }
+                        }
+                        for (const MapTile& coarseTile : coarseCoverTiles(unelevated, COARSE_DEM_LEVELS_UP, drapeElevationManager->getDataSource()->getMinZoom())) {
+                            drapeElevationManager->requestTileGrid(coarseTile, COARSE_DEM_PRIORITY);
+                            coarsePending = coarsePending || drapeElevationManager->isTileGridPending(coarseTile);
+                        }
+                    }
 
                     // A texel per screen pixel per leaf, the cover fitting half the cache (the other half holds the
                     // generation stand-ins read). An app's DrapeResolution keeps one size for all.
@@ -3484,6 +3512,29 @@ namespace massif {
                     int displacedLeaves = 0;
                     for (auto it = drapeTiles.begin(); it != drapeTiles.end(); it++) {
                         displacedLeaves += leafElevation[it->first] ? 1 : 0;
+                    }
+                    // The first rise waits for those coarse grids, bounded: a fine grid landing first would show the scene
+                    // with every leaf they are for skipped. Held, every tile is flat, as before any elevation landed.
+                    bool holdRise = false;
+                    if (displacedLeaves == 0) {
+                        _terrainRisen = false;
+                        _terrainRiseHoldStart = std::chrono::steady_clock::time_point();
+                    } else if (!_terrainRisen) {
+                        auto now = std::chrono::steady_clock::now();
+                        if (_terrainRiseHoldStart == std::chrono::steady_clock::time_point()) {
+                            _terrainRiseHoldStart = now;
+                        }
+                        holdRise = coarsePending && now - _terrainRiseHoldStart < std::chrono::duration<float>(TERRAIN_RISE_HOLD_MAX);
+                        _terrainRisen = !holdRise;
+                    }
+                    if (drapeElevationManager) {
+                        if (std::shared_ptr<ElevationTextureCache> riseCache = getElevationTextureCache(drapeElevationManager)) {
+                            riseCache->setHeld(holdRise);
+                        }
+                    }
+                    if (holdRise) {
+                        displacedLeaves = 0;
+                        requestRedraw();
                     }
                     bool sceneDisplaced = displacedLeaves > 0;
 
@@ -3994,6 +4045,7 @@ namespace massif {
             }
         }
         if (drapeLayers.empty() && !sharedGroundActive) {
+            releaseTerrainRiseHold();
             std::vector<std::shared_ptr<TileLayer> > allTileLayers;
             for (const std::shared_ptr<Layer>& layer : layers) {
                 layer->collectDrapeLayers(allTileLayers, viewState);
@@ -4310,6 +4362,9 @@ namespace massif {
 
     // Late 3D beats a map pinned flat by one tile that never loads.
     const float MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT = 2.5f;
+    const int MapRenderer::COARSE_DEM_LEVELS_UP = 2;
+    const int MapRenderer::COARSE_DEM_PRIORITY = 3;
+    const float MapRenderer::TERRAIN_RISE_HOLD_MAX = 1.5f;
 
     const std::string MapRenderer::BLEND_VERTEX_SHADER = R"GLSL(
         #version 100

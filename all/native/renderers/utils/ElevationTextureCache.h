@@ -86,6 +86,12 @@ namespace massif {
         bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels = BASE_MAX_ANCESTOR_LEVELS, bool prefetch = true) const;
 
         /**
+         * getDisplayHeight from the finest texture drawn over the point in the last frame, no coarser than `zoom` allows:
+         * in front of a tilted camera the ground is drawn levels finer than the camera zoom. Never fetches.
+         */
+        bool getDrawnDisplayHeight(double internalX, double internalY, int zoom, int maxAncestorLevels, double& height) const;
+
+        /**
          * Tiles whose texture content changed as of this frame's start, per tile so only what stands over
          * them is re-resolved (mapbox's model). Not drained: every sharing tile layer invalidates from it.
          */
@@ -203,6 +209,8 @@ namespace massif {
         float _borderMetres = 0.0f; // see setBorderMetres
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::chrono::steady_clock::time_point _frameTime; // when the current frame began
+        std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame
+        std::uint64_t _lastFrameStartCounter = 0; // and of the frame before, which is fully drawn
 
         std::vector<MapTile> _frameContentChanges; // see getFrameContentChanges
         int _requestedDetailLevels = 0; // see requestDetailLevels, reset every frame

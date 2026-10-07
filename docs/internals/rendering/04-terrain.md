@@ -226,7 +226,10 @@ At the nominal zoom a surface vertex is a node and reads one texel; an overzoome
 interpolate the field bilinearly, so relief between nodes is not recovered there (the mesh could
 not carry it without aliasing anyway). The CPU side samples the same field
 (`ElevationTileGrid::sampleNodeHeight`, behind every `getDisplayHeight`), so label anchors,
-extrusion bases, the raycast and the occlusion depth mesh sit on the drawn ground; its edge nodes
+extrusion bases, the raycast and the occlusion depth mesh sit on the drawn ground — provided they ask
+at the LEVEL drawn there: one level coarser takes a summit down by tens to hundreds of metres, which
+is why labels read the finest texture drawn over them
+([06-labels](06-labels.mdx#on-the-gl-thread)); its edge nodes
 clamp where the texture reads the neighbour, a fraction of a texel step along DEM tile edges only.
 `getElevation`/`getElevationMeters` stay the DEM itself. The full-detail terrain paint cache
 (`setDetailLevels`) reuses the manager's grids, whose field is built for the nominal level, so in

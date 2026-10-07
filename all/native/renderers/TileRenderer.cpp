@@ -1000,7 +1000,8 @@ namespace massif {
                 // Bounded ancestor walk, or POIs hang off a coarse ancestor. First person reads only what is held,
                 // at the finest zoom: its cut ignores the camera zoom, and per-label prefetch evicted the DEM.
                 if (labelTextureCache && !firstPerson) {
-                    if (labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
+                    if (labelTextureCache->getDrawnDisplayHeight(pos(0), pos(1), labelZoom, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, height)
+                        || labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
                         return height;
                     }
                 } else {

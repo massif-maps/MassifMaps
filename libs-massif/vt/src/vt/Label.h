@@ -355,7 +355,7 @@ namespace massif::vt {
         enum class LineLayout { PLACED, NO_ROOM, UNREADABLE };
 
         void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const;
-        LineLayout buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        LineLayout buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool keepRun = false) const;
 
         // Where the text pen starts for the variant in use - zero for a label with one fixed
         // layout, which is every label a style without anchors builds.
@@ -475,6 +475,7 @@ namespace massif::vt {
         mutable bool _lineLayoutValid = false;
         mutable bool _lineReversed = false; // the projected run reads right to left, so the glyphs walk the line backwards
         mutable int _lineLayoutFailures = 0;
+        bool _placementReanchored = false; // the placement only took new heights: a 2D/3D ramp re-lays it every frame
 
         mutable bool _cachedValid = false;
         mutable float _cachedScale = 0;

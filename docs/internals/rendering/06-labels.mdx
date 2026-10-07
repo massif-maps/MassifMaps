@@ -194,6 +194,10 @@ Consequences of the split, all keyed on `isLineRun()` / `isScreenLineRun()`:
   split — is now exactly what `billboard-line-repeat` asks for.
 
 **A layout fails in two different ways, and they are held differently** (`Label::LineLayout`):
+neither applies when only the run's heights moved. A 2D/3D ramp re-anchors every placed run each
+frame (`applyElevation` → `_placementReanchored`), and re-judging fit each time doubled the `NO_ROOM`
+rate and made names `UNREADABLE` mid-ramp (#353, web, Zermatt z17: 369 → 176 over a rise, the same
+as tilting a flat map). Such a run is laid out as placed; the culler or a view change judges it again.
 
 - `NO_ROOM` — the run does not fit, or nothing projects. That is a transient of this camera: fit is
   judged on the projected line, from two different view states (the culler works on its pass's

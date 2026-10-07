@@ -1,4 +1,5 @@
 #include "ElevationTextureCache.h"
+#include "terrain/RecentUseHold.h"
 #include "core/MapBounds.h"
 #include "core/MapTile.h"
 #include "graphics/Bitmap.h"
@@ -153,6 +154,7 @@ namespace massif {
             auto it = _cache.find(tile.getTileId());
             if (it != _cache.end() && it->second.texture && it->second.texture->getTexId() != 0) {
                 it->second.lastUsed = ++_accessCounter;
+                it->second.lastUsedTime = _frameTime;
                 return &it->second;
             }
             if (tile.getZoom() <= 0) {
@@ -184,14 +186,10 @@ namespace massif {
             return false;
         }
 
-        // Fetch the neighbour grids: the texture takes its border from them, so adjacent
-        // tiles interpolate across the seam from identical texel pairs. With seamless edges, coarser
-        // ancestors are accepted too - real DEM data instead of a duplicated edge texel.
+        // The border comes from the neighbour grids already loaded, never fetched for it (maplibre's backfill):
+        // adjacent tiles then share texel pairs. Seamless edges accept a coarser ancestor over a repeated texel.
         bool seamless = _elevationManager->isSeamlessTileEdgesEnabled();
         const MapTile& gridTile = grid->getTile();
-        // The far ground of a tilted view, whose border is worth a fraction of a pixel: its fetch
-        // is not worth delaying the ground under the camera.
-        bool farFromView = static_cast<float>(gridTile.getZoom()) < _viewZoom - NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW;
         int gridMask = (1 << gridTile.getZoom()) - 1;
         BorderQuality qualities = NO_BORDERS;
         int slot = 0;
@@ -203,12 +201,6 @@ namespace massif {
             }
             MapTile neighbourTile((gridTile.getX() + dx) & gridMask, ny, gridTile.getZoom(), 0);
             std::shared_ptr<ElevationTileGrid> neighbour = _elevationManager->getDataTileGrid(neighbourTile, ElevationManager::LoadMode::CACHED_ONLY);
-            if ((!neighbour || !(neighbour->getTile() == neighbourTile)) && !farFromView) {
-                // Border texels want the real neighbour, but after every tile's own level: a missing
-                // neighbour costs one texel of accuracy, a missing own level displaces the whole
-                // tile. Diagonals only fill the corner texel, so they come last.
-                _elevationManager->prefetchTileGrid(neighbourTile, dx == 0 || dy == 0 ? 1 : 0);
-            }
             if (neighbour && !(neighbour->getTile() == neighbourTile) && !seamless) {
                 neighbour.reset(); // strict mode: only exact same-level neighbours
             }
@@ -265,6 +257,7 @@ namespace massif {
             // Re-requesting every frame is a failed insert into _encodePending, which is cheap.
         }
         it->second.lastUsed = ++_accessCounter;
+        it->second.lastUsedTime = _frameTime;
         return it->second.texture && it->second.texture->getTexId() != 0;
     }
 
@@ -433,6 +426,7 @@ namespace massif {
             entry.border = encoded.border;
             entry.neighbours = encoded.neighbours;
             entry.lastUsed = (it != _cache.end() ? it->second.lastUsed : _accessCounter);
+            entry.lastUsedTime = (it != _cache.end() ? it->second.lastUsedTime : std::chrono::steady_clock::time_point());
             entry.bitmap = encoded.bitmap;
             VT_STAT_CLOCK(uploadClock);
             entry.texture = _glResourceManager->create<Texture>(encoded.bitmap, false, false); // no mipmaps, clamp to edge
@@ -516,13 +510,12 @@ namespace massif {
         }
     }
 
-    void ElevationTextureCache::evictLeastRecentlyUsed() {
-        // Evict the least-recently-used entry, NOT the whole cache: a full flush re-encodes and
-        // re-uploads everything whenever the working set exceeds the cap, stalling the render thread
-        // on fast zooms. Entries already used this frame are kept, or their tile falls back to flat.
+    bool ElevationTextureCache::evictLeastRecentlyUsed() {
+        // One entry, not a flush. Never one the view used lately: the cap overflows instead, or the evicted
+        // tile drops to its ancestor's heights and its re-encode evicts the next (04-terrain.md, cache holds).
         auto lru = _cache.end();
         for (auto entryIt = _cache.begin(); entryIt != _cache.end(); entryIt++) {
-            if (entryIt->second.lastUsed > _frameStartCounter) {
+            if (isRecentlyUsed(entryIt->second.lastUsedTime, _frameTime)) {
                 continue;
             }
             if (lru == _cache.end() || entryIt->second.lastUsed < lru->second.lastUsed) {
@@ -530,14 +523,11 @@ namespace massif {
             }
         }
         if (lru == _cache.end()) {
-            lru = std::min_element(_cache.begin(), _cache.end(), [](const std::pair<const long long, CacheEntry>& a, const std::pair<const long long, CacheEntry>& b) {
-                return a.second.lastUsed < b.second.lastUsed;
-            });
+            return false;
         }
-        if (lru != _cache.end()) {
-            _cache.erase(lru);
-            _drawnVersion++;
-        }
+        _cache.erase(lru);
+        _drawnVersion++;
+        return true;
     }
 
     void ElevationTextureCache::fillTexture(const CacheEntry& entry, float metersToInternal, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
@@ -716,8 +706,11 @@ namespace massif {
         }
     }
 
-    void ElevationTextureCache::beginFrame(float viewZoom) {
-        _viewZoom = viewZoom;
+    void ElevationTextureCache::beginFrame() {
+        _frameTime = std::chrono::steady_clock::now();
+        // Back to the cap once the view no longer uses what overflowed it.
+        while (_cache.size() > MAX_CACHED_TEXTURES && evictLeastRecentlyUsed()) {
+        }
         setDetailLevels(_requestedDetailLevels);
         _requestedDetailLevels = 0;
         // This frame's content changes, taken in one go: every layer reads the same list and none of
@@ -736,7 +729,6 @@ namespace massif {
         vt::RenderStats::demTexturesResolved.fetch_add(static_cast<long long>(_frameResolved.size()));
 #endif
         _frameResolved.clear();
-        _frameStartCounter = _accessCounter;
     }
 
     const std::vector<MapTile>& ElevationTextureCache::getFrameContentChanges() const {

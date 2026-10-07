@@ -9,6 +9,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
@@ -61,9 +62,9 @@ namespace massif {
 
         /**
          * Uploads what the worker encoded (within budget) and drops the per-frame tile resolution memo,
-         * which saves every render pass 9 locked lookups per tile. viewZoom bounds the border prefetch.
+         * which saves every render pass 9 locked lookups per tile.
          */
-        void beginFrame(float viewZoom);
+        void beginFrame();
 
         /**
          * Called on the encode worker, outside every lock, when an encode finishes: a still map must
@@ -131,6 +132,7 @@ namespace massif {
             std::shared_ptr<Texture> nodeTexture;
             std::shared_ptr<HalfFloatTexture> gradientTexture; // ElevationGradient, the lit surfaces' normals
             std::uint64_t lastUsed = 0; // LRU stamp
+            std::chrono::steady_clock::time_point lastUsedTime; // the frame that last drew it: held, see evictLeastRecentlyUsed
         };
 
         struct EncodeJob {
@@ -181,20 +183,17 @@ namespace massif {
         void applyBorderPatches();
         void runEncodeWorker();
         void stopEncodeWorker();
-        void evictLeastRecentlyUsed();
+        bool evictLeastRecentlyUsed(); // false when everything was used lately
         CacheEntry* findDrawnEntry(const vt::TileId& tileId);
 
         const std::shared_ptr<ElevationManager> _elevationManager;
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
-        float _viewZoom = 0.0f; // the camera's zoom this frame, for the border prefetch bound
         unsigned int _drawnVersion = 0;
         bool _held = false;
         std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
 
-        // Coarser far tiles skip neighbour prefetch: it delayed the near ground, and their seam is sub-pixel.
-        static const int NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW = 2;
         // Metres; a building's base is read at this posting so parts of one building agree.
         static constexpr double SMOOTH_BASE_POSTING = 50.0;
         // Where the search for that posting starts; it walks coarser from here, never finer.
@@ -203,7 +202,7 @@ namespace massif {
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         float _borderMetres = 0.0f; // see setBorderMetres
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
-        std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame
+        std::chrono::steady_clock::time_point _frameTime; // when the current frame began
 
         std::vector<MapTile> _frameContentChanges; // see getFrameContentChanges
         int _requestedDetailLevels = 0; // see requestDetailLevels, reset every frame

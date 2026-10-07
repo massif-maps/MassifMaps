@@ -342,9 +342,21 @@ namespace massif {
         return lookupTileGrid(clampDataTileZoom(dataTile), mode);
     }
 
-    bool ElevationManager::readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid) const {
+    bool ElevationManager::readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid, bool hold) const {
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
         if (!_gridCache.read(tileId, grid)) {
-            return false;
+            // Dropped by the LRU while still drawn: the same grid, not a reload (04-terrain.md, cache holds).
+            if (!_gridHold.find(tileId, now, grid)) {
+                return false;
+            }
+        }
+        // Rendering reads only: a bulk ALLOW_LOAD query would hold every grid it walked.
+        if (grid && hold) {
+            _gridHold.use(tileId, grid, now);
+            if (!isRecentlyUsed(_gridHoldExpired, now)) {
+                _gridHold.expire(now);
+                _gridHoldExpired = now;
+            }
         }
         // timed_lru_cache::read ignores expiry (only valid() checks it), which would make a failure marker permanent.
         return grid || _gridCache.valid(tileId);
@@ -391,7 +403,7 @@ namespace massif {
             int maxDepth = (mode == LoadMode::CACHED_EXACT ? 0 : MAX_ANCESTOR_SEARCH_DEPTH);
             for (int depth = 0; depth <= maxDepth; depth++) {
                 std::shared_ptr<ElevationTileGrid> grid;
-                if (readCachedGrid(searchTile.getTileId(), grid)) {
+                if (readCachedGrid(searchTile.getTileId(), grid, mode == LoadMode::CACHED_ONLY)) {
                     if (grid) {
 #if MASSIF_VT_RENDER_STATS
                         if (grid->getTile() == tile) { VT_STAT_INC(elevExactHits); }
@@ -907,6 +919,7 @@ namespace massif {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             _gridCache.clear();
+            _gridHold.clear();
         }
         _dataVersion++;
         bumpGlobalVersion();

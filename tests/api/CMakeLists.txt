@@ -273,6 +273,8 @@ add_executable(api_tests
   SmoothBaseLevelTest.cpp
   # Same: PointGridMemo.h is the point lookup memo's rule, and nothing else.
   PointGridMemoTest.cpp
+  # Same: RecentUseHold.h is what the DEM caches keep past their LRU, and nothing else.
+  RecentUseHoldTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
   # Same: TileCacheHold.h is the visible/preloading cache split over stdext's LRU, nothing else.

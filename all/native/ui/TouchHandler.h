@@ -56,6 +56,7 @@ namespace massif {
         
         void onTouchEvent(int action, const ScreenPos& screenPos1, const ScreenPos& screenPos2);
         void onWheelEvent(int delta, const ScreenPos& screenPos);
+        void onWheelZoom(float zoomDelta, const ScreenPos& screenPos);
     
         void click(const ScreenPos& screenPos, const std::chrono::milliseconds& duration);
         void longClick(const ScreenPos& screenPos, const std::chrono::milliseconds& duration);

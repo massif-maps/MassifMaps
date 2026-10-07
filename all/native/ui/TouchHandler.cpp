@@ -304,6 +304,10 @@ namespace massif {
     }
 
     void TouchHandler::onWheelEvent(int delta, const ScreenPos& screenPos) {
+        onWheelZoom(delta * WHEEL_TICK_TO_ZOOM_DELTA, screenPos);
+    }
+
+    void TouchHandler::onWheelZoom(float zoomDelta, const ScreenPos& screenPos) {
         if (_options->isUserInput()) {
             ViewState viewState = _mapRenderer->getViewState();
             std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
@@ -320,8 +324,9 @@ namespace massif {
             updateGestureAnchorHeight(screenPos, viewState);
 
             CameraZoomEvent cameraZoomTargetEvent;
-            cameraZoomTargetEvent.setZoomDelta(delta * WHEEL_TICK_TO_ZOOM_DELTA);
+            cameraZoomTargetEvent.setZoomDelta(zoomDelta);
             cameraZoomTargetEvent.setTargetPos(calculatePivotPos(screenPos, viewState));
+            cameraZoomTargetEvent.setPinTarget(true);
             _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
 
             DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;
@@ -812,6 +817,7 @@ namespace massif {
                 CameraZoomEvent cameraZoomTargetEvent;
                 cameraZoomTargetEvent.setScale(static_cast<float>(prevDist / currentDist));
                 cameraZoomTargetEvent.setTargetPos(pivotPos);
+                cameraZoomTargetEvent.setPinTarget(true);
                 _cameraEvents.fetch_or(CAMERA_ZOOM);
                 _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
@@ -847,6 +853,7 @@ namespace massif {
         CameraZoomEvent cameraZoomTargetEvent;
         cameraZoomTargetEvent.setZoomDelta(1.0f);
         cameraZoomTargetEvent.setTargetPos(calculatePivotPos(screenPos, viewState));
+        cameraZoomTargetEvent.setPinTarget(true);
         _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, ZOOM_GESTURE_ANIMATION_DURATION.count() / 1000.0f, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
 
         DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;

@@ -1363,8 +1363,17 @@ shift, which means it can no longer change the focus height in any mode — incl
 viewpoints of free roam and the peak finder, which set that height deliberately (and which the old
 code could silently drag back down to the ground).
 
-The visible trade is theirs too: pinching with a finger on a summit holds the point at the *focus
-height* under the finger, so a high point drifts slightly on screen during the pinch.
+That traded away the point under the finger: held at the *focus height*, a summit or a valley floor
+slid on screen, 17.5 device px per wheel notch on the web at Châtillon (ground 90 world units against
+a focus at 28). **Fixed 2026-10-07** without giving the focus height back: a gesture's pivot
+(`CameraZoomEvent::setPinTarget` - wheel, pinch, double tap, their kinetic tail) gets the one
+HORIZONTAL focus shift that keeps it on its own view ray while the camera distance scales by `s`
+(`ZoomPivot.h`: with `a = pivot − focus`, `b = camera − focus`, `k = (a_z − s·b_z)/(a_z − b_z)`,
+shift `a(1−k) + b(k−s)`, whose z is zero). A pivot at the focus height gets the old `(1−s)` shift; a
+pivot level with the camera has none and keeps the old rule. The frame after a gesture zoom lands the
+focus along the view (`landFocusAlongView`, maplibre's `recalculateZoomAndCenter`) instead of dropping
+it onto the new ground, which moved the picture as much again. Measured after: the pivot's screen
+position unchanged to the 0.1 px over zoom in and out.
 
 **How it was found, in numbers.** A probe on `dist(camera, focus)` against `zoom0Distance / 2^zoom`,
 printed once a second next to the focus and camera heights, during the gesture on the device:

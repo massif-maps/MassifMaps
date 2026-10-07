@@ -4,7 +4,9 @@
 #include "core/MapBounds.h"
 #include "graphics/ViewState.h"
 #include "projections/Projection.h"
+#include "projections/PlanarProjectionSurface.h"
 #include "projections/ProjectionSurface.h"
+#include "renderers/cameraevents/ZoomPivot.h"
 #include "utils/Const.h"
 #include "utils/Log.h"
 #include "utils/GeneralUtils.h"
@@ -19,7 +21,8 @@ namespace massif {
         _zoomDelta(0.0f),
         _targetPos(),
         _useDelta(true),
-        _useTarget(false)
+        _useTarget(false),
+        _pinTarget(false)
     {
     }
     
@@ -66,6 +69,10 @@ namespace massif {
         _useTarget = true;
     }
     
+    void CameraZoomEvent::setPinTarget(bool pinTarget) {
+        _pinTarget = pinTarget;
+    }
+
     bool CameraZoomEvent::isUseDelta() const {
         return _useDelta;
     }
@@ -106,6 +113,12 @@ namespace massif {
         float maxZoom = std::min(zoomRange.getMax(), std::max(viewState.getTerrainMaxZoom(), viewState.getZoom()));
         float zoom = GeneralUtils::Clamp(viewState.getZoom() + _zoomDelta, viewState.getMinZoom(), maxZoom);
         double scale = std::pow(2.0f, viewState.getZoom() - zoom);
+        if (_useTarget && _pinTarget && std::abs(1.0 - scale) > 1.0e-9 && std::dynamic_pointer_cast<PlanarProjectionSurface>(projectionSurface)) {
+            cglib::vec3<double> shift;
+            if (pinnedZoomShift(focusPos, cameraPos, projectionSurface->calculatePosition(_targetPos), scale, shift)) {
+                targetPos = focusPos + shift * (1.0 / (1.0 - scale));
+            }
+        }
         cglib::mat4x4<double> shiftTransform = projectionSurface->calculateTranslateMatrix(focusPos, targetPos, 1.0 - scale);
 
         focusPos = cglib::transform_point(focusPos, shiftTransform);

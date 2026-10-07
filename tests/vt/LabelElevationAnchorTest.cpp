@@ -114,7 +114,8 @@ void testLabelElevationAnchor() {
         TEST_CHECK(label->updateElevation(constantHeight(410.0)), "the height arriving anchors it");
         TEST_CHECK(label->isElevationAnchored(), "and from then on it may be judged");
         label->updateElevation(constantHeight(std::numeric_limits<double>::quiet_NaN()));
-        TEST_CHECK(label->isElevationAnchored(), "a later miss does not un-anchor it");
+        TEST_CHECK(!label->isElevationAnchored(), "a later miss un-anchors it: its height is another ramp step's");
+        TEST_CHECK(label->updateElevation(constantHeight(420.0)) && label->isElevationAnchored(), "and the next height anchors it again");
     }
 
     // The flat drop (GLTileRenderer::setLabelElevationProvider) un-anchors: back in 3D, a miss must leave

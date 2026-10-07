@@ -1032,6 +1032,7 @@ namespace massif::vt {
 
     void GLTileRenderer::invalidateLabelElevation() {
         std::lock_guard<std::mutex> lock(_mutex);
+        _labelElevationGeneration++;
 
         _pendingLabelElevationAll = true;
         _pendingLabelElevationTiles.clear();
@@ -1207,12 +1208,6 @@ namespace massif::vt {
     void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles, const std::map<TileId, std::shared_ptr<const Tile>>& shadowCasterTiles) {
         using TilePair = std::pair<TileId, std::shared_ptr<const Tile>>;
 
-        // Clear the 'visible' label list for now (used only for culling)
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            _labels.clear();
-        }
-
         std::set<TileId> tileIds;
         std::vector<std::shared_ptr<const Tile>> labelTiles;
         auto addLabelTile = [&labelTiles](const std::shared_ptr<const Tile>& tile) {
@@ -1258,6 +1253,7 @@ namespace massif::vt {
         // All other operations must be synchronized
         VT_STAT_CLOCK(visibleClock);
         std::vector<std::shared_ptr<Label>> dirtyLabels;
+        unsigned int labelElevationGeneration = 0;
         std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc;
         {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -1307,6 +1303,7 @@ namespace massif::vt {
                 }
             }
             anchorFunc = labelAnchorFunc();
+            labelElevationGeneration = _labelElevationGeneration;
         }
         }
 
@@ -1323,6 +1320,7 @@ namespace massif::vt {
                     // Cleared even without elevation: markPendingLabelsDirty re-dirties it when data
                     // arrives, and isElevationAnchored() is what carries "height unknown".
                     dirtyLabels[i]->applyElevation(positions[i]);
+                    dirtyLabels[i]->setElevationGeneration(labelElevationGeneration);
                     dirtyLabels[i]->setElevationDirty(false);
                 }
             }
@@ -2869,7 +2867,7 @@ namespace massif::vt {
         if (label->isValid()) {
             bool occluded = false;
             // Not while the height is unknown: the flat decode height would hide it under the ground.
-            if (_labelOcclusionTest && label->isVisible() && label->isActive() && label->isElevationAnchored()) {
+            if (_labelOcclusionTest && label->isVisible() && label->isActive() && label->isElevationAnchored() && !label->isElevationStale()) {
                 cglib::vec3<double> center(0, 0, 0);
                 if (label->calculateCenter(center)) {
                     occluded = _labelOcclusionTest(center);
@@ -4484,6 +4482,13 @@ namespace massif::vt {
         // Under the lock: the few labels over newly landed elevation. Runs to completion, or a dirty
         // label is drawn and culled at its old height; the bulk is sampled in setVisibleTiles.
         VT_STAT_CLOCK(anchorClock);
+        // Whatever path marked a label clean, one sampled before the last whole-set invalidation (a 2D/3D
+        // ramp step) is anchored again: the cull thread's off-lock sample can land after a step.
+        for (const std::shared_ptr<Label>& label : _labels) {
+            if (label->getElevationGeneration() != _labelElevationGeneration) {
+                label->setElevationDirty(true);
+            }
+        }
         markPendingLabelsDirty();
         VT_STAT_SPLIT(prepElevDirtyNs, anchorClock);
         std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc = labelAnchorFunc();
@@ -4494,6 +4499,7 @@ namespace massif::vt {
             // A flat map anchors nothing but the labels standing on roofs.
             if (label->isElevationDirty() && (_labelElevationProvider || label->isZElevated())) {
                 label->updateElevation(label->isZElevated() ? roofFunc : anchorFunc);
+                label->setElevationGeneration(_labelElevationGeneration);
                 label->setElevationDirty(false); // see the bulk path in setVisibleTiles
                 dirty.push_back(label);
                 anchored = true;

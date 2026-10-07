@@ -126,12 +126,17 @@ namespace massif::vt {
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
         // False while the label still carries its flat decode height, which the terrain occlusion test must not judge.
         bool isElevationAnchored() const { return _elevationAnchored; }
+        // A re-anchor is owed: the height may be a previous ramp step's, so no occlusion test may judge it.
+        bool isElevationStale() const { return _elevationDirty; }
         // Dropped flat, the label holds no terrain height: back in 3D a miss must leave it to the GPU, not at 0.
         void clearElevationAnchor() { _elevationAnchored = false; }
         // The anchor stands on a deck: its span-chord height is CPU-only, so the GPU must not replace it with the terrain's.
         bool hasAbsoluteHeight() const { return _absoluteHeight; }
         void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
+        // The renderer's whole-set invalidation count the height was sampled at; behind it, it is re-anchored.
+        unsigned int getElevationGeneration() const { return _elevationGeneration; }
+        void setElevationGeneration(unsigned int generation) { _elevationGeneration = generation; }
         bool hasGeometryOverTile(const TileId& tileId) const;
 
         void mergeGeometries(Label& label);
@@ -456,7 +461,8 @@ namespace massif::vt {
         bool _visible = false;
         bool _active = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame
-        bool _elevationAnchored = false; // has been anchored at least once, so a re-anchor may wait
+        unsigned int _elevationGeneration = 0;
+        bool _elevationAnchored = false; // its last sample had every height, so a re-anchor may wait
         bool _absoluteHeight = false;    // anchored on a deck chord, not on the terrain
         long long _geometryHash = 0;
         int _geometryCount = 0;

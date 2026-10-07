@@ -1218,14 +1218,24 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
 
   A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
   occlusion test skips it: it still carries its flat decode height, and judging that against the
-  terrain hides it under ground it is not behind. Anchoring is sticky — a later miss does not
-  un-anchor a label that already has a real height — with one exception: going flat. Withdrawing
+  terrain hides it under ground it is not behind. A later miss **un-anchors** the label: it was
+  sticky until #353, and a label that missed during a 2D/3D ramp kept a vertex at another step's
+  exaggeration — drawn in the ground or in the sky; un-anchored, the GPU places it. Going flat
+  un-anchors too. Withdrawing
   the provider drops every label to 0 (`setLabelElevationProvider`) and **clears its anchor**,
   because an anchored label draws at its CPU height, not the GPU's (`labelBatchTileId`): kept
   anchored, a label that missed its first sample back in 3D sat at the flat map's 0, under the
   ground, until its DEM tile landed and it jumped up. And while flat, `TileRenderer` counts the
   exaggeration as **0**: an instant switch (`flattenRatio` 1 → 0 in one frame) restores the
   pre-flatten value, which compared equal and re-anchored nothing (#353).
+
+  **Every re-anchor is owed by generation, not by a flag someone may clear.** Each whole-set
+  invalidation bumps `_labelElevationGeneration`; a label records the generation its height was
+  sampled at, and `anchorDirtyLabels` re-dirties any label behind it, every frame. The flag alone
+  lost re-anchors: the cull thread's off-lock sample landed after a ramp step the render thread had
+  already consumed, and marked the label clean at the old height. And `setVisibleTiles` used to clear
+  `_labels` before an unchanged label set skipped its commit (#255): the labels stayed drawn but left
+  the cull and anchor list until the set changed — frozen at whatever height they had.
 
   **The anchor's RENDER height now comes from the GPU**, so none of the above can misplace a label on
   screen — it only decides what the culler sees. `labelVsh` calls the surface's own `applyTerrain` on

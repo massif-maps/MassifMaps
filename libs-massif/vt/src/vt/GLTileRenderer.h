@@ -941,6 +941,7 @@ namespace massif::vt {
         double _labelPositionScale = 1.0; // label anchors are in internal coordinates, not vt's
         std::vector<TileId> _pendingExtrusionBaseTiles;  // ...and whose extrusion bases must be re-resolved
         bool _pendingLabelElevationAll = false;
+        unsigned int _labelElevationGeneration = 1; // bumped by each whole-set invalidation; see Label::getElevationGeneration
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = DEFAULT_LABEL_BLENDING_SPEED;

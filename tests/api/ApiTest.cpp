@@ -81,6 +81,7 @@ void testElevationGradient();
 void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
+void testDrapeCoverLeaves();
 void testDrapeEviction();
 void testStyleConfigZoom();
 void testDrapeTuning();
@@ -486,6 +487,7 @@ int main() {
     testDayCycleLight();
     testDrapeStackCuts();
     testDrapeStandIn();
+    testDrapeCoverLeaves();
     testDrapeEviction();
     testStyleConfigZoom();
     testDrapeTuning();

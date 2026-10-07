@@ -32,6 +32,7 @@
 #include "renderers/PostProcessEffect.h"
 #include "renderers/TerrainRenderer.h"
 #include "renderers/utils/TerrainDrapeCache.h"
+#include "terrain/DrapeCoverLeaves.h"
 #include "terrain/DrapeStandIn.h"
 #include "renderers/utils/TerrainShadowMap.h"
 #include "renderers/utils/ScreenMaskBuffer.h"
@@ -2785,26 +2786,13 @@ namespace massif {
         int viewZoomCap = static_cast<int>(std::ceil(viewState.getRenderZoom())) + 1;
         coverZoom = std::min(maxCollectedZoom, std::max(viewZoomCap, minTopZoom));
         // Split only where a finer collected tile sits inside, or leaves explode (04-terrain.md).
-        std::vector<vt::TileId> tops = pending;
+        std::shared_ptr<vt::TileTransformer> tileTransformer = _options->getTileTransformer();
+        const cglib::frustum3<double>& frustum = viewState.getFrustum();
+        auto inView = [&tileTransformer, &frustum](const vt::TileId& tileId) {
+            return !tileTransformer || frustum.inside(tileTransformer->calculateTileBBox(tileId));
+        };
         auto buildLeaves = [&](int zoomLimit) {
-            leaves.clear();
-            std::vector<vt::TileId> stack = tops;
-            while (!stack.empty() && leaves.size() + stack.size() <= MAX_DRAPE_TILES) {
-                vt::TileId tileId = stack.back();
-                stack.pop_back();
-                bool finerInside = collectedAncestors.find(tileId) != collectedAncestors.end();
-                if (!finerInside || tileId.zoom >= zoomLimit) {
-                    leaves.push_back(tileId);
-                    continue;
-                }
-                for (int dy = 0; dy < 2; dy++) {
-                    for (int dx = 0; dx < 2; dx++) {
-                        stack.push_back(tileId.getChild(dx, dy));
-                    }
-                }
-            }
-            // Cap hit: keep what is left coarse rather than lose the ground.
-            leaves.insert(leaves.end(), stack.begin(), stack.end());
+            leaves = buildDrapeCoverLeaves(pending, collectedAncestors, zoomLimit, MAX_DRAPE_TILES, inView);
             return leaves.size();
         };
         while (buildLeaves(coverZoom) > MAX_DRAPE_TILES && coverZoom > minTopZoom) {

@@ -238,6 +238,8 @@ add_executable(api_tests
   DrapeStackCutsTest.cpp
   # Same: DrapeStandIn.h is the cover of cached tiles a leaf stands in on, and nothing else.
   DrapeStandInTest.cpp
+  # Same: DrapeCoverLeaves.h is the drape cover's quadtree split and nothing else.
+  DrapeCoverLeavesTest.cpp
   # Same: DrapeEviction.h is what the drape cache may drop when over budget, and nothing else.
   DrapeEvictionTest.cpp
   # Same: StyleConfigZoom.h is the zoom a style config is resolved at, and nothing else.

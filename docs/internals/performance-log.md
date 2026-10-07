@@ -2533,3 +2533,26 @@ frame. It is now pushed only when the filter or the `GLTileRenderer` changes. We
 
 A still map draws no frames, so it moves neither counter. Hiding the layer still drops its labels,
 and a filter change still rebuilds the maps.
+
+## 43. A repeat 2D/3D rise re-decoded what the last one had decoded (2026-10-07)
+
+With `TerrainFlattenMode` FULL every decode-state change dropped the visible tiles, so each rise held
+the ground flat while the 3D set was built again, and every switch also rebuilt the hillshade
+raster tiles, which do not depend on the decode state. Vector layers now keep the other mode's
+visible set aside and swap it back; raster layers keep theirs. Web build (`standard`,
+RelWithDebInfo), headless Chromium on SwiftShader, `terrain-2d-3d` default view (Matterhorn, z12,
+tilt 38 in 3D), three round trips, hold = time `switching` reads true after the button, sampled
+every 16 ms:
+
+| | Match flight: rise 1 / 2 / 3 (ms) | Timed 2.5 s: rise 1 / 2 / 3 (ms) |
+|---|---|---|
+| before (2 runs each) | 647 / 214 / 169, 523 / 149 / 167 | 2695 / 1245 / 224, 2368 / 156 / 106 |
+| after (3 runs, 1 run) | 512 / 17 / 16, 468 / 18 / 16, 541 / 17 / 36 | 1616 / 18 / 37 |
+
+A probe on the swap showed 0 visible fetches on rises 2 and 3 in every layer, and no tile object
+shared between the flat and the 3D sets after the first round trip. Memory: the stash holds one
+visible set per vector layer, 6.6 MB of cache accounting (put-time `TileInfo::getSize`) over the
+5 vector layers at that view. Stashing the preloading caches as well would have added ~27 MB there
+(10 MB cap per layer) for no change in the hold, so they are dropped as before.
+
+Not measured: Android, iOS, the Crosscall. The first rise is unchanged within run-to-run noise.

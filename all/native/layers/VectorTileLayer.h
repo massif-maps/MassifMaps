@@ -202,6 +202,7 @@ namespace massif {
         virtual void fetchTile(long long tileId, const MapTile& mapTile, bool preloadingTile, int priorityDelta);
         virtual void clearTiles(bool preloadingTiles);
         virtual void invalidateTiles(bool preloadingTiles);
+        virtual void swapDecodedTiles(bool restore);
 
         virtual std::shared_ptr<VectorTileDecoder::TileMap> getTileMap(long long tileId) const;
         virtual std::shared_ptr<vt::Tile> getPoleTile(int y) const;
@@ -334,6 +335,8 @@ namespace massif {
 
         cache::timed_lru_cache<long long, TileInfo> _visibleCache;
         cache::timed_lru_cache<long long, TileInfo> _preloadingCache;
+        // The visible tiles decoded for the other terrain decode state, while this one is in use (swapDecodedTiles).
+        cache::timed_lru_cache<long long, TileInfo> _stashedVisibleCache;
         // Apart from the LRU caches, where these multi-MB tiles evicted one another; pruned to the tiles currently named.
         std::map<long long, TileInfo> _spanReferenceCache;
     };

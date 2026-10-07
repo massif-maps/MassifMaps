@@ -93,6 +93,7 @@ void testTerrainDecodeWait();
 void testPrefetchOrder();
 void testTileStyleZoom();
 void testTileCacheHold();
+void testTileCacheStash();
 void testKineticStep();
 void testLabelPlacementFollowUp();
 void testTileLODRule();
@@ -489,6 +490,7 @@ int main() {
     testPrefetchOrder();
     testTileStyleZoom();
     testTileCacheHold();
+    testTileCacheStash();
     testKineticStep();
     testLabelPlacementFollowUp();
     testTileLODRule();

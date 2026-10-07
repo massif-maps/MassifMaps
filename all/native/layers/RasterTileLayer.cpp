@@ -201,6 +201,10 @@ namespace massif {
         }
     }
 
+    void RasterTileLayer::swapDecodedTiles(bool restore) {
+        // Nothing to swap: a bitmap tile has no geometry, so the terrain decode state never changes it.
+    }
+
     vt::RasterFilterMode RasterTileLayer::getRasterFilterMode() const {
         switch (getTileFilterMode()) {
         case RasterTileFilterMode::RASTER_TILE_FILTER_MODE_NEAREST:

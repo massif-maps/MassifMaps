@@ -956,7 +956,7 @@ design:
 | `FlattenMode` | Flat costs | Switching costs |
 |---|---|---|
 | `RENDER` (default) | the terrain passes, the drape and the elevation fetches are gone, but the tiles keep the terrain subdivision and the terrain tile set | nothing — one ramp, no re-cull, no re-decode |
-| `FULL` | nothing: the map decodes, culls and draws as if no `TerrainOptions` were attached | a re-decode of the visible tiles, each way |
+| `FULL` | nothing: the map decodes, culls and draws as if no `TerrainOptions` were attached, plus the other mode's visible tiles held aside | a re-decode of the visible tiles the first time each way; a repeat switch at the same view reuses the other mode's tiles |
 
 Three pieces of state, and which question each answers:
 
@@ -1011,8 +1011,8 @@ the same length read as simultaneous. An app that needs them exact still writes 
 the flight's own progress (below), and that is deliberate: the terrain ramp and the flight are
 allowed to have different durations.
 
-A `CompositeVectorTileLayer`'s external sources are separate tile layers that re-decode on the same
-swap, and only the composite is in `Layers`. It overrides `isTerrainDecodeSettled()` to AND over its
+A `CompositeVectorTileLayer`'s external sources are separate tile layers that swap on the same
+decode change, and only the composite is in `Layers`. It overrides `isTerrainDecodeSettled()` to AND over its
 children, or the switch rises into terrain with the hillshade still decoding.
 
 #### Which half of the switch was slow
@@ -1092,9 +1092,20 @@ Two mechanics that make the switch invisible:
   rendering never wanted (overzoom targets, the coarsening floor), so culling on the render state
   re-culls at the instant the terrain appears — which is the tile set arriving *after* the map is
   already 3D. That was the flash.
-- **The decode change invalidates, it does not clear.** `TileLayer::loadData` calls
-  `invalidateTiles(false)` rather than `clearTileCaches(true)`: the old tiles stay on screen and are
-  re-fetched one by one. Clearing them blanks the map for a whole decode.
+- **The decode change swaps, it does not clear.** `TileLayer::loadData` calls `swapDecodedTiles`:
+  a vector layer puts its visible tiles aside and brings back the set the last swap put aside, if it
+  was decoded for the decode state now asked for (same `TerrainOptions`, mesh resolution, min zoom,
+  density and drape flags). A visible tile the restored set lacks keeps the outgoing copy on screen,
+  invalid, until its refetch lands; clearing it blanks the map for a whole decode.
+  `all/native/layers/TileCacheStash.h` is that swap alone, with `tests/api/TileCacheStashTest.cpp`.
+  A repeat rise at the same view therefore fetches nothing and the gate opens on the next frame:
+  web, `terrain-2d-3d` default view, the hold went from 149-214 ms to 16-36 ms
+  ([performance log §43](../performance-log.md)). The cost is one extra visible set per vector layer
+  (6.6 MB of cache accounting over 5 layers at that view), held until the next swap or a
+  `clearTiles`; the other mode's preloading tiles (label band, casters, ring) are not kept, since
+  they can fill the whole tile cache capacity per layer and the gate does not wait on them. A raster
+  layer swaps nothing: a bitmap tile has no geometry, so the decode state never changed it, and it
+  used to re-decode on every switch for nothing (the hillshade: 24 tiles, ~24 MB, at that view).
 - **The renderer keeps its tiles across the transformer swap.** The decode change also swaps the
   layer's tile transformer (flat ↔ `TerrainTileTransformer`). `TileRenderer::setTileTransformer`
   used to throw the `GLTileRenderer` away for it, and the new one faded every tile in from

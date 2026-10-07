@@ -50,6 +50,8 @@ public class Switch2D3DExample extends MapExample {
     private static final float AUTO_TILT = 88f;
     /** How often the matched ramp samples the flight. */
     private static final long TICK_MS = 32;
+    /** Asked while rising: below 1, so the SDK holds the ground flat until the 3D tiles are in. */
+    private static final float HOLD_RATIO = 0.999f;
 
     private static Spec dem(ExampleHost host) {
         return Spec.of("persistent-cache")
@@ -241,36 +243,12 @@ public class Switch2D3DExample extends MapExample {
 
     /**
      * The app's own clock: feed the terrain the FLIGHT's progress, so the two cannot drift apart
-     * even if the frame rate drops or the flight is interrupted.
+     * even if the frame rate drops or the flight is interrupted. Both ways fly at once.
      */
     private void matched() {
-        if (!in3D) {
-            fly();          // sinking has nothing to wait for
-            rampWithFlight();
-            host.caption("Sinking on the flight's own clock.");
-            return;
-        }
-        // Rising does. Ask for 3D so its tiles start loading, and let the flight go only once the
-        // switch stops holding the ground flat - driving the ratio up before then would be held
-        // anyway, and the animation would start with a jump.
-        map.terrain().set("flattened", false);
-        host.caption("Loading the tiles 3D needs before the flight starts.");
-        waitForTiles();
-    }
-
-    private void waitForTiles() {
-        host.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (map.terrain().getBool("switching", false)) {
-                    waitForTiles();
-                    return;
-                }
-                fly();
-                rampWithFlight();
-                host.caption("Rising on the flight's own clock.");
-            }
-        }, TICK_MS);
+        fly();
+        rampWithFlight(Float.NaN);
+        host.caption(in3D ? "Flying; the ground rises once its tiles are in." : "Sinking on the flight's own clock.");
     }
 
     private void fly() {
@@ -297,18 +275,34 @@ public class Switch2D3DExample extends MapExample {
         return new Position(2 * pos.lng - eye.lng, 2 * pos.lat - eye.lat);
     }
 
-    /** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */
-    private void rampWithFlight() {
+    /**
+     * Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. Rising, the
+     * SDK holds the asked ratio flat until the 3D tiles are in; the rise then spans what is left.
+     */
+    private void rampWithFlight(final float riseStart) {
         host.postDelayed(new Runnable() {
             @Override
             public void run() {
+                float start = riseStart;
                 if (map.camera().isMoving()) {
                     float progress = map.camera().progress();
-                    map.terrain().set("flattenRatio", in3D ? 1 - progress : progress);
-                    rampWithFlight();
+                    if (!in3D) {
+                        map.terrain().set("flattenRatio", progress);
+                    } else if (Float.isNaN(start)) {
+                        map.terrain().set("flattenRatio", HOLD_RATIO);
+                        if (map.terrain().getDouble("flattenRatio", 1) < 1) {
+                            start = progress;
+                        }
+                    } else {
+                        map.terrain().set("flattenRatio", 1 - (progress - start) / Math.max(1e-3f, 1 - start));
+                    }
+                    rampWithFlight(start);
                     return;
                 }
-                map.terrain().set("flattenRatio", in3D ? 0 : 1);
+                // Landed still held: the SDK's own clock finishes the rise once the tiles are in.
+                if (!in3D || !Float.isNaN(start)) {
+                    map.terrain().set("flattenRatio", in3D ? 0 : 1);
+                }
                 // Hand the ratio back, or the switch stays MANUAL - which also keeps auto-flattening
                 // suspended, and a tilt gesture would then do nothing.
                 map.terrain().set("flattened", !in3D);

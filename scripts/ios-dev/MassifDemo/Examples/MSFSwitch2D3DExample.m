@@ -45,6 +45,8 @@ static const float kTilt3D = 20.0f;
 static const float kAutoTilt = 88.0f;
 /** How often the matched ramp samples the flight. */
 static const NSTimeInterval kTick = 0.032;
+/** Asked while rising: below 1, so the SDK holds the ground flat until the 3D tiles are in. */
+static const float kHoldRatio = 0.999f;
 /** CompositeSourceType, as the facade takes it. RASTER is 0 and is not used here. */
 static const int kSourceHillshade = 1;
 static const int kSourceVector = 2;
@@ -240,38 +242,12 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
 
 /**
  * The app's own clock: feed the terrain the FLIGHT's progress, so the two cannot drift apart even if
- * the frame rate drops or the flight is interrupted.
+ * the frame rate drops or the flight is interrupted. Both ways fly at once.
  */
 - (void)matched {
-    if (!_in3D) {
-        [self fly];             // sinking has nothing to wait for
-        [self rampWithFlight];
-        [_host caption:@"Sinking on the flight's own clock."];
-        return;
-    }
-    // Rising does. Ask for 3D so its tiles start loading, and let the flight go only once the switch
-    // stops holding the ground flat - driving the ratio up before then would be held anyway, and the
-    // animation would start with a jump.
-    [_map.terrain set:@"flattened" value:@NO];
-    [_host caption:@"Loading the tiles 3D needs before the flight starts."];
-    [self waitForTiles];
-}
-
-- (void)waitForTiles {
-    __weak __typeof(self) weakSelf = self;
-    [_host after:kTick run:^{
-        __typeof(self) self_ = weakSelf;
-        if (!self_) {
-            return;
-        }
-        if ([self_->_map.terrain getBool:@"switching" defaultValue:NO]) {
-            [self_ waitForTiles];
-            return;
-        }
-        [self_ fly];
-        [self_ rampWithFlight];
-        [self_->_host caption:@"Rising on the flight's own clock."];
-    }];
+    [self fly];
+    [self rampWithFlight:NAN];
+    [_host caption:_in3D ? @"Flying; the ground rises once its tiles are in." : @"Sinking on the flight's own clock."];
 }
 
 - (void)fly {
@@ -283,24 +259,41 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
         moveTo:target zoom:kZoom rotation:kRotation tilt:_in3D ? kTilt3D : kTilt2D];
 }
 
-/** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */
-- (void)rampWithFlight {
+/**
+ * Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. Rising, the SDK
+ * holds the asked ratio flat until the 3D tiles are in; the rise then spans what is left.
+ */
+- (void)rampWithFlight:(float)riseStart {
     __weak __typeof(self) weakSelf = self;
     [_host after:kTick run:^{
         __typeof(self) self_ = weakSelf;
         if (!self_) {
             return;
         }
+        float start = riseStart;
+        MSFPropertyGroup *terrain = self_->_map.terrain;
         if (self_->_map.camera.isMoving) {
             float progress = self_->_map.camera.progress;
-            [self_->_map.terrain set:@"flattenRatio" value:@(self_->_in3D ? 1 - progress : progress)];
-            [self_ rampWithFlight];
+            if (!self_->_in3D) {
+                [terrain set:@"flattenRatio" value:@(progress)];
+            } else if (isnan(start)) {
+                [terrain set:@"flattenRatio" value:@(kHoldRatio)];
+                if ([terrain getDouble:@"flattenRatio" defaultValue:1] < 1) {
+                    start = progress;
+                }
+            } else {
+                [terrain set:@"flattenRatio" value:@(1 - (progress - start) / MAX(1e-3f, 1 - start))];
+            }
+            [self_ rampWithFlight:start];
             return;
         }
-        [self_->_map.terrain set:@"flattenRatio" value:@(self_->_in3D ? 0 : 1)];
+        // Landed still held: the SDK's own clock finishes the rise once the tiles are in.
+        if (!self_->_in3D || !isnan(start)) {
+            [terrain set:@"flattenRatio" value:@(self_->_in3D ? 0 : 1)];
+        }
         // Hand the ratio back, or the switch stays MANUAL - which also keeps auto-flattening
         // suspended, and a tilt gesture would then do nothing.
-        [self_->_map.terrain set:@"flattened" value:@(!self_->_in3D)];
+        [terrain set:@"flattened" value:@(!self_->_in3D)];
         [self_->_host caption:self_->_in3D ? [self_ riseCaption] : [self_ flatCaption]];
     }];
 }

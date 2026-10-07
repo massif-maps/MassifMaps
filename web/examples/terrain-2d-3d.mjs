@@ -14,6 +14,8 @@ const TILT_3D = 38;
 const AUTO_TILT = 88;
 /** How often the matched ramp samples the flight. */
 const TICK_MS = 32;
+/** Asked while rising: below 1, so the SDK holds the ground flat until the 3D tiles are in. */
+const HOLD_RATIO = 0.999;
 
 export default async function start(host) {
   const map = host.map;
@@ -91,49 +93,45 @@ export default async function start(host) {
       .moveTo(target, { zoom: ZOOM, rotation: ROTATION, tilt: in3D ? TILT_3D : TILT_2D });
   }
 
-  /** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */
-  function rampWithFlight() {
+  /**
+   * Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. Rising, the
+   * SDK holds the asked ratio flat until the 3D tiles are in; the rise then spans what is left.
+   */
+  function rampWithFlight(riseStart) {
     host.after(TICK_MS, () => {
+      const terrain = map.terrain();
       if (map.camera().isMoving()) {
         const progress = map.camera().progress();
-        map.terrain().set('flattenRatio', in3D ? 1 - progress : progress);
-        rampWithFlight();
+        if (!in3D) {
+          terrain.set('flattenRatio', progress);
+        } else if (riseStart === undefined) {
+          terrain.set('flattenRatio', HOLD_RATIO);
+          if (terrain.get('flattenRatio') < 1) {
+            riseStart = progress;
+          }
+        } else {
+          terrain.set('flattenRatio', 1 - (progress - riseStart) / Math.max(1e-3, 1 - riseStart));
+        }
+        rampWithFlight(riseStart);
         return;
       }
-      map.terrain().set('flattenRatio', in3D ? 0 : 1);
+      // Landed still held: the SDK's own clock finishes the rise once the tiles are in.
+      if (!in3D || riseStart !== undefined) {
+        terrain.set('flattenRatio', in3D ? 0 : 1);
+      }
       // Hand the ratio back, or the switch stays MANUAL - which also keeps auto-flattening
       // suspended, and a tilt gesture would then do nothing.
-      map.terrain().set('flattened', !in3D);
+      terrain.set('flattened', !in3D);
       host.caption(in3D ? riseCaption() : flatCaption());
     });
   }
 
-  function waitForTiles() {
-    host.after(TICK_MS, () => {
-      if (map.terrain().get('switching')) {
-        waitForTiles();
-        return;
-      }
-      fly();
-      rampWithFlight();
-      host.caption("Rising on the flight's own clock.");
-    });
-  }
-
   // The app's own clock: feed the terrain the FLIGHT's progress, so the two cannot drift apart
-  // even if the frame rate drops or the flight is interrupted.
+  // even if the frame rate drops or the flight is interrupted. Both ways fly at once.
   function matched() {
-    if (!in3D) {
-      fly(); // sinking has nothing to wait for
-      rampWithFlight();
-      host.caption("Sinking on the flight's own clock.");
-      return;
-    }
-    // Rising does: ask for 3D so its tiles start loading, and fly only once the switch stops
-    // holding the ground flat - a ratio driven up before then is held, and the start jumps.
-    map.terrain().set('flattened', false);
-    host.caption('Loading the tiles 3D needs before the flight starts.');
-    waitForTiles();
+    fly();
+    rampWithFlight();
+    host.caption(in3D ? 'Flying; the ground rises once its tiles are in.' : "Sinking on the flight's own clock.");
   }
 
   // The SDK's own animation: ask for the state, and it ramps over autoFlattenDuration. Two

@@ -1,4 +1,6 @@
 #include "TileLayer.h"
+#include "layers/TileCacheHold.h"
+#include "layers/TileStandIns.h"
 #include "layers/NearPlaneCover.h"
 #include "layers/TileLODRule.h"
 #include "layers/TileStyleZoom.h"
@@ -447,6 +449,16 @@ namespace massif {
         // The tiles a stranded bridge's chord is in, fetched like preloading tiles and never drawn.
         collectSpanReferenceTiles();
         buildFetchTiles(_spanReferenceTiles, true, fetchTileList, true);
+
+        collectStandInTiles();
+        for (const MapTile& standInTile : _standInTiles) {
+            long long tileId = getTileId(standInTile);
+            bool cached = tileExists(tileId, true) || tileExists(tileId, false);
+            bool valid = tileValid(tileId, true) || tileValid(tileId, false);
+            if ((!cached || !valid) && !prefetchTile(tileId, true)) {
+                fetchTileList.push_back({ standInTile, true, PARENT_PRIORITY_OFFSET });
+            }
+        }
 
         // Several missing visible tiles sharing a parent: fetch the parent too, as a quick preview.
         std::unordered_map<MapTile, int> childTileCountMap;
@@ -1170,6 +1182,10 @@ namespace massif {
         }
     }
     
+    void TileLayer::collectStandInTiles() {
+        _standInTiles = calculateStandInTiles(_visibleTiles, STAND_IN_ZOOM_DELTA, getMinZoom());
+    }
+
     bool TileLayer::findParentTile(const MapTile& visTile, const MapTile& tile, int depth, bool preloadingCache, bool preloadingTile) {
         if (tile.getZoom() <= 0 || depth <= 0) {
             return false;
@@ -1205,6 +1221,17 @@ namespace massif {
         return childTileCount;
     }
     
+    std::size_t TileLayer::calculateViewportCacheCapacity(const std::shared_ptr<CullState>& cullState, std::size_t visibleBytes, std::size_t visibleTiles, std::size_t floorBytes) const {
+        std::shared_ptr<Options> options = getOptions();
+        if (!cullState || !options) {
+            return floorBytes;
+        }
+        const ViewState& viewState = cullState->getViewState();
+        // A zoom bias draws finer tiles, so more of them fill the same view.
+        double tileSizePixels = options->getTileDrawSize() * viewState.getDPI() / Const::UNSCALED_DPI * std::pow(2.0, -getZoomLevelBias());
+        return viewportCacheCapacity(visibleBytes, visibleTiles, viewState.getWidth(), viewState.getHeight(), tileSizePixels, floorBytes);
+    }
+
     std::shared_ptr<vt::TileTransformer> TileLayer::getTileTransformer() const {
         return _tileRenderer->getTileTransformer();
     }
@@ -1514,10 +1541,10 @@ namespace massif {
             if (refresh) {
                 loadUTFGridTile(layer);
             }
-            // Span reference, label-band and preloading tiles are wanted now: with a still camera no cull would read them.
+            // Span reference, label-band, preloading and stand-in tiles are wanted now: with a still camera no cull would read them.
             if (loaded && _preloadingTile) {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
-                for (const std::vector<MapTile>* wantedTiles : { &layer->_spanReferenceTiles, &layer->_labelTiles, &layer->_preloadingTiles }) {
+                for (const std::vector<MapTile>* wantedTiles : { &layer->_spanReferenceTiles, &layer->_labelTiles, &layer->_preloadingTiles, &layer->_standInTiles }) {
                     for (const MapTile& wantedTile : *wantedTiles) {
                         if (layer->getTileId(wantedTile) == _tileId) {
                             refresh = true;
@@ -1601,6 +1628,7 @@ namespace massif {
     // Negative: the preview parent is dispatched after the wanted tiles, which a generating source would otherwise redo.
     const int TileLayer::PARENT_PRIORITY_OFFSET = -1;
     const int TileLayer::PRELOADING_PRIORITY_OFFSET = -2;
+    const int TileLayer::STAND_IN_ZOOM_DELTA = 4;
     const int TileLayer::SPAN_REFERENCE_ZOOM_DROP = 3;
     const int TileLayer::SPAN_REFERENCE_MIN_ZOOM = 14;
     const std::size_t TileLayer::MAX_SPAN_REFERENCE_TILES = 16;

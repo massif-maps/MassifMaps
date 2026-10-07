@@ -451,7 +451,7 @@ if(EMSCRIPTEN)
   # pthread_create on the main browser thread cannot block waiting for a worker.
   set(SDK_WEB_LINK_OPTIONS
     "-pthread" "-fwasm-exceptions"
-    "-sPTHREAD_POOL_SIZE=8"
+    "-sPTHREAD_POOL_SIZE=12"
     # dlmalloc has one global lock: the decode workers and the main thread queue on it, 5x slower
     # fill in a city - see docs/maintenance/web-build.md#the-allocator.
     "-sMALLOC=mimalloc"

@@ -99,6 +99,7 @@ void testRecentUseHold();
 void testFinestDrawnLevel();
 void testTileStyleZoom();
 void testTileCacheHold();
+void testTileStandIns();
 void testTileCacheStash();
 void testKineticStep();
 void testLabelPlacementFollowUp();
@@ -502,6 +503,7 @@ int main() {
     testFinestDrawnLevel();
     testTileStyleZoom();
     testTileCacheHold();
+    testTileStandIns();
     testTileCacheStash();
     testKineticStep();
     testLabelPlacementFollowUp();

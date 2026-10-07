@@ -374,6 +374,16 @@ Two rules follow from that split, and both cost a debugging session to find:
   all: the first frame draws, the flag stays set, and the map is frozen with tiles arriving behind
   it.
 
+### Tile threads
+
+A tile task blocks on its fetch, network or cache, and then decodes, so `Options::TileThreadPoolSize`
+is how many tiles load at once. The SDK's default, 2, is tangram's decode-thread count; maplibre
+runs up to 16 requests. `WebMapView` sets **6**: terrain-3d at the maplibre 3D-terrain example's
+camera (47.28324, 11.39146 z12.05 tilt 25), 1200x800, a first 360 degree turn of 6 s with 64 MB
+tile caches, a visible tile waited 7 ms median / 83 ms p90 in the queue with 2 threads and
+1 / 22 ms with 6; culls with a blank tile 107 -> 86. An app's own `tileThreadPoolSize` set after
+the map starts wins.
+
 ### The allocator
 
 The build links **mimalloc** (`-sMALLOC=mimalloc`). emscripten's default, dlmalloc, takes one global
@@ -439,7 +449,7 @@ python3 web/demo/serve.py --no-headers     # serve the way GitHub Pages does
 The page should reload itself once and then render; `crossOriginIsolated` in the console tells you
 which side of the fence you are on.
 
-`PTHREAD_POOL_SIZE=8` covers the pools plus the three workers. The pool is pre-warmed because
+`PTHREAD_POOL_SIZE=12` covers the pools plus the three workers. The pool is pre-warmed because
 `pthread_create` on the main browser thread cannot block waiting for a worker to spawn.
 
 A synchronous `XMLHttpRequest` is illegal on the main thread and legal on a worker, which is

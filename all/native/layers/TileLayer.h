@@ -525,6 +525,9 @@ class ProjectionSurface;
         // the caches here re-decoded the whole map on every integer zoom crossing.
         virtual void onTargetTileZoomChanged() { }
 
+        // The preloading cache's size by maplibre's viewport rule (TileCacheHold.h), floored at floorBytes.
+        std::size_t calculateViewportCacheCapacity(const std::shared_ptr<CullState>& cullState, std::size_t visibleBytes, std::size_t visibleTiles, std::size_t floorBytes) const;
+
         const DirectorPtr<TileDataSource> _dataSource;
         std::shared_ptr<DataSourceListener> _dataSourceListener;
 
@@ -535,6 +538,8 @@ class ProjectionSurface;
         // Tiles fetched unseen so a bridge's chord can resolve - see collectSpanReferenceTiles.
         // The subclass hands their decoded tiles to the renderer from refreshDrawData.
         std::vector<MapTile> _spanReferenceTiles;
+        // The view's ancestors STAND_IN_ZOOM_DELTA levels up, fetched unseen - see collectStandInTiles.
+        std::vector<MapTile> _standInTiles;
         
     private:
         struct FetchTileInfo {
@@ -569,6 +574,9 @@ class ProjectionSurface;
 
         static const int PARENT_PRIORITY_OFFSET;
         static const int PRELOADING_PRIORITY_OFFSET;
+        // maplibre-native's DEFAULT_PREFETCH_ZOOM_DELTA.
+        static const int STAND_IN_ZOOM_DELTA;
+        void collectStandInTiles();
         // A stranded span piece's reference tile is fetched this many levels coarser (8x the edge), and a cull asks for so many.
         static const int SPAN_REFERENCE_ZOOM_DROP;
         static const int SPAN_REFERENCE_MIN_ZOOM;

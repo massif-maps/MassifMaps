@@ -55,6 +55,10 @@ namespace massif {
         // link, a style's zoom stops and every piece of advice about web maps assume their
         // convention. Every other platform keeps the SDK's own - see Options::setZoomOffset.
         const float WEB_ZOOM_OFFSET = 1.0f;
+
+        // A tile task blocks on its fetch, so the pool is how many tiles load at once; maplibre runs 16
+        // requests. 2 queued a first look around for up to 83 ms p90, 6 for 22 (docs/maintenance/web-build.md).
+        const int WEB_TILE_THREADS = 6;
     }
 
     class WebMapView::RedrawListener : public RedrawRequestListener {
@@ -109,6 +113,7 @@ namespace massif {
 
         onSurfaceCreated();
         _surfaceCreated = true;
+        getOptions()->setTileThreadPoolSize(WEB_TILE_THREADS);
         syncCanvasSize();
 
         setRedrawRequestListener(std::make_shared<RedrawListener>(this));

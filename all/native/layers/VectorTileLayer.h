@@ -77,7 +77,8 @@ namespace massif {
         std::size_t getTileCacheCapacity() const;
         /**
          * Sets the vector tile cache capacity (uncompressed vertex buffers); too small a cache causes disappearing tiles.
-         * The default is 10MB, enough for most uses with preloading; reduce it when preloading is disabled.
+         * By default the cache follows the screen: five screens of tiles at the size of the ones in view, as maplibre
+         * keeps, and never under 10MB. Setting a capacity fixes it at that value instead.
          * @param capacityInBytes The new tile bitmap cache capacity in bytes.
          */
         void setTileCacheCapacity(std::size_t capacityInBytes);
@@ -335,6 +336,7 @@ namespace massif {
 
         cache::timed_lru_cache<long long, TileInfo> _visibleCache;
         cache::timed_lru_cache<long long, TileInfo> _preloadingCache;
+        bool _tileCacheCapacityFixed = false; // set by setTileCacheCapacity: the app's number replaces the viewport rule
         // The visible tiles decoded for the other terrain decode state, while this one is in use (swapDecodedTiles).
         cache::timed_lru_cache<long long, TileInfo> _stashedVisibleCache;
         // Apart from the LRU caches, where these multi-MB tiles evicted one another; pruned to the tiles currently named.

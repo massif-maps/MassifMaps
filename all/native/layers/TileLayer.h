@@ -538,6 +538,8 @@ class ProjectionSurface;
         // Tiles fetched unseen so a bridge's chord can resolve - see collectSpanReferenceTiles.
         // The subclass hands their decoded tiles to the renderer from refreshDrawData.
         std::vector<MapTile> _spanReferenceTiles;
+        // The view's ancestors STAND_IN_ZOOM_DELTA levels up, fetched unseen - see collectStandInTiles.
+        std::vector<MapTile> _standInTiles;
         
     private:
         struct FetchTileInfo {
@@ -572,6 +574,9 @@ class ProjectionSurface;
 
         static const int PARENT_PRIORITY_OFFSET;
         static const int PRELOADING_PRIORITY_OFFSET;
+        // maplibre-native's DEFAULT_PREFETCH_ZOOM_DELTA.
+        static const int STAND_IN_ZOOM_DELTA;
+        void collectStandInTiles();
         // A stranded span piece's reference tile is fetched this many levels coarser (8x the edge), and a cull asks for so many.
         static const int SPAN_REFERENCE_ZOOM_DROP;
         static const int SPAN_REFERENCE_MIN_ZOOM;

@@ -281,6 +281,8 @@ add_executable(api_tests
   TileStyleZoomTest.cpp
   # Same: TileCacheHold.h is the visible/preloading cache split over stdext's LRU, nothing else.
   TileCacheHoldTest.cpp
+  # Same: TileStandIns.h is the stand-in tiles' rule, MapTile only.
+  TileStandInsTest.cpp
   # Same: TileCacheStash.h is the 2D/3D switch's visible-tile swap over stdext's LRU, nothing else.
   TileCacheStashTest.cpp
   # Same: CelestialImageGrid.h is a sky image's bitmap-to-direction mapping and nothing else.

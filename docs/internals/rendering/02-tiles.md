@@ -413,6 +413,15 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
   next sliver: 5-8 tiles, +14-21% loads, at Grenoble z15.5 tilt 45. Neither maplibre nor mapbox
   preload neighbours (they keep parents instead). Kept, off by default, for sources that are slow
   to arrive or raster layers panned fast.
+- **Coarse stand-ins are kept under the view** - maplibre-native's `prefetchZoomDelta`
+  (`DEFAULT_PREFETCH_ZOOM_DELTA` 4, `tile_pyramid.cpp`). Every cull also fetches each visible
+  tile's ancestor `STAND_IN_ZOOM_DELTA` (4) levels up (`layers/TileStandIns.h`; per tile, as the 3D
+  cover mixes zooms), at parent priority, never drawn by itself: a tile turned into view finds one
+  of them through `findParentTile` and draws on it while it loads, instead of drawing blank. A few
+  tiles a view (one per 256 of the cover). Web, terrain-3d at the maplibre 3D-terrain example's
+  camera (47.28324, 11.39146 z12.05 tilt 25), 1200x800, WASMFS, a first 360 degree turn of 6 s: a
+  blank tile in 159 of 309 culls with 2 tile threads and 10 MB caches, 86-107 of ~235 with 6
+  threads and screen-sized caches, **0 of ~249** with the stand-ins too; the second turn 0-4.
 - Tiles live in the layer's memory cache plus an optional persistent cache
   (`PersistentCacheTileDataSource`). The persistent cache is why a device re-run is not a cold run —
   `pm clear` is the only reliable reset ([10-performance.md](10-performance.md)).

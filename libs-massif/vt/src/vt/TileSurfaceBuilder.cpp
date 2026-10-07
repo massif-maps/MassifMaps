@@ -30,6 +30,11 @@ namespace massif::vt {
         }
     }
 
+    void TileSurfaceBuilder::setTransformer(std::shared_ptr<const TileTransformer> transformer) {
+        _transformer = std::move(transformer);
+        _tileSurfaceCache.clear();
+    }
+
     void TileSurfaceBuilder::invalidateCaches() {
         _tileSurfaceCache.clear();
     }

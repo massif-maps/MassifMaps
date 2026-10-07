@@ -106,7 +106,14 @@ namespace massif {
     void TileRenderer::setTileTransformer(const std::shared_ptr<vt::TileTransformer>& tileTransformer) {
         std::lock_guard<std::mutex> lock(_mutex);
         if (_tileTransformer != tileTransformer) {
-            _vtRenderer.reset();
+            // In place, as the lighting shader is: a new renderer fades every tile in from nothing, which
+            // blanked the map for a second on each FULL 2D/3D switch.
+            std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer && _vtRenderer->isValid() ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>());
+            if (tileRenderer) {
+                tileRenderer->setTransformer(tileTransformer);
+            } else {
+                _vtRenderer.reset();
+            }
         }
         _tileTransformer = tileTransformer;
     }

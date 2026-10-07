@@ -1245,6 +1245,7 @@ namespace massif::vt {
             if (!labelBuild.unchanged) {
                 labelBuild.oldLabelMap = _layerLabelMap;      // shared_ptr copies, not labels
                 labelBuild.layerFilter = _rendererLayerFilter; // set under the mutex, and it decides the maps
+                labelBuild.transformer = _transformer;
             }
         }
         if (labelBuild.unchanged) {
@@ -1273,6 +1274,7 @@ namespace massif::vt {
                 LabelMapBuild rebuild;
                 rebuild.signature = labelBuild.signature;
                 rebuild.generation = _labelMapGeneration;
+                rebuild.transformer = _transformer;
                 prepareLabelMaps(labelTiles, _layerLabelMap, _rendererLayerFilter, rebuild);
                 commitLabelMaps(rebuild);
             } else {
@@ -1425,6 +1427,18 @@ namespace massif::vt {
         _drapeFBO = 0;
     }
         
+    void GLTileRenderer::setTransformer(std::shared_ptr<const TileTransformer> transformer) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (transformer == _transformer) {
+            return;
+        }
+        _transformer = std::move(transformer);
+        VT_STAT_ADD(tileSurfacesInvalidated, static_cast<long long>(_tileSurfaceMap.size()));
+        _tileSurfaceMap.clear();
+        _tileSurfaceBuilder.setTransformer(_transformer);
+    }
+
     void GLTileRenderer::resetTileSurfaces() {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -2684,8 +2698,8 @@ namespace massif::vt {
         // Pass 2: build, reuse or merge the labels.
         static const GlobalIdLabelMap emptyLabelMap;
         for (const std::shared_ptr<const Tile>& tile : labelTiles) {
-            cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(tile->getTileId(), 1.0f);
-            std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(tile->getTileId());
+            cglib::mat4x4<double> tileMatrix = build.transformer->calculateTileMatrix(tile->getTileId(), 1.0f);
+            std::shared_ptr<const TileTransformer::VertexTransformer> transformer = build.transformer->createTileVertexTransformer(tile->getTileId());
             for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
                 if (!testLayerFilter(layer->getLayerName(), layerFilter)) {
                     continue;

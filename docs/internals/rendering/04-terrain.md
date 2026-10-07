@@ -1095,6 +1095,15 @@ Two mechanics that make the switch invisible:
 - **The decode change invalidates, it does not clear.** `TileLayer::loadData` calls
   `invalidateTiles(false)` rather than `clearTileCaches(true)`: the old tiles stay on screen and are
   re-fetched one by one. Clearing them blanks the map for a whole decode.
+- **The renderer keeps its tiles across the transformer swap.** The decode change also swaps the
+  layer's tile transformer (flat ↔ `TerrainTileTransformer`). `TileRenderer::setTileTransformer`
+  used to throw the `GLTileRenderer` away for it, and the new one faded every tile in from
+  nothing at the layer blending speed (1/s): the whole map went blank for ~1 s at the start of each
+  2D→3D switch and the end of each 3D→2D one, `FULL` only (measured on web at Zermatt z17,
+  2026-10-07, with every visible tile decoded on the CPU side the whole time).
+  `GLTileRenderer::setTransformer` now swaps it in place and drops only the tile surfaces built
+  with the old one; the label map prepare reads the transformer from its snapshot, as it runs off
+  the mutex.
 - **Shadows stand down for the ramp.** A cascade is only re-cast when its light box or its caster
   list changes, and neither does while the ratio moves — but the ground *receiving* the shadow is
   displaced every frame, so the map wears the shadow of a terrain it no longer has. `applyTerrainShadows`

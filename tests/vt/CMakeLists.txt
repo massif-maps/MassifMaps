@@ -39,6 +39,7 @@ add_executable(vt_tests
   SphericalTerrainTest.cpp
   ExtrusionOccluderTest.cpp
   GridIndexOrderTest.cpp
+  SurfaceTransformerSwapTest.cpp
   RenderTileBlendTest.cpp
   GroundCoverTest.cpp
   LabelSliceTest.cpp

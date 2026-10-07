@@ -141912,6 +141912,44 @@
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
+          "text-anchor": [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "render::3d"
+              ],
+              true
+            ],
+            "bottom",
+            "top"
+          ],
+          "text-offset": [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "render::3d"
+              ],
+              true
+            ],
+            [
+              "literal",
+              [
+                0,
+                -0.75
+              ]
+            ],
+            [
+              "literal",
+              [
+                0,
+                0.75
+              ]
+            ]
+          ],
           "symbol-sort-key": [
             "-",
             [

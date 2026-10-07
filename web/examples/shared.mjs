@@ -88,7 +88,8 @@ export async function massifStyle(map, variant = 'streets') {
       project = await (await fetch(`${base}project.json`)).json();
     }
     const texts = await Promise.all(project.styles.map((name) => fetch(base + name).then((r) => r.text())));
-    const images = new Set(Object.values(project.styleparameters ?? {}).filter((v) => typeof v === 'string' && /\.(?:png|jpg|svg)$/.test(v)));
+    // Nested too: POI icons sit in map parameters ({ default: { class: 'icons-glyph/x.png' } }).
+    const images = new Set(JSON.stringify(project.styleparameters ?? {}).match(IMAGE) ?? []);
     for (const text of texts) for (const match of text.matchAll(IMAGE)) images.add(match[0]);
     const names = ['project.json', 'legend.json', ...MASSIF_VARIANTS.map((v) => `${v}.json`), ...project.styles, ...images,
                    ...(project.fonts ?? []).map((f) => `fonts/${f}`)];

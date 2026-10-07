@@ -346,6 +346,15 @@ same offset applies here by the same argument, but adding it moves settled conto
 changing the elevation interpolation (2.8 % of the frame at the camera above), so it is left for a
 deliberate on-device comparison rather than folded into the clipping fix.
 
+**Large gaps make a wall, by construction, and were not seen to.** At 2^k the fine tile's edge is one
+chord per 2^k cells, so its outermost cell bridges that chord to its own relief. Measured on the web
+build around Châtillon (7.62/45.78, the camera of
+[the edge box section](#the-edge-box-widens-one-level-not-to-a-stand-ins-cell)): steady state, a
+4x seam where the LOD ring drops two levels (z13 beside z11, a ~210 m chord); 8x for ~400 ms during
+a zoom out; 16x-32x for ~200 ms after a z9 -> z14 jump (a z15 leaf beside z10, ~430 m), whether or
+not the network is held. No frame inside those windows showed a wall. A cover balanced to one level
+between neighbours would remove them, at a drape cache cost; not done without a frame that needs it.
+
 ### Skirts: absent from the shared ground only
 
 The ground the map is drawn on — vt's shared regular grid — has **no** skirts (walls dropped at tile

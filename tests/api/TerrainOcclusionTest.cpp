@@ -7,6 +7,37 @@
 
 using namespace massif;
 
+namespace {
+    // The CPU ray march behind a label outside the read-back depth (TileRenderer's ray fallback). The
+    // ground rises toward the label at 0.3 height per unit; the camera looks down at it from x = 0.
+    void testSegmentBlocked() {
+        const double maxFraction = 1.0 / 1.01;
+        const double margin = 30.0;
+        const cglib::vec3<double> camera(0, 0, 600);
+        auto slope = [](double x, double, double& z) { z = 0.3 * x; return true; };
+        auto blocked = [&](const cglib::vec3<double>& label, auto ground) {
+            return TerrainOcclusion::isSegmentBlocked(camera, label, maxFraction, 5.0, 1.0, 10000.0, margin, ground);
+        };
+
+        TEST_CHECK(!blocked(cglib::vec3<double>(1000, 0, 300), slope), "a label on open ground is seen");
+        TEST_CHECK(!blocked(cglib::vec3<double>(1000, 0, 280), slope), "an anchor 20 under the live ground is not hidden by the slope it stands on");
+
+        auto ridge = [](double x, double, double& z) { z = (x > 400 && x < 600) ? 500.0 : 0.3 * x; return true; };
+        TEST_CHECK(blocked(cglib::vec3<double>(1000, 0, 300), ridge), "a ridge between camera and label hides it");
+        TEST_CHECK(blocked(cglib::vec3<double>(1000, 0, 280), ridge), "and still does for a lagging anchor");
+
+        auto bumpAt = [](double from, double to) {
+            return [from, to](double x, double, double& z) { z = (x > from && x < to) ? 0.3 * x + 80.0 : 0.3 * x; return true; };
+        };
+        TEST_CHECK(!blocked(cglib::vec3<double>(1000, 0, 300), bumpAt(975, 988)), "a bump in the label's own cell does not hide it");
+        TEST_CHECK(blocked(cglib::vec3<double>(1000, 0, 300), bumpAt(900, 930)), "the same bump a few cells out does");
+
+        auto nothing = [](double, double, double&) { return false; };
+        TEST_CHECK(!blocked(cglib::vec3<double>(1000, 0, 300), nothing), "no loaded ground blocks nothing");
+        TEST_CHECK(!blocked(cglib::vec3<double>(1000, 0, 5000), ridge), "a label above every summit is seen");
+    }
+}
+
 void testTerrainOcclusion() {
     const float tolerance = 1.01f; // default: 1.0 + MIN_OCCLUSION_TOLERANCE
 
@@ -39,4 +70,6 @@ void testTerrainOcclusion() {
     TEST_CHECK(!TerrainOcclusion::isBehind(1005.0f, 1000.0f, -100.0f, tolerance), "a negative spread is clamped away");
 
     TEST_CHECK(!TerrainOcclusion::isBehind(1400.0f, 1000.0f, 0.0f, 1.5f), "a generous tolerance still applies");
+
+    testSegmentBlocked();
 }

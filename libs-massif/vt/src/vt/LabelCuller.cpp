@@ -234,7 +234,7 @@ namespace massif::vt {
             }
             // Hidden by the terrain: take no collision slot (see setOcclusionTest). After updatePlacement
             // because most considered labels are off-screen and the test is not cheap.
-            if (label->isValid() && _occlusionTest) {
+            if (label->isValid() && _occlusionTest && label->isElevationAnchored() && !label->isElevationStale()) {
                 cglib::vec3<double> anchor(0, 0, 0);
                 if (label->calculateCenter(anchor) && _occlusionTest(anchor)) {
                     VT_STAT_INC(cullerOccluded);

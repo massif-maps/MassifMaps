@@ -114,7 +114,26 @@ void testLabelElevationAnchor() {
         TEST_CHECK(label->updateElevation(constantHeight(410.0)), "the height arriving anchors it");
         TEST_CHECK(label->isElevationAnchored(), "and from then on it may be judged");
         label->updateElevation(constantHeight(std::numeric_limits<double>::quiet_NaN()));
-        TEST_CHECK(label->isElevationAnchored(), "a later miss does not un-anchor it");
+        TEST_CHECK(!label->isElevationAnchored(), "a later miss un-anchors it: its height is another ramp step's");
+        TEST_CHECK(label->updateElevation(constantHeight(420.0)) && label->isElevationAnchored(), "and the next height anchors it again");
+    }
+
+    // The flat drop (GLTileRenderer::setLabelElevationProvider) un-anchors: back in 3D, a miss must leave
+    // the label to the GPU's height, not hold it at the flat map's 0 under the terrain.
+    {
+        std::shared_ptr<Label> label = buildPointLabel();
+        label->updatePlacement(viewState);
+        label->updateElevation(constantHeight(410.0));
+        label->updateElevation(constantHeight(0.0));
+        label->setElevationDirty(false);
+        label->clearElevationAnchor();
+        double z = -1;
+        TEST_CHECK(anchorHeight(label, z) && std::abs(z) < 1e-6, "dropped flat, the label sits at 0");
+        TEST_CHECK(!label->isElevationAnchored(), "and no longer counts as anchored");
+        label->setElevationDirty(true);
+        TEST_CHECK(!label->updateElevation(constantHeight(std::numeric_limits<double>::quiet_NaN())), "back in 3D a miss is a miss");
+        TEST_CHECK(!label->isElevationAnchored(), "and leaves the label un-anchored, so the GPU places it");
+        TEST_CHECK(label->updateElevation(constantHeight(520.0)) && anchorHeight(label, z) && std::abs(z - 520.0) < 1e-6, "the height arriving lifts it onto the terrain");
     }
 
     // attribs[3], read bitwise by labelVsh: bit 0 = glyph offset mode, bit 1 = absolute (deck) height.

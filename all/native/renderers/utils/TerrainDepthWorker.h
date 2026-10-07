@@ -31,6 +31,8 @@ namespace massif {
         float far = 0;
         // Occlusion queries must project with this matrix: the buffer lags a moving camera.
         cglib::mat4x4<double> mvpMatrix = cglib::mat4x4<double>::zero();
+        // The terrain it shows: during a 2D/3D ramp the ground has moved since, and anchors with it.
+        float exaggeration = -1;
     };
 
     /**
@@ -53,6 +55,7 @@ namespace massif {
             int height = 0;
             float far = 0;
             cglib::mat4x4<double> mvpMatrix = cglib::mat4x4<double>::zero(); // carried into the result
+            float exaggeration = -1; // carried into the result
             std::vector<DrawItem> items;
         };
 

@@ -126,10 +126,17 @@ namespace massif::vt {
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
         // False while the label still carries its flat decode height, which the terrain occlusion test must not judge.
         bool isElevationAnchored() const { return _elevationAnchored; }
+        // A re-anchor is owed: the height may be a previous ramp step's, so no occlusion test may judge it.
+        bool isElevationStale() const { return _elevationDirty; }
+        // Dropped flat, the label holds no terrain height: back in 3D a miss must leave it to the GPU, not at 0.
+        void clearElevationAnchor() { _elevationAnchored = false; }
         // The anchor stands on a deck: its span-chord height is CPU-only, so the GPU must not replace it with the terrain's.
         bool hasAbsoluteHeight() const { return _absoluteHeight; }
         void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
+        // The renderer's whole-set invalidation count the height was sampled at; behind it, it is re-anchored.
+        unsigned int getElevationGeneration() const { return _elevationGeneration; }
+        void setElevationGeneration(unsigned int generation) { _elevationGeneration = generation; }
         bool hasGeometryOverTile(const TileId& tileId) const;
 
         void mergeGeometries(Label& label);
@@ -348,7 +355,7 @@ namespace massif::vt {
         enum class LineLayout { PLACED, NO_ROOM, UNREADABLE };
 
         void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const;
-        LineLayout buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        LineLayout buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool keepRun = false) const;
 
         // Where the text pen starts for the variant in use - zero for a label with one fixed
         // layout, which is every label a style without anchors builds.
@@ -454,7 +461,8 @@ namespace massif::vt {
         bool _visible = false;
         bool _active = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame
-        bool _elevationAnchored = false; // has been anchored at least once, so a re-anchor may wait
+        unsigned int _elevationGeneration = 0;
+        bool _elevationAnchored = false; // its last sample had every height, so a re-anchor may wait
         bool _absoluteHeight = false;    // anchored on a deck chord, not on the terrain
         long long _geometryHash = 0;
         int _geometryCount = 0;
@@ -467,6 +475,7 @@ namespace massif::vt {
         mutable bool _lineLayoutValid = false;
         mutable bool _lineReversed = false; // the projected run reads right to left, so the glyphs walk the line backwards
         mutable int _lineLayoutFailures = 0;
+        bool _placementReanchored = false; // the placement only took new heights: a 2D/3D ramp re-lays it every frame
 
         mutable bool _cachedValid = false;
         mutable float _cachedScale = 0;

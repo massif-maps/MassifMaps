@@ -194,6 +194,10 @@ Consequences of the split, all keyed on `isLineRun()` / `isScreenLineRun()`:
   split — is now exactly what `billboard-line-repeat` asks for.
 
 **A layout fails in two different ways, and they are held differently** (`Label::LineLayout`):
+neither applies when only the run's heights moved. A 2D/3D ramp re-anchors every placed run each
+frame (`applyElevation` → `_placementReanchored`), and re-judging fit each time doubled the `NO_ROOM`
+rate and made names `UNREADABLE` mid-ramp (#353, web, Zermatt z17: 369 → 176 over a rise, the same
+as tilting a flat map). Such a run is laid out as placed; the culler or a view change judges it again.
 
 - `NO_ROOM` — the run does not fit, or nothing projects. That is a transient of this camera: fit is
   judged on the projected line, from two different view states (the culler works on its pass's
@@ -1132,6 +1136,18 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   rendered until they reach 0. Over terrain it also fades a label out when its anchor is behind a
   ridge — a stale occlusion buffer queried with the wrong camera is what made labels blink while
   zooming, see [04-terrain.md](04-terrain.md#query-with-the-buffers-camera-not-the-frames).
+  Outside that buffer's viewport the answer is a CPU ray march (`TerrainOcclusion::isSegmentBlocked`),
+  and while the camera flies the buffer is refreshed about once a second, so most labels get the ray.
+  The ray ends on the label's height **above the live ground** at its own position, and the DEM cell
+  it stands in never blocks it. Without both, a 2D/3D switch hid labels by the hundred: each anchor
+  trails the ramp by a step (~5 m at z17), the ray stopped only 1% short of the label, and the
+  label's own slope "occluded" it — labels blinking during the animation, and all of them gone for a
+  second at its end (#353, measured on the web build: 15–385 per cull pass, 0 after).
+  The read-back buffer itself answers only at the exaggeration it was rendered at
+  (`TerrainDepthBuffer::exaggeration`): during the switch it is seconds old, from another ramp step,
+  and it hid ~100 labels per pass. Neither test judges a label whose re-anchor is still owed
+  (`Label::isElevationStale`) — the same rule as an un-anchored one, since its height is a previous
+  step's.
 - **Occlusion by 3D content.** The ridge test above is a CPU query per label against a read-back
   terrain depth buffer, and terrain is all it knows: a label behind a *building* was drawn in front
   of it. The extra test is mapbox's, ported by semantics: rays from the eye to a small square around
@@ -1206,8 +1222,24 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
 
   A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
   occlusion test skips it: it still carries its flat decode height, and judging that against the
-  terrain hides it under ground it is not behind. Anchoring is sticky — a later miss does not
-  un-anchor a label that already has a real height.
+  terrain hides it under ground it is not behind. A later miss **un-anchors** the label: it was
+  sticky until #353, and a label that missed during a 2D/3D ramp kept a vertex at another step's
+  exaggeration — drawn in the ground or in the sky; un-anchored, the GPU places it. Going flat
+  un-anchors too. Withdrawing
+  the provider drops every label to 0 (`setLabelElevationProvider`) and **clears its anchor**,
+  because an anchored label draws at its CPU height, not the GPU's (`labelBatchTileId`): kept
+  anchored, a label that missed its first sample back in 3D sat at the flat map's 0, under the
+  ground, until its DEM tile landed and it jumped up. And while flat, `TileRenderer` counts the
+  exaggeration as **0**: an instant switch (`flattenRatio` 1 → 0 in one frame) restores the
+  pre-flatten value, which compared equal and re-anchored nothing (#353).
+
+  **Every re-anchor is owed by generation, not by a flag someone may clear.** Each whole-set
+  invalidation bumps `_labelElevationGeneration`; a label records the generation its height was
+  sampled at, and `anchorDirtyLabels` re-dirties any label behind it, every frame. The flag alone
+  lost re-anchors: the cull thread's off-lock sample landed after a ramp step the render thread had
+  already consumed, and marked the label clean at the old height. And `setVisibleTiles` used to clear
+  `_labels` before an unchanged label set skipped its commit (#255): the labels stayed drawn but left
+  the cull and anchor list until the set changed — frozen at whatever height they had.
 
   **The anchor's RENDER height now comes from the GPU**, so none of the above can misplace a label on
   screen — it only decides what the culler sees. `labelVsh` calls the surface's own `applyTerrain` on

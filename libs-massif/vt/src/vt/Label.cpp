@@ -379,6 +379,7 @@ namespace massif::vt {
 
     void Label::snapPlacement(const Label& label) {
         _placement = label._placement;
+        _placementReanchored = false;
         _cachedFlippedPlacement = label._cachedFlippedPlacement;
         // The re-snap below runs before any view state: place by the old scale or the run changes shape.
         _placementTextLength = label._placementTextLength;
@@ -499,8 +500,9 @@ namespace massif::vt {
         }
 
         // The elevation version moves for ANY tile decode; unchanged heights must not drop caches.
-        // Anchored means the heights are known, not merely that anchoring was attempted.
-        _elevationAnchored = _elevationAnchored || complete;
+        // Anchored means the heights are known NOW: a miss after a 2D/3D ramp step leaves a vertex at another
+        // exaggeration, so the GPU places the label until data lands.
+        _elevationAnchored = complete;
         if (!changed) {
             return complete;
         }
@@ -534,6 +536,7 @@ namespace massif::vt {
             placement = std::move(pointPlacement);
         }
         _placement = std::move(placement);
+        _placementReanchored = true;
         _cachedFlippedPlacement.reset();
         _cachedPlacement.reset();
         _cachedValid = false;
@@ -595,6 +598,7 @@ namespace massif::vt {
         }
         VT_STAT_INC(placementSearches);
 
+        _placementReanchored = false;
         _cachedFlippedPlacement.reset();
         if (!_tilePoints.empty()) {
             _placement = findClippedPointPlacement(viewState, _tilePoints);
@@ -1254,7 +1258,7 @@ namespace massif::vt {
         return p;
     }
 
-    Label::LineLayout Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    Label::LineLayout Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool keepRun) const {
         const std::vector<Placement::Edge>& edges = placement->edges;
         if (edges.empty() || !(scale > 0)) {
             return LineLayout::NO_ROOM;
@@ -1367,10 +1371,10 @@ namespace massif::vt {
         float penStart = lengths[segment] + cglib::dot_product(-points[segment], cglib::unit(segmentVec)) - runLength * 0.5f;
         // Must fit inside the line (tangram's CurvedLabel::updateScreenTransform); a run on the edge
         // is absorbed by LINE_LAYOUT_FAILURE_GRACE, not by an allowance here.
-        if (runLength > total) {
+        if (runLength > total && !keepRun) {
             return LineLayout::NO_ROOM;
         }
-        penStart = std::min(std::max(penStart, 0.0f), total - runLength);
+        penStart = std::min(std::max(penStart, 0.0f), std::max(0.0f, total - runLength));
 
         // As tangram, over the covered span: segments forcing both directions, or a hairpin (arc length
         // grows around it while the screen does not), drop the label.
@@ -1410,7 +1414,7 @@ namespace massif::vt {
                     break;
                 }
             }
-            if (hairpin || (mustForward && mustReverse)) {
+            if (!keepRun && (hairpin || (mustForward && mustReverse))) {
                 return LineLayout::UNREADABLE; // the run doubles back on itself
             }
             // Direction from the chord alone: tangram's per-segment reversal flips readable runs on a
@@ -1474,8 +1478,7 @@ namespace massif::vt {
             cglib::vec2<float> pen = pointAt(offset);
             cglib::vec2<float> spanVec = pointAt(spanStart + spanLength) - pointAt(spanStart);
             if (cglib::norm(spanVec) == 0) {
-                readable = false;
-                break;
+                return LineLayout::UNREADABLE;
             }
             cglib::vec2<float> xAxis = cglib::unit(spanVec);
             cglib::vec2<float> yAxis(-xAxis(1), xAxis(0));
@@ -1521,7 +1524,7 @@ namespace massif::vt {
         if (maxAngle - minAngle > maxRunAngleSpread) {
             readable = false;
         }
-        return readable ? LineLayout::PLACED : LineLayout::UNREADABLE;
+        return readable || keepRun ? LineLayout::PLACED : LineLayout::UNREADABLE;
     }
 
     void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const {
@@ -1539,7 +1542,10 @@ namespace massif::vt {
         _cachedTexCoords.clear();
         _cachedAttribs.clear();
         _cachedIndices.clear();
-        LineLayout layout = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
+        // Heights alone moved the run (a 2D/3D ramp re-anchors it every frame): it stays as placed, and
+        // the fit is judged again once the culler or the view moves it.
+        bool keepRun = _placementReanchored && _lineLayoutValid && placement != _cachedPlacement;
+        LineLayout layout = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices, keepRun);
         _cachedValid = (layout == LineLayout::PLACED);
         // Grace for a placed run that stops fitting: culler and renderer judge fit from different view
         // states, so an edge case alternates. UNREADABLE gets no grace.

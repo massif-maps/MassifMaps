@@ -290,4 +290,20 @@ void testLineLabel() {
         bool placed = isPlaced(buildPolylineLabel(buildGlyphs(8), vertices, cglib::vec2<float>(8, 0), maxAngle), buildViewState(12, 1));
         TEST_CHECK(placed == (maxAngle > 0.6f), maxAngle > 0.6f ? "a 35-degree bend is followed under the default 45" : "a 35-degree bend drops the run under text-max-angle 30");
     }
+
+    // A 2D/3D ramp re-anchors a placed run every frame: heights alone must not drop it as too short.
+    // Sunk away from the top-down camera, the street projects shorter than its name.
+    {
+        std::shared_ptr<Label> label = buildPolylineLabel(buildGlyphs(8), densify({ cglib::vec2<float>(0, 0), cglib::vec2<float>(9, 0) }, 1.0f), cglib::vec2<float>(4.5f, 0));
+        ViewState viewState = buildViewState(9.0f);
+        TEST_CHECK(isPlaced(label, viewState), "a street just long enough for its name is named");
+        bool kept = true;
+        for (int step = 1; step <= 8; step++) {
+            double depth = -40.0 - step;
+            label->updateElevation([depth](const cglib::vec3<double>& pos) { return cglib::vec3<double>(pos(0), pos(1), depth); });
+            std::array<cglib::vec3<float>, 4> envelope;
+            kept = label->calculateEnvelope(viewState, envelope) && kept;
+        }
+        TEST_CHECK(kept, "and keeps it through every re-anchor of a ramp");
+    }
 }

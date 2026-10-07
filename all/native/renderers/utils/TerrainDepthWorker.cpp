@@ -236,6 +236,7 @@ namespace massif {
         result->height = job.height;
         result->far = job.far;
         result->mvpMatrix = job.mvpMatrix;
+        result->exaggeration = job.exaggeration;
         result->data.resize(static_cast<std::size_t>(job.width) * job.height * 4);
         glReadPixels(0, 0, job.width, job.height, GL_RGBA, GL_UNSIGNED_BYTE, result->data.data());
         return result;

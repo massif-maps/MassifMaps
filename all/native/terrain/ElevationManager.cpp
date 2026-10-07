@@ -2,6 +2,7 @@
 #include "terrain/ElevationNodeField.h"
 #include "terrain/ElevationTileGrid.h"
 #include "terrain/PrefetchOrder.h"
+#include "terrain/TerrainOcclusion.h"
 #include "core/BinaryData.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileData.h"
@@ -802,35 +803,26 @@ namespace massif {
         static const double FIRST_STEP_METERS = 30.0;
         static const double STEP_GROWTH = 1.015;
 
-        double length = cglib::length(to - from);
-        if (!(length > 0)) {
-            return false;
-        }
-        cglib::vec3<double> dir = (to - from) * (1.0 / length);
         float exaggeration = _exaggeration.load();
         double scale = getDisplayScale(from(1));
         double zTop = std::max(static_cast<double>(_maxSeenElevation.load()), DEFAULT_MAX_ELEVATION) * exaggeration * scale;
-        double firstStep = FIRST_STEP_METERS * scale;
-        double end = length * maxFraction;
-
-        std::shared_ptr<ElevationTileGrid> grid;
-        for (double distance = firstStep; distance < end; distance = std::max(distance * STEP_GROWTH, distance + firstStep)) {
-            cglib::vec3<double> pos = from + dir * distance;
-            if (pos(2) > zTop) {
-                if (dir(2) >= 0) {
-                    return false; // above every summit and climbing
-                }
-                continue;
-            }
-            double x = wrapInternalX(pos(0));
-            if (!grid || !grid->getInternalBounds().contains(MapPos(x, pos(1), 0))) {
-                grid = getGridForInternalPos(x, pos(1), LoadMode::CACHED_ONLY);
-            }
-            if (grid && pos(2) < sampleSurfaceHeight(*grid, x, pos(1)) * exaggeration * getDisplayScale(pos(1))) {
-                return true;
-            }
+        double groundMargin = 0;
+        if (std::shared_ptr<ElevationTileGrid> targetGrid = getGridForInternalPos(wrapInternalX(to(0)), to(1), LoadMode::CACHED_ONLY)) {
+            groundMargin = targetGrid->getInternalBounds().getDelta().getX() / std::max(1, targetGrid->getWidth() - 1);
         }
-        return false;
+        std::shared_ptr<ElevationTileGrid> grid;
+        auto groundAt = [this, &grid, exaggeration](double internalX, double internalY, double& height) {
+            double x = wrapInternalX(internalX);
+            if (!grid || !grid->getInternalBounds().contains(MapPos(x, internalY, 0))) {
+                grid = getGridForInternalPos(x, internalY, LoadMode::CACHED_ONLY);
+            }
+            if (!grid) {
+                return false;
+            }
+            height = sampleSurfaceHeight(*grid, x, internalY) * exaggeration * getDisplayScale(internalY);
+            return true;
+        };
+        return TerrainOcclusion::isSegmentBlocked(from, to, maxFraction, FIRST_STEP_METERS * scale, STEP_GROWTH, zTop, groundMargin, groundAt);
     }
 
     void ElevationManager::getMinMaxDisplayHeight(const MapTile& tile, double& minZ, double& maxZ) const {

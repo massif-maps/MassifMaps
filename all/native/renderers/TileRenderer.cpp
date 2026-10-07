@@ -1630,7 +1630,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 // Relative tolerance: the default absorbs anchor-vs-terrain mismatch; more labels partly hidden features.
                 float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
                 // Outside the read-back viewport, the elevation ray answers.
-                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest](const cglib::vec3<double>& pos) {
+                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest, elevationManager](const cglib::vec3<double>& pos) {
                     auto mapRenderer = mapRendererWeak.lock();
                     if (!mapRenderer) {
                         return false;
@@ -1640,7 +1640,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                         return false;
                     }
                     bool answered = false;
-                    bool occluded = terrainRenderer->isOccludedByTerrain(pos, occlusionTolerance, &answered);
+                    bool occluded = terrainRenderer->isOccludedByTerrain(pos, occlusionTolerance, elevationManager->getExaggeration(), &answered);
                     return answered ? occluded : rayTest(pos);
                 };
                 tileRenderer->setLabelOcclusionTest(depthTest);

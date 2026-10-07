@@ -787,6 +787,7 @@ namespace massif {
         job.height = bufferHeight;
         job.far = viewState.getFar();
         job.mvpMatrix = mvpMatrix;
+        job.exaggeration = terrainOptions->getElevationManager() ? terrainOptions->getElevationManager()->getExaggeration() : -1;
         job.items.reserve(tileMeshes.size());
         for (const auto& tileMesh : tileMeshes) {
             const std::shared_ptr<TileMesh>& mesh = tileMesh.second;
@@ -867,6 +868,7 @@ namespace massif {
         newDepthData->height = bufferHeight;
         newDepthData->far = viewState.getFar();
         newDepthData->mvpMatrix = mvpMatrix;
+        newDepthData->exaggeration = terrainOptions && terrainOptions->getElevationManager() ? terrainOptions->getElevationManager()->getExaggeration() : -1;
         {
             std::lock_guard<std::mutex> lock(_depthMutex);
             _depthDataSnapshot = std::move(newDepthData);
@@ -923,7 +925,7 @@ namespace massif {
         _occlusionVerdicts.clear();
     }
 
-    bool TerrainRenderer::isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, bool* answered) const {
+    bool TerrainRenderer::isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, float exaggeration, bool* answered) const {
         if (answered) {
             *answered = false;
         }
@@ -934,6 +936,9 @@ namespace massif {
         }
         if (!depthData || depthData->width < 1 || depthData->height < 1 || depthData->mvpMatrix == cglib::mat4x4<double>::zero()) {
             return false;
+        }
+        if (depthData->exaggeration != exaggeration) {
+            return false; // another ramp step's ground: the label stood under it or above it
         }
 
         long long verdictKey = occlusionVerdictKey(pos);

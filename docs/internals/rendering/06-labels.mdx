@@ -1132,6 +1132,18 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   rendered until they reach 0. Over terrain it also fades a label out when its anchor is behind a
   ridge — a stale occlusion buffer queried with the wrong camera is what made labels blink while
   zooming, see [04-terrain.md](04-terrain.md#query-with-the-buffers-camera-not-the-frames).
+  Outside that buffer's viewport the answer is a CPU ray march (`TerrainOcclusion::isSegmentBlocked`),
+  and while the camera flies the buffer is refreshed about once a second, so most labels get the ray.
+  The ray ends on the label's height **above the live ground** at its own position, and the DEM cell
+  it stands in never blocks it. Without both, a 2D/3D switch hid labels by the hundred: each anchor
+  trails the ramp by a step (~5 m at z17), the ray stopped only 1% short of the label, and the
+  label's own slope "occluded" it — labels blinking during the animation, and all of them gone for a
+  second at its end (#353, measured on the web build: 15–385 per cull pass, 0 after).
+  The read-back buffer itself answers only at the exaggeration it was rendered at
+  (`TerrainDepthBuffer::exaggeration`): during the switch it is seconds old, from another ramp step,
+  and it hid ~100 labels per pass. Neither test judges a label whose re-anchor is still owed
+  (`Label::isElevationStale`) — the same rule as an un-anchored one, since its height is a previous
+  step's.
 - **Occlusion by 3D content.** The ridge test above is a CPU query per label against a read-back
   terrain depth buffer, and terrain is all it knows: a label behind a *building* was drawn in front
   of it. The extra test is mapbox's, ported by semantics: rays from the eye to a small square around

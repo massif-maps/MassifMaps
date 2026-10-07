@@ -125,9 +125,10 @@ namespace massif {
         /**
          * True when pos is behind the terrain beyond the relative tolerance (1 = no slack). Projected with the
          * buffer's own camera, which lags a moving one: current-camera depths would occlude every label.
-         * Off-buffer positions reuse their last verdict; fails open without one (`answered` says which).
+         * Off-buffer positions reuse their last verdict; fails open without one (`answered` says which),
+         * and on a buffer rendered at another exaggeration than the caller's.
          */
-        bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, bool* answered = nullptr) const;
+        bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, float exaggeration, bool* answered = nullptr) const;
 
         /** Bumped each time a new occlusion depth is published: the verdicts may have changed. */
         unsigned int getDepthSnapshotVersion() const { return _depthSnapshotVersion.load(); }

@@ -285,9 +285,14 @@ namespace massif {
         float x = 0.0f, y = 0.0f;
         view->canvasPos(event, pixelRatio, x, y);
         const int RIGHT_BUTTON = 2;
+        const unsigned short BUTTON_FLAGS[] = { 1, 4, 2, 8, 16 }; // MouseEvent.button -> its MouseEvent.buttons bit
 
         switch (eventType) {
         case EMSCRIPTEN_EVENT_MOUSEDOWN:
+            if (view->_dragRotating || view->_dragMoving || view->_pointerDown || event->button > 4) {
+                return EM_FALSE; // maplibre's drag_handler: a second button joins no running drag
+            }
+            view->_dragButton = event->button;
             view->_lastPointerX = x;
             view->_lastPointerY = y;
             if (event->button == RIGHT_BUTTON || event->ctrlKey) {
@@ -307,6 +312,11 @@ namespace massif {
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
             // Only while a drag is running: this listener is on the document, so it also sees the
             // pointer crossing the page around the map, and a hover must move nothing.
+            if ((view->_dragRotating || view->_dragMoving || view->_pointerDown) && !(event->buttons & BUTTON_FLAGS[view->_dragButton])) {
+                // Released outside the window: no mouseup ever came (maplibre's MouseMoveStateManager).
+                view->cancelDrag();
+                return EM_FALSE;
+            }
             if (view->_dragMoving) {
                 view->onInputEvent(INPUT_EVENT_MOVE, x, y, x + FIRST_PERSON_POINTER_GAP, y);
                 view->_lastPointerX = x;
@@ -320,8 +330,8 @@ namespace massif {
             }
             break;
         case EMSCRIPTEN_EVENT_MOUSEUP:
-            if (!view->_dragRotating && !view->_dragMoving && !view->_pointerDown) {
-                return EM_FALSE; // a release that belongs to the page, not to the map
+            if ((!view->_dragRotating && !view->_dragMoving && !view->_pointerDown) || event->button != view->_dragButton) {
+                return EM_FALSE; // a release that belongs to the page, or to another button
             }
             if (view->_dragMoving) {
                 view->_dragMoving = false;

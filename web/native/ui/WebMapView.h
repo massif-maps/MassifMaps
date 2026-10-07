@@ -71,6 +71,7 @@ namespace massif {
         // Same trigger in FREE_ROAM_MODE_FIRST_PERSON: moves via a synthesised two-finger drag
         // (second pointer at a fixed offset, so no pinch or twist).
         bool _dragMoving = false;
+        unsigned short _dragButton = 0;
         float _lastPointerX = 0.0f;
         float _lastPointerY = 0.0f;
     };

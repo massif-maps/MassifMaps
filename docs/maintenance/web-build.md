@@ -200,6 +200,12 @@ because it now sees the pointer crossing the whole page. And coordinates have to
 `clientX/clientY` minus the canvas rect, not from `targetX/targetY` - those are relative to
 whatever the listener was bound to, which is no longer the map.
 
+A release outside the browser WINDOW may reach no listener at all (mapbox-gl-js#4622), and the
+window keeps its focus, so `blur` does not fire either. So every move checks that the drag's own
+button is still in `MouseEvent.buttons`, and ends the drag when it is not - maplibre's `MouseMoveStateManager.isValidMoveEvent`. Mind the bit order: `button` 2 (right) is
+`buttons` bit 2, `button` 1 (middle) is bit 4. Like maplibre, a drag ends only on its own button's
+mouseup, and a second button pressed mid-drag starts nothing.
+
 ### Labels shredded by buildings from zoom 12
 
 Not a glyph bug, though it looks like one: the text is drawn and then PAINTED OVER, so the letters

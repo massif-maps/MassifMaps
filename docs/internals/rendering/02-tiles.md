@@ -168,6 +168,13 @@ Two consequences worth knowing:
   switch at zoom 12.05 drifted to 11.95 and back and cost 10 re-decodes instead of 4, on a camera
   that never moved. Neither reference has this, because neither has to: they key the cache on the
   parse zoom and a crossing costs them a lookup, not a decode.
+- **...but only while the view moves** (`settleTargetTileZoom`). Kept at rest, the margin made the
+  level depend on the zoom the camera came from: the terrain-3d example opens at 11.5 and the launch
+  camera then sets 12.05, so on the Crosscall the same camera settled on 8 z11 tiles or 16 z12 tiles
+  depending on whether a cull fell in between (2 of 6 cold launches). A held level now asks for one
+  more cull, and a cull of the same view takes the camera's own level: 8 of 8 settled on z12, twice
+  after a held z11, within 0.3 s, with no cull after the camera rests. The Zermatt wobble is a new
+  view every frame, so the margin still holds through it.
 - **This goes beyond both references, deliberately.** mapbox's `reparseOverscaled` only raises the
   parse zoom of a tile already at the source max zoom (`covering_tiles`: `overscaledZ` is used only
   when `it.zoom === maxZoom`); a coarsened tile is parsed at its own zoom, and its layer `minzoom`

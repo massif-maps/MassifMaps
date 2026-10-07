@@ -23,6 +23,7 @@ using namespace massif;
 #include "TestCheck.h"
 
 void testTargetTileZoomHysteresis();
+void testTargetTileZoomSettlesAtRest();
 void testStyleTileZoomStaleness();
 
 void testTileStyleZoom() {
@@ -51,6 +52,7 @@ void testTileStyleZoom() {
     TEST_CHECK(calculateStyleTileZoom(12, -1, 2) == 12, "an unset target leaves the tile's own zoom");
 
     testTargetTileZoomHysteresis();
+    testTargetTileZoomSettlesAtRest();
     testStyleTileZoomStaleness();
 }
 
@@ -74,6 +76,27 @@ void testTargetTileZoomHysteresis() {
     TEST_CHECK(calculateTargetTileZoom(14.50, 11, H) == 14, "a jump lands where it lands, not one level on");
 
     TEST_CHECK(calculateTargetTileZoom(11.99, 12, 0.0) == 11, "a zero margin follows every crossing");
+}
+
+// The bug: the terrain-3d example opens at 11.5, the launch camera then sets 12.05, and the margin kept z11 tiles for
+// good - on the Crosscall the same camera settled on 8 z11 or 16 z12 tiles depending on whether a cull fell in between.
+void testTargetTileZoomSettlesAtRest() {
+    const double H = 0.15;
+    bool held = false;
+
+    int target = settleTargetTileZoom(12.05, 11, H, false, held);
+    TEST_CHECK(target == 11 && held, "moving into the margin keeps the level, and says it is held");
+    target = settleTargetTileZoom(12.05, target, H, true, held);
+    TEST_CHECK(target == 12 && !held, "the same view culled again takes the camera's own level");
+
+    // The 2D/3D switch at Zermatt: the focus drifts 12.05 -> 11.95 -> 12.05, a new view every frame.
+    target = settleTargetTileZoom(11.95, 12, H, false, held);
+    TEST_CHECK(target == 12 && held, "a wobble while the view moves still holds");
+    target = settleTargetTileZoom(12.05, target, H, false, held);
+    TEST_CHECK(target == 12 && !held, "and back over the boundary nothing changed");
+
+    target = settleTargetTileZoom(11.95, 12, H, true, held);
+    TEST_CHECK(target == 11 && !held, "a wobble that stops below the boundary settles on the level below");
 }
 
 // Whether a cached tile still styles the way the camera asks. Tasks in flight survive a

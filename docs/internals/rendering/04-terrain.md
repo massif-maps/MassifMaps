@@ -217,6 +217,27 @@ that off-by-default mode its node texture is twice as dense as its mesh and filt
 mapbox never meets this: GRID_DIM 128 over a maxzoom-14 512-texel DEM is one texel per node at
 z16 by construction of the data, not by a rule.
 
+#### The edge box widens one level, not to a stand-in's cell
+
+The widening is capped at **one level** (`ElevationNodeField::edgeBoxScale`, 2x). It used to follow
+the neighbour grid all the way, up to 64x, and the neighbour grid is whatever
+`getDataTileGrid(CACHED_ONLY)` returns: while a neighbour's own DEM is still loading that is a
+cached ancestor, often z5-z6 on a cold start. Such an ancestor counts as a border improvement over
+"none", so the ring was re-patched with a 64x box - 1024 texels, two tile widths averaged into every
+edge node. Across a valley that lifts the whole edge row hundreds of metres above the floor, and the
+outermost cell becomes a near-vertical wall with the drape smeared down it in vertical stripes. It
+lived until the neighbour's own grid landed and the ring was patched again at 1x.
+
+Seen on the web build, cold cache, Massif outdoor over the mapterhorn DEM, camera `7.62/45.78 z12.5
+tilt 25 rot 0` (looking north up the Valtournenche from Châtillon): `12/2133-2135/1460` patched with
+`s=64` on their north edge (lat 45.84) at ~1.2 s, and a dam across the valley there for ~0.5 s.
+Capped, the same patches fire at the same time and nothing stands up.
+
+One level is what an adjacent cover tile drawn from its OWN data can differ by; anything coarser is a
+placeholder the encoder re-patches when the real grid arrives. The cost: next to a stand-in more
+than one level coarser the seam no longer meets the stand-in's interpolation, so a crack can show
+there instead of a wall, for the same fraction of a second. A crack hides less map than a wall.
+
 #### An edge node's box is summed per REGION, not per texel
 
 Encoding the node texture was, for a while, the whole DEM pipeline: `nodeMs` 907 of a 1002 ms
@@ -229,7 +250,8 @@ one of those texels was a bilinear `sampleHeight` into it. Measured with
 `demNodeTexels{Own,SameLevel,Coarse}`: **98% of the texels an edge node reads come from a coarse
 neighbour**, 14.9 million of them a second. The box is widened to the coarse neighbour's cell
 (`edgeBoxScales`), so the worse the zoom gap the bigger the box *and* the larger the coarse share -
-`boxTexelsPerCall` 96 / 1141 / 2070 gave `nodeMs` 8.7 / 151.5 / 907.
+`boxTexelsPerCall` 96 / 1141 / 2070 gave `nodeMs` 8.7 / 151.5 / 907. (Measured before the one-level
+cap [above](#the-edge-box-widens-one-level-not-to-a-stand-ins-cell); boxes that wide no longer occur.)
 
 `ElevationNodeField::nodeHeightRegions` splits the box into at most nine bands - three column bands
 (west of our raster, our own, east of it) by three row bands - so each band has **one** owner and the
@@ -323,6 +345,15 @@ and picks the wrong edge. The tile clip had the same bug and was fixed with a `u
 same offset applies here by the same argument, but adding it moves settled contour positions by
 changing the elevation interpolation (2.8 % of the frame at the camera above), so it is left for a
 deliberate on-device comparison rather than folded into the clipping fix.
+
+**Large gaps make a wall, by construction, and were not seen to.** At 2^k the fine tile's edge is one
+chord per 2^k cells, so its outermost cell bridges that chord to its own relief. Measured on the web
+build around Châtillon (7.62/45.78, the camera of
+[the edge box section](#the-edge-box-widens-one-level-not-to-a-stand-ins-cell)): steady state, a
+4x seam where the LOD ring drops two levels (z13 beside z11, a ~210 m chord); 8x for ~400 ms during
+a zoom out; 16x-32x for ~200 ms after a z9 -> z14 jump (a z15 leaf beside z10, ~430 m), whether or
+not the network is held. No frame inside those windows showed a wall. A cover balanced to one level
+between neighbours would remove them, at a drape cache cost; not done without a frame that needs it.
 
 ### Skirts: absent from the shared ground only
 

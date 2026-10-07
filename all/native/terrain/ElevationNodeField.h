@@ -46,6 +46,18 @@ namespace massif {
         }
 
         /**
+         * An edge node's box widening for a coarser neighbour grid, capped at one level: a coarser one is a stand-in
+         * ancestor, and matching it lifts the edge row into a wall across a valley (04-terrain.md, "The edge box widens one level").
+         */
+        static int edgeBoxScale(double ourTexel, double neighbourTexel) {
+            int scale = 1;
+            while (neighbourTexel > ourTexel * scale * 1.5 && scale < 2) {
+                scale *= 2;
+            }
+            return scale;
+        }
+
+        /**
          * Whether the box of node i (of `nodes`, over `width` texels) reaches past the raster:
          * such a node reads the neighbour tile, and the GPU texture recomputes it with one.
          */

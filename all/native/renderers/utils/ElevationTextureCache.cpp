@@ -7,6 +7,7 @@
 #include "renderers/utils/Texture.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/ElevationTileGrid.h"
+#include "terrain/SmoothBaseLevel.h"
 #include "utils/Const.h"
 #include "utils/Log.h"
 
@@ -604,11 +605,11 @@ namespace massif {
             double metersPerInternal = 1.0 / std::max(1.0e-12, _elevationManager->getDisplayScale(internalY));
             int shift = std::max(0, zoom - SMOOTH_BASE_ZOOM_HINT);
             std::shared_ptr<ElevationTileGrid> grid;
+            int coarser = 0;
             for (int pass = 0; pass < 2; pass++) {
                 MapTile coarse = _elevationManager->getDetailDataTile(MapTile(x >> shift, y >> shift, zoom - shift, 0), _detailLevels);
-                // An ancestor answering is fine - coarser is smoother - and may be all there ever is:
-                // the grid cache resolves a level through an ancestor and then never fetches it, so
-                // insisting on the exact level left every building on the sentinel for good.
+                // An ALIAS answering is final: the grid cache resolves a level through an ancestor and
+                // never fetches it, so insisting on the exact level left every building on the sentinel.
                 grid = _elevationManager->getDataTileGrid(coarse, ElevationManager::LoadMode::CACHED_ONLY);
                 if (!grid) {
                     if (prefetch) {
@@ -617,11 +618,24 @@ namespace massif {
                     return false;
                 }
                 double posting = Const::WORLD_SIZE / (1 << grid->getTile().getZoom()) / std::max(1, grid->getWidth()) * metersPerInternal;
-                int coarser = (posting > 0 ? static_cast<int>(std::ceil(std::log(SMOOTH_BASE_POSTING / posting) / std::log(2.0))) : 0);
+                coarser = smoothBaseLevelOffset(posting, SMOOTH_BASE_POSTING);
                 if (coarser <= 0 || shift + coarser > zoom) {
                     break;
                 }
                 shift += coarser;
+            }
+            // A far ancestor walked to is a level not loaded yet, and in a valley it averages in the
+            // peaks: Zermatt's first 3D frames stood on a z5 grid, 550 m up.
+            MapTile wanted = smoothBaseWantedTile(x, y, zoom, grid->getTile().getZoom(), coarser, maxAncestorLevels);
+            if (wanted.getZoom() >= 0) {
+                std::shared_ptr<ElevationTileGrid> exact = _elevationManager->getDataTileGrid(wanted, ElevationManager::LoadMode::CACHED_EXACT);
+                if (!exact) {
+                    if (prefetch) {
+                        _elevationManager->requestTileGrid(wanted, 2);
+                    }
+                    return false;
+                }
+                grid = exact;
             }
             height = grid->sampleHeight(internalX, internalY) * displayScale;
             return true;

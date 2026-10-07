@@ -386,7 +386,8 @@ namespace massif {
         } else {
             std::lock_guard<std::mutex> lock(_mutex);
             MapTile searchTile = tile;
-            for (int depth = 0; depth <= MAX_ANCESTOR_SEARCH_DEPTH; depth++) {
+            int maxDepth = (mode == LoadMode::CACHED_EXACT ? 0 : MAX_ANCESTOR_SEARCH_DEPTH);
+            for (int depth = 0; depth <= maxDepth; depth++) {
                 std::shared_ptr<ElevationTileGrid> grid;
                 if (readCachedGrid(searchTile.getTileId(), grid)) {
                     if (grid) {
@@ -409,7 +410,7 @@ namespace massif {
             }
         }
 
-        if (mode == LoadMode::CACHED_ONLY || tileFailed) {
+        if (mode == LoadMode::CACHED_ONLY || mode == LoadMode::CACHED_EXACT || tileFailed) {
             return std::shared_ptr<ElevationTileGrid>();
         }
 

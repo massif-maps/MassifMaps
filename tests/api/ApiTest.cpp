@@ -91,6 +91,7 @@ void testTerrainTesselation();
 void testFlattenSwitch();
 void testTerrainDecodeWait();
 void testPrefetchOrder();
+void testSmoothBaseLevel();
 void testTileStyleZoom();
 void testTileCacheHold();
 void testKineticStep();
@@ -487,6 +488,7 @@ int main() {
     testFlattenSwitch();
     testTerrainDecodeWait();
     testPrefetchOrder();
+    testSmoothBaseLevel();
     testTileStyleZoom();
     testTileCacheHold();
     testKineticStep();

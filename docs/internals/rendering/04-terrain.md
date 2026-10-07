@@ -1300,7 +1300,8 @@ animate.
 
 **The focus is on the ground, held while a finger is down: maplibre's model.** maplibre pins the centre to
 the terrain every frame, so a zoom is the distance to the ground at every altitude; during a drag,
-pinch or fling (`elevationFreeze`) the centre keeps its height, and at the end
+pinch or fling (`elevationFreeze`) the centre keeps its height - on web the right-button rotate counts
+too (`WebMapView::setDragRotating`), as maplibre freezes for every handler - and at the end
 `recalculateZoomAndCenter` holds the camera and slides the centre down the view ray onto the ground,
 the zoom re-derived from the new distance (`CameraClearance::groundAlongView`,
 `MapRenderer::landFocusAlongView`). Pinned during the drag too, as mapbox does, a pan across a ridge

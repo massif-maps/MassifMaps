@@ -57,6 +57,7 @@ namespace massif {
         void syncCanvasSize();
         void applyDragRotate(float x, float y, double pixelRatio);
         void canvasPos(const EmscriptenMouseEvent* event, double pixelRatio, float& x, float& y) const;
+        void setDragRotating(bool rotating);
         void cancelDrag();
 
         const std::string _canvasSelector;

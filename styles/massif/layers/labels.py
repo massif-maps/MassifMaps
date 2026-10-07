@@ -8,6 +8,16 @@ PEAK_TEXT = ['case', ['==', ['to-string', ['coalesce', get('ele'), '']], ''], NA
 PEAK_SIZE = zoom_ramp(8, 0.6, 11, 0.8, 13, 1.2, 16, 1.4)
 # the name clear of that glyph at its largest: the converter carries a literal offset only
 PEAK_GAP = [0, 0.75]
+IN_3D = ['==', get('render::3d'), True]
+
+
+def above_in_3d(lay):
+    """on terrain the name stands over its summit, SDK only: maplibre has no `render::3d`"""
+    meta = lay.setdefault('metadata', {})
+    meta['massif:layout'] = {**meta.get('massif:layout', {}),
+                             'text-anchor': ['case', IN_3D, 'bottom', 'top'],
+                             'text-offset': ['case', IN_3D, ['literal', [0, -PEAK_GAP[1]]], ['literal', PEAK_GAP]]}
+    return lay
 
 
 def peak_icon(c):
@@ -91,23 +101,23 @@ def peaks(v):
     c = v.palette
     outdoor = v.flags.get('trails', False)
     return ([
-        boosted(layer('peak-outdoor-minor', 'symbol', 'mountain_peak', minzoom=0,
+        boosted(above_in_3d(layer('peak-outdoor-minor', 'symbol', 'mountain_peak', minzoom=0,
               filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['>', get('rank'), 3]],
               layout={'icon-image': peak_icon(c), 'icon-size': PEAK_SIZE, 'text-field': PEAK_TEXT,
                       'text-font': MEDIUM, 'text-size': 11, 'text-anchor': 'top', 'text-offset': PEAK_GAP,
                       'text-max-width': 8, 'text-optional': True},
-              **text(c, 'label-natural')), 'class'),
+              **text(c, 'label-natural'))), 'class'),
     ] if outdoor else []) + [
         # Medium, Standard's natural labels': a regular weight on a white halo was lost over shaded relief
         # outdoor draws a summit from the tiles' first zoom
-        boosted(layer('peak-outdoor' if outdoor else 'peak', 'symbol', 'mountain_peak', minzoom=0 if outdoor else 11,
+        boosted(above_in_3d(layer('peak-outdoor' if outdoor else 'peak', 'symbol', 'mountain_peak', minzoom=0 if outdoor else 11,
               filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name']] if not outdoor else
               ['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['<=', get('rank'), 3]],
               layout={'icon-image': peak_icon(c), 'icon-size': PEAK_SIZE, 'text-field': PEAK_TEXT,
                       'text-font': MEDIUM, 'text-size': zoom_ramp(11, 10, 16, 12),
                       'text-anchor': 'top', 'text-offset': PEAK_GAP, 'text-max-width': 8,
                       'text-optional': True},
-              **text(c, 'label-natural')), 'class'),
+              **text(c, 'label-natural'))), 'class'),
     ]
 
 

@@ -98,14 +98,15 @@ it `true`.
 ## Keeping tiles
 
 A source with `type: 'persistent-cache'` keeps tiles in a database file. On the web the file lives
-in the module's virtual filesystem, so mount IndexedDB there first and write it back now and then:
+in the module's virtual filesystem, in memory; `persistDirectory` keeps a directory of it in the
+browser's origin private file system (OPFS), restored now and written back every 10 s and when the
+page is hidden:
 
 ```js
-const { FS } = map.module;
-FS.mkdir('/cache');
-FS.mount(FS.filesystems.IDBFS, {}, '/cache');
-await new Promise((resolve) => FS.syncfs(true, resolve));
-setInterval(() => FS.syncfs(false, () => {}), 10000);
+import { createMap, persistDirectory } from '@massif-maps/web';
+
+const map = await createMap(document.getElementById('map'));
+await persistDirectory(map.module, '/cache');
 
 map.addLayer('basemap', {
   type: 'raster',
@@ -113,8 +114,8 @@ map.addLayer('basemap', {
 });
 ```
 
-Every [example](/examples) on this site keeps its tiles this way, one IndexedDB database per
-source, shared between the examples (`web/examples/shared.mjs`).
+Every [example](/examples) on this site keeps its tiles this way, one database per source, shared
+between the examples (`web/examples/shared.mjs`).
 
 ## What differs from Android and iOS
 

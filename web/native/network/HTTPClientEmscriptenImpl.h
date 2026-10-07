@@ -14,7 +14,7 @@
 namespace massif {
 
     /**
-     * The Fetch API, called synchronously, which is what every caller in the SDK expects. Legal
+     * A synchronous XMLHttpRequest, which is what every caller in the SDK expects. Legal
      * only off the browser's main thread - the SDK's own tile and envelope pools are threads, so
      * that holds. The whole body arrives at once, so a streaming request gets one callback.
      */

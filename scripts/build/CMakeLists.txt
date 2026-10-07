@@ -458,7 +458,6 @@ if(EMSCRIPTEN)
     "-sMIN_WEBGL_VERSION=2" "-sMAX_WEBGL_VERSION=2" "-sFULL_ES3"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sMODULARIZE=1" "-sEXPORT_ES6=1"
-    "-sFETCH=1"
     # stringToNewUTF8/UTF8ToString are what PlatformUtils and the demo read location through; FS is
     # how the host page pushes assets and fonts into the virtual filesystem.
     "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS,cwrap,ccall,addFunction,removeFunction,getValue,setValue,HEAPU8,HEAP32,HEAPF64,addRunDependency,removeRunDependency"
@@ -466,8 +465,9 @@ if(EMSCRIPTEN)
     # mm_on and mm_source_create_custom take a caller's function pointer, which on the web means a
     # JavaScript one added to the table at runtime.
     "-sALLOW_TABLE_GROWTH=1"
-    # IndexedDB behind a mounted directory, so a page can keep its tile caches across reloads.
-    "-lidbfs.js"
+    # Files in wasm memory, so a worker's file I/O does not queue behind the frame on the main thread;
+    # persistDirectory (web/js/massif.mjs) keeps a directory in OPFS. docs/maintenance/web-build.md.
+    "-sWASMFS"
     # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
     # /fonts in the virtual filesystem. web/fonts is TRACKED - without it no label draws at all.
     "SHELL:--preload-file ${SDK_BASE_DIR}/web/fonts@/fonts")

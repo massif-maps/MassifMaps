@@ -174,7 +174,7 @@
    * The shaders are GENERATED from alpimaps' reliefShaders.ts (gen-relief-shaders.mjs), so this is
    * the same source the app ships, not a copy that will drift.
    */
-  import { Massif, MassifCamera } from '../js/massif.mjs';
+  import { Massif, MassifCamera, persistDirectory } from '../js/massif.mjs';
   import { RELIEF_SURFACE_SHADER, RELIEF_OUTLINE_SHADER, RELIEF_DEPTH_OUTLINE_SHADER } from './relief-shaders.js';
 
   const query = new URLSearchParams(location.search);
@@ -239,29 +239,10 @@
     exaggeration: num('exaggeration', 1) };
 
   const { default: Module } = await import('./massif-demo.mjs');
-  const module = await Module({
-    canvas: document.getElementById('map'),
-    preRun: [(m) => {
-      if (!CACHE) { return; }
-      m.FS.mkdir('/cache');
-      m.FS.mount(m.FS.filesystems.IDBFS, {}, '/cache');
-      m.addRunDependency('idbfs');
-      m.FS.syncfs(true, (error) => {
-        if (error) { console.warn('cache: load failed', error); }
-        m.removeRunDependency('idbfs');
-      });
-    }]
-  });
+  const module = await Module({ canvas: document.getElementById('map') });
   if (CACHE) {
-    let syncing = false;
-    const persist = () => {
-      if (syncing) { return; }
-      syncing = true;
-      module.FS.syncfs(false, (error) => { syncing = false; if (error) { console.warn('cache: save failed', error); } });
-    };
-    setInterval(persist, 10000);
-    addEventListener('pagehide', persist);
-    globalThis.clearTileCache = () => indexedDB.deleteDatabase('/cache');
+    await persistDirectory(module, '/cache');
+    globalThis.clearTileCache = async () => (await navigator.storage.getDirectory()).removeEntry('cache', { recursive: true });
   }
   const massif = new Massif(module);
   const camera = await MassifCamera.attach(massif);

@@ -389,7 +389,8 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
   Drawing them instead cost 4.3% of the frame rate on the Crosscall for pixels nobody sees.
 - **Two memory caches, split by use, not by bucket.** A layer keeps every tile a cull asks for - the
   view, the label band, the shadow casters and the preloading ring - in `_visibleCache` (512 MB,
-  never meant to fill), and only tiles no cull asks for any more in `_preloadingCache` (10 MB LRU).
+  never meant to fill), and only tiles no cull asks for any more in `_preloadingCache` (an LRU sized
+  from the screen, below).
   A fetched tile always lands in the visible cache; `holdTilesInUse` (`layers/TileCacheHold.h`)
   moves the unused ones out on every refresh. Until 2026-09-30 only the view was held and the other
   kinds were cached by their fetch flag: once the label band and the casters outgrew 10 MB, each
@@ -397,6 +398,16 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
   redrawing on each arrival. Holding them at refresh alone was not enough either: on the iOS
   simulator several arrivals landed between two culls and pushed each other out first
   ([performance log](../performance-log.md#34-shadow-casters-and-the-label-band-refetched-forever-2026-09-30)).
+- **The preloading cache follows the screen** - maplibre's `TileManager.updateCacheSize`: five
+  viewports of tiles (`(ceil(w / tile) + 1) x (ceil(h / tile) + 1) x 5`, the tile shrunk by the
+  layer's zoom bias) at the average size of the tiles in view, never under the old 10 MB, resized
+  on every refresh before the hold. A fixed 10 MB held ~40 decoded satellite tiles, so turning
+  round and back re-fetched the whole view: web, terrain-3d at the maplibre 3D-terrain example's
+  camera (47.28324, 11.39146 z12.05 tilt 25), 1200x800, two 360 degree turns of 6 s, the second
+  turn re-fetched 220 visible tiles with a blank tile in 109-114 of ~305 culls; sized from the view
+  (73 MB satellite, 54 MB labels), 52-68 fetches and 9-19 culls with a blank, the rest left over
+  from a first turn that had not finished loading. `setTextureCacheCapacity` /
+  `setTileCacheCapacity` fix the capacity at the app's number instead.
 - **Preloading is a thin border now.** The label band already fetches the tiles within 20-100 px of
   the screen edge; the ring (`PRELOADING_TILE_SCALE`, a tile grown by a quarter each side) adds the
   next sliver: 5-8 tiles, +14-21% loads, at Grenoble z15.5 tilt 45. Neither maplibre nor mapbox

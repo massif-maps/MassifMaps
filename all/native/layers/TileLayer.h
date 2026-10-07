@@ -525,6 +525,9 @@ class ProjectionSurface;
         // the caches here re-decoded the whole map on every integer zoom crossing.
         virtual void onTargetTileZoomChanged() { }
 
+        // The preloading cache's size by maplibre's viewport rule (TileCacheHold.h), floored at floorBytes.
+        std::size_t calculateViewportCacheCapacity(const std::shared_ptr<CullState>& cullState, std::size_t visibleBytes, std::size_t visibleTiles, std::size_t floorBytes) const;
+
         const DirectorPtr<TileDataSource> _dataSource;
         std::shared_ptr<DataSourceListener> _dataSourceListener;
 

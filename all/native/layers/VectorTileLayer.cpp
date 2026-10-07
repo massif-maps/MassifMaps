@@ -140,6 +140,7 @@ namespace massif {
     
     void VectorTileLayer::setTileCacheCapacity(std::size_t capacityInBytes) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
+        _tileCacheCapacityFixed = true;
         _preloadingCache.resize(capacityInBytes);
     }
     
@@ -427,6 +428,10 @@ namespace massif {
         std::unordered_set<long long> usedTileIds;
         for (const std::shared_ptr<TileDrawData>& drawData : _tempDrawDatas) {
             usedTileIds.insert(drawData->getTileId());
+        }
+        // Before the hold: tiles moved out of view land in a cache already sized for this view.
+        if (!_tileCacheCapacityFixed) {
+            _preloadingCache.resize(calculateViewportCacheCapacity(cullState, _visibleCache.size(), _visibleCache.keys().size(), DEFAULT_PRELOADING_CACHE_SIZE));
         }
         holdTilesInUse(_visibleCache, _preloadingCache, usedTileIds);
         

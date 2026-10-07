@@ -132,6 +132,50 @@ namespace {
         TEST_CHECK(preloadingCache.size() <= preloadingCache.capacity(), "the released tiles respect the preloading bound");
     }
 
+    // A look-around: the view turns through `directions` sets of `tilesPerView` tiles and back to the first. Returns
+    // how many of the first view's tiles have to be fetched again, with the preloading cache sized `capacityKB`.
+    int refetchedAfterALookAround(std::size_t capacityKB, int directions, int tilesPerView, std::size_t tileKB) {
+        Cache visibleCache(VISIBLE_CAPACITY), preloadingCache(capacityKB);
+        auto view = [&](int direction) {
+            std::unordered_set<long long> used;
+            int fetched = 0;
+            for (int i = 0; i < tilesPerView; i++) {
+                long long id = direction * 1000 + i;
+                used.insert(id);
+                if (!visibleCache.exists(id) && !preloadingCache.exists(id)) {
+                    visibleCache.put(id, 0, tileKB);
+                    fetched++;
+                }
+            }
+            holdTilesInUse(visibleCache, preloadingCache, used);
+            return fetched;
+        };
+        for (int direction = 0; direction < directions; direction++) {
+            view(direction);
+        }
+        return view(0);
+    }
+
+    void testTheViewportRuleIsMaplibres() {
+        // 1200x800 with 256 px tiles: 6 x 5 tiles in view, five viewports of them, 256 KB each.
+        std::size_t capacity = viewportCacheCapacity(30 * 256 * 1024, 30, 1200, 800, 256, 10 * 1024 * 1024);
+        TEST_CHECK(capacity == 150u * 256 * 1024, "the out-of-view cache holds five viewports of tiles at the size of those in view");
+        TEST_CHECK(viewportCacheCapacity(30 * 256 * 1024, 30, 1200, 800, 512, 0) == 4u * 3 * 5 * 256 * 1024, "larger tiles on screen, fewer of them in a view");
+        TEST_CHECK(viewportCacheCapacity(1024, 1, 200, 200, 256, 10 * 1024 * 1024) == 10u * 1024 * 1024, "a small view keeps the old 10 MB as its floor");
+        TEST_CHECK(viewportCacheCapacity(0, 0, 1200, 800, 256, 7) == 7u, "with nothing in view the floor stands");
+    }
+
+    void testALookAroundComesBackToItsTiles() {
+        // The bug: turning round the Innsbruck view and back re-fetched every tile, 10 MB holding ~40 satellite tiles.
+        const int directions = 4, tilesPerView = 30;
+        const std::size_t tileKB = 256;
+        int withTheOldCap = refetchedAfterALookAround(PRELOADING_CAPACITY, directions, tilesPerView, tileKB);
+        std::size_t viewportKB = viewportCacheCapacity(tilesPerView * tileKB, tilesPerView, 1200, 800, 256, PRELOADING_CAPACITY);
+        int withTheViewportRule = refetchedAfterALookAround(viewportKB, directions, tilesPerView, tileKB);
+        TEST_CHECK(withTheOldCap == tilesPerView, "with a 10 MB cache, back to the first view every tile is fetched again");
+        TEST_CHECK(withTheViewportRule == 0, "with the viewport rule, back to the first view nothing is fetched");
+    }
+
     void testAUsedPreloadedTileIsPromoted() {
         // A tile preloaded earlier comes into use: it moves, it is not duplicated or refetched.
         Cache visibleCache(VISIBLE_CAPACITY), preloadingCache(PRELOADING_CAPACITY);
@@ -151,4 +195,6 @@ void testTileCacheHold() {
     testUsedTilesAreFetchedOnce();
     testUnusedTilesReturnToTheBoundedCache();
     testAUsedPreloadedTileIsPromoted();
+    testTheViewportRuleIsMaplibres();
+    testALookAroundComesBackToItsTiles();
 }

@@ -66,7 +66,8 @@ namespace massif {
         /**
          * Sets the tile texture cache capacity (uncompressed GPU textures); too small a cache causes disappearing tiles.
          * An opaque 256x256 tile takes 192KB, a transparent one 256KB; the tile count grows with screen size, tilt and preloading.
-         * The default is 10MB, enough for most uses with preloading; reduce it when preloading is disabled.
+         * By default the cache follows the screen: five screens of tiles at the size of the ones in view, as maplibre
+         * keeps, and never under 10MB. Setting a capacity fixes it at that value instead.
          * @param capacityInBytes The new tile bitmap cache capacity in bytes.
          */
         void setTextureCacheCapacity(std::size_t capacityInBytes);
@@ -177,6 +178,7 @@ namespace massif {
         
         cache::timed_lru_cache<long long, TileInfo> _visibleCache;
         cache::timed_lru_cache<long long, TileInfo> _preloadingCache;
+        bool _textureCacheCapacityFixed = false; // set by setTextureCacheCapacity: the app's number replaces the viewport rule
     };
     
 }

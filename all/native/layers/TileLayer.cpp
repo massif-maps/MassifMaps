@@ -1,4 +1,5 @@
 #include "TileLayer.h"
+#include "layers/TileCacheHold.h"
 #include "layers/NearPlaneCover.h"
 #include "layers/TileLODRule.h"
 #include "layers/TileStyleZoom.h"
@@ -1205,6 +1206,17 @@ namespace massif {
         return childTileCount;
     }
     
+    std::size_t TileLayer::calculateViewportCacheCapacity(const std::shared_ptr<CullState>& cullState, std::size_t visibleBytes, std::size_t visibleTiles, std::size_t floorBytes) const {
+        std::shared_ptr<Options> options = getOptions();
+        if (!cullState || !options) {
+            return floorBytes;
+        }
+        const ViewState& viewState = cullState->getViewState();
+        // A zoom bias draws finer tiles, so more of them fill the same view.
+        double tileSizePixels = options->getTileDrawSize() * viewState.getDPI() / Const::UNSCALED_DPI * std::pow(2.0, -getZoomLevelBias());
+        return viewportCacheCapacity(visibleBytes, visibleTiles, viewState.getWidth(), viewState.getHeight(), tileSizePixels, floorBytes);
+    }
+
     std::shared_ptr<vt::TileTransformer> TileLayer::getTileTransformer() const {
         return _tileRenderer->getTileTransformer();
     }

@@ -8,6 +8,7 @@
 #include "graphics/utils/SkyBitmapGenerator.h"
 #include "datasources/TileDataSource.h"
 #include "layers/TileCacheHold.h"
+#include "layers/TileCacheStash.h"
 #include "layers/TileStyleZoom.h"
 #include "layers/VectorTileEventListener.h"
 #include "projections/Projection.h"
@@ -77,7 +78,8 @@ namespace massif {
         _visibleTileIds(),
         _tempDrawDatas(),
         _visibleCache(DEFAULT_VISIBLE_CACHE_SIZE),
-        _preloadingCache(DEFAULT_PRELOADING_CACHE_SIZE)
+        _preloadingCache(DEFAULT_PRELOADING_CACHE_SIZE),
+        _stashedVisibleCache(DEFAULT_VISIBLE_CACHE_SIZE)
     {
         if (!decoder) {
             throw NullArgumentException("Null decoder");
@@ -329,6 +331,7 @@ namespace massif {
         if (preloadingTiles) {
             _preloadingCache.clear();
             _spanReferenceCache.clear();
+            _stashedVisibleCache.clear();
         } else {
             _visibleCache.clear();
         }
@@ -342,6 +345,15 @@ namespace massif {
         } else {
             _visibleCache.invalidate_all(std::chrono::steady_clock::now());
         }
+    }
+
+    void VectorTileLayer::swapDecodedTiles(bool restore) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        if (!restore) {
+            _stashedVisibleCache.clear();
+        }
+        swapStashedTiles(_visibleCache, _preloadingCache, _stashedVisibleCache, [](const TileInfo& tileInfo) { return tileInfo.getSize(); });
+        _spanReferenceCache.clear(); // refetched with the next cull, like an invalid tile
     }
 
     std::shared_ptr<VectorTileDecoder::TileMap> VectorTileLayer::getTileMap(long long tileId) const {

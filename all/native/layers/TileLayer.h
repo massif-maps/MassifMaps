@@ -21,6 +21,7 @@
 #include <atomic>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
 namespace massif {
@@ -411,6 +412,11 @@ class ProjectionSurface;
         virtual void fetchTile(long long tileId, const MapTile& mapTile, bool preloadingTile, int priorityDelta) = 0;
         virtual void clearTiles(bool preloadingTiles) = 0;
         virtual void invalidateTiles(bool preloadingTiles) = 0;
+        /**
+         * The terrain decode state changed: puts the decoded tiles aside and, with restore, brings back the
+         * set put aside before, decoded for the new state. Visible tiles stay drawn until replaced.
+         */
+        virtual void swapDecodedTiles(bool restore) = 0;
 
         virtual void calculateDrawData(const MapTile& visTile, const MapTile& closestTile, bool preloadingTile) = 0;
         // True while calculateDrawData is called for a shadow caster tile (see _shadowCasterTiles).
@@ -626,13 +632,22 @@ class ProjectionSurface;
         std::weak_ptr<GLResourceManager> _glResourceManager;
         std::weak_ptr<ProjectionSurface> _projectionSurface;
 
+        struct TerrainDecodeState {
+            bool enabled = false;
+            int meshResolution = 0;
+            int minZoom = 0;
+            bool sourceDensity = false;
+            bool sourceDensityLines = false;
+            bool flatContentDraped = false;
+
+            bool operator == (const TerrainDecodeState& other) const {
+                return enabled == other.enabled && meshResolution == other.meshResolution && minZoom == other.minZoom && sourceDensity == other.sourceDensity && sourceDensityLines == other.sourceDensityLines && flatContentDraped == other.flatContentDraped;
+            }
+            bool operator != (const TerrainDecodeState& other) const { return !(*this == other); }
+        };
         std::weak_ptr<TerrainOptions> _terrainOptions;
-        bool _terrainEnabled = false;
-        int _terrainMeshResolution = 0;
-        int _terrainMinZoom = 0;
-        bool _terrainSourceDensity = false;
-        bool _terrainSourceDensityLines = false;
-        bool _terrainFlatContentDraped = false;
+        TerrainDecodeState _terrainDecodeState;
+        std::optional<TerrainDecodeState> _stashedTerrainDecodeState; // of the tiles swapDecodedTiles put aside, none if not restorable
         float _terrainViewDistanceFactor = 0.0f; // last TerrainOptions view distance factor a cull ran with
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with

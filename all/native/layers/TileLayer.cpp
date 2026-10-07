@@ -346,30 +346,26 @@ namespace massif {
                 terrainOptions = options->getTerrainOptions();
             }
             // The decode state, not isEnabled(): with TerrainFlattenMode FULL a flat map decodes as a plain 2D one.
-            bool terrainEnabled = terrainOptions && terrainOptions->isDecodeActive();
-            int terrainMeshResolution = terrainOptions ? terrainOptions->getMeshResolution() : 0;
-            int terrainMinZoom = terrainOptions ? terrainOptions->getMinZoom() : 0;
+            TerrainDecodeState decodeState;
+            decodeState.enabled = terrainOptions && terrainOptions->isDecodeActive();
+            decodeState.meshResolution = terrainOptions ? terrainOptions->getMeshResolution() : 0;
+            decodeState.minZoom = terrainOptions ? terrainOptions->getMinZoom() : 0;
             // Must match resetTileTransformer(), or tiles decoded for the other mode stay cached forever.
-            bool terrainTangramContent = terrainEnabled && terrainOptions && !terrainOptions->isDrapeFillsEnabled();
-            bool terrainSourceDensity = (terrainOptions && terrainOptions->isDrapeFillsEnabled()) || isAreaSourceDensityForced();
-            bool terrainSourceDensityLines = terrainTangramContent || (terrainOptions && terrainOptions->isDrapeLinesEnabled()) || isLineSourceDensityForced();
+            bool terrainTangramContent = decodeState.enabled && terrainOptions && !terrainOptions->isDrapeFillsEnabled();
+            decodeState.sourceDensity = (terrainOptions && terrainOptions->isDrapeFillsEnabled()) || isAreaSourceDensityForced();
+            decodeState.sourceDensityLines = terrainTangramContent || (terrainOptions && terrainOptions->isDrapeLinesEnabled()) || isLineSourceDensityForced();
             // Decides whether flat styles share a tile layer (TileReader), so a switch re-decodes
-            bool terrainFlatContentDraped = terrainOptions && terrainOptions->isDrapeFillsEnabled() && terrainOptions->isDrapeLinesEnabled();
+            decodeState.flatContentDraped = terrainOptions && terrainOptions->isDrapeFillsEnabled() && terrainOptions->isDrapeLinesEnabled();
             // Not the exaggeration: only the GPU reads it, so comparing it would re-decode the map every frame it animates.
-            if (_terrainOptions.lock() != terrainOptions || _terrainEnabled != terrainEnabled || _terrainMeshResolution != terrainMeshResolution || _terrainMinZoom != terrainMinZoom || _terrainSourceDensity != terrainSourceDensity || _terrainSourceDensityLines != terrainSourceDensityLines || _terrainFlatContentDraped != terrainFlatContentDraped) {
-                // Keep the visible tiles on screen while re-fetching: this only changes while the map is flat,
-                // where the old tesselation draws the same picture, and clearing would blank it for a whole decode.
-                invalidateTiles(false);
-                clearTiles(true);
+            bool sameOptions = _terrainOptions.lock() == terrainOptions;
+            if (!sameOptions || _terrainDecodeState != decodeState) {
+                // A repeat 2D/3D switch gets back the tiles the last one put aside, instead of decoding them again.
+                swapDecodedTiles(sameOptions && _stashedTerrainDecodeState == decodeState);
                 markTerrainDecodeUnsettled();
                 resetTileTransformer();
                 _terrainOptions = terrainOptions;
-                _terrainEnabled = terrainEnabled;
-                _terrainMeshResolution = terrainMeshResolution;
-                _terrainMinZoom = terrainMinZoom;
-                _terrainSourceDensity = terrainSourceDensity;
-                _terrainSourceDensityLines = terrainSourceDensityLines;
-                _terrainFlatContentDraped = terrainFlatContentDraped;
+                _stashedTerrainDecodeState = sameOptions ? std::optional<TerrainDecodeState>(_terrainDecodeState) : std::nullopt;
+                _terrainDecodeState = decodeState;
             }
         }
 

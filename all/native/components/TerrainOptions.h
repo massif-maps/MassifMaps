@@ -34,7 +34,8 @@ namespace massif {
             TERRAIN_FLATTEN_MODE_RENDER,
             /**
              * The whole way: a flat map decodes, culls and draws as if no terrain were configured.
-             * The price is a re-decode at each switch, paid while the map is already flat.
+             * The price is a re-decode at a switch, paid while the map is already flat; switching back at
+             * the same view reuses the last decode, kept in memory.
              */
             TERRAIN_FLATTEN_MODE_FULL
         };

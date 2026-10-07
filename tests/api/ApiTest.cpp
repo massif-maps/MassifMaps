@@ -94,6 +94,7 @@ void testPrefetchOrder();
 void testSmoothBaseLevel();
 void testTileStyleZoom();
 void testTileCacheHold();
+void testTileCacheStash();
 void testKineticStep();
 void testLabelPlacementFollowUp();
 void testTileLODRule();
@@ -491,6 +492,7 @@ int main() {
     testSmoothBaseLevel();
     testTileStyleZoom();
     testTileCacheHold();
+    testTileCacheStash();
     testKineticStep();
     testLabelPlacementFollowUp();
     testTileLODRule();

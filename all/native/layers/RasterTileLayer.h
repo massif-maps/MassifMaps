@@ -112,6 +112,7 @@ namespace massif {
         virtual void fetchTile(long long tileId, const MapTile& mapTile, bool preloadingTile, int priorityDelta);
         virtual void clearTiles(bool preloadingTiles);
         virtual void invalidateTiles(bool preloadingTiles);
+        virtual void swapDecodedTiles(bool restore);
 
         virtual vt::RasterFilterMode getRasterFilterMode() const;
 

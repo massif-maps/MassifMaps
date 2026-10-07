@@ -111,6 +111,25 @@ test('a text-offset no longer needs a constant text-size', () => {
     assert.match(mss({ 'text-offset': [0, 1.5], 'text-size': size }), /text-dy: \(1.5 \* linear\(.*\)\);/);
 });
 
+test('an anchor and an offset that branch on render::3d stay live', () => {
+    const in3d = ['==', ['get', 'render::3d'], true];
+    const out = mss({
+        'text-anchor': ['case', in3d, 'bottom', 'top'],
+        'text-offset': ['case', in3d, ['literal', [0, -0.75]], ['literal', [0, 0.75]]],
+        'text-size': 12,
+    });
+    assert.match(out, /text-vertical-alignment: \(\(\[render::3d\] = true\) \? 'bottom' : 'top'\);/);
+    // the same side on both branches folds to the constant
+    assert.match(out, /text-horizontal-alignment: 'middle';/);
+    assert.match(out, /text-dy: \(\(\(\[render::3d\] = true\) \? -0.75 : 0.75\) \* 12\);/);
+    assert.match(out, /text-dx: 0;/);
+});
+
+test('an anchor that branches on something else still takes one branch', () => {
+    const out = mss({ 'text-anchor': ['step', ['zoom'], 'center', 14, 'top'] });
+    assert.doesNotMatch(out, /alignment: \(/);
+});
+
 test('text-opacity fades the halo too, or a hidden label leaves a white ghost', () => {
     // MapTiler hides a label with step(zoom, 0, ..., 13, 1); CartoCSS's text-opacity is the FILL
     // only, so the halo stayed at 1 and drew the name in white at every zoom it should not be at.

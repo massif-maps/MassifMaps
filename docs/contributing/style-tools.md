@@ -1752,6 +1752,13 @@ itself — so MapTiler's `text-offset: [0, 0.05]` hung every road ref off the bo
 shield. A layer with no `text-anchor` now emits MapBox's default, `middle`/`middle`, beside the
 offset.
 
+**A `case` anchor stays live.** A `text-anchor` or `text-offset` written as a `case` with a constant
+on every branch becomes a ternary on each alignment and on `dx`/`dy`, so a style can put a name on
+another side of its icon on terrain - `['==', ['get', 'render::3d'], true]` reads the SDK's
+[render mode](../features/style-parameters.md#the-render-mode-variable-render3d), and maplibre
+reads it as a missing field. Any other branching anchor (Standard's `step` over zoom) still takes one
+branch.
+
 ## Road shields draw the real artwork
 
 A MapBox road shield is a sprite drawn BEHIND its ref, and the sprite is picked per feature —

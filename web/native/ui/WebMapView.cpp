@@ -259,8 +259,16 @@ namespace massif {
     }
 
     /** Ends whatever drag is running, wherever the pointer got to. */
+    void WebMapView::setDragRotating(bool rotating) {
+        _dragRotating = rotating;
+        // A gesture like a finger's, or the terrain focus re-lands on every DEM tile that arrives mid-drag.
+        getMapRenderer()->setTouchGestureActive(rotating);
+    }
+
     void WebMapView::cancelDrag() {
-        _dragRotating = false;
+        if (_dragRotating) {
+            setDragRotating(false);
+        }
         if (_dragMoving) {
             _dragMoving = false;
             onInputEvent(INPUT_EVENT_POINTER2_UP, _lastPointerX, _lastPointerY, _lastPointerX + FIRST_PERSON_POINTER_GAP, _lastPointerY);
@@ -302,7 +310,7 @@ namespace massif {
                     view->onInputEvent(INPUT_EVENT_POINTER1_DOWN, x, y, NO_COORDINATE, NO_COORDINATE);
                     view->onInputEvent(INPUT_EVENT_POINTER2_DOWN, x, y, x + FIRST_PERSON_POINTER_GAP, y);
                 } else {
-                    view->_dragRotating = true;
+                    view->setDragRotating(true);
                 }
             } else {
                 view->_pointerDown = true;
@@ -338,7 +346,7 @@ namespace massif {
                 view->onInputEvent(INPUT_EVENT_POINTER2_UP, x, y, x + FIRST_PERSON_POINTER_GAP, y);
                 view->onInputEvent(INPUT_EVENT_POINTER1_UP, x, y, NO_COORDINATE, NO_COORDINATE);
             } else if (view->_dragRotating) {
-                view->_dragRotating = false;
+                view->setDragRotating(false);
             } else {
                 view->_pointerDown = false;
                 view->onInputEvent(INPUT_EVENT_POINTER1_UP, x, y, NO_COORDINATE, NO_COORDINATE);

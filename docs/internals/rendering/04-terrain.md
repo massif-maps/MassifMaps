@@ -115,7 +115,11 @@ cheap, and each of them was a measured frame cost before it existed:
   reuses it while the point is inside its bounds. Without it every sample paid a projection
   transform, a tile id (`IntPow` alone was 21% of the render thread), a flip and the zoom clamp
   before reaching the cache — to find the tile the previous sample had just used. `lookupTileGrid`
-  keeps a second memo for the callers that arrive with a tile id already.
+  keeps a second memo for the callers that arrive with a tile id already. Only a grid that IS the
+  looked-up tile is kept (`PointGridMemo`): an ancestor answering for a point with no fine data was
+  then reused for the next point inside it, the focus among them, whose own grid was cached. Each DEM
+  arrival cleared the memo, so while tiles loaded the focus flipped between z11 and z8 every ~100 ms
+  and the camera bobbed (web, a right-drag rotate: 41 height changes in one drag, 1-2 after).
 - **The latitude scale, quantised.** `getDisplayScale` is `tanh`-based and was 21% of the render
   thread on its own (`tanh` + `expm1`). It is now memoised over a ~40 m latitude quantum, which
   moves a height by under two millimetres and — being a function of the position alone — keeps the
@@ -1296,7 +1300,8 @@ animate.
 
 **The focus is on the ground, held while a finger is down: maplibre's model.** maplibre pins the centre to
 the terrain every frame, so a zoom is the distance to the ground at every altitude; during a drag,
-pinch or fling (`elevationFreeze`) the centre keeps its height, and at the end
+pinch or fling (`elevationFreeze`) the centre keeps its height - on web the right-button rotate counts
+too (`WebMapView::setDragRotating`), as maplibre freezes for every handler - and at the end
 `recalculateZoomAndCenter` holds the camera and slides the centre down the view ray onto the ground,
 the zoom re-derived from the new distance (`CameraClearance::groundAlongView`,
 `MapRenderer::landFocusAlongView`). Pinned during the drag too, as mapbox does, a pan across a ridge

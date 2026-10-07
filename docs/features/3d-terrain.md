@@ -146,7 +146,7 @@ resamples through metres instead of copying texels, so the seam is continuous.
 | `AutoFlattenParallax` / `AutoFlattenTilt` | `2` / `88` | Render flat once 3D stops earning its cost — see below. `0` disables each half. |
 | `AutoFlattenDuration` / `Flattened` | `0.3` / `false` | Length of the flattening animation (seconds), and the 2D/3D state — set it to switch by hand, read it to know what auto-flattening chose. |
 | `MaxTileZoomCoarsening` | `3` | How much coarser far tiles may get. |
-| `BillboardOcclusionEnabled` / `…Tolerance` | `true` / `0.2` | Hide markers and popups behind a ridge. |
+| `BillboardOcclusionEnabled` / `…Tolerance` | `true` / `0.05` | Hide markers and popups behind a ridge. |
 | `SurfaceShaderSource` | — | Replace the terrain surface shader ([post-processing](/docs/features/post-processing)). |
 | `MinZoom` / `DepthBias` | `5` / `0.0002` | LOD floor and depth slack for draped geometry. |
 

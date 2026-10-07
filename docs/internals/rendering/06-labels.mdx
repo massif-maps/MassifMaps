@@ -1148,6 +1148,19 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   and it hid ~100 labels per pass. Neither test judges a label whose re-anchor is still owed
   (`Label::isElevationStale`) — the same rule as an un-anchored one, since its height is a previous
   step's.
+
+  **The slack is 5% of the distance (`billboardOcclusionTolerance`), not 20%.** At 0.2 the
+  Matterhorn's Zmuttgrat kept its name seen from the Italian side: anchor at w 225, the south face
+  at its pixel 193 — 900 m in front of it, and inside the 20%. Measured on the web build over 360°
+  orbits of the Matterhorn (z13.6, z12.5), Grenoble (z14.5, z13, z16.3) and Zermatt (z16), with the
+  DEM ray (`isSegmentBlocked`) as the truth, per label test: of 1.8 M tests of labels the ray sees,
+  **2** needed a slack between 0.05 and 0.2 and none between 0.03 and 0.05; of the labels it says
+  are hidden, ~51 000 tests fell in that band and were shown. The few visible labels that need
+  more need 1-7x (far ridges, the city edge behind the Bastille) and were hidden at 0.2 already.
+  The 0.2 dates from before labels sat on the drawn surface (above): the error it absorbed is gone.
+  A POI that blinks while orbiting is, more often, losing its **collision** slot: Hörnlihütte over a
+  full orbit was occluded only from 270° to 310°, where the summit really stands in front of it, and
+  dropped at 255°, 315° and 345° by the culler with no occlusion at all.
 - **Occlusion by 3D content.** The ridge test above is a CPU query per label against a read-back
   terrain depth buffer, and terrain is all it knows: a label behind a *building* was drawn in front
   of it. The extra test is mapbox's, ported by semantics: rays from the eye to a small square around

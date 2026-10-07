@@ -594,7 +594,7 @@ invalidate a stored camera.
 | `Options.tileLODFactor` | 1.0 | **0.5** | half a nominal tile of screen area per level |
 | `TerrainOptions.meshResolution` | 32 | **64** | tangram's value. 32 leaves draped content visibly floating; 128 cost 8.5 fps against 15.2 |
 | `TerrainOptions.cameraClearance` | 200 m | **0** | 200 stopped a close approach short of the surface. It was 60 m here; it is now a floor added to mapbox's zoom-relative clearance (`cameraClearanceFraction`) |
-| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0.2** | measured at Grenoble: 0 drops POIs on slopes facing the camera, because the anchor and the surface drawn under it never agree exactly |
+| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0.05** | 0 drops POIs on slopes facing the camera, because the anchor and the surface drawn under it never agree exactly; 0.2 let a summit 900 m behind the Matterhorn keep its name |
 | `LightOptions.ambientIntensity` | 0.35 | **1.0** | both of these only apply once terrain lighting is on |
 | `LightOptions.shadowStrength` | 0 | **1.0** | ↑ — mapbox's `shadow-intensity`; it was 0.3 here until #208 |
 | `LightOptions.shadowBias` | 0.25 | **1.0** | 0.25 leaves acne on a lit slope at 3 cascades |

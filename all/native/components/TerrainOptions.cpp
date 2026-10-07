@@ -65,7 +65,7 @@ namespace massif {
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
         // 0 drops POIs on slopes facing the camera: covers the anchor-vs-drawn-surface error.
-        _billboardOcclusionTolerance(0.2f),
+        _billboardOcclusionTolerance(0.05f),
         _normalSampleDistance(0.0f),
         _textOcclusionOpacity(1.0f),
         _viewDistanceFactor(1.0f),

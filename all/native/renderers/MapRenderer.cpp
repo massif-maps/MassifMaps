@@ -1124,6 +1124,9 @@ namespace massif {
             
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
+            // A wheel notch is no drag: without this the next frame drops the focus onto the new ground, which moves
+            // the picture; frozen, it lands along the view instead (landFocusAlongView), which does not.
+            _terrainFocusFrozen = _terrainFocusFrozen || reason == MapMoveReason::MAP_MOVE_REASON_GESTURE;
 
             float zoom = _viewState.getZoom();
             deltaZoom = zoom - oldZoom;

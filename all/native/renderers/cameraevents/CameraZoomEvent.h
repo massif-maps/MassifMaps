@@ -29,6 +29,9 @@ namespace massif {
         
         const MapPos& getTargetPos() const;
         void setTargetPos(const MapPos& targetPos);
+        // The target is a ground point at its own height and stays where it is on screen (a gesture's pivot);
+        // otherwise it is taken at the focus height.
+        void setPinTarget(bool pinTarget);
     
         bool isUseDelta() const;
         bool isUseTarget() const;
@@ -46,6 +49,7 @@ namespace massif {
     
         bool _useDelta;
         bool _useTarget;
+        bool _pinTarget;
     };
     
 }

@@ -333,6 +333,7 @@ namespace massif {
                 CameraZoomEvent cameraEvent;
                 cameraEvent.setZoom(newZoom);
                 cameraEvent.setTargetPos(_zoomTargetPos);
+                cameraEvent.setPinTarget(true);
                 return cameraEvent;
             }
         }

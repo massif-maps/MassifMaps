@@ -103,6 +103,10 @@ namespace massif {
     void BaseMapView::onWheelEvent(int delta, float x, float y) {
         _touchHandler->onWheelEvent(delta, ScreenPos(x, y));
     }
+
+    void BaseMapView::onWheelZoom(float zoomDelta, float x, float y) {
+        _touchHandler->onWheelZoom(zoomDelta, ScreenPos(x, y));
+    }
     
     MapPos BaseMapView::getFocusPos() const {
         MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewStateSnapshot().getFocusPos());

@@ -265,6 +265,8 @@ add_executable(api_tests
   # split out of ElevationManager precisely so it could be reached from here - the manager itself
   # needs the data source and the grid cache.
   PrefetchOrderTest.cpp
+  # Same: ZoomPivot.h is the zoom gesture's pivot shift, cglib only.
+  ZoomPivotTest.cpp
   # Same: SmoothBaseLevel.h is the level a building base reads its ground at, nothing else.
   SmoothBaseLevelTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.

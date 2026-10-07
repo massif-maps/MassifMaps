@@ -412,8 +412,7 @@ namespace massif {
             scale = 1.0 / scale;
         }
 
-        ScreenPos screenPos(static_cast<float>(event->mouse.targetX * pixelRatio), static_cast<float>(event->mouse.targetY * pixelRatio));
-        view->zoom(static_cast<float>(std::log2(scale)), view->screenToMap(screenPos), 0);
+        view->onWheelZoom(static_cast<float>(std::log2(scale)), static_cast<float>(event->mouse.targetX * pixelRatio), static_cast<float>(event->mouse.targetY * pixelRatio));
         return EM_TRUE;
     }
 

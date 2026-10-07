@@ -405,6 +405,8 @@ namespace massif {
     
     protected:
         void stopCameraAnimations();
+        // A continuous zoom delta for a host whose wheel is not in ticks; pivots on the ground under the pointer.
+        void onWheelZoom(float zoomDelta, float x, float y);
 
     private:
         // Rotation and tilt optional, so both public moveTo overloads are the same code.

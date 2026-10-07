@@ -1318,7 +1318,8 @@ animate.
 **The focus is on the ground, held while a finger is down: maplibre's model.** maplibre pins the centre to
 the terrain every frame, so a zoom is the distance to the ground at every altitude; during a drag,
 pinch or fling (`elevationFreeze`) the centre keeps its height - on web the right-button rotate counts
-too (`WebMapView::setDragRotating`), as maplibre freezes for every handler - and at the end
+too (`WebMapView::setDragRotating`), where maplibre freezes for a drag or a zoom only
+(`handler_manager.ts`, `_terrainMovement`) - and at the end
 `recalculateZoomAndCenter` holds the camera and slides the centre down the view ray onto the ground,
 the zoom re-derived from the new distance (`CameraClearance::groundAlongView`,
 `MapRenderer::landFocusAlongView`). Pinned during the drag too, as mapbox does, a pan across a ridge
@@ -1371,6 +1372,18 @@ map somewhere else:
   path for both gestures, `TouchHandler::panBetween`, which honours `PanningSpeedMode` and, below
   tilt 15, caps the travel at what the finger's pixels are worth at the map scale — tangram's
   `getTranslation` guard for a near-horizontal view.
+
+**An orbit turns the whole view rigidly about the picked point** (`Options::setOrbitAroundPivot`,
+`OrbitPivot.h`). `CameraTiltEvent` with a target rotates camera, focus and up about the tilt axis
+through that point, so the point keeps its pixel and the camera-to-focus distance (the zoom) holds;
+the target is picked once, at the press (web, `BaseMapView::calculateOrbitPivot`) or when two
+fingers go down (`TouchHandler::startDualPointer`), by the same ray cast as the zoom pivot. The focus
+leaves the ground on the way, which the gesture freeze above allows: the landing at the end
+re-derives the zoom, and only the zoom - tilting towards the horizon about a near flank measured
+11.6 -> 10.1 over the Matterhorn with the flank still on its pixel. The clearance shell still runs in
+every camera event, so an orbit that would put the camera under it is raised and the point leaves
+its pixel (by construction; not measured). maplibre and mapbox have no equivalent: their mouse
+rotate and pitch handlers return no `around` point (`src/ui/handler/mouse.ts`).
 
 `isValidScreenPosition` tests the plane the gesture is actually anchored to (the terrain height
 under the touch, `_gestureAnchorHeight`), not sea level: in the mountains the two are hundreds of

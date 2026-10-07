@@ -107,6 +107,30 @@ namespace massif {
     void BaseMapView::onWheelZoom(float zoomDelta, float x, float y) {
         _touchHandler->onWheelZoom(zoomDelta, ScreenPos(x, y));
     }
+
+    MapPos BaseMapView::calculateOrbitPivot(float x, float y) {
+        ScreenPos screenPos(x, y);
+        ViewState viewState = _mapRenderer->getViewState();
+        _touchHandler->updateGestureAnchorHeight(screenPos, viewState);
+        return _touchHandler->calculatePivotPos(screenPos, viewState);
+    }
+
+    void BaseMapView::orbit(float rotationDelta, float tiltDelta, const MapPos& pivotPos) {
+        _mapRenderer->getAnimationHandler().stopRotation();
+        _mapRenderer->getAnimationHandler().stopTilt();
+        _mapRenderer->getKineticEventHandler().stopRotation();
+
+        CameraRotationEvent rotationEvent;
+        rotationEvent.setRotationDelta(rotationDelta);
+        rotationEvent.setTargetPos(pivotPos);
+        _mapRenderer->calculateCameraEvent(rotationEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_API);
+
+        CameraTiltEvent tiltEvent;
+        tiltEvent.setKeepRotation(true);
+        tiltEvent.setTiltDelta(tiltDelta);
+        tiltEvent.setTargetPos(pivotPos);
+        _mapRenderer->calculateCameraEvent(tiltEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_API);
+    }
     
     MapPos BaseMapView::getFocusPos() const {
         MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewStateSnapshot().getFocusPos());

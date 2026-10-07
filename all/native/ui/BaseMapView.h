@@ -407,6 +407,9 @@ namespace massif {
         void stopCameraAnimations();
         // A continuous zoom delta for a host whose wheel is not in ticks; pivots on the ground under the pointer.
         void onWheelZoom(float zoomDelta, float x, float y);
+        // The ground under a screen point, internal: what a mouse orbit turns about (Options::setOrbitAroundPivot).
+        MapPos calculateOrbitPivot(float x, float y);
+        void orbit(float rotationDelta, float tiltDelta, const MapPos& pivotPos);
 
     private:
         // Rotation and tilt optional, so both public moveTo overloads are the same code.

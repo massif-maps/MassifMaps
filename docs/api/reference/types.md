@@ -658,6 +658,7 @@ Inherited from `StyleBuilder`:
 | `longClickDuration` | number | read/write | Returns the long click duration in seconds. |
 | `mainLightColor` | color | read/write | Returns the color of the main light. |
 | `mainLightDirection` | struct `massif::MapVec` | read/write | Returns the direction of the main light. |
+| `orbitAroundPivot` | boolean | read/write | Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre. |
 | `panBounds` | struct `massif::MapBounds` | read/write | Returns the map panning bounds constraints. Map bounds minimum and maximum points are in the base projection's coordinate system. |
 | `panningMode` | [enum](enums.md#enum-panningmode) | read/write | Returns the panning mode. |
 | `panningSpeedMode` | [enum](enums.md#enum-panningspeedmode) | read/write | Returns the panning speed mode. |

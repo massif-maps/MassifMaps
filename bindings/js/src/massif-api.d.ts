@@ -613,7 +613,7 @@ export type SkyType =
 export type TerrainFlattenMode =
     /** Rendering only: the terrain passes, the drape and the elevation fetches are dropped, but the tiles keep their terrain subdivision. Switching is instant, but a flat map carries 3D triangles. */
     | 'TERRAIN_FLATTEN_MODE_RENDER'
-    /** The whole way: a flat map decodes, culls and draws as if no terrain were configured. The price is a re-decode at each switch, paid while the map is already flat. */
+    /** The whole way: a flat map decodes, culls and draws as if no terrain were configured. The price is a re-decode at a switch, paid while the map is already flat; switching back at the same view reuses the last decode, kept in memory. */
     | 'TERRAIN_FLATTEN_MODE_FULL'
     ;
 
@@ -4285,6 +4285,8 @@ export interface PropertyTypes {
         'mainLightColor': number;
         /** Returns the direction of the main light. */
         'mainLightDirection': Position;
+        /** Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre. */
+        'orbitAroundPivot': boolean;
         /** Returns the map panning bounds constraints. Map bounds minimum and maximum points are in the base projection's coordinate system. */
         'panBounds': Bounds;
         /** Returns the panning mode. */

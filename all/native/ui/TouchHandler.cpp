@@ -28,6 +28,7 @@ namespace massif {
         _gestureMode(SINGLE_POINTER_CLICK_GUESS),
         _gestureAnchorHeight(0.0),
         _panScale(0.0),
+        _dualPointerPivotPos(),
         _prevScreenPos1(0, 0),
         _prevScreenPos2(0, 0),
         _swipe1(0, 0),
@@ -723,6 +724,9 @@ namespace massif {
 
             CameraTiltEvent cameraEvent;
             cameraEvent.setTiltDelta((screenPos.getY() - _prevScreenPos1.getY()) * scale);
+            if (_options->isOrbitAroundPivot()) {
+                cameraEvent.setTargetPos(_dualPointerPivotPos);
+            }
             _cameraEvents.fetch_or(CAMERA_TILT);
             _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
@@ -1137,6 +1141,7 @@ namespace massif {
         ViewState viewState = _mapRenderer->getViewState();
         updateGestureAnchorHeight(middlePos, viewState);
         updatePanScale(middlePos, viewState); // the two-finger pan goes through the same speed mode
+        _dualPointerPivotPos = calculatePivotPos(middlePos, viewState);
     }
 
     void TouchHandler::registerOnTouchListener(const std::shared_ptr<OnTouchListener>& listener) {

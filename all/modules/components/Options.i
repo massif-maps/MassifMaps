@@ -89,6 +89,7 @@
 %attribute(massif::Options, massif::RenderProjectionMode::RenderProjectionMode, RenderProjectionMode, getRenderProjectionMode, setRenderProjectionMode)
 %attribute(massif::Options, massif::PanningMode::PanningMode, PanningMode, getPanningMode, setPanningMode)
 %attribute(massif::Options, massif::PivotMode::PivotMode, PivotMode, getPivotMode, setPivotMode)
+%attribute(massif::Options, bool, OrbitAroundPivot, isOrbitAroundPivot, setOrbitAroundPivot)
 %attributeval(massif::Options, massif::Color, ClearColor, getClearColor, setClearColor)
 %attributeval(massif::Options, massif::Color, SkyColor, getSkyColor, setSkyColor)
 %attributestring(massif::Options, std::shared_ptr<massif::Bitmap>, BackgroundBitmap, getBackgroundBitmap, setBackgroundBitmap)

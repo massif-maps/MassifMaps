@@ -1734,6 +1734,7 @@ public class DemoMap {
         Options options = mapView.getOptions();
         options.setFreeRoamMode(freeRoamMode(DemoConfig.FREE_ROAM_MODE));
         options.setPanningSpeedMode(panningSpeedMode(DemoConfig.PANNING_SPEED_MODE));
+        options.setOrbitAroundPivot(DemoConfig.ORBIT_AROUND_PIVOT);
         options.setFreeRoamLookSensitivity(DemoConfig.FREE_ROAM_LOOK_SENSITIVITY);
         options.setFreeRoamMoveSpeed(DemoConfig.FREE_ROAM_MOVE_SPEED);
         boolean lookUp = !"off".equals(DemoConfig.FREE_ROAM_MODE) || DemoConfig.STAR_SKY;

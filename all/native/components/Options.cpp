@@ -46,6 +46,7 @@ namespace massif {
         _fovY(36.87f),
         _panningMode(PanningMode::PANNING_MODE_FREE),
         _pivotMode(PivotMode::PIVOT_MODE_TOUCHPOINT),
+        _orbitAroundPivot(false),
         _seamlessPanning(true),
         _restrictedPanning(false),
         _tiltGestureReversed(false),
@@ -506,6 +507,22 @@ namespace massif {
             _pivotMode = pivotMode;
         }
         notifyOptionChanged("PivotMode");
+    }
+
+    bool Options::isOrbitAroundPivot() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _orbitAroundPivot;
+    }
+
+    void Options::setOrbitAroundPivot(bool enabled) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_orbitAroundPivot == enabled) {
+                return;
+            }
+            _orbitAroundPivot = enabled;
+        }
+        notifyOptionChanged("OrbitAroundPivot");
     }
 
     bool Options::isSeamlessPanning() const {

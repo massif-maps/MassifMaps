@@ -44,6 +44,8 @@ export default async function start(host) {
   // 'terrain' is an alias for 'terrainOptions', so this is map.set('terrainOptions.enabled', on).
   host.toggle('Terrain', true, (on) => map.set('terrain.enabled', on));
   host.toggle('Labels', true, (on) => map.layer('labels')?.visible(on));
+  // Right-drag (two-finger tilt on a phone) turns about the ground under the pointer, not the centre.
+  host.toggle('Orbit pointer', false, (on) => map.set('orbitAroundPivot', on));
   host.button('Exaggerate', () => {
     const current = map.terrain().get('exaggeration');
     map.terrain().set('exaggeration', current >= 2 ? 1 : current + 0.35);

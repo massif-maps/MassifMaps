@@ -6182,6 +6182,15 @@
           "doc": "Returns the direction of the main light."
         },
         {
+          "name": "orbitAroundPivot",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre."
+        },
+        {
           "name": "panBounds",
           "type": "STRUCT",
           "readOnly": false,
@@ -15398,7 +15407,7 @@
       {
         "name": "TERRAIN_FLATTEN_MODE_FULL",
         "value": 1,
-        "doc": "The whole way: a flat map decodes, culls and draws as if no terrain were configured. The price is a re-decode at each switch, paid while the map is already flat."
+        "doc": "The whole way: a flat map decodes, culls and draws as if no terrain were configured. The price is a re-decode at a switch, paid while the map is already flat; switching back at the same view reuses the last decode, kept in memory."
       }
     ],
     "massif::TileFormat::TileFormat": [

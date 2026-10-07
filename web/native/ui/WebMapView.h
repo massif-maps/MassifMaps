@@ -7,10 +7,12 @@
 #ifndef _MASSIF_WEBMAPVIEW_H_
 #define _MASSIF_WEBMAPVIEW_H_
 
+#include "core/MapPos.h"
 #include "ui/BaseMapView.h"
 
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <emscripten/html5.h>
@@ -69,6 +71,8 @@ namespace massif {
         bool _pointerDown = false;
         // Right button, or left with ctrl: maplibre's trigger for rotate-and-pitch.
         bool _dragRotating = false;
+        // Picked at the press when Options::isOrbitAroundPivot; empty turns about the centre.
+        std::optional<MapPos> _orbitPivot;
         // Same trigger in FREE_ROAM_MODE_FIRST_PERSON: moves via a synthesised two-finger drag
         // (second pointer at a fixed offset, so no pinch or twist).
         bool _dragMoving = false;

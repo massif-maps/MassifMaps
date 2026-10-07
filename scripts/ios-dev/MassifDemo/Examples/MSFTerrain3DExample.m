@@ -126,6 +126,10 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
     [host toggle:@"Labels" on:YES action:^(BOOL on) {
         [[map layer:@"labels"] visible:on];
     }];
+    // The two-finger tilt turns about the ground between the fingers, not the screen centre.
+    [host toggle:@"Orbit pointer" on:NO action:^(BOOL on) {
+        [map set:@"orbitAroundPivot" value:@(on)];
+    }];
     [host button:@"Exaggerate" action:^{
         double current = [map.terrain getDouble:@"exaggeration" defaultValue:1];
         [map.terrain set:@"exaggeration" value:@(current >= 2 ? 1.0 : current + 0.35)];

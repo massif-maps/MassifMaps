@@ -271,6 +271,8 @@ add_executable(api_tests
   TerrainSkirtsTest.cpp
   # Same: SmoothBaseLevel.h is the level a building base reads its ground at, nothing else.
   SmoothBaseLevelTest.cpp
+  # Same: PointGridMemo.h is the point lookup memo's rule, and nothing else.
+  PointGridMemoTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
   # Same: TileCacheHold.h is the visible/preloading cache split over stdext's LRU, nothing else.

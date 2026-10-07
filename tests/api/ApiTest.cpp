@@ -94,6 +94,7 @@ void testPrefetchOrder();
 void testZoomPivot();
 void testTerrainSkirts();
 void testSmoothBaseLevel();
+void testPointGridMemo();
 void testTileStyleZoom();
 void testTileCacheHold();
 void testTileCacheStash();
@@ -494,6 +495,7 @@ int main() {
     testZoomPivot();
     testTerrainSkirts();
     testSmoothBaseLevel();
+    testPointGridMemo();
     testTileStyleZoom();
     testTileCacheHold();
     testTileCacheStash();

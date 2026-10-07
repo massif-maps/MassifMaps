@@ -1,6 +1,7 @@
 #include "ElevationManager.h"
 #include "terrain/ElevationNodeField.h"
 #include "terrain/ElevationTileGrid.h"
+#include "terrain/PointGridMemo.h"
 #include "terrain/PrefetchOrder.h"
 #include "terrain/TerrainOcclusion.h"
 #include "core/BinaryData.h"
@@ -977,26 +978,20 @@ namespace massif {
     }
 
     std::shared_ptr<ElevationTileGrid> ElevationManager::getGridForInternalPos(double internalX, double internalY, LoadMode mode) const {
-        // A label re-anchor samples every label vertex and the tile math before the lookup is hot. Grids are
-        // immutable and versioned, so the last grid containing the point stays right. LOAD_EXACT excluded.
-        struct PosMemo {
-            unsigned long long instanceId = 0;
-            unsigned int version = 0;
-            LoadMode mode = LoadMode::CACHED_ONLY;
-            std::shared_ptr<ElevationTileGrid> grid;
-        };
-        static thread_local PosMemo memo;
+        // A label re-anchor samples every label vertex and the tile math before the lookup is hot. LOAD_EXACT excluded.
+        static thread_local PointGridMemo<ElevationTileGrid, LoadMode> memo;
         unsigned int memoVersion = _version.load();
         bool memoizable = (mode != LoadMode::LOAD_EXACT);
-        if (memoizable && memo.instanceId == _instanceId && memo.version == memoVersion && memo.mode == mode && memo.grid) {
-            if (memo.grid->getInternalBounds().contains(MapPos(internalX, internalY, 0))) {
-                return memo.grid;
+        if (memoizable) {
+            if (std::shared_ptr<ElevationTileGrid> grid = memo.find(_instanceId, memoVersion, mode, internalX, internalY)) {
+                return grid;
             }
         }
 
-        std::shared_ptr<ElevationTileGrid> grid = getTileGrid(getTileForInternalPos(internalX, internalY), mode);
-        if (memoizable && grid) {
-            memo = PosMemo { _instanceId, memoVersion, mode, grid };
+        MapTile tile = clampTileZoom(getTileForInternalPos(internalX, internalY));
+        std::shared_ptr<ElevationTileGrid> grid = lookupTileGrid(tile, mode);
+        if (memoizable) {
+            memo.remember(_instanceId, memoVersion, mode, grid, tile);
         }
         return grid;
     }

@@ -131,7 +131,8 @@ The gallery has the same channel through `ExampleLive` (same short keys), plus `
 name=value`, a style parameter on the example's `basemap` layer (`buildings=1` turns Mapbox Standard's
 extrusions into footprints). A light, fog or sky knob on an example that never set one builds a
 default object first (as `tools/style-preview/massif-pane.html` does); a terrain knob needs the
-example's own elevation source and is ignored with a warning. Two traps:
+example's own elevation source and is ignored with a warning. `--es flattened false --es tilt 38`
+switches a flat example to 3D in place; the 2D/3D button in `terrain-2d-3d` flies to its summit. Two traps:
 
 - `ExampleLive` applies the writes on its own worker thread: a receiver runs on the main thread with
   a deadline, and a write blocks on whatever the render thread holds, so writing inline ANRed the app.

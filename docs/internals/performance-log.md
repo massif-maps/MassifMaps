@@ -2555,4 +2555,20 @@ visible set per vector layer, 6.6 MB of cache accounting (put-time `TileInfo::ge
 5 vector layers at that view. Stashing the preloading caches as well would have added ~27 MB there
 (10 MB cap per layer) for no change in the hold, so they are dropped as before.
 
-Not measured: Android, iOS, the Crosscall. The first rise is unchanged within run-to-run noise.
+On the web the first rise is unchanged within run-to-run noise.
+
+Crosscall HLTE556N, arm64 debug build with `-PprofileRender`, demo gallery `terrain-2d-3d` (Android
+default view: Matterhorn, z12.5, tilt 20), timed 2.5 s. After a 60 s settle, three round trips by
+tapping the button. The warm time is the SDK's own `2D->3D switch took` line:
+
+| | rise 1 / 2 / 3: warm (tiles owed) |
+|---|---|
+| before | 2562 ms (5) / 2508 ms (5) / 2519 ms (1) |
+| after | 12 ms (0) / 18 ms (0) / 19 ms (0) |
+
+Before, every rise ran into the 2.5 s warm timeout (`TERRAIN_SWITCH_WARM_TIMEOUT`) and rose with
+tiles still owed. The Android example opens in 3D and falls at startup, so its first tap is already a
+repeat rise. Same-step screenshots of the two builds differ by mean 1.5/255: the same terrain,
+hillshade and roads, with only the choice of placed peak labels differing.
+
+Not measured: iOS.

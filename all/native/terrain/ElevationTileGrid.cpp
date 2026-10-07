@@ -354,9 +354,8 @@ namespace massif {
     }
 
     std::array<int, 4> ElevationTileGrid::edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
-        // How much coarser the W, E, S, N neighbour is, as the power of two its texel is of ours
-        // (edgeFilter's rule: coarser means more than 1.5x). Its lattice cell is that much wider,
-        // so an edge node's box widens to match what the neighbour interpolates at the same spot.
+        // Per W, E, S, N neighbour: its lattice cell is wider, so an edge node's box widens to meet
+        // what the neighbour interpolates at the same spot.
         double texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
         double texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
         std::array<int, 4> scales = { { 1, 1, 1, 1 } };
@@ -370,11 +369,7 @@ namespace massif {
             double neighbourTexel = alongY
                 ? (neighbour->_internalBounds.getMax().getY() - neighbour->_internalBounds.getMin().getY()) / neighbour->_height
                 : (neighbour->_internalBounds.getMax().getX() - neighbour->_internalBounds.getMin().getX()) / neighbour->_width;
-            int scale = 1;
-            while (neighbourTexel > ourTexel * scale * 1.5 && scale < 64) {
-                scale *= 2;
-            }
-            scales[side] = scale;
+            scales[side] = ElevationNodeField::edgeBoxScale(ourTexel, neighbourTexel);
         }
         return scales;
     }

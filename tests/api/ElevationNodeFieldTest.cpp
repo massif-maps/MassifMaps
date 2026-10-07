@@ -3,7 +3,7 @@
  * the DEM over, its weights at the ends and off a texel boundary, the seam rule (two tiles sharing
  * an edge node compute the same value from the same texels), and the bilinear sample between nodes.
  *
- * NOT covered here: ElevationTileGrid's use of it (needs Bitmap), the node TEXTURE the elevation
+ * NOT covered here: ElevationTileGrid's use of it (needs Bitmap; edgeBoxScales is a loop over edgeBoxScale), the node TEXTURE the elevation
  * texture cache uploads from it, and the vertex shader that displaces the surface from that
  * texture - all device checks. That the sawtooth on a road edge at a grazing tilt is gone is a
  * screenshot at the camera in docs/internals/rendering/04-terrain.md, "The node texture".
@@ -334,9 +334,26 @@ namespace {
         TEST_CHECK(worstPlain < 1.0e-5, "and with no coarse neighbour it is the plain per-texel sum");
     }
 
+    void testEdgeBoxScaleCapsAtOneLevel() {
+        TEST_CHECK(ElevationNodeField::edgeBoxScale(1.0, 1.0) == 1 && ElevationNodeField::edgeBoxScale(1.0, 1.4) == 1, "a same-level neighbour does not widen the edge box");
+        TEST_CHECK(ElevationNodeField::edgeBoxScale(1.0, 2.0) == 2, "a neighbour one level coarser widens it to its cell");
+        TEST_CHECK(ElevationNodeField::edgeBoxScale(1.0, 64.0) == 2 && ElevationNodeField::edgeBoxScale(1.0, 512.0) == 2,
+                   "an ancestor standing in for a missing neighbour widens it by one level, not by its whole cell");
+
+        // A valley along y, floor 500 m at x = 256 of a 512-texel grid, walls rising 2 m a texel: the south
+        // edge node on the floor, with the default box of a 64-cell lattice.
+        auto valley = [](int x, int) { return 500.0f + 2.0f * std::abs(static_cast<float>(x) + 0.5f - 256.0f); };
+        int box = ElevationNodeField::boxTexels(512, 64, ElevationNodeField::DEFAULT_BOX_CELLS);
+        float capped = ElevationNodeField::nodeHeight(256.0, 0.0, box * ElevationNodeField::edgeBoxScale(1.0, 64.0), box * ElevationNodeField::edgeBoxScale(1.0, 64.0), valley);
+        float uncapped = ElevationNodeField::nodeHeight(256.0, 0.0, box * 64, box * 64, valley);
+        TEST_CHECK(capped < 540.0f, "next to a far-coarser stand-in the edge node stays on the valley floor");
+        TEST_CHECK(uncapped > 900.0f, "and the uncapped box it replaces lifted it hundreds of metres: the wall");
+    }
+
 }
 
 void testElevationNodeField() {
+    testEdgeBoxScaleCapsAtOneLevel();
     testLatticeSumMatchesPerSampleBilinear();
     testSatMatchesBruteForce();
     testRegionsMatchPerTexelSum();

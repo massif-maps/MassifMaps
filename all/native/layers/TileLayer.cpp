@@ -428,7 +428,7 @@ namespace massif {
         }
 
         // An empty set is recalculated too, or an early cull leaves the layer blank until the user pans; it is cheap.
-        bool recalculateTiles = (!_tileCullState || _visibleTiles.empty() || _frameNr != _lastFrameNr || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
+        bool recalculateTiles = (!_tileCullState || _visibleTiles.empty() || _targetTileZoomHeld || _frameNr != _lastFrameNr || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
         if (recalculateTiles) {
             VT_STAT_INC(tileRecalculations);
             calculateVisibleTiles(cullState);
@@ -775,7 +775,16 @@ namespace massif {
         {
             int maxTargetZoom = getMaxZoom() + (_terrainOverzoomTargets ? getMaxOverzoomLevel() : 0);
             double cameraZoom = cullState->getViewState().getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS;
-            int targetTileZoom = calculateTargetTileZoom(cameraZoom, _targetTileZoom, TARGET_TILE_ZOOM_HYSTERESIS);
+            const cglib::mat4x4<double>& view = cullState->getViewState().getModelviewProjectionMat();
+            bool sameView = (_targetTileZoomHeld && view == _targetTileZoomView);
+            int targetTileZoom = settleTargetTileZoom(cameraZoom, _targetTileZoom, TARGET_TILE_ZOOM_HYSTERESIS, sameView, _targetTileZoomHeld);
+            _targetTileZoomView = view;
+            // A still camera culls no more: ask for the cull that lets the level settle.
+            if (_targetTileZoomHeld) {
+                if (auto mapRenderer = getMapRenderer()) {
+                    mapRenderer->layerChanged(shared_from_this(), true);
+                }
+            }
             targetTileZoom = std::min(targetTileZoom, std::min(maxTargetZoom, _terrainMaxTileZoom));
             if (_targetTileZoom != targetTileZoom) {
                 _targetTileZoom = targetTileZoom;

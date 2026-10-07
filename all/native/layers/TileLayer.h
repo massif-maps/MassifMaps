@@ -610,6 +610,8 @@ class ProjectionSurface;
         int _maxUnderzoomLevel;
 
         int _targetTileZoom = -1; // the tile zoom the camera asks for, before the LOD coarsens anything
+        bool _targetTileZoomHeld = false;
+        cglib::mat4x4<double> _targetTileZoomView = cglib::mat4x4<double>::identity();
         int _tileStyleZoomLift = 0; // last Options tile style zoom lift a cull ran with
         int _terrainMaxTileZoom = 1000;
         int _terrainMinTileZoom = 0; // terrain mode: the coarsest tile zoom the LOD rule may pick

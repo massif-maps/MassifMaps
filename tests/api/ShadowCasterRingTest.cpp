@@ -1,18 +1,18 @@
 /*
- * Tests for the shadow caster ring's bound (all/native/terrain/ShadowCasterRing.h).
+ * Tests for the shadow caster ring (all/native/terrain/ShadowCasterRing.h).
  *
  * The ring's zoom is set by the THROW - relief / tan(sun altitude) - so that a fixed number of
- * margin tiles spans however far a shadow reaches. Over FLAT ground the relief is 0, the throw is
- * 0, and that rule leaves the ring at the cover's finest zoom. A tilted cover reaches the horizon
- * and mixes zooms, so its footprint expressed at that zoom is thousands of tiles a side, and the
- * candidate grid is built before a single candidate is looked at: measured over Paris at z17-19
- * tilt 45 with shadows on, a std::vector<TileId> that grew to 1.5 GB and an out-of-memory kill at
- * 2.9 GB RSS. That is the case these pin.
+ * margin tiles spans however far a shadow reaches. It used to be the cover's bounding box at that
+ * zoom: a tilted cover reaches the horizon and mixes zooms, so the box was thousands of tiles a side
+ * (Paris z17-19 tilt 45: a 1.5 GB candidate vector and an out-of-memory kill), and once bounded by
+ * coarsening still ~560 z10 tiles out to the horizon for a z9 view over the Alps, every one loading its
+ * own DEM grid - most of the 450 DEM tiles that view fetched. The ring is now built per cover tile at
+ * that tile's own zoom, or the ring zoom when coarser: its size follows the cover, not its box.
  *
  * NOT covered here: the quadtree subdivision that brings the resolution back where the cover is
  * finer, and the caster set's own MAX_SHADOW_CASTER_TILES ceiling. Both live in
- * MapRenderer::applyTerrainShadows and need the renderer. Nor is the visual consequence of
- * coarsening - a distant shadow cast from a coarser DEM level - which is a device check.
+ * MapRenderer::applyTerrainShadows and need the renderer. Nor the visual consequence - a distant
+ * shadow cast from a coarser DEM level - which is a device check.
  */
 
 #include "terrain/ShadowCasterRing.h"
@@ -23,73 +23,10 @@ using namespace massif;
 
 namespace {
 
-    // MapRenderer::MAX_SHADOW_CASTER_TILES and LightOptions' default shadowCasterMargin.
-    const std::size_t MAX_TILES = 2048;
+    // LightOptions' default shadowCasterMargin.
     const int MARGIN = 3;
-
-    ShadowCasterRing::Grid gridOf(int zoom, int minX, int minY, int maxX, int maxY) {
-        ShadowCasterRing::Grid grid;
-        grid.zoom = zoom;
-        grid.minX = minX; grid.minY = minY;
-        grid.maxX = maxX; grid.maxY = maxY;
-        return grid;
-    }
-
-    void testASmallCoverIsLeftAlone() {
-        // The ordinary case: a handful of tiles, already far inside the ceiling. Coarsening here
-        // would throw away the ring's resolution for nothing.
-        ShadowCasterRing::Grid grid = gridOf(17, 66000, 45000, 66007, 45006);
-        ShadowCasterRing::Grid fitted = ShadowCasterRing::fit(grid, MARGIN, MAX_TILES);
-        TEST_CHECK(fitted.zoom == 17, "a cover that already fits keeps its zoom");
-        TEST_CHECK(fitted.minX == grid.minX && fitted.maxY == grid.maxY, "... and its footprint");
-    }
-
-    void testTheHorizonCoverIsBounded() {
-        // The kill. A z19 cover whose far tiles reach the horizon: 4096 tiles a side is 16.7 M
-        // candidates, 200 MB of TileId at the first allocation and gigabytes as the vector doubles.
-        ShadowCasterRing::Grid grid = gridOf(19, 266000, 180000, 270095, 184095);
-        TEST_CHECK(ShadowCasterRing::tileCount(grid, MARGIN) > 16000000u, "the unbounded grid really is that big");
-        ShadowCasterRing::Grid fitted = ShadowCasterRing::fit(grid, MARGIN, MAX_TILES);
-        TEST_CHECK(ShadowCasterRing::tileCount(fitted, MARGIN) <= MAX_TILES, "the fitted grid is inside the ceiling");
-        TEST_CHECK(fitted.zoom < grid.zoom, "... which it reached by coarsening, not by cropping");
-    }
-
-    void testCoarseningHoldsTheSameGround() {
-        // Coarsening drops the RESOLUTION, not the reach: every tile of the original footprint is
-        // still under a tile of the fitted one, or a mountain off one edge stops casting.
-        ShadowCasterRing::Grid grid = gridOf(19, 266000, 180000, 270095, 184095);
-        ShadowCasterRing::Grid fitted = ShadowCasterRing::fit(grid, MARGIN, MAX_TILES);
-        int shift = grid.zoom - fitted.zoom;
-        TEST_CHECK(fitted.minX == (grid.minX >> shift) && fitted.minY == (grid.minY >> shift),
-                   "the fitted footprint starts at the ancestor of the original's first tile");
-        TEST_CHECK(fitted.maxX == (grid.maxX >> shift) && fitted.maxY == (grid.maxY >> shift),
-                   "... and ends at the ancestor of its last, so nothing is cropped");
-    }
-
-    void testItStopsAtZoomZero() {
-        // A margin large enough that no zoom satisfies the ceiling must stop at the top of the
-        // pyramid rather than shift a negative zoom for ever.
-        ShadowCasterRing::Grid grid = gridOf(19, 266000, 180000, 270095, 184095);
-        ShadowCasterRing::Grid fitted = ShadowCasterRing::fit(grid, 4096, MAX_TILES);
-        TEST_CHECK(fitted.zoom == 0, "an unsatisfiable ceiling clamps to zoom 0");
-        TEST_CHECK(fitted.minX == 0 && fitted.maxX == 0, "... where the whole world is one tile");
-    }
-
-    void testTheBoundaryIsNotOverIt() {
-        // Exactly at the ceiling is inside it: the comparison has to stay a strict `>`, or the ring
-        // gives up a level it did not have to.
-        ShadowCasterRing::Grid grid = gridOf(14, 8000, 5000, 8000 + 25, 5000 + 25); // 32 x 32 with the margin
-        TEST_CHECK(ShadowCasterRing::tileCount(grid, MARGIN) == 1024u, "the case is the ceiling itself");
-        TEST_CHECK(ShadowCasterRing::fit(grid, MARGIN, 1024).zoom == 14, "a grid exactly at the ceiling keeps its zoom");
-        TEST_CHECK(ShadowCasterRing::fit(grid, MARGIN, 1023).zoom == 13, "... and one tile over it does not");
-    }
-
-    void testASingleTileCoverCountsItsMargin() {
-        // The margin is the ring: one cover tile at margin 3 is a 7 x 7 ring, not one tile.
-        ShadowCasterRing::Grid grid = gridOf(16, 33000, 22000, 33000, 22000);
-        TEST_CHECK(ShadowCasterRing::tileCount(grid, MARGIN) == 49u, "one cover tile and a margin of 3 is 7 x 7");
-        TEST_CHECK(ShadowCasterRing::tileCount(grid, 0) == 1u, "no margin is the cover tile alone");
-    }
+    // A throw of a whole world: every ring reaches its full margin.
+    const double FAR = 1.0;
 
     bool contains(const std::vector<ShadowCasterRing::Tile>& tiles, int zoom, int x, int y) {
         for (const ShadowCasterRing::Tile& tile : tiles) {
@@ -98,6 +35,69 @@ namespace {
             }
         }
         return false;
+    }
+
+    bool allAtZoom(const std::vector<ShadowCasterRing::Tile>& tiles, int zoom) {
+        for (const ShadowCasterRing::Tile& tile : tiles) {
+            if (tile.zoom != zoom) {
+                return false;
+            }
+        }
+        return !tiles.empty();
+    }
+
+    void testASingleTileRingIsItsMargin() {
+        std::vector<ShadowCasterRing::Tile> ring = ShadowCasterRing::ringCandidates({ { 16, 33000, 22000 } }, 16, MARGIN, FAR);
+        TEST_CHECK(ring.size() == 49u, "one cover tile and a margin of 3 is 7 x 7 candidates");
+        TEST_CHECK(contains(ring, 16, 33000 - 3, 22000 - 3) && contains(ring, 16, 33000 + 3, 22000 + 3), "... reaching margin tiles each way");
+        TEST_CHECK(ShadowCasterRing::ringCandidates({ { 16, 33000, 22000 } }, 16, 0, FAR).size() == 1u, "no margin is the cover tile alone");
+    }
+
+    void testFarCoarseGroundKeepsItsZoom() {
+        // The fault: a far z7 tile got a ring at the near ground's zoom, hundreds of fine tiles.
+        std::vector<ShadowCasterRing::Tile> ring = ShadowCasterRing::ringCandidates({ { 7, 66, 45 } }, 11, MARGIN, FAR);
+        TEST_CHECK(ring.size() == 49u && allAtZoom(ring, 7), "a cover tile coarser than the ring zoom casts at its own zoom");
+    }
+
+    void testFineGroundCoarsensToTheThrow() {
+        // The throw spans the margin at the ring zoom: a finer cover tile casts from there.
+        std::vector<ShadowCasterRing::Tile> ring = ShadowCasterRing::ringCandidates({ { 16, 33000, 22000 } }, 12, MARGIN, FAR);
+        TEST_CHECK(ring.size() == 49u && allAtZoom(ring, 12), "a cover tile finer than the ring zoom casts at the ring zoom");
+        TEST_CHECK(contains(ring, 12, (33000 >> 4) - 3, (22000 >> 4) + 3), "... around its ancestor, margin tiles each way");
+    }
+
+    void testTheHorizonCoverIsBounded() {
+        // A tilted cover: an 8 x 8 block of z19 tiles near, one z12 tile at the horizon. Their box at z19
+        // is thousands of tiles a side; the ring is bounded by the cover tiles themselves.
+        std::vector<ShadowCasterRing::Tile> cover;
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                cover.push_back({ 19, 266000 + x, 180000 + y });
+            }
+        }
+        cover.push_back({ 12, 2200, 1500 });
+        std::vector<ShadowCasterRing::Tile> ring = ShadowCasterRing::ringCandidates(cover, 19, MARGIN, FAR);
+        TEST_CHECK(ring.size() <= cover.size() * 49u, "the ring is at most the margin around each cover tile, not the box");
+        TEST_CHECK(ring.size() == 14u * 14u + 49u, "the near block's ring is its block widened by the margin, without duplicates");
+    }
+
+    void testTheMarginFollowsTheThrow() {
+        // 3 km of relief under a 42 degree sun throws ~3.3 km: one z11 tile (~14 km at 46N) already spans it,
+        // and three were 40 km of casters, each loading its DEM.
+        double throwFraction = 3300.0 / 27800000.0;
+        std::vector<ShadowCasterRing::Tile> ring = ShadowCasterRing::ringCandidates({ { 11, 1066, 728 } }, 11, MARGIN, throwFraction);
+        TEST_CHECK(ring.size() == 9u, "a throw under one tile is a ring of one tile");
+        std::vector<ShadowCasterRing::Tile> fine = ShadowCasterRing::ringCandidates({ { 14, 8528, 5824 } }, 14, MARGIN, throwFraction);
+        TEST_CHECK(fine.size() == 25u, "the same throw over smaller tiles takes more of them: 2 at z14");
+        std::vector<ShadowCasterRing::Tile> flat = ShadowCasterRing::ringCandidates({ { 11, 1066, 728 } }, 11, MARGIN, 0.0);
+        TEST_CHECK(flat.size() == 9u, "no throw still keeps one tile around the cover");
+        std::vector<ShadowCasterRing::Tile> capped = ShadowCasterRing::ringCandidates({ { 18, 136448, 93184 } }, 18, MARGIN, throwFraction);
+        TEST_CHECK(capped.size() == 49u, "the margin never exceeds the app's shadowCasterMargin");
+    }
+
+    void testTheRingStopsAtThePoles() {
+        std::vector<ShadowCasterRing::Tile> ring = ShadowCasterRing::ringCandidates({ { 4, 5, 0 } }, 4, MARGIN, FAR);
+        TEST_CHECK(ring.size() == 7u * 4u, "nothing is added past the pole row");
     }
 
     void testSunwardTilesLieOnTheSunsSide() {
@@ -135,12 +135,12 @@ namespace {
 }
 
 void testShadowCasterRing() {
-    testASmallCoverIsLeftAlone();
+    testASingleTileRingIsItsMargin();
+    testFarCoarseGroundKeepsItsZoom();
+    testFineGroundCoarsensToTheThrow();
     testTheHorizonCoverIsBounded();
-    testCoarseningHoldsTheSameGround();
-    testItStopsAtZoomZero();
-    testTheBoundaryIsNotOverIt();
-    testASingleTileCoverCountsItsMargin();
+    testTheMarginFollowsTheThrow();
+    testTheRingStopsAtThePoles();
     testSunwardTilesLieOnTheSunsSide();
     testSunwardTilesNeverOverlapTheView();
     testSunwardTilesStartAtTheMinZoom();

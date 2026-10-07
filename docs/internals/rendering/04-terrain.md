@@ -41,9 +41,9 @@ version bump - so the LRU's budget only bounds what nothing uses. Measured on th
 reloads, loading done at ~100 s. `ALLOW_LOAD` reads are not held, or a bulk elevation query would
 pin every grid it walked. `ElevationTextureCache` does the same for its textures: an entry used in
 the last second is never evicted, the cache overflows `MAX_CACHED_TEXTURES` instead and trims back
-in `beginFrame` once the view moved on. Still open: while tiles land, frames that resolve 500+ fine
-target tiles encode ~200 textures nothing draws again (~4000 encodes over the load at 1920x1080);
-wasted work, not a visible fallback, and over when loading ends.
+in `beginFrame` once the view moved on. Most of what was left - ~3000 textures encoded for tiles
+nothing drew, and most of the DEM loads - was the terrain shadow pass resolving a caster ring of ~560
+fine tiles out to the horizon, fixed there ([08-lighting-sky-fog.md](08-lighting-sky-fog.md)).
 
 **A decoded tile asks for a frame.** Every consumer reads the elevation version from *inside* a
 frame (`TileRenderer::onDrawFrame` compares it and invalidates the surfaces it covers), so a tile

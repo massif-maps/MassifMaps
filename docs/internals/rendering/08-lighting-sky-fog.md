@@ -400,6 +400,19 @@ Design points, each measured:
   `shadowCasterMargin` tiles**, and `shadowCasterMargin` now sets the ring's resolution rather than
   its reach.
 
+  **The ring is built per cover tile, out to the throw** (`ShadowCasterRing::ringCandidates`): each
+  cover tile's neighbours at its own zoom, or the ring zoom when coarser, `ceil(throw / tile width)`
+  of them, from 1 to `shadowCasterMargin`. It used to be the cover's bounding box at the ring zoom,
+  widened by the full margin and coarsened until it fitted `MAX_SHADOW_CASTER_TILES`. A tilted cover
+  mixes zooms out to the horizon, so that box was mostly ground outside the view, all at the near
+  ground's zoom, and every caster resolves its own DEM grid: web, terrain-3d at (7.45, 45.85) z9
+  tilt 35, 1920x1080, cold cache, **680 casters, 457 DEM tiles loaded, loading done at 85 s and 3054
+  elevation textures encoded**. Per tile: **231 casters, 180 DEM tiles, done at 30 s, 75 textures**,
+  and the frame matches (0.27% of pixels, mostly labels). MapLibre at the same camera (no terrain
+  shadows) loads 12-15 DEM tiles. Where the cover is no coarser than the ring zoom nothing changes
+  but the box: Grenoble z15 top-down, 20 degree sun, 242 casters became 79 for a pixel-identical
+  frame.
+
   **The relief is read from a coarse ancestor (`SHADOW_RELIEF_ZOOM = 10`), not from the cover.** This
   is the part that is easy to get wrong and did not work at first: at z16 top-down over a valley the
   cover is a few tiles of flat ground, so the cover's own relief is metres, the throw is a couple of

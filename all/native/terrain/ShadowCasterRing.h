@@ -8,6 +8,7 @@
 #define _MASSIF_SHADOWCASTERRING_H_
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <set>
 #include <tuple>
@@ -16,42 +17,40 @@
 namespace massif {
 
     /**
-     * The zoom the shadow caster ring is generated at, and its tile grid.
-     * See MapRenderer::applyTerrainShadows and docs/internals/rendering/09-shadows.md.
+     * The shadow caster tiles around the cover.
+     * See MapRenderer::applyTerrainShadows and docs/internals/rendering/08-lighting-sky-fog.md.
      */
     struct ShadowCasterRing {
-        /** The cover's footprint at one zoom, before the margin is added. */
-        struct Grid {
-            int zoom = 0;
-            int minX = 0, minY = 0, maxX = 0, maxY = 0;
-        };
-
-        /** How many tiles the ring generates for this footprint, margin included. */
-        static std::size_t tileCount(const Grid& grid, int margin) {
-            std::size_t width = static_cast<std::size_t>(grid.maxX - grid.minX + 1 + 2 * margin);
-            std::size_t height = static_cast<std::size_t>(grid.maxY - grid.minY + 1 + 2 * margin);
-            return width * height;
-        }
-
-        /**
-         * Coarsens the ring until its grid fits maxTiles: over flat ground the throw is 0, so a tilted cover
-         * reaching the horizon would be thousands of tiles a side at its finest zoom. The caller's
-         * subdivision brings the resolution back where the cover is finer.
-         */
-        static Grid fit(const Grid& grid, int margin, std::size_t maxTiles) {
-            Grid fitted = grid;
-            while (fitted.zoom > 0 && tileCount(fitted, margin) > maxTiles) {
-                fitted.zoom--;
-                fitted.minX >>= 1; fitted.maxX >>= 1;
-                fitted.minY >>= 1; fitted.maxY >>= 1;
-            }
-            return fitted;
-        }
-
         struct Tile {
             int zoom = 0, x = 0, y = 0;
             bool operator<(const Tile& other) const { return std::tie(zoom, x, y) < std::tie(other.zoom, other.x, other.y); }
         };
+
+        /**
+         * Each cover tile's neighbours out to the shadow throw (a fraction of the world width), at its own zoom or ringZoom
+         * if coarser: 1 to maxMargin tiles, not a fixed margin or the cover's bounding box (08-lighting-sky-fog.md).
+         */
+        static std::vector<Tile> ringCandidates(const std::vector<Tile>& cover, int ringZoom, int maxMargin, double throwFraction) {
+            std::set<Tile> added;
+            std::vector<Tile> tiles;
+            for (const Tile& tile : cover) {
+                int zoom = std::min(tile.zoom, ringZoom);
+                int shift = tile.zoom - zoom;
+                int margin = std::min(maxMargin, std::max(1, static_cast<int>(std::ceil(throwFraction * static_cast<double>(1 << zoom)))));
+                for (int dy = -margin; dy <= margin; dy++) {
+                    for (int dx = -margin; dx <= margin; dx++) {
+                        Tile candidate { zoom, (tile.x >> shift) + dx, (tile.y >> shift) + dy };
+                        if (candidate.y < 0 || candidate.y >= (1 << zoom)) {
+                            continue;
+                        }
+                        if (added.insert(candidate).second) {
+                            tiles.push_back(candidate);
+                        }
+                    }
+                }
+            }
+            return tiles;
+        }
 
         /**
          * Neighbours of the visible tiles on the sun's side (sideX/sideY: -1, 0 or +1 along the tile grid), from

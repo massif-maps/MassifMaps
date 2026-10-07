@@ -59,6 +59,7 @@ add_executable(style_tests
   MultiPointPartIndexTest.cpp
   FieldValuePrefilterTest.cpp
   NullishCoalescingTest.cpp
+  RenderModeAlignmentTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

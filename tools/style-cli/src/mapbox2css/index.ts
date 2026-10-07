@@ -1539,6 +1539,16 @@ function layerDeclarations(
         // The senses agree - see the default derivation in TextSymbolizer.cpp, where a text pushed
         // right (dx > 0) defaults to alignment 'left', i.e. the edge nearest the anchor.
         if (name === 'text-anchor') {
+            const horizontal = mapCaseBranches(value as Json, (b) => typeof b === 'string' ? TEXT_ANCHOR[b]?.[0] : undefined);
+            const vertical = mapCaseBranches(value as Json, (b) => typeof b === 'string' ? TEXT_ANCHOR[b]?.[1] : undefined);
+            const h = horizontal === null ? null : tryTranslate(horizontal, name, layer.id, coverage);
+            const v = vertical === null ? null : tryTranslate(vertical, name, layer.id, coverage);
+            if (h !== null && v !== null) {
+                out.push(`text-horizontal-alignment: ${h};`, `text-vertical-alignment: ${v};`);
+                coverage.emit('text-horizontal-alignment');
+                coverage.emit('text-vertical-alignment');
+                continue;
+            }
             const constant = typeof value === 'string' ? value : representativeConstant(value as Json);
             if (typeof constant !== 'string') {
                 coverage.drop(name, 'anchor branches on something with no constant form', layer.id);
@@ -1562,14 +1572,18 @@ function layerDeclarations(
         // is multiplied by text-size - the expression form included, or a zoom-driven size would
         // silently pin the value to one zoom.
         if (name === 'text-offset') {
-            const pair = Array.isArray(value) && value.length === 2 && value.every((v) => typeof v === 'number')
+            const xs = mapCaseBranches(value as Json, (b) => offsetPair(b)?.[0]);
+            const ys = mapCaseBranches(value as Json, (b) => offsetPair(b)?.[1]);
+            const branched = xs !== null && ys !== null;
+            const pair = branched ? [xs, ys]
+                : Array.isArray(value) && value.length === 2 && value.every((v) => typeof v === 'number')
                 ? value as Json[]
                 : representativeConstant(value as Json) as Json[] | null;
             if (!Array.isArray(pair) || pair.length !== 2) {
                 coverage.drop(name, 'offset branches on something with no constant form', layer.id);
                 continue;
             }
-            if (pair !== value) {
+            if (pair !== value && !branched) {
                 coverage.approximate(`text-offset on "${layer.id}" branches; took [${pair.join(', ')}]`);
             }
             const dx = ems(pair[0], layer, coverage, name);
@@ -2512,6 +2526,33 @@ const VARIABLE_ANCHORS = new Set([
  * BELOW. Carried across name-for-name, every anchored label sat on the wrong side of its icon - and
  * it read as correct in one pane at a time, since the two errors cancel when only one is looked at.
  */
+/**
+ * A `case` with every branch mapped through `pick`, so an anchor or an offset that branches on
+ * `[render::3d]` stays live instead of taking one branch. Null when it is no case or a branch
+ * does not map; one constant when every branch maps to the same.
+ */
+function mapCaseBranches(value: Json, pick: (branch: Json) => Json | undefined): Json | null {
+    if (!Array.isArray(value) || value[0] !== 'case' || value.length < 4 || value.length % 2 !== 0) return null;
+    const out: Json[] = ['case'];
+    for (let i = 1; i < value.length; i++) {
+        if (i % 2 === 1 && i < value.length - 1) {
+            out.push(value[i]);
+            continue;
+        }
+        const picked = pick(value[i]);
+        if (picked === undefined) return null;
+        out.push(picked);
+    }
+    const branches = out.filter((_, i) => i > 0 && (i % 2 === 0 || i === out.length - 1));
+    return branches.every((b) => b === branches[0]) ? branches[0] : out;
+}
+
+function offsetPair(branch: Json): [number, number] | undefined {
+    const pair = Array.isArray(branch) && branch[0] === 'literal' ? branch[1] : branch;
+    return Array.isArray(pair) && pair.length === 2 && pair.every((v) => typeof v === 'number')
+        ? pair as [number, number] : undefined;
+}
+
 function oppositeAnchor(anchor: string): string {
     const flip: Record<string, string> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
     return anchor.split('-').map((part) => flip[part] ?? part).join('');

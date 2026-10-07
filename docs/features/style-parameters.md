@@ -191,7 +191,7 @@ style carry both looks:
 
 In an expression it is written `[render::3d]`; in a **selector** it must be quoted,
 `['render::3d' = true]`, the same as `['param::x' > 0]` (the selector grammar has no `::` in a bare
-field name).
+field name). A MapBox style converted by `mapbox2css` writes it `['get', 'render::3d']`.
 
 It is resolved **at decode time**, like a feature field or the zoom — so it works everywhere,
 including on properties no repaint can change (`text-placement`, `text-name`, marker choice,

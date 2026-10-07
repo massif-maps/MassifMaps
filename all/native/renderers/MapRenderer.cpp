@@ -2827,6 +2827,7 @@ namespace massif {
 
         // The first suitable tile layer writes the terrain depth, bit-exact; else an approximate pre-pass.
         bool terrainMode = false;
+        bool terrainDepthPrepass = false;
         {
             // _elevationTextureCache is not released here: a renderer may still draw from it.
             if (auto terrainOptions = _options->getTerrainOptions()) {
@@ -2918,9 +2919,7 @@ namespace massif {
                             }
                         }
                         depthSourceRendered = backgroundRendered && keepDepth;
-                        if (!depthSourceRendered && !depthWriteAssigned) {
-                            _terrainRenderer->renderDepthPrepass(viewState, terrainOptions, _glResourceManager);
-                        }
+                        terrainDepthPrepass = !depthSourceRendered && !depthWriteAssigned;
                         FRAME_PROF_ADD(preTerrainMs, profTerrainStart);
                     }
                     if (terrainOptions->isBillboardOcclusionEnabled()) {
@@ -2975,6 +2974,7 @@ namespace massif {
         bool groundAODraped = false;
         std::vector<std::shared_ptr<TileLayer> > drapeLayers;
         bool sharedGroundActive = false;
+        bool terrainSurfaceDrawn = false;
         // Whether a terrain branch closed out preludeMs, to avoid double-counting.
         bool preludeAccounted = false;
         if (terrainMode) {
@@ -3162,6 +3162,7 @@ namespace massif {
                         if (terrainOptions->isSharedGroundEnabled()) {
                             groundDraws = groundDrawer->renderTerrainGround(groundColor);
                         }
+                        terrainSurfaceDrawn = (groundDraws > 0);
                         FRAME_PROF_ADD(drapeMs, profGroundStart);
                         FRAME_PROF_GPU_END();
 
@@ -3893,6 +3894,7 @@ namespace massif {
                             drapeLayers[i]->setGroundDrapeTextures(groundDrapes);
                         }
                     }
+                    terrainSurfaceDrawn = (surfaceDraws > 0);
                     glEnable(GL_CULL_FACE);
                     glDepthFunc(GL_LESS);
                     glDepthMask(GL_FALSE);
@@ -3958,6 +3960,12 @@ namespace massif {
                         glViewport(0, 0, viewState.getWidth(), viewState.getHeight());
                     }
                 }
+            }
+        }
+        // After the ground, and only without one: its coarser meshes failed the ground's LEQUAL in holes.
+        if (terrainDepthPrepass && !terrainSurfaceDrawn) {
+            if (auto terrainOptions = _options->getTerrainOptions()) {
+                _terrainRenderer->renderDepthPrepass(viewState, terrainOptions, _glResourceManager);
             }
         }
         if (drapeLayers.empty() && !sharedGroundActive) {

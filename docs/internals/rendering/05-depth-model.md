@@ -223,6 +223,12 @@ clipped at all — the ground is simply invisible.
    content writes depth.
 5. **An emulator pass is not a device pass** for anything in this file. Every regression here was
    found on a device after the emulator was clean.
+6. **One terrain depth writer a frame.** `TerrainRenderer::renderDepthPrepass` is the fallback for
+   a frame with no ground surface, so it runs after the drape and shared-ground passes, and only when
+   neither drew. It used to run whenever no layer had ground content yet - the first frames of a
+   cold start, while the drape already drew - and its coarser CPU meshes, above the GPU surface on
+   every convex slope, failed the drape's `GL_LEQUAL` there: cell-sized holes onto the background
+   ("white specks"), web cold start at 7.62/45.78 z12.5 tilt 25, gone in 0 of 7 runs after.
 
 ## Known open artifact
 

@@ -2,24 +2,76 @@
 #include "components/Exceptions.h"
 #include "utils/Log.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
-#include <emscripten/fetch.h>
+#include <emscripten/em_js.h>
 
 namespace massif {
 
     namespace {
-        // emscripten_fetch_unpack_response_headers keeps the space after the colon and copies one
-        // character too many, so every value arrives as " 1234\n" - which is not what a
-        // Content-Length parses from.
-        std::string trimHeader(const char* text) {
-            std::string value = text;
-            std::size_t begin = value.find_first_not_of(" \t\r\n");
+        // After a synchronous XHR this worker's view of the heap is stale until V8 handles an interrupt, and a copy
+        // through it threw "offset is out of bounds": grow(0) refreshes it (docs/maintenance/web-build.md).
+        EM_JS(int, massif_xhr_send, (const char* method, const char* url, const char** headers, const unsigned char* body, int bodyLength, int timeout), {
+            wasmMemory.grow(0);
+            growMemViews();
+            var xhr = new XMLHttpRequest();
+            xhr.open(UTF8ToString(method), UTF8ToString(url), false);
+            xhr.responseType = 'arraybuffer';
+            if (timeout > 0) {
+                xhr.timeout = timeout;
+            }
+            for (var i = 0; ; i += 2) {
+                var key = HEAPU32[(headers >> 2) + i];
+                if (!key) {
+                    break;
+                }
+                xhr.setRequestHeader(UTF8ToString(key), UTF8ToString(HEAPU32[(headers >> 2) + i + 1]));
+            }
+            var data = (bodyLength > 0 ? HEAPU8.slice(body, body + bodyLength) : null);
+            try {
+                xhr.send(data);
+            } catch (e) {
+            }
+            wasmMemory.grow(0);
+            globalThis.__massifXHRs ??= [];
+            globalThis.__massifXHRs.push(xhr);
+            return globalThis.__massifXHRs.length - 1;
+        });
+
+        EM_JS(int, massif_xhr_status, (int handle), {
+            return globalThis.__massifXHRs[handle].status;
+        });
+
+        EM_JS(char*, massif_xhr_headers, (int handle), {
+            return stringToNewUTF8(globalThis.__massifXHRs[handle].getAllResponseHeaders() || '');
+        });
+
+        EM_JS(int, massif_xhr_length, (int handle), {
+            var response = globalThis.__massifXHRs[handle].response;
+            return response ? response.byteLength : 0;
+        });
+
+        EM_JS(void, massif_xhr_copy, (int handle, unsigned char* data), {
+            wasmMemory.grow(0);
+            growMemViews();
+            HEAPU8.set(new Uint8Array(globalThis.__massifXHRs[handle].response), data);
+        });
+
+        EM_JS(void, massif_xhr_free, (int handle), {
+            globalThis.__massifXHRs[handle] = null;
+            while (globalThis.__massifXHRs.length > 0 && !globalThis.__massifXHRs[globalThis.__massifXHRs.length - 1]) {
+                globalThis.__massifXHRs.pop();
+            }
+        });
+
+        std::string trimHeader(const std::string& text) {
+            std::size_t begin = text.find_first_not_of(" \t\r\n");
             if (begin == std::string::npos) {
                 return std::string();
             }
-            return value.substr(begin, value.find_last_not_of(" \t\r\n") - begin + 1);
+            return text.substr(begin, text.find_last_not_of(" \t\r\n") - begin + 1);
         }
     }
 
@@ -34,15 +86,6 @@ namespace massif {
     }
 
     bool HTTPClient::EmscriptenImpl::makeRequest(const HTTPClient::Request& request, HeadersFunc headersFn, DataFunc dataFn) const {
-        emscripten_fetch_attr_t attr;
-        emscripten_fetch_attr_init(&attr);
-        std::strncpy(attr.requestMethod, request.method.c_str(), sizeof(attr.requestMethod) - 1);
-        attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
-        int timeout = _timeout.load();
-        if (timeout > 0) {
-            attr.timeoutMSecs = static_cast<std::uint32_t>(timeout);
-        }
-
         // Flat key, value, ..., null array; the strings must outlive the call.
         std::vector<std::string> headerStrings;
         for (auto it = request.headers.begin(); it != request.headers.end(); it++) {
@@ -58,46 +101,48 @@ namespace massif {
             headerPtrs.push_back(headerString.c_str());
         }
         headerPtrs.push_back(nullptr);
-        attr.requestHeaders = headerPtrs.data();
 
-        if (!request.body.empty()) {
-            attr.requestData = reinterpret_cast<const char*>(request.body.data());
-            attr.requestDataSize = request.body.size();
-        }
-
-        emscripten_fetch_t* fetch = emscripten_fetch(&attr, request.url.c_str());
-        if (!fetch) {
-            throw NetworkException("Unable to open connection", request.url);
-        }
-        std::shared_ptr<emscripten_fetch_t> fetchGuard(fetch, emscripten_fetch_close);
+        int handle = massif_xhr_send(request.method.c_str(), request.url.c_str(), headerPtrs.data(), request.body.data(), static_cast<int>(request.body.size()), _timeout.load());
+        std::shared_ptr<void> xhrGuard(nullptr, [handle](void*) { massif_xhr_free(handle); });
 
         // status 0 is what a failed CORS preflight or a network error looks like from here; the
         // browser keeps the reason to itself and only logs it to the console.
-        if (fetch->status == 0) {
+        int status = massif_xhr_status(handle);
+        if (status == 0) {
             throw NetworkException("Unable to receive response", request.url);
         }
 
         std::map<std::string, std::string> headers;
-        if (std::size_t headersLength = emscripten_fetch_get_response_headers_length(fetch)) {
-            std::vector<char> headersString(headersLength + 1, '\0');
-            emscripten_fetch_get_response_headers(fetch, headersString.data(), headersString.size());
-            if (char** unpacked = emscripten_fetch_unpack_response_headers(headersString.data())) {
-                for (int i = 0; unpacked[i] && unpacked[i + 1]; i += 2) {
-                    headers[trimHeader(unpacked[i])] = trimHeader(unpacked[i + 1]);
+        if (char* headersText = massif_xhr_headers(handle)) {
+            std::string text = headersText;
+            std::free(headersText);
+            std::size_t lineStart = 0;
+            while (lineStart < text.size()) {
+                std::size_t lineEnd = text.find("\r\n", lineStart);
+                std::string line = text.substr(lineStart, lineEnd == std::string::npos ? std::string::npos : lineEnd - lineStart);
+                std::size_t colon = line.find(':');
+                if (colon != std::string::npos) {
+                    headers[trimHeader(line.substr(0, colon))] = trimHeader(line.substr(colon + 1));
                 }
-                emscripten_fetch_free_unpacked_response_headers(unpacked);
+                if (lineEnd == std::string::npos) {
+                    break;
+                }
+                lineStart = lineEnd + 2;
             }
         }
 
         if (_log) {
-            Log::Infof("HTTPClient::EmscriptenImpl::makeRequest: Response %d for %s", static_cast<int>(fetch->status), request.url.c_str());
+            Log::Infof("HTTPClient::EmscriptenImpl::makeRequest: Response %d for %s", status, request.url.c_str());
         }
 
-        if (!headersFn(fetch->status, headers)) {
+        if (!headersFn(status, headers)) {
             return false;
         }
-        if (fetch->numBytes > 0 && fetch->data) {
-            if (!dataFn(reinterpret_cast<const unsigned char*>(fetch->data), static_cast<std::size_t>(fetch->numBytes))) {
+        int length = massif_xhr_length(handle);
+        if (length > 0) {
+            std::vector<unsigned char> data(static_cast<std::size_t>(length));
+            massif_xhr_copy(handle, data.data());
+            if (!dataFn(data.data(), data.size())) {
                 return false;
             }
         }

@@ -458,7 +458,6 @@ if(EMSCRIPTEN)
     "-sMIN_WEBGL_VERSION=2" "-sMAX_WEBGL_VERSION=2" "-sFULL_ES3"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sMODULARIZE=1" "-sEXPORT_ES6=1"
-    "-sFETCH=1"
     # stringToNewUTF8/UTF8ToString are what PlatformUtils and the demo read location through; FS is
     # how the host page pushes assets and fonts into the virtual filesystem.
     "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS,cwrap,ccall,addFunction,removeFunction,getValue,setValue,HEAPU8,HEAP32,HEAPF64,addRunDependency,removeRunDependency"

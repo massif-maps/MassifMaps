@@ -317,7 +317,7 @@ namespace massif::vt {
         void setDebugTileBorders(bool enabled);
         void setDebugSurfacePrefill(bool enabled);
         void setTerrainBackgroundColor(const Color& color);
-        void setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider);
+        void setLabelElevationProvider(std::function<double(const cglib::vec3<double>&, int)> provider);
         /** Label anchors (internal space, WORLD_SIZE wide) -> vt's normalized coordinates, for span chords. */
         void setLabelPositionScale(double scale) { _labelPositionScale = scale; }
         // debug.massif.labelanchor: false anchors labels in the frame, true samples new ones on the cull thread.
@@ -646,7 +646,7 @@ namespace massif::vt {
         bool resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const;
         void buildExtrusionBaseFootprints(const std::shared_ptr<TileGeometry>& geometry, const TileGeometry::VertexGeometryLayoutParameters& params, const VertexArray<std::uint8_t>& vertexGeometry, std::size_t vertexCount) const;
         void markPendingLabelsDirty();
-        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> labelAnchorFunc() const;
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> labelAnchorFunc() const;
         // Flags labels anchored on a span deck, whose CPU height labelVsh must keep; one chord test per
         // label, since the height func cannot report which source it used.
         void markDeckAnchoredLabels(const std::vector<std::shared_ptr<Label>>& labels) const;
@@ -890,7 +890,7 @@ namespace massif::vt {
         // Dirties the z-elevated labels when the roofs moved; false when nothing changed.
         bool refreshRoofSurfaces();
         // Under the lock only: a roof reads the extrusion bases the render thread resolves.
-        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc) const;
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> anchorFunc) const;
         std::optional<double> roofHeightAt(const cglib::vec3<double>& pos) const;
         bool _groundAOBakePass = false; // set only while the ground AO mask is a drape bake
         TerrainPaint _terrainPaint;
@@ -942,7 +942,7 @@ namespace massif::vt {
         Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only
         std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;
         TerrainTextureProvider _terrainTextureProvider;
-        std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;
+        std::function<double(const cglib::vec3<double>&, int)> _labelElevationProvider;
         std::function<bool(const cglib::vec3<double>&, int, bool, double&)> _extrusionElevationProvider;
         std::atomic<unsigned int> _extrusionBaseVersion { 1 }; // bumped by invalidateExtrusionBases
         std::vector<TileId> _pendingLabelElevationTiles; // elevation tiles whose labels must be re-anchored

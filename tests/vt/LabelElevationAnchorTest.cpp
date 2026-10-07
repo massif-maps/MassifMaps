@@ -26,7 +26,7 @@ namespace {
         void tesselateTriangles(const std::size_t*, std::size_t, VertexArray<cglib::vec2<float>>&, VertexArray<cglib::vec2<float>>&, VertexArray<std::size_t>&) const override { }
     };
 
-    std::shared_ptr<Label> buildPointLabel() {
+    std::shared_ptr<Label> buildPointLabel(const TileId& tileId = TileId(0, 0, 0)) {
         GlyphMap::Glyph baseGlyph(GlyphMap::GlyphMode::SDF, 0, 0, 1, 1, cglib::vec2<float>(0, 0));
         std::vector<Font::Glyph> glyphs;
         glyphs.emplace_back(0, Font::CR_CODEPOINT, baseGlyph, cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0));
@@ -34,7 +34,7 @@ namespace {
         auto style = std::make_shared<TileLabel::Style>(LabelOrientation::BILLBOARD_2D, ColorFunction(Color(1, 1, 1, 1)), FloatFunction(1.0f), ColorFunction(Color()), FloatFunction(0.0f), false, 1.0f, 1.0f, 0.0f, std::optional<Transform>(), std::shared_ptr<const GlyphMap>(), 27);
         TileLabel tileLabel(1, 1, 0, glyphs, cglib::vec2<float>(0, 0), std::vector<cglib::vec2<float>>(),
                             style, TileLabel::PlacementInfo(0, 0, false, false), -1, std::vector<TileLabel::Variant>());
-        return std::make_shared<Label>(tileLabel, TileId(0, 0, 0), 0, cglib::mat4x4<double>::identity(), std::make_shared<FlatTransformer>());
+        return std::make_shared<Label>(tileLabel, tileId, 0, cglib::mat4x4<double>::identity(), std::make_shared<FlatTransformer>());
     }
 
     ViewState buildViewState() {
@@ -57,8 +57,8 @@ namespace {
     }
 
     // The provider returns a whole position since "up" is radial on a globe.
-    std::function<cglib::vec3<double>(const cglib::vec3<double>&)> constantHeight(double height) {
-        return [height](const cglib::vec3<double>& pos) {
+    std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> constantHeight(double height) {
+        return [height](const cglib::vec3<double>& pos, int) {
             return cglib::vec3<double>(pos(0), pos(1), height);
         };
     }
@@ -66,6 +66,19 @@ namespace {
 
 void testLabelElevationAnchor() {
     ViewState viewState = buildViewState();
+
+    // TileRenderer caps its DEM lookup at this zoom: a z5 stand-in's labels fetched camera-zoom DEM over its whole area.
+    {
+        std::shared_ptr<Label> label = buildPointLabel(TileId(9, 270, 180));
+        label->updatePlacement(viewState);
+        int calls = 0, otherZoom = 0;
+        label->updateElevation([&calls, &otherZoom](const cglib::vec3<double>& pos, int tileZoom) {
+            calls++;
+            otherZoom += (tileZoom != 9 ? 1 : 0);
+            return cglib::vec3<double>(pos(0), pos(1), 100.0);
+        });
+        TEST_CHECK(calls > 0 && otherZoom == 0, "every anchor sample is told the zoom of the label's tile");
+    }
 
     {
         std::shared_ptr<Label> label = buildPointLabel();

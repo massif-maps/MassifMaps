@@ -143,11 +143,11 @@ namespace massif::vt {
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
         // False when part of the geometry had no elevation; still mark the label clean, since only new
-        // data changes the answer and that re-dirties it (markPendingLabelsDirty).
-        bool updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
+        // data changes the answer and that re-dirties it (markPendingLabelsDirty). anchorFunc gets the tile's zoom.
+        bool updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)>& anchorFunc);
         // updateElevation split so the per-vertex sampling runs off the renderer's lock; apply writes
         // back under the lock. A non-finite sample means "no data here" (the origin would bury the label).
-        std::vector<cglib::vec3<double>> sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const;
+        std::vector<cglib::vec3<double>> sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)>& anchorFunc) const;
         bool applyElevation(const std::vector<cglib::vec3<double>>& positions);
 
         // Which part of a label a draw pass wants. CALLOUT leader lines are drawn in a pass of

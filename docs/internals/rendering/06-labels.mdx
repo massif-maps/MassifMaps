@@ -1220,6 +1220,24 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   never. `TileRenderer` now tracks the exaggeration itself and invalidates every label anchor when
   it moves, ahead of the branch chain that only ever names changed tiles.
 
+  **The level is the one DRAWN under the label, not the camera's.** The provider asked at
+  `int(view zoom)`, but the ground in front of a tilted camera is drawn finer than that — the cover
+  splits down to the finest layer's tiles (the terrain-3d example's imagery has `zoomLevelBias 1`) —
+  and the node field is box-filtered per cell, so every coarser level lowers a sharp summit. Measured
+  on the web, terrain-3d at its own camera (Matterhorn, zoom 11.6, tilt 14): the label read the
+  **z10** grid, 4162 m; the summit was drawn from the **z12** grid (a z13 cover tile), 4422 m at the
+  POI — the icon 260 m (325 m exaggerated) inside the mountain, under a summit that in 2D it sits on.
+  `ElevationTextureCache::getDrawnDisplayHeight` now answers first: the finest texture entry used
+  since the previous frame began (its `lastUsed` LRU stamp, `FinestDrawnLevel.h`), no coarser than
+  the bound above; the camera-zoom path stays as the fallback, and keeps the prefetch. The stamp is
+  what keeps out a finer texture an earlier camera left in the cache, which would float the label over
+  a coarser drawn ground. This is maplibre's and mapbox's level too: a symbol is elevated from the
+  DEM of its own tile, which is the level the terrain there is drawn from. Not mapbox's VALUE: they
+  sample the DEM bilinearly, we keep the node field, since a label on the true 4478 m would hover over
+  the drawn summit. What is left: the level is the one drawn when the label was anchored, and only a
+  landing texture re-anchors it, so a cover that refines over textures already held leaves the label
+  one level low until something lands.
+
   A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
   occlusion test skips it: it still carries its flat decode height, and judging that against the
   terrain hides it under ground it is not behind. A later miss **un-anchors** the label: it was

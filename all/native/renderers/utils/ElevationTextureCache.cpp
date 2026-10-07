@@ -3,6 +3,7 @@
 #include "core/MapBounds.h"
 #include "core/MapTile.h"
 #include "graphics/Bitmap.h"
+#include "renderers/utils/FinestDrawnLevel.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/HalfFloatTexture.h"
 #include "renderers/utils/Texture.h"
@@ -706,6 +707,34 @@ namespace massif {
         }
     }
 
+    bool ElevationTextureCache::getDrawnDisplayHeight(double internalX, double internalY, int zoom, int maxAncestorLevels, double& height) const {
+        double u = internalX / Const::WORLD_SIZE + 0.5;
+        double v = 0.5 - internalY / Const::WORLD_SIZE;
+        if (zoom < 0 || u < 0 || v < 0 || u >= 1 || v >= 1) {
+            return false;
+        }
+        auto tileAt = [u, v](int tileZoom) {
+            int extent = 1 << tileZoom;
+            return MapTile(static_cast<int>(u * extent), static_cast<int>(v * extent), tileZoom, 0);
+        };
+        int finest = _elevationManager->getDetailDataTile(tileAt(_elevationManager->getDetailZoomLimit()), _detailLevels).getZoom();
+        int coarsest = _elevationManager->getDetailDataTile(tileAt(zoom), _detailLevels).getZoom() - maxAncestorLevels;
+        int level = finestDrawnLevel(finest, coarsest, _lastFrameStartCounter, [&](int gridZoom, std::uint64_t& stamp) {
+            auto it = _cache.find(tileAt(gridZoom).getTileId());
+            if (it == _cache.end() || !it->second.grid) {
+                return false;
+            }
+            stamp = it->second.lastUsed;
+            return true;
+        });
+        if (level < 0) {
+            return false;
+        }
+        const std::shared_ptr<ElevationTileGrid>& grid = _cache.find(tileAt(level).getTileId())->second.grid;
+        height = grid->sampleNodeHeight(internalX, internalY) * _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
+        return true;
+    }
+
     void ElevationTextureCache::beginFrame() {
         _frameTime = std::chrono::steady_clock::now();
         // Back to the cap once the view no longer uses what overflowed it.
@@ -729,6 +758,8 @@ namespace massif {
         vt::RenderStats::demTexturesResolved.fetch_add(static_cast<long long>(_frameResolved.size()));
 #endif
         _frameResolved.clear();
+        _lastFrameStartCounter = _frameStartCounter;
+        _frameStartCounter = _accessCounter;
     }
 
     const std::vector<MapTile>& ElevationTextureCache::getFrameContentChanges() const {

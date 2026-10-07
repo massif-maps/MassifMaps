@@ -96,6 +96,7 @@ void testTerrainSkirts();
 void testSmoothBaseLevel();
 void testPointGridMemo();
 void testRecentUseHold();
+void testFinestDrawnLevel();
 void testTileStyleZoom();
 void testTileCacheHold();
 void testTileCacheStash();
@@ -498,6 +499,7 @@ int main() {
     testSmoothBaseLevel();
     testPointGridMemo();
     testRecentUseHold();
+    testFinestDrawnLevel();
     testTileStyleZoom();
     testTileCacheHold();
     testTileCacheStash();

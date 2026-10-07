@@ -275,6 +275,8 @@ add_executable(api_tests
   PointGridMemoTest.cpp
   # Same: RecentUseHold.h is what the DEM caches keep past their LRU, and nothing else.
   RecentUseHoldTest.cpp
+  # Same: FinestDrawnLevel.h is the level a label reads its ground at, nothing else.
+  FinestDrawnLevelTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
   # Same: TileCacheHold.h is the visible/preloading cache split over stdext's LRU, nothing else.

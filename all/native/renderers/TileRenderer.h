@@ -95,6 +95,7 @@ namespace massif {
         void setExternalDrapeTarget(bool enabled);
         void setExternalDrapeTiles(const std::vector<vt::TileId>& tileIds);
         void setTerrainGroundTiles(const std::vector<vt::TileId>& tileIds, const std::vector<int>& proxyDepths);
+        void setTerrainSkirtDrops(const std::map<vt::TileId, cglib::vec4<float>>& drops);
         void setTerrainLayerOrdinalBase(int base);
         int getStyleLayerCount() const;
         /**

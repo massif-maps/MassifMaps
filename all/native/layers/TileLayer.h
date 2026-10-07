@@ -18,6 +18,8 @@
 
 #include <vt/TileId.h>
 
+#include <cglib/vec.h>
+
 #include <atomic>
 #include <map>
 #include <mutex>
@@ -468,6 +470,8 @@ class ProjectionSurface;
         // The shared terrain ground: the cover every layer of the stack composites onto, drawn
         // once per frame by the front layer (see vt::GLTileRenderer::setTerrainGroundTiles).
         void setTerrainGroundTiles(const std::vector<vt::TileId>& tileIds, const std::vector<int>& proxyDepths);
+        // See vt::GLTileRenderer::setTerrainSkirtDrops.
+        void setTerrainSkirtDrops(const std::map<vt::TileId, cglib::vec4<float> >& drops);
         // Where this layer's style layers start in the stack's depth ordering: the stack is several renderers,
         // so the owner numbers them in draw order, or a composite's children all claim ordinal 0.
         void setTerrainLayerOrdinalBase(int base);

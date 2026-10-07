@@ -22,6 +22,7 @@
 
 #include "core/MapTile.h"
 #include "terrain/ElevationTileGrid.h" // BorderStrips is a member of a queued patch
+#include "terrain/TerrainSkirts.h"
 
 #include <vt/GLTileRenderer.h>
 
@@ -50,6 +51,11 @@ namespace massif {
          * Returns false while no texture is ready: the encode is queued and the tile renders flat meanwhile.
          */
         bool getTexture(const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture);
+
+        /** The node heights the tile is displaced by, from the same entry getTexture picks: the uploaded bytes, patches included. */
+        bool getDrawnNodeField(const vt::TileId& tileId, NodeFieldView& field);
+        /** Changes whenever an upload or a border patch changes what some tile is drawn with. */
+        unsigned int getDrawnVersion() const { return _drawnVersion; }
 
         /**
          * Uploads what the worker encoded (within budget) and drops the per-frame tile resolution memo,
@@ -174,12 +180,14 @@ namespace massif {
         void runEncodeWorker();
         void stopEncodeWorker();
         void evictLeastRecentlyUsed();
+        CacheEntry* findDrawnEntry(const vt::TileId& tileId);
 
         const std::shared_ptr<ElevationManager> _elevationManager;
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         float _viewZoom = 0.0f; // the camera's zoom this frame, for the border prefetch bound
+        unsigned int _drawnVersion = 0;
         std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
 
         // Coarser far tiles skip neighbour prefetch: it delayed the near ground, and their seam is sub-pixel.

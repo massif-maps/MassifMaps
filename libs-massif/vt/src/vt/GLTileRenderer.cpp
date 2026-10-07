@@ -164,9 +164,11 @@ namespace massif::vt {
         _terrainRegularGrid = enabled;
         if (!enabled) {
             _terrainGridSurfaces.clear();
+            _terrainGridSkirtSurfaces.clear();
         } else if (resolution != _terrainRegularGridResolution) {
             _terrainRegularGridResolution = resolution;
             _terrainGridSurfaces.clear(); // rebuilt lazily; the old compiled VBO is released in endFrame
+            _terrainGridSkirtSurfaces.clear();
         }
         if (wasEnabled != enabled) {
             buildTerrainEdgeCoarsening(); // stitching only exists in regular grid mode
@@ -2124,6 +2126,29 @@ namespace massif::vt {
         for (const std::pair<GLsizei, GLsizei>& run : visibleGridIndexRuns(tileId, surface, gridSurface)) {
             glDrawElements(GL_TRIANGLES, run.second, GL_UNSIGNED_SHORT, bufferGLOffset(static_cast<int>(run.first * sizeof(std::uint16_t))));
             drawn += run.second;
+        }
+        return drawn;
+    }
+
+    GLsizei GLTileRenderer::drawTerrainSkirts(const TileId& tileId, const ShaderProgram& shaderProgram) {
+        auto it = _terrainSkirtDropMap.find(tileId);
+        if (it == _terrainSkirtDropMap.end() || _transformer->isSpherical()) {
+            return 0;
+        }
+        GLsizei drawn = 0;
+        for (const std::shared_ptr<TileSurface>& skirtSurface : buildCompiledTerrainGridSkirtSurfaces()) {
+            const TileSurface::VertexGeometryLayoutParameters& layout = skirtSurface->getVertexGeometryLayoutParameters();
+            const CompiledSurface& compiledSurface = _compiledTileSurfaceMap[skirtSurface];
+            glBindBuffer(GL_ARRAY_BUFFER, compiledSurface.vertexGeometryVBO);
+            enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, layout.vertexSize, bufferGLOffset(layout.coordOffset));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledSurface.indicesVBO);
+            GLsizei edgeIndices = static_cast<GLsizei>(skirtSurface->getIndicesCount() / 4);
+            for (int edge = 0; edge < 4; edge++) {
+                if (it->second(edge) > 0.0f) {
+                    glDrawElements(GL_TRIANGLES, edgeIndices, GL_UNSIGNED_SHORT, bufferGLOffset(static_cast<int>(edge * edgeIndices * sizeof(std::uint16_t))));
+                    drawn += edgeIndices;
+                }
+            }
         }
         return drawn;
     }
@@ -4120,6 +4145,9 @@ namespace massif::vt {
             }
         }
         glUniform4f(shaderProgram.uniforms[U_TERRAINEDGECOARSENING], edgeCoarsening(0), edgeCoarsening(1), edgeCoarsening(2), edgeCoarsening(3));
+        auto skirtIt = _terrainSkirtDropMap.find(tileId);
+        cglib::vec4<float> skirtDrop = (skirtIt != _terrainSkirtDropMap.end() ? skirtIt->second : cglib::vec4<float>(0, 0, 0, 0));
+        glUniform4f(shaderProgram.uniforms[U_TERRAINSKIRTDROP], skirtDrop(0), skirtDrop(1), skirtDrop(2), skirtDrop(3));
         // Vertex frame -> TARGET tile units, for the edge test and the fragment clip. The offset makes
         // it hold for a stand-in, whose unit square would otherwise land in [0, 2^dz].
         const cglib::mat4x4<double> targetTileMatrix = _transformer->calculateTileMatrix(tileId, 1.0f);
@@ -4677,6 +4705,9 @@ namespace massif::vt {
             glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
 
             GLsizei drawnIndices = drawSurfaceElements(tileId, *tileSurface, gridMode);
+            if (gridMode && !_terrainShadowMaskPass) {
+                drawnIndices += drawTerrainSkirts(tileId, shaderProgram);
+            }
             VT_STAT_INC(surfaceDraws);
             VT_STAT_INC(surfFillDraws);
             VT_STAT_ADD(surfaceIndices, drawnIndices);
@@ -4760,6 +4791,12 @@ namespace massif::vt {
         _terrainSharedGround = !tileIds.empty();
         _groundLeafCache.clear();
         updateTerrainCoverTiles();
+    }
+
+    void GLTileRenderer::setTerrainSkirtDrops(const std::map<TileId, cglib::vec4<float>>& drops) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainSkirtDropMap = drops;
     }
 
     const std::vector<TileId>& GLTileRenderer::collectGroundLeaves(const TileId& targetTileId) const {
@@ -6170,6 +6207,9 @@ namespace massif::vt {
             glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
 
             GLsizei drawnIndices = drawSurfaceElements(tileId, *tileSurface, gridMode);
+            if (gridMode) {
+                drawnIndices += drawTerrainSkirts(tileId, shaderProgram);
+            }
             VT_STAT_INC(surfaceDraws);
             VT_STAT_INC(surfDrapeDraws);
             VT_STAT_ADD(surfaceIndices, drawnIndices);
@@ -7483,6 +7523,27 @@ namespace massif::vt {
             }
         }
         return _terrainGridSurfaces;
+    }
+
+    const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTerrainGridSkirtSurfaces() {
+        if (_terrainGridSkirtSurfaces.empty()) {
+            if (std::shared_ptr<TileSurface> surface = _tileSurfaceBuilder.buildRegularGridSkirtSurface(_terrainRegularGridResolution)) {
+                _terrainGridSkirtSurfaces.push_back(std::move(surface));
+            }
+        }
+        for (const std::shared_ptr<TileSurface>& tileSurface : _terrainGridSkirtSurfaces) {
+            CompiledSurface& compiledSurface = _compiledTileSurfaceMap[tileSurface];
+            if (compiledSurface.indicesVBO == 0) {
+                createCompiledSurface(compiledSurface);
+
+                glBindBuffer(GL_ARRAY_BUFFER, compiledSurface.vertexGeometryVBO);
+                glBufferData(GL_ARRAY_BUFFER, tileSurface->getVertexGeometry().size() * sizeof(std::uint8_t), tileSurface->getVertexGeometry().data(), GL_STATIC_DRAW);
+
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledSurface.indicesVBO);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileSurface->getIndices().size() * sizeof(std::uint16_t), tileSurface->getIndices().data(), GL_STATIC_DRAW);
+            }
+        }
+        return _terrainGridSkirtSurfaces;
     }
 
     const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTileSurfaces(const TileId& tileId) {

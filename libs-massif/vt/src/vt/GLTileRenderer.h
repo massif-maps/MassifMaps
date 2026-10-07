@@ -261,6 +261,9 @@ namespace massif::vt {
         // proxyDepths, parallel to tileIds: levels coarser than asked for (0 = its own), since a coarse
         // stand-in is a different height field that pokes through content.
         void setTerrainGroundTiles(const std::vector<TileId>& tileIds, const std::vector<int>& proxyDepths);
+        // Per drawn cover tile, metres a skirt hangs under its west/east/south/north edge, where the neighbour
+        // there is drawn from other height data (a hole otherwise). Absent tiles hang none.
+        void setTerrainSkirtDrops(const std::map<TileId, cglib::vec4<float>>& drops);
         // Draws the shared ground per cover tile at its true depth: the frame's only depth-writing
         // terrain geometry. Returns the draws.
         int renderTerrainGround(const Color& color);
@@ -666,6 +669,8 @@ namespace massif::vt {
         int renderTileSurfaceDrape(const TileId& tileId, float uvOffsetX, float uvOffsetY, float uvScale);
         // Draws the surface, skipping the shared grid's blocks off screen when gridSurface; returns the indices drawn.
         GLsizei drawSurfaceElements(const TileId& tileId, const TileSurface& surface, bool gridSurface) const;
+        // The skirts of a grid surface draw, with its program and uniforms already set up.
+        GLsizei drawTerrainSkirts(const TileId& tileId, const ShaderProgram& shaderProgram);
         // (first index, count) runs of the grid's blocks that can be on screen; all of it when unknown or not culled.
         std::vector<std::pair<GLsizei, GLsizei>> visibleGridIndexRuns(const TileId& tileId, const TileSurface& gridSurface, bool culled) const;
         GLuint ensureDrapeTexture(const TileId& tileId);
@@ -718,6 +723,7 @@ namespace massif::vt {
         // id must be a string literal: its address keys _shaderProgramCache.
         const ShaderProgram& buildShaderProgram(const char* id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, unsigned int flags);
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTerrainGridSurfaces();
+        const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTerrainGridSkirtSurfaces();
         // The shadow caster and mask pass grid: both sides of the depth compare, so coarser only costs detail.
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTerrainShadowGridSurfaces();
         // Two triangles per tile: the flat orthographic drape bake gains nothing from the displaced grid.
@@ -774,6 +780,8 @@ namespace massif::vt {
         std::set<TileId> _terrainCoverTileIds;   // the cover the surfaces are actually drawn from (drape cover / paint cover)
         std::map<TileId, cglib::vec4<float>> _terrainEdgeCoarseningMap; // per drawn cover tile: lattice cell scale (2^k) on the west/east/south/north edge
         std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces;
+        std::vector<std::shared_ptr<TileSurface>> _terrainGridSkirtSurfaces;
+        std::map<TileId, cglib::vec4<float>> _terrainSkirtDropMap; // see setTerrainSkirtDrops
         std::vector<std::shared_ptr<TileSurface>> _terrainShadowGridSurfaces; // at most SHADOW_GRID_MAX_RESOLUTION
         int _terrainShadowGridResolution = 0;
         std::vector<std::shared_ptr<TileSurface>> _terrainFlatSurfaces; // 1x1 grid for the flat drape bake

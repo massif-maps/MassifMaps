@@ -254,6 +254,9 @@ namespace massif {
         void constrainCameraToClearance();
         // After a gesture: the camera held, the focus slid along its view ray onto the ground, the zoom re-derived.
         bool landFocusAlongView(const ElevationManager& elevationManager, double lift);
+        // Skirts where two cover tiles are drawn from different height data (TerrainSkirts.h); recomputed only when
+        // the cover or what the tiles are drawn with changes.
+        void updateTerrainSkirts(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& cover, const std::shared_ptr<TerrainOptions>& terrainOptions);
 
         // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
         double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);
@@ -387,6 +390,10 @@ namespace massif {
         int _eyeGroundZoom = -1;
         std::atomic<bool> _touchGestureActive { false };
         bool _terrainFocusFrozen = false;
+        std::vector<vt::TileId> _skirtCover;
+        std::shared_ptr<ElevationTextureCache> _skirtCache;
+        unsigned int _skirtDrawnVersion = 0;
+        std::map<vt::TileId, cglib::vec4<float> > _skirtDrops;
         double _eyeGroundZ = 0;
         double _eyeGroundOffset = 0;
         double _eyeGroundTarget = 0; // the answer the glide heads for, and where it was asked

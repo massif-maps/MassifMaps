@@ -423,6 +423,14 @@ namespace massif {
         }
     }
 
+    void TileRenderer::setTerrainSkirtDrops(const std::map<vt::TileId, cglib::vec4<float>>& drops) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->setTerrainSkirtDrops(drops);
+        }
+    }
+
     int TileRenderer::renderTerrainGround(const Color& color) {
         std::lock_guard<std::mutex> lock(_mutex);
 

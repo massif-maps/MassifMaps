@@ -54,6 +54,8 @@ namespace massif {
         float sampleNodeHeight(double internalX, double internalY) const;
         /** Mesh nodes per grid edge the node field was built for, 0 for none. */
         int getNodesPerEdge() const { return _nodesPerEdge; }
+        /** Metres in one texel of this grid's encoding, as the node and DEM textures store it. */
+        float decodeEncodedTexel(const std::uint8_t* texel) const { return decodeTexel(texel); }
         /**
          * This decode's identity, unique for the process. A re-decode keeps the tile id, so caches
          * compare this to notice a replaced grid (e.g. after setSurfaceResolution).

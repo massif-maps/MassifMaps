@@ -494,6 +494,43 @@ namespace massif::vt {
         return tileSurfaces.empty() ? std::shared_ptr<TileSurface>() : tileSurfaces.front();
     }
 
+    std::shared_ptr<TileSurface> TileSurfaceBuilder::buildRegularGridSkirtSurface(int resolution) const {
+        int res = std::max(1, std::min(254, resolution));
+
+        VertexArray<cglib::vec3<float>> coords;
+        VertexArray<cglib::vec2<float>> texCoords;
+        VertexArray<cglib::vec3<float>> normals;
+        VertexArray<cglib::vec3<float>> binormals;
+        VertexArray<std::size_t> indices;
+
+        // The grid's own edge positions, so a top vertex displaces exactly like the grid vertex it hangs from.
+        float invRes = 1.0f / static_cast<float>(res);
+        for (int edge = 0; edge < 4; edge++) {
+            std::size_t base = coords.size();
+            for (int k = 0; k <= res; k++) {
+                float t = k * invRes;
+                float x = (edge == 0 ? 0.0f : edge == 1 ? 1.0f : t);
+                float y = (edge == 2 ? 0.0f : edge == 3 ? 1.0f : t);
+                for (int bottom = 0; bottom < 2; bottom++) {
+                    coords.append(cglib::vec3<float>(x, y, bottom ? GRID_SKIRT_SENTINEL - static_cast<float>(edge) : 0.0f));
+                    texCoords.append(cglib::vec2<float>(x, 1.0f - y));
+                    normals.append(cglib::vec3<float>(0.0f, 0.0f, 1.0f));
+                    binormals.append(cglib::vec3<float>(0.0f, -1.0f, 0.0f));
+                }
+            }
+            for (int k = 0; k < res; k++) {
+                std::size_t top0 = base + 2 * k, bottom0 = top0 + 1, top1 = top0 + 2, bottom1 = top0 + 3;
+                indices.append(top0, top1, bottom1);
+                indices.append(top0, bottom1, bottom0);
+            }
+        }
+
+        std::vector<std::shared_ptr<TileSurface>> tileSurfaces;
+        VertexArray<float> noSkirtDrops;
+        packGeometry(coords, texCoords, normals, binormals, noSkirtDrops, indices, tileSurfaces);
+        return tileSurfaces.empty() ? std::shared_ptr<TileSurface>() : tileSurfaces.front();
+    }
+
     std::vector<TileId> TileSurfaceBuilder::tesselateTile(const TileId& baseTileId, const std::vector<TileId>& tileIds, bool xCoord) {
         auto calculatePosition = [&baseTileId, xCoord](const TileId& tileId) -> float {
             int deltaZoom = tileId.zoom - baseTileId.zoom;

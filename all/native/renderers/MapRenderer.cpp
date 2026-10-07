@@ -2429,34 +2429,15 @@ namespace massif {
                         }
                         ringZoom = std::max(0, ringZoom);
                     }
-                    // The cover's footprint at the ring's zoom, widened by the margin.
                     std::vector<vt::TileId> candidates;
                     {
-                        ShadowCasterRing::Grid grid;
-                        grid.zoom = ringZoom;
-                        bool first = true;
+                        std::vector<ShadowCasterRing::Tile> cover;
+                        cover.reserve(coverTileIds.size());
                         for (const vt::TileId& tileId : coverTileIds) {
-                            int shift = tileId.zoom - ringZoom;
-                            int x = (shift >= 0 ? tileId.x >> shift : tileId.x << -shift);
-                            int y = (shift >= 0 ? tileId.y >> shift : tileId.y << -shift);
-                            if (first) {
-                                grid.minX = grid.maxX = x;
-                                grid.minY = grid.maxY = y;
-                                first = false;
-                            } else {
-                                grid.minX = std::min(grid.minX, x); grid.maxX = std::max(grid.maxX, x);
-                                grid.minY = std::min(grid.minY, y); grid.maxY = std::max(grid.maxY, y);
-                            }
+                            cover.push_back(ShadowCasterRing::Tile { tileId.zoom, tileId.x, tileId.y });
                         }
-                        if (!first) {
-                            // Bounded: flat ground keeps ringZoom at maxCoverZoom, thousands of tiles a side to the horizon.
-                            grid = ShadowCasterRing::fit(grid, casterMargin, MAX_SHADOW_CASTER_TILES);
-                            ringZoom = grid.zoom;
-                            for (int y = grid.minY - casterMargin; y <= grid.maxY + casterMargin; y++) {
-                                for (int x = grid.minX - casterMargin; x <= grid.maxX + casterMargin; x++) {
-                                    candidates.emplace_back(ringZoom, x, y);
-                                }
-                            }
+                        for (const ShadowCasterRing::Tile& tile : ShadowCasterRing::ringCandidates(cover, ringZoom, casterMargin, throwDistance / Const::WORLD_SIZE)) {
+                            candidates.emplace_back(tile.zoom, tile.x, tile.y);
                         }
                     }
                     std::stable_sort(candidates.begin(), candidates.end(), [](const vt::TileId& a, const vt::TileId& b) { return a.zoom > b.zoom; });

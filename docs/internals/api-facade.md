@@ -1183,7 +1183,7 @@ not the platform's. `at=` is lon/lat because the map was attached with
 over the subscription's — both conversions in one handler, which is the rule the host tests assert
 and this is it running for real.
 
-`CompletableFuture` is out — minSdk is 21 and it is API 24 — so async is a callback interface, which
+`CompletableFuture` is out — minSdk is 23 and it is API 24 — so async is a callback interface, which
 is also what Kotlin wraps most cleanly. `MassifApi.isValid` / `mm_valid` exist for the sugar: a
 wrapper needs to tell "destroyed" from "never existed" without a property read, which can
 legitimately fail for another reason.

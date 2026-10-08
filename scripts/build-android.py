@@ -26,9 +26,9 @@ def detectAndroidAPIs(args):
     minapi = platforms.get('min', 1)
     maxapi = platforms.get('max', 0)
     for api in range(minapi, maxapi + 1):
-      if api >= 11:
+      if api >= 23:
         api32 = min(api32 or api, api)
-      if api >= 21:
+      if api >= 23:
         api64 = min(api64 or api, api)
   return api32, api64
 

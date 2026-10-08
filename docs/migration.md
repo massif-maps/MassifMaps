@@ -235,7 +235,7 @@ break, not a code one.
 `0x00030000`** — the merged manifest takes the highest value, so a stale `0x00020000` in your app is
 harmless, but leaving it there advertises support you no longer have.
 
-Devices lost are pre-2013 GPUs: Mali-400, Adreno 200/305, Tegra 3, PowerVR SGX. At `minSdk 21` and
+Devices lost are pre-2013 GPUs: Mali-400, Adreno 200/305, Tegra 3, PowerVR SGX. At `minSdk 23` and
 an iOS 13 floor — where every device is A7 or newer — that is a rounding error. On desktop the
 equivalent floor is D3D feature level 10_1 (Sandy Bridge, 2011), which Windows 11 already exceeds.
 
@@ -563,6 +563,13 @@ too; they were never exposed to bindings, so only C++ embedders see it.
 `fadeDuration`) where it was 1.0. The value is full fades per second, not a relative factor as its
 doc comment used to say. An app that wants the old fade sets `setLabelBlendingSpeed(1)`; one that
 already sets a value is unaffected.
+
+### Android `minSdk` is 23
+
+The native library is linked with packed dynamic relocations (`-Wl,--pack-dyn-relocs=android`),
+which the platform linker reads from API 23 (Android 6.0). An app with a lower `minSdk` fails the
+manifest merge; raise it to 23. The relocation table was 574 KB of the `full` library, and packing
+cuts it by about 85%, see [Binary size & build time](internals/build-and-size.md).
 
 ## Deliberately NOT renamed
 

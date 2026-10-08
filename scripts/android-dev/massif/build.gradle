@@ -93,7 +93,7 @@ android {
     def splitEnabled = (project.hasProperty("splitEnabled") || (requestedAbis && isDebugApkBuild))
     println "splitEnabled: " + splitEnabled
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 35
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

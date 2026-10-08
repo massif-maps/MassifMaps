@@ -73,6 +73,10 @@ commit goes to a release by the paths it touches:
 | anything else only | yes | — |
 | both | yes | yes |
 
+`build.yml` writes the SDK notes into the draft release before the first build and prints them in
+the run summary. Edit the draft body on GitHub while the builds run: the final job copies it (minus
+the installation section) into `CHANGELOG.md` and publishes it as is.
+
 `docs`, `website`, `tests`, `.claude`, `.github` and `tools/style-preview` count for neither, so a
 styles PR with its doc page stays out of the SDK's notes. A PR touching both lands in both under
 one title, so the SDK change goes in its own PR, titled for the SDK.

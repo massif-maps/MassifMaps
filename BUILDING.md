@@ -291,9 +291,11 @@ only builds and packs; `build.yml` publishes its tarball.
 4. **Release**: the same run with version `6.1.0` and `prerelease` off. npm `latest`, the full
    `CHANGELOG.md` entry since the last final release, a regular GitHub release.
 
-The run refuses a version below an existing `v` tag. Order: every build, then the GitHub release
-made public (notes from `scripts/release-notes.py`, which leaves out the style-only commits:
-[release notes](docs/contributing/release-workflow.md#release-notes)), then the JitPack and Swift package tags and npm.
+The run refuses a version below an existing `v` tag. The notes (`scripts/release-notes.py`, which
+leaves out the style-only commits: [release notes](docs/contributing/release-workflow.md#release-notes))
+are written into the *draft* release before any build starts, and shown in the run summary: fix them in
+the GitHub draft while the builds run. Order: every build, then the `CHANGELOG.md` entry (copied from
+the draft body as you left it) and the release made public, then the JitPack and Swift package tags and npm.
 A failure before the release is public deletes the draft; after it, nothing is rolled back — re-run
 the failed job: the tags are forced and npm skips a version it already has.
 

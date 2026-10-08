@@ -66,10 +66,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--product', choices=['sdk', 'styles'], default='sdk')
     parser.add_argument('--changelog', help='prepend the notes to this file as a "## [<tag>]" entry')
+    parser.add_argument('--body', help='with --changelog, take the notes from this file instead of the commits')
     parser.add_argument('previous')
     parser.add_argument('tag')
     args = parser.parse_args()
-    body = notes(args.previous, args.tag, args.product)
+    if args.changelog and args.body:
+        with open(args.body) as f:
+            body = f.read().strip()
+    else:
+        body = notes(args.previous, args.tag, args.product)
     if not args.changelog:
         print(body)
         return

@@ -2,6 +2,83 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.1.3] - 2026-10-08
+
+### Breaking changes
+
+- **ci:** drop 32-bit x86 from Android releases and cache release builds ([#390](https://github.com/massif-maps/MassifMaps/pull/390)) ([`09cbf92`](https://github.com/massif-maps/MassifMaps/commit/09cbf9251ca667aeda1e96efd50acaefc5d4d76a))
+  release AARs no longer contain the 32-bit x86 libmassif.so and libvalhalla_routing.so.
+- **web:** load cached tiles in milliseconds instead of seconds: files in wasm memory, persisted to OPFS ([#374](https://github.com/massif-maps/MassifMaps/pull/374)) ([`eab839b`](https://github.com/massif-maps/MassifMaps/commit/eab839b903b570d4a2fb9a59fcf2d6f5218f2a0d))
+  FS.filesystems.IDBFS is gone from the web module; use persistDirectory(map.module, path) from @massif-maps/web to keep a persistent-cache directory.
+- **labels:** hide a summit's name behind the mountain in front of it, not 900 m into it ([#375](https://github.com/massif-maps/MassifMaps/pull/375)) ([`6d10f36`](https://github.com/massif-maps/MassifMaps/commit/6d10f3620ac4f19095ea5de22829c655d2947698))
+  TerrainOptions.billboardOcclusionTolerance defaults to 0.05 instead of 0.2. Set it back to 0.2 to keep the previous, looser behaviour.
+- **celestial:** setPosition by lon/lat, one event per tap, no black band or skew after looking up ([#352](https://github.com/massif-maps/MassifMaps/pull/352)) ([`2349ee0`](https://github.com/massif-maps/MassifMaps/commit/2349ee04e953af0c62d2c2c5714f56164df0b213))
+  CelestialObject.setPosition takes WGS84 longitude/latitude, no longer the base projection. Apps passing EPSG:3857 coordinates convert with baseProjection.toWgs84 first. Layers.insert of a layer already added now moves it instead of adding a second copy.
+- **styles:** keep Massif's POI look under child rules, and fix huts, ruins, waterfalls, lifts and minor roads ([#338](https://github.com/massif-maps/MassifMaps/pull/338)) ([`328bce8`](https://github.com/massif-maps/MassifMaps/commit/328bce8ef4f3da3aa5efdf37b831cc42cbc55a28))
+  POI look parameters gain -subclass- and -shelter_type- tables; colours, sizes and zooms change as listed.
+- **style-cli:** write each palette and icon lookup as one table style parameter ([#336](https://github.com/massif-maps/MassifMaps/pull/336)) ([`6c65f11`](https://github.com/massif-maps/MassifMaps/commit/6c65f11d559e8362466563938c2c895d9e7ff374))
+  a converted style's per-label parameters are renamed. An app that set `poi-fill-cafe` sets `poi-fill.cafe` (needs the SDK's table.key support), or rewrites the `poi-fill` table.
+- **styles:** draw each converted layer from one attachment per sort key ([#326](https://github.com/massif-maps/MassifMaps/pull/326)) ([`84adbbd`](https://github.com/massif-maps/MassifMaps/commit/84adbbd4e1209c4cabdcf960d1a690f5dfe2b532))
+  the _bN attachments of a converted style now exist only for a sort key; a child project's rule naming e.g. ::road_construction_omt_b32 must name ::road_construction_omt_b<key>.
+- **styles:** keep each zoom stop of a day/night colour ramp, and draw its day colour by day ([#327](https://github.com/massif-maps/MassifMaps/pull/327)) ([`1227bcf`](https://github.com/massif-maps/MassifMaps/commit/1227bcfd156fe99f46085aa832e8f8b7f3f4d4d4))
+  e-ink's *-uncased road layers are gone; their colour is the fill layer's below casing-from.
+- **styles:** draw landmarks and viewpoints bare under every Massif POI, and a dot for a POI with no icon ([#322](https://github.com/massif-maps/MassifMaps/pull/322)) ([`50b5a79`](https://github.com/massif-maps/MassifMaps/commit/50b5a7943177af7b80452156604c7d37112d23c0))
+  a POI whose class has no icon now shows from z17 only, as a dot. Viewpoints lose their badge and yield to every POI. A subclass sprite now wins over its class's (ruins under castle).
+- **styles:** let an app draw the Massif relief past z16 with hillshade_max_zoom ([#321](https://github.com/massif-maps/MassifMaps/pull/321)) ([`ae82ca9`](https://github.com/massif-maps/MassifMaps/commit/ae82ca9738a6d42ead910102ae1ff1b86df291db))
+
+### New features
+
+- **gestures:** optionally tilt and rotate about the ground under the pointer ([#373](https://github.com/massif-maps/MassifMaps/pull/373)) ([`642d252`](https://github.com/massif-maps/MassifMaps/commit/642d252ccaaae54e9e3030de2caf40d78ee968a0))
+- **web:** load cached tiles in milliseconds instead of seconds: files in wasm memory, persisted to OPFS ([#374](https://github.com/massif-maps/MassifMaps/pull/374)) ([`eab839b`](https://github.com/massif-maps/MassifMaps/commit/eab839b903b570d4a2fb9a59fcf2d6f5218f2a0d))
+- **styles:** carry a text anchor that branches on render::3d through mapbox2css ([#370](https://github.com/massif-maps/MassifMaps/pull/370)) ([`5dbe6bf`](https://github.com/massif-maps/MassifMaps/commit/5dbe6bf816f8deb8ef85814390b971e1dcc09ad1))
+- **api:** build maneuver arrows from the facade and accept a bare Feature in setGeoJSON ([#349](https://github.com/massif-maps/MassifMaps/pull/349)) ([`e75958c`](https://github.com/massif-maps/MassifMaps/commit/e75958cc81d4db91193373d48d31b94805a97c39))
+- **vectortiles:** set one member of a table style parameter by "table.key" ([#335](https://github.com/massif-maps/MassifMaps/pull/335)) ([`86d7897`](https://github.com/massif-maps/MassifMaps/commit/86d7897e06f51a8c351950f8a52b8d780870cfe5))
+- **style-cli:** write each palette and icon lookup as one table style parameter ([#336](https://github.com/massif-maps/MassifMaps/pull/336)) ([`6c65f11`](https://github.com/massif-maps/MassifMaps/commit/6c65f11d559e8362466563938c2c895d9e7ff374))
+- **vectortiles:** let an app set a style parameter its style does not declare ([#334](https://github.com/massif-maps/MassifMaps/pull/334)) ([`93fb5d6`](https://github.com/massif-maps/MassifMaps/commit/93fb5d634fd31fcdcadb930104e1ebf448d07b7a))
+- **styles:** draw landmarks and viewpoints bare under every Massif POI, and a dot for a POI with no icon ([#322](https://github.com/massif-maps/MassifMaps/pull/322)) ([`50b5a79`](https://github.com/massif-maps/MassifMaps/commit/50b5a7943177af7b80452156604c7d37112d23c0))
+- **styles:** let an app draw the Massif relief past z16 with hillshade_max_zoom ([#321](https://github.com/massif-maps/MassifMaps/pull/321)) ([`ae82ca9`](https://github.com/massif-maps/MassifMaps/commit/ae82ca9738a6d42ead910102ae1ff1b86df291db))
+
+### Bug fixes
+
+- **labels:** stand POIs on roofs and hide labels behind buildings in a composite layer ([#387](https://github.com/massif-maps/MassifMaps/pull/387)) ([`c7ae388`](https://github.com/massif-maps/MassifMaps/commit/c7ae388cdc9bc2d359f01c0d99d2291ab5ccdbcd))
+- **terrain:** keep a 3D building in one piece across tile lines ([#386](https://github.com/massif-maps/MassifMaps/pull/386)) ([`12e54db`](https://github.com/massif-maps/MassifMaps/commit/12e54db9403d6648cce22bf65d096afc02b69e7e))
+- **layers:** fade layers in 3D, smooth the 3D hillshade, draw markers under labels ([#383](https://github.com/massif-maps/MassifMaps/pull/383)) ([`a601493`](https://github.com/massif-maps/MassifMaps/commit/a6014936d3144c74c46dfcfe36f213c846aa0175))
+- **ios:** keep the build's feature defines when archiving the library ([#382](https://github.com/massif-maps/MassifMaps/pull/382)) ([`e0e9903`](https://github.com/massif-maps/MassifMaps/commit/e0e9903456edf8eece5a6fb973c298af6e3701d3))
+- **layers:** settle on the camera's tile level once the camera stops ([#379](https://github.com/massif-maps/MassifMaps/pull/379)) ([`233ec2c`](https://github.com/massif-maps/MassifMaps/commit/233ec2c7aef0eaebfd76d255c040f92b00171163))
+- **terrain:** stop a cold start fetching terrain data for ground off-screen ([#378](https://github.com/massif-maps/MassifMaps/pull/378)) ([`875ac63`](https://github.com/massif-maps/MassifMaps/commit/875ac63f4ed95e3eca1998e24769d477757117ca))
+- **labels:** stop far and stand-in labels fetching full-detail DEM over the whole view ([#377](https://github.com/massif-maps/MassifMaps/pull/377)) ([`26ef908`](https://github.com/massif-maps/MassifMaps/commit/26ef908b0116cf4d6e065597d5d46232010de81a))
+- **layers:** stop blank tiles while looking around: screen-sized tile caches, coarse stand-ins, more web tile threads ([#376](https://github.com/massif-maps/MassifMaps/pull/376)) ([`afda4a0`](https://github.com/massif-maps/MassifMaps/commit/afda4a04cf0897517cbe1b64bb3fb84eb5bf311e))
+- **labels:** hide a summit's name behind the mountain in front of it, not 900 m into it ([#375](https://github.com/massif-maps/MassifMaps/pull/375)) ([`6d10f36`](https://github.com/massif-maps/MassifMaps/commit/6d10f3620ac4f19095ea5de22829c655d2947698))
+- **labels:** stand a peak's icon and name on its summit in 3D, not inside the mountain ([#372](https://github.com/massif-maps/MassifMaps/pull/372)) ([`b6343e5`](https://github.com/massif-maps/MassifMaps/commit/b6343e54f58393c77b398dab3ef7bb68cc1a2c14))
+- **terrain:** cast terrain shadows from a ring sized to the throw, not the view's bounding box ([#369](https://github.com/massif-maps/MassifMaps/pull/369)) ([`21f0679`](https://github.com/massif-maps/MassifMaps/commit/21f0679dd80ab4f3fb4559d5c11edaf4c18d95ee))
+- **terrain:** stop a zoomed-out 3D view reloading its own DEM tiles for minutes ([#368](https://github.com/massif-maps/MassifMaps/pull/368)) ([`f598021`](https://github.com/massif-maps/MassifMaps/commit/f5980215db5d6478c094d50a79c60850fd9666c1))
+- **terrain:** hold the 3D camera height steady while elevation tiles load ([#367](https://github.com/massif-maps/MassifMaps/pull/367)) ([`fc5b381`](https://github.com/massif-maps/MassifMaps/commit/fc5b381cd8f927d1d73202eb8171087ddc21d330))
+- **terrain:** keep the whole map on screen as it first rises into 3D ([#366](https://github.com/massif-maps/MassifMaps/pull/366)) ([`647eab9`](https://github.com/massif-maps/MassifMaps/commit/647eab9ed531fcf67918b548a74ea221d3b23a57))
+- **terrain:** close the holes between terrain tiles drawn from different elevation data ([#365](https://github.com/massif-maps/MassifMaps/pull/365)) ([`5a197e6`](https://github.com/massif-maps/MassifMaps/commit/5a197e6548604bc23964a26f5fc64f834c7213b7))
+- **terrain:** keep the ground under the cursor still on a wheel or pinch zoom in 3D ([#364](https://github.com/massif-maps/MassifMaps/pull/364)) ([`7f9a51e`](https://github.com/massif-maps/MassifMaps/commit/7f9a51e38a598ec9a53ce35f00855cd154ab6c7f))
+- **terrain:** stop a wall rising across a valley while neighbour DEM tiles load ([#361](https://github.com/massif-maps/MassifMaps/pull/361)) ([`b26fdfa`](https://github.com/massif-maps/MassifMaps/commit/b26fdfab478ebd2b74362051ed094b1dba659075))
+- **terrain:** stop holes opening in the ground on the first 3D frames ([#363](https://github.com/massif-maps/MassifMaps/pull/363)) ([`85255a1`](https://github.com/massif-maps/MassifMaps/commit/85255a12925ec8eaac5ec1bfd3612183f3a5779f))
+- **terrain:** stop buildings standing tall on the first 2D/3D switch ([#360](https://github.com/massif-maps/MassifMaps/pull/360)) ([`9908d66`](https://github.com/massif-maps/MassifMaps/commit/9908d6605be34fd0da6dbaa41d6cf9ba3270c789))
+- **labels:** keep labels on the ground and on screen through the 2D/3D switch ([#355](https://github.com/massif-maps/MassifMaps/pull/355)) ([`4388313`](https://github.com/massif-maps/MassifMaps/commit/438831374e752775bcc2d65f6f60c7416ad5f1b3))
+- **examples:** show the Massif POI icons in the web gallery ([#358](https://github.com/massif-maps/MassifMaps/pull/358)) ([`7c61b44`](https://github.com/massif-maps/MassifMaps/commit/7c61b44055a2f8d807a41b57532a206dd10ae213))
+- **examples:** fly at once in the 2D/3D example's match-flight mode ([#359](https://github.com/massif-maps/MassifMaps/pull/359)) ([`52005ef`](https://github.com/massif-maps/MassifMaps/commit/52005ef35b49bcfdfadb163383006719dcb9c8f8))
+- **renderers:** keep the map drawn through a full 2D/3D terrain switch ([#357](https://github.com/massif-maps/MassifMaps/pull/357)) ([`be0c256`](https://github.com/massif-maps/MassifMaps/commit/be0c25689733831e52a9a6fd06af3a58bffa7ad8))
+- **web:** end a mouse drag released outside the browser window ([#356](https://github.com/massif-maps/MassifMaps/pull/356)) ([`2789d79`](https://github.com/massif-maps/MassifMaps/commit/2789d79f013a0bbbc0edd768603a8cdaa5d2f424))
+- **terrain:** set markers on the ground, and lift nothing over flattened terrain ([#354](https://github.com/massif-maps/MassifMaps/pull/354)) ([`c817cea`](https://github.com/massif-maps/MassifMaps/commit/c817cea8f5e50f5ffc61741bd81b56ad12eb7757))
+- **vt:** draw maneuver arrows whole: one head at the line's end, full width at its turns ([#351](https://github.com/massif-maps/MassifMaps/pull/351)) ([`210ef99`](https://github.com/massif-maps/MassifMaps/commit/210ef992c79845302129ff3ac0031d79326a3fb8))
+- **celestial:** setPosition by lon/lat, one event per tap, no black band or skew after looking up ([#352](https://github.com/massif-maps/MassifMaps/pull/352)) ([`2349ee0`](https://github.com/massif-maps/MassifMaps/commit/2349ee04e953af0c62d2c2c5714f56164df0b213))
+- **terrain:** keep the camera still when a 3D pan ends ([#350](https://github.com/massif-maps/MassifMaps/pull/350)) ([`92bc084`](https://github.com/massif-maps/MassifMaps/commit/92bc084def8bb00d468fec0dfce1d62b5e3b6058))
+- **labels:** let shield-icon-face-name take a font fallback list like text-face-name ([#348](https://github.com/massif-maps/MassifMaps/pull/348)) ([`fe82a65`](https://github.com/massif-maps/MassifMaps/commit/fe82a65bcf484add98dd40b66a053923395ea3a6))
+- **build:** keep the profile's defines when --defines passes a NAME=value ([#347](https://github.com/massif-maps/MassifMaps/pull/347)) ([`10ff131`](https://github.com/massif-maps/MassifMaps/commit/10ff1315218709bb28a68809193ccafc32ba80b6))
+- **layers:** hide a layer's elements and labels for real on setVisible(false) ([#345](https://github.com/massif-maps/MassifMaps/pull/345)) ([`6a86ccd`](https://github.com/massif-maps/MassifMaps/commit/6a86ccd05fd57606c6b69302863954ec45334f8f))
+- **style-tools:** compile a style with a bad property instead of aborting ([#344](https://github.com/massif-maps/MassifMaps/pull/344)) ([`23f3c7c`](https://github.com/massif-maps/MassifMaps/commit/23f3c7ce72b56a036bf0543df15bfc1657ef5f47))
+- **styles:** keep Massif's POI look under child rules, and fix huts, ruins, waterfalls, lifts and minor roads ([#338](https://github.com/massif-maps/MassifMaps/pull/338)) ([`328bce8`](https://github.com/massif-maps/MassifMaps/commit/328bce8ef4f3da3aa5efdf37b831cc42cbc55a28))
+- **style-preview:** load the icons a style lists in a table parameter ([#339](https://github.com/massif-maps/MassifMaps/pull/339)) ([`25cbbef`](https://github.com/massif-maps/MassifMaps/commit/25cbbefa027ab7dae5d53e8e26e38b99deb63a04))
+- **vt:** keep a 0 or a false on the left of ??, so a style table's 0 is not replaced by the fallback ([#340](https://github.com/massif-maps/MassifMaps/pull/340)) ([`8a4a891`](https://github.com/massif-maps/MassifMaps/commit/8a4a891fa7e4afc3da1a4dc665cd9b6114b04eda))
+- **labels:** treat each point of a merged MultiPoint as its own point ([#320](https://github.com/massif-maps/MassifMaps/pull/320)) ([`0e81978`](https://github.com/massif-maps/MassifMaps/commit/0e81978a05e37003245e9219cbdf9c5ce208d4a9))
+- **styles:** keep each zoom stop of a day/night colour ramp, and draw its day colour by day ([#327](https://github.com/massif-maps/MassifMaps/pull/327)) ([`1227bcf`](https://github.com/massif-maps/MassifMaps/commit/1227bcfd156fe99f46085aa832e8f8b7f3f4d4d4))
+- **demo:** stop a gallery light/fog/sky knob crashing an example that never set one ([#328](https://github.com/massif-maps/MassifMaps/pull/328)) ([`e51f47b`](https://github.com/massif-maps/MassifMaps/commit/e51f47b0ae15600644c417b23efa33878d128efd))
+
 ## [v6.1.2] - 2026-10-03
 ### BREAKING CHANGES
 - due to [`333351a`](https://github.com/massif-maps/MassifMaps/commit/333351a3a4c3dab9541f4f1514fb8c4558c2e996) - show peak icons and keep flat buildings past z15 in the Massif styles *(PR [#312](https://github.com/massif-maps/MassifMaps/pull/312) by [@farfromrefug](https://github.com/farfromrefug))*:

@@ -175,6 +175,19 @@ Two consequences worth knowing:
   more cull, and a cull of the same view takes the camera's own level: 8 of 8 settled on z12, twice
   after a held z11, within 0.3 s, with no cull after the camera rests. The Zermatt wobble is a new
   view every frame, so the margin still holds through it.
+- **What the margin still buys** (2026-10-08). The Zermatt switch no longer wobbles: the view zoom
+  stayed at 12.050 through three 2D/3D cycles, with 0 target changes and 0 re-decodes with or
+  without #379. A gesture near a boundary still does. Measured on the Crosscall, terrain-3d at
+  Innsbruck (tilt 25), warm cache, the zoom stepped 11.97 ↔ 12.03 by broadcast, 24 steps:
+
+  | | margin 0.15 | margin 0 |
+  |---|---|---|
+  | steps ~0.1 s apart (never at rest): target changes | 0 | 18–24 |
+  | same: tiles re-decoded | **0** | **71–93** (65–87 vector) |
+  | steps 1 s apart (at rest between): tiles re-decoded | 291 | 295 |
+
+  At rest both follow the camera, which is the point of the settle above; moving, the margin saves
+  about one full re-decode of the view per boundary crossing.
 - **This goes beyond both references, deliberately.** mapbox's `reparseOverscaled` only raises the
   parse zoom of a tile already at the source max zoom (`covering_tiles`: `overscaledZ` is used only
   when `it.zoom === maxZoom`); a coarsened tile is parsed at its own zoom, and its layer `minzoom`

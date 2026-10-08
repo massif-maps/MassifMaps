@@ -448,15 +448,15 @@ namespace massif {
 
     int ElevationTileGrid::getTextureBorderTexels(double reachMetres) const {
         if (!(reachMetres > 0) || _width < 1) {
-            return 1;
+            return MIN_TEXTURE_BORDER_TEXELS;
         }
         double texelMetres = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width * Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE;
         if (!(texelMetres > 0)) {
-            return 1;
+            return MIN_TEXTURE_BORDER_TEXELS;
         }
         // The tap is a bilinear read, so the texel PAST its reach is sampled too.
         int border = static_cast<int>(std::ceil(reachMetres / texelMetres)) + 1;
-        return std::max(1, std::min(border, std::min(MAX_TEXTURE_BORDER_TEXELS, std::min(_width, _height))));
+        return std::max(MIN_TEXTURE_BORDER_TEXELS, std::min(border, std::min(MAX_TEXTURE_BORDER_TEXELS, std::min(_width, _height))));
     }
 
     void ElevationTileGrid::encodeGradientTexture(const std::uint8_t* textureData, int width, int height, int x0, int y0, int rectWidth, int rectHeight, std::vector<std::uint16_t>& gradient) const {

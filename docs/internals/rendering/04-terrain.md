@@ -153,7 +153,7 @@ a texture. `ElevationTextureCache` (all/native/renderers/utils/) turns a grid in
 
 - keyed by the **grid's own tile**, so overzoomed tiles and all layers share one texture per DEM
   tile, and neighbours sampling the same level sample one continuous texture;
-- the payload is a **padded (W+2)×(H+2) RGBA re-encode** with a 1-texel border taken from up to 8
+- the payload is a **padded (W+2)×(H+2) RGBA re-encode** with a 2-texel border (`ElevationTileGrid::MIN_TEXTURE_BORDER_TEXELS`; the terrain paint reads a 4x4 block) taken from up to 8
   neighbour grids (cross-level backfill and an edge box filter), so shared tile edges agree
   bit-exactly and the surface does not crack;
 - encoding **and** the `Bitmap` construction run on a worker thread; the render thread only uploads,

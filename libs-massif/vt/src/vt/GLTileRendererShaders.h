@@ -1429,7 +1429,7 @@ namespace massif::vt {
         uniform highp float uElevationOffset;   // the decode's constant term
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         uniform highp vec2 uPaintSlopeScale;    // metres per texel -> dimensionless slope (height scale folded in)
-        uniform mediump vec4 uPaintParams;      // x = contrast, y = opacity, zw reserved
+        uniform mediump vec4 uPaintParams;      // x = contrast, y = opacity, z = 1 for the smooth gradient, w reserved
         uniform highp_opt float u_zoom;         // fractional map zoom
         varying highp vec2 vElevUV;
         varying mediump float vElevCosh;
@@ -1465,7 +1465,52 @@ namespace massif::vt {
             elev = h11 + dot(f, grad0) + 0.5 * dot(f, curv * f);
         }
 
-        void terrainPaintPrepare() { terrainPaintSample(gTerrainElev, gTerrainGrad); }
+        highp vec2 terrainPaintSobel(highp float h00, highp float h10, highp float h20,
+                                     highp float h01, highp float h21,
+                                     highp float h02, highp float h12, highp float h22) {
+            return vec2((h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02),
+                        (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20)) * 0.125;
+        }
+
+        // The normal-map path's gradient (Sobel/8 per texel centre, bilinear between them): on a
+        // sub-5 m DEM the quadratic term above amplifies texel noise into speckle.
+        void terrainPaintSampleSmooth(out highp float elev, out highp vec2 gradPerTexel) {
+            highp vec2 duv = uElevationTexelSize.zw;
+            highp vec2 ij = vElevUV * uElevationTexelSize.xy;
+            highp vec2 base = floor(ij - 0.5);
+            highp vec2 f = ij - base - 0.5;
+            highp vec2 uv = (base + 0.5) * duv;
+            highp float p00 = sampleElevation(uv + vec2(-duv.x, -duv.y));
+            highp float p10 = sampleElevation(uv + vec2(0.0, -duv.y));
+            highp float p20 = sampleElevation(uv + vec2(duv.x, -duv.y));
+            highp float p30 = sampleElevation(uv + vec2(2.0 * duv.x, -duv.y));
+            highp float p01 = sampleElevation(uv + vec2(-duv.x, 0.0));
+            highp float p11 = sampleElevation(uv);
+            highp float p21 = sampleElevation(uv + vec2(duv.x, 0.0));
+            highp float p31 = sampleElevation(uv + vec2(2.0 * duv.x, 0.0));
+            highp float p02 = sampleElevation(uv + vec2(-duv.x, duv.y));
+            highp float p12 = sampleElevation(uv + vec2(0.0, duv.y));
+            highp float p22 = sampleElevation(uv + duv);
+            highp float p32 = sampleElevation(uv + vec2(2.0 * duv.x, duv.y));
+            highp float p03 = sampleElevation(uv + vec2(-duv.x, 2.0 * duv.y));
+            highp float p13 = sampleElevation(uv + vec2(0.0, 2.0 * duv.y));
+            highp float p23 = sampleElevation(uv + vec2(duv.x, 2.0 * duv.y));
+            highp float p33 = sampleElevation(uv + 2.0 * duv);
+            highp vec2 g00 = terrainPaintSobel(p00, p10, p20, p01, p21, p02, p12, p22);
+            highp vec2 g10 = terrainPaintSobel(p10, p20, p30, p11, p31, p12, p22, p32);
+            highp vec2 g01 = terrainPaintSobel(p01, p11, p21, p02, p22, p03, p13, p23);
+            highp vec2 g11 = terrainPaintSobel(p11, p21, p31, p12, p32, p13, p23, p33);
+            gradPerTexel = mix(mix(g00, g10, f.x), mix(g01, g11, f.x), f.y);
+            elev = mix(mix(p11, p21, f.x), mix(p12, p22, f.x), f.y);
+        }
+
+        void terrainPaintPrepare() {
+            if (uPaintParams.z > 0.5) {
+                terrainPaintSampleSmooth(gTerrainElev, gTerrainGrad);
+            } else {
+                terrainPaintSample(gTerrainElev, gTerrainGrad);
+            }
+        }
 
         // Same custom-shader contract as the normal-map path.
         highp float getElevation() { return gTerrainElev; }

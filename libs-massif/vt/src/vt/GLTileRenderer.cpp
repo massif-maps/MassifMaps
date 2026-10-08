@@ -5724,6 +5724,12 @@ namespace massif::vt {
         }
     }
 
+    // Fine DEMs (< 6 m per texel, about zoom 14.7) take the smooth gradient; coarser keep the crisp quadratic.
+    static float terrainPaintSmoothFlag(float metersPerTexel) {
+        constexpr float SMOOTH_BELOW_METERS_PER_TEXEL = 6.0f;
+        return metersPerTexel < SMOOTH_BELOW_METERS_PER_TEXEL ? 1.0f : 0.0f;
+    }
+
     int GLTileRenderer::renderTerrainPaint(const TileId& targetTileId) {
         // A paint is a function of the elevation texture already bound for this tile: ONE quad into the
         // shared drape at this layer's bake slot, nothing fetched or uploaded.
@@ -5760,7 +5766,7 @@ namespace massif::vt {
             // 1/cos(latitude) stretch comes per fragment (vElevCosh).
             float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(terrainTexture.metersPerTexel) / terrainTexture.metersPerTexel;
             glUniform2f(shaderProgram.uniforms[U_PAINTSLOPESCALE], slopeScale, slopeScale);
-            glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, 0.0f, 0.0f);
+            glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, terrainPaintSmoothFlag(terrainTexture.metersPerTexel), 0.0f);
             _lightingShaderNormalMap->setupFunc(shaderProgram.program, _viewState);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -5846,7 +5852,7 @@ namespace massif::vt {
 
                 float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(resolved.second.metersPerTexel) / resolved.second.metersPerTexel;
                 glUniform2f(shaderProgram.uniforms[U_PAINTSLOPESCALE], slopeScale, slopeScale);
-                glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, 0.0f, 0.0f);
+                glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, terrainPaintSmoothFlag(resolved.second.metersPerTexel), 0.0f);
                 if (asGround) {
                     glUniform4f(shaderProgram.uniforms[U_GROUNDCOLOR], _terrainGroundColor[0], _terrainGroundColor[1], _terrainGroundColor[2], _terrainGroundColor[3]);
                 }
@@ -5992,17 +5998,17 @@ namespace massif::vt {
             combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * DRAPE_LIGHT_STEPS) * (i + 1));
         }
         combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * DRAPE_LIGHT_STEPS) * 4);
+        // The SDK layer opacity is baked in too; the opaque case adds nothing, so existing fingerprints hold.
+        float layerOpacity = std::max(0.0f, std::min(1.0f, calculateDrapeLayerOpacity()));
+        if (layerOpacity < 1.0f) {
+            combine(static_cast<std::size_t>(layerOpacity * DRAPE_OPACITY_STEPS) * 5 + 1);
+        }
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
             const RenderTileLayer& renderLayer = it->second;
             // Contact shadows are baked in but their extrusions are not drapeable: count them, or a
             // texture baked before the buildings arrived keeps no shadow.
             if (!hasDrapeableContent(renderLayer) && !hasGroundAOContent(renderLayer)) {
                 continue;
-        // The SDK layer opacity is baked in too; the opaque case adds nothing, so existing fingerprints hold.
-        float layerOpacity = std::max(0.0f, std::min(1.0f, calculateDrapeLayerOpacity()));
-        if (layerOpacity < 1.0f) {
-            combine(static_cast<std::size_t>(layerOpacity * DRAPE_OPACITY_STEPS) * 5 + 1);
-        }
             }
             anyContent = true;
             combine(static_cast<std::size_t>(it->first));

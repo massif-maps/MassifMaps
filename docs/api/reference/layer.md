@@ -37,6 +37,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -107,6 +108,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -151,6 +153,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -237,6 +240,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -292,6 +296,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -327,6 +332,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -387,6 +393,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -446,6 +453,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -463,6 +471,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |
@@ -498,6 +507,7 @@ Inherited from `Layer`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
+| `billboardsUnderLabels` | boolean | read/write | Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. |
 | `cullDelay` | integer | read/write | Returns the culling delay of the layer in milliseconds. |
 | `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. |
 | `opacity` | number | read/write | Returns the opacity of this layer. |

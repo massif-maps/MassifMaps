@@ -85,7 +85,7 @@ export const PROPS: { [cls: string]: string } = {
     'massif::Label': 'style,o,massif::LabelStyle',
     'massif::LabelStyle': 'anchorPointX,f;anchorPointY,f;flippable,b;orientationMode,e,BillboardOrientation;renderScale,f;scalingMode,e,BillboardScaling',
     'massif::LabelStyleBuilder': 'anchorPointX,f;anchorPointY,f;flippable,b;orientationMode,e,BillboardOrientation;renderScale,f;scalingMode,e,BillboardScaling',
-    'massif::Layer': 'cullDelay,i;metaData,g,v;opacity,f;postProcessed,b;updatePriority,i;visible,b;visibleZoomRange,t',
+    'massif::Layer': 'billboardsUnderLabels,b;cullDelay,i;metaData,g,v;opacity,f;postProcessed,b;updatePriority,i;visible,b;visibleZoomRange,t',
     'massif::Layers': 'count,i',
     'massif::LightOptions': 'ambientColor,c;ambientIntensity,f;dayCycleLightStops,t;dayCycleLightsEnabled,b;dayCycleRisingLightStops,t;shadowBias,f;shadowCascades,i;shadowCasterMargin,i;shadowDistance,f;shadowMapSize,i;shadowNormalOffset,f;shadowSoftness,f;shadowStrength,f;sunAltitude,f;sunAzimuth,f;sunColor,c;sunIntensity,f;sunOverridingStyle,b;terrainLightingEnabled,b',
     'massif::LightStop': 'ambientColor,c;ambientIntensity,f;sunAltitude,f;sunColor,c;sunIntensity,f',

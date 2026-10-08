@@ -58,6 +58,7 @@ static const char* const kNames[] = {
     "bigEndian",
     "billboardOcclusionEnabled",
     "billboardOcclusionTolerance",
+    "billboardsUnderLabels",
     "bitmap",
     "bitmapScale",
     "bool",

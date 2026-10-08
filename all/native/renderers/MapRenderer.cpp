@@ -4040,6 +4040,34 @@ namespace massif {
             billboardDrawDatas.reserve(_billboardDrawDatas.size());
         }
         BillboardSorter billboardSorter(billboardDrawDatas);
+        std::vector<std::shared_ptr<BillboardDrawData> > underLabelsDrawDatas;
+        BillboardSorter underLabelsSorter(underLabelsDrawDatas);
+
+        auto drawBillboards = [&](const std::vector<std::shared_ptr<BillboardDrawData> >& drawDatas) {
+            if (drawDatas.empty()) {
+                return;
+            }
+            glDisable(GL_DEPTH_TEST);
+
+            _billboardDrawDataBuffer.clear();
+            std::shared_ptr<BillboardRenderer> prevRenderer;
+            for (const std::shared_ptr<BillboardDrawData>& drawData : drawDatas) {
+                if (std::shared_ptr<BillboardRenderer> renderer = drawData->getRenderer().lock()) {
+                    if (prevRenderer && prevRenderer != renderer) {
+                        prevRenderer->onDrawFrameSorted(deltaSeconds, _billboardDrawDataBuffer, viewState);
+                        _billboardDrawDataBuffer.clear();
+                    }
+            
+                    _billboardDrawDataBuffer.push_back(drawData);
+                    prevRenderer = renderer;
+                }
+            }
+            if (prevRenderer) {
+                prevRenderer->onDrawFrameSorted(deltaSeconds, _billboardDrawDataBuffer, viewState);
+            }
+
+            glEnable(GL_DEPTH_TEST);
+        };
 
         // A terrain map with no ground layer closes the prelude here.
         if (!preludeAccounted) {
@@ -4056,11 +4084,15 @@ namespace massif {
                 layer->offsetLayerHorizontally(viewState.getHorizontalLayerOffsetDir() * Const::WORLD_SIZE);
             }
 
-            if (layer->onDrawFrame(deltaSeconds, billboardSorter, viewState)) {
+            if (layer->onDrawFrame(deltaSeconds, layer->isBillboardsUnderLabels() ? underLabelsSorter : billboardSorter, viewState)) {
                 needRedraw = true;
                 redrawMask |= 1u << std::min<std::size_t>(i, 15);
             }
         }
+
+        // Before the 3D pass, where a tile layer's last labels draw: those stand over these billboards.
+        underLabelsSorter.sort(viewState);
+        drawBillboards(underLabelsDrawDatas);
 
         FRAME_PROF_ADD(layerMs, profLayerStart);
 
@@ -4108,33 +4140,12 @@ namespace massif {
         FRAME_PROF_NOW(profBillboardStart);
         FRAME_PROF_GPU_BEGIN(SECTION_BILLBOARDS);
         billboardSorter.sort(viewState);
-        
-        if (!billboardDrawDatas.empty()) {
-            glDisable(GL_DEPTH_TEST);
-
-            _billboardDrawDataBuffer.clear();
-            std::shared_ptr<BillboardRenderer> prevRenderer;
-            for (const std::shared_ptr<BillboardDrawData>& drawData : billboardDrawDatas) {
-                if (std::shared_ptr<BillboardRenderer> renderer = drawData->getRenderer().lock()) {
-                    if (prevRenderer && prevRenderer != renderer) {
-                        prevRenderer->onDrawFrameSorted(deltaSeconds, _billboardDrawDataBuffer, viewState);
-                        _billboardDrawDataBuffer.clear();
-                    }
-            
-                    _billboardDrawDataBuffer.push_back(drawData);
-                    prevRenderer = renderer;
-                }
-            }
-            if (prevRenderer) {
-                prevRenderer->onDrawFrameSorted(deltaSeconds, _billboardDrawDataBuffer, viewState);
-            }
-
-            glEnable(GL_DEPTH_TEST);
-        }
+        drawBillboards(billboardDrawDatas);
 
         FRAME_PROF_ADD(billboardMs, profBillboardStart);
         FRAME_PROF_GPU_END();
 
+        billboardDrawDatas.insert(billboardDrawDatas.end(), underLabelsDrawDatas.begin(), underLabelsDrawDatas.end());
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
             _billboardDrawDatas = std::move(billboardDrawDatas);

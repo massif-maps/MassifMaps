@@ -88,6 +88,15 @@ namespace massif {
         refresh();
     }
 
+    bool Layer::isBillboardsUnderLabels() const {
+        return _billboardsUnderLabels.load();
+    }
+
+    void Layer::setBillboardsUnderLabels(bool underLabels) {
+        _billboardsUnderLabels.store(underLabels);
+        refresh();
+    }
+
     // Own mutex: the render thread reads this every frame, and refreshDrawData holds the layer
     // mutex across a whole tile-set change.
     MapRange Layer::getVisibleZoomRange() {
@@ -173,6 +182,7 @@ namespace massif {
         _opacity(1.0f),
         _visible(true),
         _postProcessed(true),
+        _billboardsUnderLabels(false),
         _visibleZoomRange(0, std::numeric_limits<float>::infinity()),
         _metaData(),
         _lastCullState(),

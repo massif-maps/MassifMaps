@@ -4357,15 +4357,10 @@ namespace massif::vt {
 
         cglib::mat3x3<double> tileMatrix = calculateTileMatrix2D(sourceTileId, 1.0f);
         std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(sourceTileId);
-        std::size_t vertexCount = vertexGeometry.size() / params.vertexSize;
-        // Footprints depend on vertex data alone, so they are found once: a DEM arrival only
-        // re-samples the ground (performance-log 26).
-        if (geometry->getBaseRuns().empty()) {
-            buildExtrusionBaseFootprints(geometry, params, vertexGeometry, vertexCount);
-        }
+        // The footprints come from the builder, which saw each WHOLE ring: a DEM arrival only re-samples.
         const std::vector<TileGeometry::BaseAnchor>& anchors = geometry->getBaseAnchors();
         const std::vector<TileGeometry::BaseRun>& runs = geometry->getBaseRuns();
-        VT_STAT_ADD(extrusionResolveVertices, static_cast<long long>(vertexCount));
+        VT_STAT_ADD(extrusionResolveVertices, static_cast<long long>(vertexGeometry.size() / params.vertexSize));
 
         // The anchor rides in the texcoord slot at coord scale (packGeometry), y flipped when stored;
         // unflipped here, as polygon3DVsh does, to agree with the tile matrix.
@@ -4387,23 +4382,16 @@ namespace massif::vt {
                 return false; // still drawn, on the per-vertex ground, until the elevation lands
             }
             double tileUnitsPerMeter = tileTransformer->calculateHeight(anchor.pos, 1.0f);
-            if (anchor.haveSupports && tileUnitsPerMeter > 0) {
+            if (!anchor.floorPoints.empty() && anchor.maxHeightUnits > 0 && tileUnitsPerMeter > 0) {
                 cglib::vec2<double> anchorPos = cglib::transform_point(cglib::vec2<double>(anchor.pos(0), 1.0 - anchor.pos(1)), tileMatrix);
                 double metersToZ = metersToInternal * std::cosh(2.0 * 3.14159265358979323846 * anchorPos(1));
-                // mapbox's floor, over the support points: a building keeps 2 m above the highest ground
-                // under it, so a part anchored under its own street is not a hole.
+                // mapbox's floor, per footprint: its roof keeps 2 m above the highest ground under it, so
+                // a part anchored under its own street is not a hole and one on a DEM bump is not buried.
                 double maxGround = 0;
                 bool haveGround = false;
-                for (int d = 0; d < ExtrusionFloor::SUPPORT_DIRECTIONS; d++) {
-                    bool repeat = false;
-                    for (int e = 0; e < d && !repeat; e++) { // a small footprint extremises several directions at one vertex
-                        repeat = anchor.supports[e](0) == anchor.supports[d](0) && anchor.supports[e](1) == anchor.supports[d](1);
-                    }
-                    if (repeat) {
-                        continue;
-                    }
+                for (const cglib::vec2<float>& point : anchor.floorPoints) {
                     double ground = 0;
-                    if (sampleGround(anchor.supports[d], false, ground)) {
+                    if (sampleGround(point, false, ground)) {
                         maxGround = haveGround ? std::max(maxGround, ground) : ground;
                         haveGround = true;
                     }
@@ -4425,61 +4413,6 @@ namespace massif::vt {
         geometry->setBaseElevationVersion(version);
         VT_STAT_SPLIT(extrusionResolveNs, resolveClock);
         return true;
-    }
-
-    void GLTileRenderer::buildExtrusionBaseFootprints(const std::shared_ptr<TileGeometry>& geometry, const TileGeometry::VertexGeometryLayoutParameters& params, const VertexArray<std::uint8_t>& vertexGeometry, std::size_t vertexCount) const {
-        std::vector<TileGeometry::BaseAnchor> anchors;
-        std::vector<TileGeometry::BaseRun> runs;
-        std::map<std::pair<std::int32_t, std::int32_t>, std::size_t> anchorIndices;
-        std::vector<std::array<float, ExtrusionFloor::SUPPORT_DIRECTIONS> > supportScores;
-        bool haveFootprint = params.heightOffset >= 0 && params.coordOffset >= 0 && params.coordScale > 0;
-        for (std::size_t i = 0; i < vertexCount; ) {
-            const std::int16_t* texCoordPtr = reinterpret_cast<const std::int16_t*>(vertexGeometry.data() + i * params.vertexSize + params.texCoordOffset);
-            std::int32_t u = texCoordPtr[0];
-            std::int32_t v = texCoordPtr[1];
-            std::size_t j = i + 1;
-            for (; j < vertexCount; j++) {
-                const std::int16_t* next = reinterpret_cast<const std::int16_t*>(vertexGeometry.data() + j * params.vertexSize + params.texCoordOffset);
-                if (next[0] != u || next[1] != v) {
-                    break;
-                }
-            }
-            auto anchorIt = anchorIndices.find(std::make_pair(u, v));
-            if (anchorIt == anchorIndices.end()) {
-                TileGeometry::BaseAnchor anchor;
-                anchor.pos = cglib::vec2<float>(u / params.texCoordScale, v / params.texCoordScale);
-                anchor.supports.fill(anchor.pos);
-                anchorIt = anchorIndices.emplace(std::make_pair(u, v), anchors.size()).first;
-                anchors.push_back(anchor);
-                supportScores.emplace_back();
-            }
-            // Accumulated over every run: a building the source split into parts is ONE prism.
-            if (haveFootprint) {
-                TileGeometry::BaseAnchor& anchor = anchors[anchorIt->second];
-                std::array<float, ExtrusionFloor::SUPPORT_DIRECTIONS>& scores = supportScores[anchorIt->second];
-                for (std::size_t k = i; k < j; k++) {
-                    const std::uint8_t* vertex = vertexGeometry.data() + k * params.vertexSize;
-                    std::int16_t heightUnits = reinterpret_cast<const std::int16_t*>(vertex + params.heightOffset)[0];
-                    if (heightUnits <= 0) {
-                        continue; // a wall's foot, not the footprint outline the roof is carried on
-                    }
-                    anchor.maxHeightUnits = std::max(anchor.maxHeightUnits, static_cast<float>(heightUnits));
-                    const std::int16_t* coord = reinterpret_cast<const std::int16_t*>(vertex + params.coordOffset);
-                    cglib::vec2<float> at(coord[0] / params.coordScale, coord[1] / params.coordScale);
-                    for (int d = 0; d < ExtrusionFloor::SUPPORT_DIRECTIONS; d++) {
-                        float score = ExtrusionFloor::supportScore(d, at(0), at(1));
-                        if (!anchor.haveSupports || score > scores[d]) {
-                            scores[d] = score;
-                            anchor.supports[d] = at;
-                        }
-                    }
-                    anchor.haveSupports = true;
-                }
-            }
-            runs.push_back(TileGeometry::BaseRun { static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j), static_cast<std::uint32_t>(anchorIt->second) });
-            i = j;
-        }
-        geometry->setBaseFootprints(std::move(anchors), std::move(runs));
     }
 
     void GLTileRenderer::markPendingLabelsDirty() {

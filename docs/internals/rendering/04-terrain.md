@@ -863,9 +863,9 @@ needless re-resolve costs the queries and uploads nothing.
 
 "Costs the queries and uploads nothing" was the whole error: on a pan 3–12 DEM tiles land a second,
 each clearing ~30 geometries, and a re-resolve used to re-derive the footprints by walking every
-vertex again. The footprints depend on the **vertex data alone**, so they are found by one walk and
-kept on the geometry (`TileGeometry::setBaseFootprints`); an arrival re-samples nine points per
-building and rewrites the bases. mapbox never re-walks vertices for this either — its CPU path is
+vertex again. The footprints depend on the **geometry alone**, so the builder records them once and
+they are kept on the geometry (`TileLayerBuilder::setBaseFootprints`); an arrival re-samples the anchor
+and at most 32 floor points per footprint and rewrites the bases. mapbox never re-walks vertices for this either — its CPU path is
 restricted to parts split across a tile border and gated on the DEM's timestamp
 (`draw_fill_extrusion.ts updateBorders`).
 
@@ -920,27 +920,35 @@ uphill. Done on the CPU through the provider, not in the shader: overzoomed geom
 target tile, where `applyTerrain` clamps to the edge texel, and a shader floor read there tilted
 whole roofs into ramps.
 
-Theirs is per **vertex**; ours is per **building** — the max drawn ground under it, against its
-tallest vertex. Per vertex on a 0.84 m lidar DEM, a low part's roof followed the ground down every
-bump it covers; the roof has to stay one plane, and one plane per building is the whole point of
-the anchor. It is accumulated per ANCHOR rather than per vertex run, since the pieces of one
-building need not be contiguous in the vertex order.
+Theirs is per **vertex**; ours is per **footprint** — the max drawn ground under it, against
+its own height. Per vertex on a 0.84 m lidar DEM, a low part's roof followed the ground down every
+bump it covers; the roof has to stay one plane.
 
-The max is taken over **eight support points**, not every rising vertex: the footprint vertices
-reaching furthest along ±x, ±y and the two diagonals (`vt::ExtrusionFloor`). Asking every vertex
-was 2.3 M elevation queries a second while panning and 407 ms of every 693 ms frame — see
-[performance log 26](../performance-log.md). A support point is **always a footprint vertex**,
-which is the property that matters:
+**Read from the WHOLE ring, never from what one tile kept of it.** The builder records each
+footprint's floor points from its decoded ring (`TileLayerBuilder::setBaseFootprints`), before
+packing drops the triangles outside the tile. The floor used to be found by walking the packed
+vertices, accumulated per anchor, so a tile saw only its own half of a building and only the parts
+of a group the decoder left it: at Collioure's castle (web build, OpenFreeMap z14 + mapterhorn,
+2026-10-08) one group resolved to five bases ~1.8 m apart, one per z18/z19 tile, with the smoothed
+anchor identical in all five — a straight cut through every wall on each tile line. Per footprint is
+what makes it tile-independent: a group's parts share the smoothed anchor, but each takes its own
+floor, since no tile sees every part of a group (host test `ExtrusionFloorClipTest`).
 
-mapbox's `flatElevation` lift (the rise across the span, sampled at the span's corners) is still
-NOT ported, and a bounding box is not the cheap way to bound this either. Their corners lie off the
-footprint — beside the Seine one on the Tuileries terrace lifted a wing 5 m above its neighbour,
-and an L-shaped plan has a box corner the building never reaches. A support-point max is over a
-SUBSET of the vertices the old max used, so it can only land at or below the old answer: it can
-under-lift a building, never lift one it should not. That is the direction this has to fail in.
+The max is taken over the footprint's **area**, not its outline: every ring vertex plus the centroid
+of every roof triangle, thinned evenly to `ExtrusionFloor::MAX_POINTS` (32). At Collioure the DEM
+holds the castle walls as terrain, crest down the middle of each wall; eight outline extremes (the
+previous model) sat on the flanks, and once the floor was per footprint the walls sank under their
+own hill. Ring vertices plus triangle centroids put the floor on the crest and the castle stands on
+it again (web build, same camera). The cap is what keeps the cost bounded: asking every rising
+vertex was 2.3 M elevation queries a second while panning and 407 ms of every 693 ms frame — see
+[performance log 26](../performance-log.md); a house is read at 6–14 points, the cap only bites on
+outlines like a castle's.
 
-The diagonals are what a box would get wrong the other way: a building at 45° has its extremes
-there, and its axis-aligned corners on its neighbours.
+Every point lies **on the footprint**. mapbox's `flatElevation` lift (the rise across the span,
+sampled at the span's corners) is still NOT ported, and a bounding box is not the cheap way to bound
+this either: its corners lie off the footprint — beside the Seine one on the Tuileries terrace
+lifted a wing 5 m above its neighbour, and an L-shaped plan has a box corner the building never
+reaches.
 
 
 ### The dead ends
@@ -983,6 +991,14 @@ borders (`updateBorders`); tried here in three forms on 2026-09-03 (per-tile gro
 groups, a global union) and all three made the pieces disagree by more than the field does, because
 an anchor shared across a large building is far from most of its parts. On a smooth field the
 ungrouped anchor is the smaller error.
+
+The floor is tile-independent only as far as its inputs are:
+
+- it reads the DEM level of the tile's own zoom, so two tiles at different zooms below the DEM's
+  finest level (a mixed-zoom cover far from the camera) can still lift a footprint differently;
+- a footprint the SOURCE tile cut is two rings, one per source tile, each with its own floor;
+- a footprint with more than `MAX_POINTS` candidates is read at a thinned subset, so a narrow
+  bump between two kept points can still poke through its roof.
 
 ## Bridges and tunnels: spans
 

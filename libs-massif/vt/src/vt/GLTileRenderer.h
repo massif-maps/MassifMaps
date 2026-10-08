@@ -647,7 +647,6 @@ namespace massif::vt {
          * with UNRESOLVED_BASE (polygon3DVsh samples the ground per vertex).
          */
         bool resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const;
-        void buildExtrusionBaseFootprints(const std::shared_ptr<TileGeometry>& geometry, const TileGeometry::VertexGeometryLayoutParameters& params, const VertexArray<std::uint8_t>& vertexGeometry, std::size_t vertexCount) const;
         void markPendingLabelsDirty();
         std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> labelAnchorFunc() const;
         // Flags labels anchored on a span deck, whose CPU height labelVsh must keep; one chord test per

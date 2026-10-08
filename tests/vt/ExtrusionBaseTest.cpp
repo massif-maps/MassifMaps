@@ -107,20 +107,18 @@ void testExtrusionBase() {
     TEST_CHECK(geometry->isBaseResolved() && geometry->getBaseElevationVersion() == 7,
                "a resolved extrusion records the elevation version it was resolved against");
 
-    // The footprints are found by ONE walk of the vertex data and kept. They depend on the vertices
-    // alone, so a DEM arrival re-samples five points per building instead of re-walking every
-    // vertex of every building in view - which was 3 M vertices a second on a pan.
+    // The footprints are recorded once, when the tile is built, and kept: a DEM arrival re-samples
+    // a few points per footprint instead of re-walking every vertex in view (3 M a second on a pan).
     TEST_CHECK(geometry->getBaseRuns().empty(), "an extrusion starts with no footprints found");
     std::vector<TileGeometry::BaseAnchor> anchors(1);
     anchors[0].pos = cglib::vec2<float>(0.5f, 0.5f);
-    anchors[0].supports.fill(cglib::vec2<float>(0.25f, 0.75f));
+    anchors[0].floorPoints.assign(1, cglib::vec2<float>(0.25f, 0.75f));
     anchors[0].maxHeightUnits = 120.0f;
-    anchors[0].haveSupports = true;
     std::vector<TileGeometry::BaseRun> runs { TileGeometry::BaseRun { 0, 4, 0 } };
     geometry->setBaseFootprints(std::move(anchors), std::move(runs));
     TEST_CHECK(geometry->getBaseRuns().size() == 1 && geometry->getBaseRuns()[0].end == 4,
-               "and keeps the run once it has walked for it");
-    TEST_CHECK(geometry->getBaseAnchors()[0].supports[0](1) == 0.75f &&
+               "and keeps the run once it has it");
+    TEST_CHECK(geometry->getBaseAnchors()[0].floorPoints[0](1) == 0.75f &&
                geometry->getBaseAnchors()[0].maxHeightUnits == 120.0f,
                "with the points the floor is read at and the tallest vertex it is measured against");
 

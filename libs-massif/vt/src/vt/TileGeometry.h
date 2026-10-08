@@ -199,12 +199,11 @@ namespace massif::vt {
         unsigned int getBaseElevationVersion() const { return _baseElevationVersion; }
         void setBaseElevationVersion(unsigned int version) { _baseElevationVersion = version; }
 
-        /** One footprint: its ground sample point, the support vertices for the floor, its tallest vertex in raw height units. */
+        /** One footprint: its ground sample point, the points its floor is read at, its tallest vertex in raw height units. */
         struct BaseAnchor {
             cglib::vec2<float> pos;
-            std::array<cglib::vec2<float>, ExtrusionFloor::SUPPORT_DIRECTIONS> supports;
+            std::vector<cglib::vec2<float>> floorPoints;
             float maxHeightUnits = 0;
-            bool haveSupports = false;
         };
         /** A consecutive block of vertices sharing one anchor. */
         struct BaseRun {

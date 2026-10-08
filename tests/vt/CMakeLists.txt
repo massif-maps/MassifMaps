@@ -24,6 +24,7 @@ add_executable(vt_tests
   LineEndArrowClipTest.cpp
   ExtrusionBaseTest.cpp
   ExtrusionFloorTest.cpp
+  ExtrusionFloorClipTest.cpp
   LabelDistanceTest.cpp
   ShadowCasterClipTest.cpp
   ShadowBoxTest.cpp

@@ -231,6 +231,16 @@ test('a negated sort key is a boost added to the priority, read from a per-featu
         /text-placement-priority: \(0 \+ \(\(\[param::poi-boost-\[class\]\]\) \?\? \(0\)\)\);/);
 });
 
+test('a field named after a parameter is a nested field reference', () => {
+    const name = ['coalesce', ['get', ['concat', 'name:', ['config', 'lang']]], ['get', 'name']];
+    const { mss: out } = convert({
+        metadata: { 'massif:live-config': ['lang'] },
+        schema: { lang: { default: 'en' } },
+        layers: [symbolLayer({ 'text-field': name })],
+    }, TABLE, NO_PALETTE);
+    assert.match(out, /text-name: \(\(\[name:\[param::lang\]\]\) \?\? \(\[name\]\)\);/);
+});
+
 test('a boost read from a table parameter is one lookup keyed by the field', () => {
     const boost = ['coalesce', ['get', ['get', 'class'], ['config', 'poi-boost']], 0];
     const { mss: out, project } = convert({

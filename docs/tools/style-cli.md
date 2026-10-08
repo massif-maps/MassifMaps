@@ -69,7 +69,8 @@ it appeared. That is the number to read: a translation is not "done" because it 
 `hillshadeMethod` and the three colours become the matching `hillshade-*` properties of a `#<id>`
 rule. The paint itself is not read — MapLibre's `hillshade-exaggeration` is the layer's `contrast`
 ([Matching MapLibre](../features/hillshade.md#matching-maplibre)). Without the metadata the layer is
-dropped. The rule ends at `visibleZoomRange`'s top, or at `[zoom < 'param::NAME']` when
+dropped. `metadata["massif:sdk-slot"]` overrides those values for the slot only, so one can be an expression over a
+parameter while `massif:sdk-layer` stays literal for a standalone layer. The rule ends at `visibleZoomRange`'s top, or at `[zoom < 'param::NAME']` when
 `metadata["massif:maxzoom-param"]` names a parameter (512 px tiles only, like `massif:minzoom-param`).
 
 ### What it cannot carry

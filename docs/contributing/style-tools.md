@@ -1594,6 +1594,10 @@ A negated key, `["-", boost]`, is written as `(base + boost)`, and `["get", ["ge
 ["config", "table"]]` reads `get([param::table], [field])`: Massif's `poi-boost` table. A `config`
 whose name is `["concat", "prefix-", ["get", field]]` still reads `[param::prefix-[field]]`.
 
+The other way round, a `get` of `["concat", "name:", ["config", "lang"]]` reads the field named after a
+parameter, `[name:[param::lang]]`: Massif's language chain. Only string pieces and `config` reads are
+spelled; any other computed key is still refused.
+
 ## Folding a casing and ordering roads do not mix
 
 `--fold-casings` puts the casing in the fill rule, which is right while the road is ONE rule: the

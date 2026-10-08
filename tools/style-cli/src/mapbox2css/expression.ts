@@ -109,6 +109,13 @@ export function zoomInput(): string {
 export const BRIGHTNESS_INPUT = '[view::brightness]';
 export const TILT_INPUT = '[view::tilt]';
 
+/** One piece of a field name built from a concat: a plain string, or a style parameter spelled in place. */
+function fieldNamePart(part: Json): string | null {
+    if (typeof part === 'string') return /[[\]{}\\]/.test(part) ? null : part;
+    if (Array.isArray(part) && part[0] === 'config' && part.length === 2 && typeof part[1] === 'string') return `[param::${part[1]}]`;
+    return null;
+}
+
 /**
  * MapBox expression -> a CartoCSS expression string.
  *
@@ -135,6 +142,11 @@ export function translateExpression(expr: Json, notes?: string[]): string {
             const table = args[1];
             if (args.length === 2 && Array.isArray(table) && table[0] === 'config' && table.length === 2 && typeof table[1] === 'string') {
                 return `get([param::${table[1]}], ${translateExpression(args[0] as Json)})`;
+            }
+            // a field named after a parameter, `["get", ["concat", "name:", ["config", "lang"]]]` -> `[name:[param::lang]]`
+            const parts = args.length === 1 && Array.isArray(args[0]) && args[0][0] === 'concat' ? args[0].slice(1).map(fieldNamePart) : [];
+            if (parts.length > 0 && parts.every((part) => part !== null)) {
+                return `[${parts.join('')}]`;
             }
             if (args.length !== 1 || typeof args[0] !== 'string') {
                 throw new Untranslatable('get with a computed or scoped key');

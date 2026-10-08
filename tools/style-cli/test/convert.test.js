@@ -620,6 +620,17 @@ test('a hillshade slot carries the settings that match the MapLibre paint', () =
     assert.doesNotMatch(mss, /hillshade-exaggeration/);
 });
 
+test('a hillshade slot takes massif:sdk-slot expressions over the literal massif:sdk-layer values', () => {
+    const hillshade = {
+        id: 'hillshade', type: 'hillshade', source: 'dem', maxzoom: 16,
+        metadata: { 'massif:sdk-layer': { type: 'hillshade', contrast: 0.35, shadowColor: '#544d45', visibleZoomRange: [0, 16] },
+            'massif:sdk-slot': { contrast: ['case', ['<', ['config', 'relief'], 0], 0.35, ['config', 'relief']] } },
+    };
+    const mss = convert({ metadata: { 'massif:live-config': ['relief'] }, layers: [hillshade] }, table, NO_PALETTE).mss;
+    assert.match(mss, /hillshade-contrast: \(\(\[param::relief\] < 0\) \? 0\.35 : \[param::relief\]\);/);
+    assert.match(mss, /hillshade-shadow-color: #544d45;/);
+});
+
 test('the Map block records the TileDrawSize its zoom numbers are written for', () => {
     // The SDK shifts every zoom by log2(app / this): Massif is written for 512, and an app left on
     // the default 256 drew every road a level wide until it did.

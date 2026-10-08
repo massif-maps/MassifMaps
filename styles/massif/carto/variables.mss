@@ -162,8 +162,7 @@
 @rail_stroke: hsla(0, 0%, 85%, 0.8);
 @residential: hsl(20, 7%, 97%);
 @road: hsl(224, 20%, 90%);
-@road_background_fill: #ffffff;
-@road_background_fill_2: #1f9e4c;
+@road_background_fill: #1f9e4c;
 @road_bridge_case: hsl(224, 25%, 60%);
 @road_bridge_casing_stroke: hsla(35, 50%, 20%, 0.55);
 @road_bridge_casing_stroke_2: hsla(30, 60%, 20%, 0.6);
@@ -198,6 +197,7 @@
 @secondary_low: hsl(224, 25%, 79.5%);
 @tertiary: hsl(224, 25%, 82.5%);
 @tertiary_case: hsl(224, 22%, 72.5%);
+@text_background_fill: #ffffff;
 @text_fill: hsl(205, 60%, 18%);
 @text_fill_2: hsl(200, 80%, 85%);
 @text_halo_fill: hsla(0, 0%, 0%, 0.75);

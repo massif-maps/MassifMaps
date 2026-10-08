@@ -6,7 +6,11 @@
     "shield-us-interstate-2": { "content": [3, 7.5, 17, 17] },
     "shield-us-interstate-3": { "content": [3, 7.5, 23, 17] },
     "shield-us-highway-2":    { "content": [3, 5, 17, 14.5] },
-    "shield-us-highway-3":    { "content": [3, 5, 23, 14.5] }
+    "shield-us-highway-3":    { "content": [3, 5, 23, 14.5] },
+    "shield-us-interstate-2-mono": { "content": [3, 7.5, 17, 17] },
+    "shield-us-interstate-3-mono": { "content": [3, 7.5, 23, 17] },
+    "shield-us-highway-2-mono":    { "content": [3, 5, 17, 14.5] },
+    "shield-us-highway-3-mono":    { "content": [3, 5, 23, 14.5] }
   },
   "variants": {
     "peak":           { "brown": { "FILL": "#8a6e55" }, "mono": { "FILL": "#000000" } },

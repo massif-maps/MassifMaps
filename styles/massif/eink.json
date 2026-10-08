@@ -21355,20 +21355,232 @@
             "network"
           ],
           "us-highway"
+        ],
+        [
+          ">",
+          [
+            "get",
+            "ref_length"
+          ],
+          2
         ]
       ],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 400,
         "symbol-avoid-edges": true,
-        "icon-image": "shield-plate-mono",
-        "icon-text-fit": "both",
-        "icon-text-fit-padding": [
-          0.5,
-          2.5,
-          0.5,
-          2.5
+        "icon-image": "shield-us-highway-3-mono",
+        "text-field": [
+          "get",
+          "ref"
         ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-letter-spacing": 0.05,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2,
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "#000000"
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "road_shields"
+          ],
+          1
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-shield-us-highway-short-mono",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-highway"
+        ],
+        [
+          "<=",
+          [
+            "get",
+            "ref_length"
+          ],
+          2
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 400,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-us-highway-2-mono",
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-letter-spacing": 0.05,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2,
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "#000000"
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "road_shields"
+          ],
+          1
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-shield-us-highway-any-mono",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-highway"
+        ],
+        [
+          "!",
+          [
+            "has",
+            "ref_length"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 400,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-us-highway-3-mono",
         "text-field": [
           "get",
           "ref"
@@ -21460,20 +21672,232 @@
             "network"
           ],
           "us-interstate"
+        ],
+        [
+          ">",
+          [
+            "get",
+            "ref_length"
+          ],
+          2
         ]
       ],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 400,
         "symbol-avoid-edges": true,
-        "icon-image": "shield-plate-mono",
-        "icon-text-fit": "both",
-        "icon-text-fit-padding": [
-          0.5,
-          2.5,
-          0.5,
-          2.5
+        "icon-image": "shield-us-interstate-3-mono",
+        "text-field": [
+          "get",
+          "ref"
         ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-letter-spacing": 0.05,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2,
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "#000000"
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "road_shields"
+          ],
+          1
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-shield-us-interstate-short-mono",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-interstate"
+        ],
+        [
+          "<=",
+          [
+            "get",
+            "ref_length"
+          ],
+          2
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 400,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-us-interstate-2-mono",
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-letter-spacing": 0.05,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2,
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "#000000"
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "road_shields"
+          ],
+          1
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0.1
+          ]
+        }
+      }
+    },
+    {
+      "id": "road-shield-us-interstate-any-mono",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-interstate"
+        ],
+        [
+          "!",
+          [
+            "has",
+            "ref_length"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 400,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-us-interstate-3-mono",
         "text-field": [
           "get",
           "ref"

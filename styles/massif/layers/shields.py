@@ -75,12 +75,11 @@ def layers(v):
         # a sprite per ref length, as Standard has: the shape is the sign, and stretched it is not.
         # A tileset without ref_length (ours) draws the wide one.
         base = ['all', *BASE_FILTER, ['==', get('network'), network]]
-        if mono:
-            return [shield('road-shield-' + network + '-mono', 7, base, 'shield-plate-mono', '#000000')]
         tests = (('', ['>', get('ref_length'), 2], '3'), ('-short', ['<=', get('ref_length'), 2], '2'),
                  ('-any', ['!', ['has', 'ref_length']], '3'))
-        return [shield('road-shield-' + network + suffix, 7, base + [test], 'shield-' + network + '-' + n,
-                       text_color, fit=False) for suffix, test, n in tests]
+        return [shield('road-shield-' + network + suffix + ('-mono' if mono else ''), 7, base + [test],
+                       'shield-' + network + '-' + n + ('-mono' if mono else ''),
+                       '#000000' if mono else text_color, fit=False) for suffix, test, n in tests]
     exit = shield('road-exit-shield' + ('-mono' if mono else ''), 14, ['all', ['has', 'ref'], ['==', get('subclass'), 'junction']],
                   'shield-plate-mono' if mono else 'shield-exit', '#000000' if mono else '#ffffff',
                   spacing=250, text_size=8, padding=(0, 1, 0, 1))

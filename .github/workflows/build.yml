@@ -128,6 +128,74 @@ jobs:
             git push origin "${TAG}"
           fi
 
+      - name: Build release body
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          NPM_TAG: ${{ github.event.inputs.prerelease == 'true' && 'next' || 'latest' }}
+          TAG: v${{ steps.get_version_or_prompt.outputs.result }}
+          PREVIOUS_TAG: ${{ steps.previous.outputs.previous }}
+        run: |
+          python3 scripts/release-notes.py "$PREVIOUS_TAG" "$TAG" > release_body.md
+          cat >> release_body.md <<EOF
+
+          ---
+
+          ## Installation
+
+          ### Android
+
+          \`\`\`groovy
+          repositories {
+              mavenCentral()
+              maven { url 'https://jitpack.io' }
+          }
+          dependencies {
+              implementation 'com.github.massif-maps:MassifMaps-android-aar:${VERSION}'
+              // the standalone routing library
+              implementation 'com.github.massif-maps:MassifMaps-android-aar:${VERSION}:routing@aar'
+          }
+          \`\`\`
+
+          Add the INTERNET permission to \`AndroidManifest.xml\`:
+
+          \`\`\`xml
+          <uses-permission android:name="android.permission.INTERNET"/>
+          \`\`\`
+
+          ### iOS
+
+          Use Swift Package Manager:
+
+          1. In Xcode: **File → Add Packages…**
+          2. Paste the package URL: \`https://github.com/massif-maps/MassifMaps-ios-swift\`
+          3. Select version \`${VERSION}\` and add it to your target.
+
+          Or download the prebuilt framework attached to this release.
+
+          ### Web
+
+          \`\`\`sh
+          npm install @massif-maps/web@${NPM_TAG}
+          \`\`\`
+
+          Or unzip \`MassifMaps-web-${VERSION}.zip\` attached to this release.
+
+          ### Style tools
+
+          \`\`\`sh
+          npm install -g @massif-maps/style-tools@${NPM_TAG}
+          \`\`\`
+          EOF
+
+      - name: Show the notes
+        run: |
+          {
+            echo "### Release notes"
+            echo "Edit the draft release body on GitHub while the builds run; the CHANGELOG.md entry is taken from it."
+            echo
+            cat release_body.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: create release
         id: create_release
         uses: ncipollo/release-action@v1
@@ -140,6 +208,7 @@ jobs:
           name: v${{ steps.get_version_or_prompt.outputs.result }}
           draft: true
           prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          bodyFile: release_body.md
           token: ${{ secrets.GITHUB_TOKEN }}
 
   release-preflight:
@@ -633,6 +702,9 @@ jobs:
     needs: [create-release, release-preflight]
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped')
     uses: ./.github/workflows/release-style-tools.yml
+    permissions:
+      contents: read
+      id-token: write # the called publish-dev job asks for npm provenance; a caller must grant it
     with:
       version: ${{ needs.create-release.outputs.VERSION || '0.0.0-devel' }}
 
@@ -840,7 +912,12 @@ jobs:
 
       - name: Generate CHANGELOG
         if: github.event.inputs.prerelease != 'true'
-        run: python3 scripts/release-notes.py --changelog CHANGELOG.md "${{ needs.create-release.outputs.PREVIOUS_TAG }}" "${{ needs.create-release.outputs.VERSION_TAG }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # the notes as left in the draft release, installation section cut off
+          gh release view "${{ needs.create-release.outputs.VERSION_TAG }}" --json body --jq .body | sed '/^---$/,$d' > release_notes.md
+          python3 scripts/release-notes.py --changelog CHANGELOG.md --body release_notes.md "${{ needs.create-release.outputs.PREVIOUS_TAG }}" "${{ needs.create-release.outputs.VERSION_TAG }}"
 
       - name: Commit CHANGELOG.md
         if: github.event.inputs.prerelease != 'true'
@@ -850,74 +927,10 @@ jobs:
           commit_message: 'docs: update CHANGELOG.md for v${{ github.event.inputs.version }} [skip ci]'
           file_pattern: CHANGELOG.md
 
-      - name: Build release body
+      - name: Publish the release
         env:
-          VERSION: ${{ github.event.inputs.version }}
-          NPM_TAG: ${{ github.event.inputs.prerelease == 'true' && 'next' || 'latest' }}
-          TAG: ${{ needs.create-release.outputs.VERSION_TAG }}
-          PREVIOUS_TAG: ${{ needs.create-release.outputs.PREVIOUS_TAG }}
-        run: |
-          python3 scripts/release-notes.py "$PREVIOUS_TAG" "$TAG" > release_body.md
-          cat >> release_body.md <<EOF
-
-          ---
-
-          ## Installation
-
-          ### Android
-
-          \`\`\`groovy
-          repositories {
-              mavenCentral()
-              maven { url 'https://jitpack.io' }
-          }
-          dependencies {
-              implementation 'com.github.massif-maps:MassifMaps-android-aar:${VERSION}'
-              // the standalone routing library
-              implementation 'com.github.massif-maps:MassifMaps-android-aar:${VERSION}:routing@aar'
-          }
-          \`\`\`
-
-          Add the INTERNET permission to \`AndroidManifest.xml\`:
-
-          \`\`\`xml
-          <uses-permission android:name="android.permission.INTERNET"/>
-          \`\`\`
-
-          ### iOS
-
-          Use Swift Package Manager:
-
-          1. In Xcode: **File → Add Packages…**
-          2. Paste the package URL: \`https://github.com/massif-maps/MassifMaps-ios-swift\`
-          3. Select version \`${VERSION}\` and add it to your target.
-
-          Or download the prebuilt framework attached to this release.
-
-          ### Web
-
-          \`\`\`sh
-          npm install @massif-maps/web@${NPM_TAG}
-          \`\`\`
-
-          Or unzip \`MassifMaps-web-${VERSION}.zip\` attached to this release.
-
-          ### Style tools
-
-          \`\`\`sh
-          npm install -g @massif-maps/style-tools@${NPM_TAG}
-          \`\`\`
-          EOF
-
-      - name: Update release with body and publish
-        uses: irongut/EditRelease@v1.2.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          id: ${{ needs.create-release.outputs.RELEASE_UPLOAD_ID }}
-          files: release_body.md
-          replacebody: true
-          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
-          draft: false
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ needs.create-release.outputs.VERSION_TAG }}" --draft=false --prerelease=${{ github.event.inputs.prerelease == 'true' }}
 
   cleanup-release:
     name: Delete draft release on failed/cancelled runs

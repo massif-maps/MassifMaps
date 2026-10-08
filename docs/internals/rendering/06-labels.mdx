@@ -1198,7 +1198,7 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   Confirmed on the Crosscall: **19 misses in 746 584 queries**, and `elevReanchor` non-zero for the
   first time. It was briefly unbounded, and that is the other half of the floating-POI bug below: an
   entry further up than the gap is one a *previous* camera left in the cache, and after a 2D/3D
-  switch — nothing loads the DEM while the map is flat — one such texel answered for the whole
+  switch — nothing loads the DEM while the map is flat — one such texel answered for measured with it, the whole
   screen. Bounding it is only safe because a label that gets no answer is **not** worse off: with
   GPU draping `labelVsh` elevates it from the same texture the ground is drawn from, so refusing is
   better than answering wrong. Without a texture cache there is no GPU height either, so that device
@@ -1564,6 +1564,10 @@ terrain only"*, which is exactly what this codebase already did):
    its DEM; one not yet resolved occludes nothing. With no DEM at all (a flat map) a base never
    resolves, and there the ground is the base: read as "not yet", no building hid a label until
    something else, the preview's shadows, loaded a DEM.
+   A wall's **foot** is drawn on the ground under it, not at the base, so its slot carries the lowest
+   ground under the footprint instead (`resolveExtrusionBases`; `polygon3DVsh` ignores it there).
+   Before, the occluder's walls started at the base: at Collioure 38% of footprints stand more than
+   2 m above their lowest ground, up to 13.9 m, and the bottom of every such face hid nothing.
 3. For a label whose opacity asks for it, four rays go from the eye to the corners of a 30 px
    square around the **anchor**, at the anchor's distance (mapbox's square of taps). A ray stops
    1 m short of its target, so a label on a roof is not hidden by that roof. The fraction of rays
@@ -1623,10 +1627,15 @@ moves, the z-elevated labels are re-anchored on the render thread with `roofAt` 
 height, and flagged absolute so `labelVsh` keeps the roof height. Not in the cull thread's bulk
 anchoring: a roof reads extrusion bases the render thread resolves. A flat map anchors these labels
 too, and nothing else. A building growing in carries its label at the full height from the start. Such a label, once on
-its roof, skips the occlusion test, as mapbox Standard's elevated POIs do. Tested, it lost most of
-them at street tilt: measured on the emulator at Grenoble z19.2 tilt 23, the blocked rays came down at
-5-17 degrees and met roofs 4-16 m taller 10-120 m in front of the anchor, while the billboard itself was
-drawn over those roofs.
+its roof, is tested over the box it is **drawn** in (`Label::calculateEnvelope`, the four taps at
+half its extent, none below the roof plane) rather than over a square at its anchor. Tested at the
+anchor, it lost most of them at street tilt: measured on the emulator at Grenoble z19.2 tilt 23, the
+blocked rays came down at 5-17 degrees and met roofs 4-16 m taller 10-120 m in front of the anchor,
+while the billboard itself was drawn over those roofs. Skipping the test instead (the previous
+answer) drew a POI behind a taller building over that building. Web build, same camera, a composite
+with a contour slot: 74% of roof labels fully visible, 25% fully hidden, 1% in between; measured with it, the whole
+label occlusion pass measured 0.57 ms a frame, roof labels about half of its rays. mapbox applies
+the same depth test to a `symbol-z-elevate` label as to any other (`symbol.vertex.glsl`).
 
 **Not near top-down.** Past tilt 80 (`LABEL_OCCLUSION_MAX_TILT`, 90 = straight down) no ray is cast:
 looking down, nothing stands between the eye and a label. A flattened (2D) extrusion has no height,
@@ -1634,6 +1643,10 @@ so it is never an occluder either, and with none in view the test returns before
 
 **Not on a globe** (the planar tile frame the rays are cast in does not hold there) and not for a
 translated extrusion layer or a bridge span, which the old pass skipped as well.
+
+**Buildings drawn by another group of the same composite count** — roofs and occluders are gathered
+over the renderer's peers too (`forEachLabelExtrusion`); see
+[the composite layer](09-composite-layer.md#rendering).
 
 ### Asking for it
 

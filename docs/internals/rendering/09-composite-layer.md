@@ -60,6 +60,10 @@ and no effect. Set them on the source (`setLabelStubsEnabled`, `setLabelInterval
 the first slot), then each draw item — a child raster/hillshade layer, or an internal
 `VectorTileLayer` rendering a later style-layer group.
 
+`setOpacity` is virtual and the composite forwards it to every internal layer (style groups and
+depth-split vector slots), also at creation, because groups are rebuilt on every style or slot change.
+Each layer fades its own content once. External children keep the opacity the app set on them.
+
 `collectDrapeLayers` must expose the **children** as well, with the same order and gating as
 `renderComposite`. If it reports only itself, every slot and every later style-layer group keeps its
 own terrain pre-pass and depth domain — exactly the split the shared ground exists to remove.

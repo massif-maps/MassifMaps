@@ -3967,6 +3967,15 @@
       "base": null,
       "properties": [
         {
+          "name": "billboardsUnderLabels",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false."
+        },
+        {
           "name": "cullDelay",
           "type": "INT",
           "readOnly": false,

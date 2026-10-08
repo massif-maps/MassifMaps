@@ -118,6 +118,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> BILLBOARD_OCCLUSION_ENABLED = MassifObject.key("billboardOcclusionEnabled");
     /** Returns the billboard/label terrain occlusion tolerance. */
     public static final MassifObject.Key<Double> BILLBOARD_OCCLUSION_TOLERANCE = MassifObject.key("billboardOcclusionTolerance");
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    public static final MassifObject.Key<Boolean> BILLBOARDS_UNDER_LABELS = MassifObject.key("billboardsUnderLabels");
     /** Returns the bitmap of the image. */
     public static final MassifObject.Key<MassifObject> BITMAP = MassifObject.key("bitmap");
     /** Returns the bitmap scaling factor. */

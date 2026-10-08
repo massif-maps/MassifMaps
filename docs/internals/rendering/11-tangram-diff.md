@@ -33,7 +33,7 @@ and *still different*, the latter with the reason it is not simply copied.
 | arrow-ended lines | none — an arrow is a sprite in the scene | `line-end-arrow`, built into the line tesselation so shaft and head are one shape | **ours** ([03](03-vt-renderer.md#line-end-arrows)) |
 | line antialias | none — hard-edged quads (`core/shaders/polyline.fs`) | ramp over one device pixel (`uAntialiasScale`) | **different — we antialias** |
 | content subdivision | none at all | none for draped content; live fills to two surface cells, live lines cut by their sag | **different — see below** |
-| elevation texture | source raster bound directly, ancestors via uv sub-rects, edges extrapolated in-shader (`res/scenes/elevation.yaml`) | per-tile CPU re-encode with a 1-texel border from up to 8 neighbours | **different — see below** |
+| elevation texture | source raster bound directly, ancestors via uv sub-rects, edges extrapolated in-shader (`res/scenes/elevation.yaml`) | per-tile CPU re-encode with a 2-texel border from up to 8 neighbours | **different — see below** |
 | tile LOD | subdivide while screen area > `(2·pixelScale·256)²` (`core/src/tile/tileManager.cpp:214`) | same rule, `Options::TileLODFactor` scaling it | ported whole |
 | LOD tile height | terrain depth at the screen centre, one value per frame (`View::getTileScreenArea`) | each tile's own elevation band midpoint | **different — see below** |
 | tile decode threads | 2 (`SceneOptions::numTileWorkers`) | 1 (`Options::setTileThreadPoolSize`) | **different — measured not to matter** |

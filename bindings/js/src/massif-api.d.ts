@@ -1660,6 +1660,8 @@ export interface PropertyTypes {
         'visible': boolean;
     };
     'massif::CelestialLayer': {
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the object event listener. */
         'celestialEventListener': Handle;
         /** Returns the culling delay of the layer in milliseconds. */
@@ -1760,6 +1762,8 @@ export interface PropertyTypes {
         'ZBuffering': boolean;
         /** Returns the cluster animation flag value. */
         'animatedClusters': boolean;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** (read-only) Returns the current callback used for creating cluster elements. */
         readonly 'clusterElementBuilder': Handle;
         /** Returns the culling delay of the layer in milliseconds. */
@@ -1856,6 +1860,8 @@ export interface PropertyTypes {
         readonly 'UTFGridDataSource.projection.name': string;
         /** Returns the UTF grid event listener. */
         'UTFGridEventListener': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the current display order of the buildings. LAST draws over flat labels too: a label that must clear a building is a billboard one, whose pass runs after the buildings. */
         'buildingRenderOrder': 'VECTOR_TILE_RENDER_ORDER_HIDDEN' | 'VECTOR_TILE_RENDER_ORDER_LAYER' | 'VECTOR_TILE_RENDER_ORDER_LAST' | number;
         /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
@@ -2218,6 +2224,8 @@ export interface PropertyTypes {
         readonly 'UTFGridDataSource.projection.name': string;
         /** Returns the UTF grid event listener. */
         'UTFGridEventListener': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'cullDelay': number;
         /** (read-only) Returns the data source assigned to this layer. */
@@ -2333,6 +2341,8 @@ export interface PropertyTypes {
     'massif::EditableVectorLayer': {
         /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
         'ZBuffering': boolean;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'cullDelay': number;
         /** (read-only) Returns the vector data source of this vector layer. */
@@ -2810,6 +2820,8 @@ export interface PropertyTypes {
         'UTFGridEventListener': Handle;
         /** Returns the shading color used to accentuate rugged terrain like sharp cliffs and gorges. */
         'accentColor': number;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the contour line color. */
         'contourColor': number;
         /** Returns whether GPU contour lines are drawn over the hillshade. */
@@ -3129,6 +3141,8 @@ export interface PropertyTypes {
         'verticalOffset': number;
     };
     'massif::Layer': {
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'cullDelay': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -5399,6 +5413,8 @@ export interface PropertyTypes {
         readonly 'interpolatedColor': number;
         /** (read-only) Returns the layer of the raster tile. */
         readonly 'layer': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'layer.billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'layer.cullDelay': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -5444,6 +5460,8 @@ export interface PropertyTypes {
         readonly 'UTFGridDataSource.projection.name': string;
         /** Returns the UTF grid event listener. */
         'UTFGridEventListener': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'cullDelay': number;
         /** (read-only) Returns the data source assigned to this layer. */
@@ -5711,6 +5729,8 @@ export interface PropertyTypes {
         'type': 'SKY_TYPE_GRADIENT' | 'SKY_TYPE_ATMOSPHERE' | number;
     };
     'massif::SolidLayer': {
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the bitmap of this layer. */
         'bitmap': Handle;
         /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
@@ -6181,6 +6201,8 @@ export interface PropertyTypes {
         readonly 'UTFGridDataSource.projection.name': string;
         /** Returns the UTF grid event listener. */
         'UTFGridEventListener': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'cullDelay': number;
         /** (read-only) Returns the data source assigned to this layer. */
@@ -6315,6 +6337,8 @@ export interface PropertyTypes {
         readonly 'UTFGridDataSource.projection.name': string;
         /** Returns the UTF grid event listener. */
         'UTFGridEventListener': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the current display order of the buildings. LAST draws over flat labels too: a label that must clear a building is a billboard one, whose pass runs after the buildings. */
         'buildingRenderOrder': 'VECTOR_TILE_RENDER_ORDER_HIDDEN' | 'VECTOR_TILE_RENDER_ORDER_LAYER' | 'VECTOR_TILE_RENDER_ORDER_LAST' | number;
         /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
@@ -6435,6 +6459,8 @@ export interface PropertyTypes {
         readonly 'elementInfo': Json;
         /** (read-only) Returns the clicked layer. */
         readonly 'layer': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'layer.billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'layer.cullDelay': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -6536,6 +6562,8 @@ export interface PropertyTypes {
         readonly 'elementClickPos': Position;
         /** (read-only) Returns the layer of the clicked vector element. */
         readonly 'layer': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'layer.billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'layer.cullDelay': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -6619,6 +6647,8 @@ export interface PropertyTypes {
     'massif::VectorLayer': {
         /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
         'ZBuffering': boolean;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'cullDelay': number;
         /** (read-only) Returns the vector data source of this vector layer. */
@@ -6687,6 +6717,8 @@ export interface PropertyTypes {
         readonly 'featurePosIndex': number;
         /** (read-only) Returns the layer of the vector tile. */
         readonly 'layer': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'layer.billboardsUnderLabels': boolean;
         /** Returns the culling delay of the layer in milliseconds. */
         'layer.cullDelay': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -6775,6 +6807,8 @@ export interface PropertyTypes {
         readonly 'UTFGridDataSource.projection.name': string;
         /** Returns the UTF grid event listener. */
         'UTFGridEventListener': Handle;
+        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+        'billboardsUnderLabels': boolean;
         /** Returns the current display order of the buildings. LAST draws over flat labels too: a label that must clear a building is a billboard one, whose pass runs after the buildings. */
         'buildingRenderOrder': 'VECTOR_TILE_RENDER_ORDER_HIDDEN' | 'VECTOR_TILE_RENDER_ORDER_LAYER' | 'VECTOR_TILE_RENDER_ORDER_LAST' | number;
         /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
@@ -10266,6 +10300,8 @@ export type GeometrySpec = GeometrySpec_line | GeometrySpec_maneuver_arrow | Geo
 
 export interface LayerSpec_celestial {
     type: 'celestial';
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
     /** Returns the object event listener. */
     celestialEventListener?: Handle;
     /** Returns the culling delay of the layer in milliseconds. */
@@ -10290,6 +10326,8 @@ export interface LayerSpec_composite_vector {
     UTFGridDataSource?: Handle | string | SourceSpec;
     /** Returns the UTF grid event listener. */
     UTFGridEventListener?: Handle;
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
     /** Returns the current display order of the buildings. LAST draws over flat labels too: a label that must clear a building is a billboard one, whose pass runs after the buildings. */
     buildingRenderOrder?: 'VECTOR_TILE_RENDER_ORDER_HIDDEN' | 'VECTOR_TILE_RENDER_ORDER_LAYER' | 'VECTOR_TILE_RENDER_ORDER_LAST' | number;
     /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
@@ -10348,6 +10386,8 @@ export interface LayerSpec_elements {
     type: 'elements';
     /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
     ZBuffering?: boolean;
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
     /** Returns the culling delay of the layer in milliseconds. */
     cullDelay?: number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -10375,6 +10415,8 @@ export interface LayerSpec_hillshade {
     UTFGridEventListener?: Handle;
     /** Returns the shading color used to accentuate rugged terrain like sharp cliffs and gorges. */
     accentColor?: number;
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
     /** Returns the contour line color. */
     contourColor?: number;
     /** Returns whether GPU contour lines are drawn over the hillshade. */
@@ -10459,6 +10501,8 @@ export interface LayerSpec_raster {
     UTFGridDataSource?: Handle | string | SourceSpec;
     /** Returns the UTF grid event listener. */
     UTFGridEventListener?: Handle;
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
     /** Returns the culling delay of the layer in milliseconds. */
     cullDelay?: number;
     /** Returns the current frame number. */
@@ -10502,6 +10546,8 @@ export interface LayerSpec_raster {
 
 export interface LayerSpec_solid {
     type: 'solid';
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
     /** Returns the bitmap of this layer. */
     bitmap?: Handle | string | Record<string, Json>;
     /** Returns the bitmap scaling factor. */
@@ -10530,6 +10576,8 @@ export interface LayerSpec_vector {
     UTFGridDataSource?: Handle | string | SourceSpec;
     /** Returns the UTF grid event listener. */
     UTFGridEventListener?: Handle;
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
     /** Returns the current display order of the buildings. LAST draws over flat labels too: a label that must clear a building is a billboard one, whose pass runs after the buildings. */
     buildingRenderOrder?: 'VECTOR_TILE_RENDER_ORDER_HIDDEN' | 'VECTOR_TILE_RENDER_ORDER_LAYER' | 'VECTOR_TILE_RENDER_ORDER_LAST' | number;
     /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */

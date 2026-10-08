@@ -109,6 +109,12 @@ namespace massif {
          * @param preloading The new preloading state of the layer.
          */
         virtual void setPreloading(bool preloading);
+        /**
+         * Sets the opacity for this layer and for every internal layer it owns (style groups and
+         * depth-split vector slots). External children keep the opacity the app set on them.
+         * @param opacity The opacity in range (0..1).
+         */
+        virtual void setOpacity(float opacity);
 
         /**
          * Sets the vector tile event listener for this layer and every internal style-group layer,

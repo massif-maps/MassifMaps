@@ -1276,6 +1276,7 @@ namespace massif {
         if (getStyleEnvironment(viewState, env)) {
             _tileRenderer->setStyleEnvironment(env);
         }
+        _tileRenderer->setLayerOpacity(getOpacity());
         return _tileRenderer->prepareFrame(deltaSeconds, viewState);
     }
 

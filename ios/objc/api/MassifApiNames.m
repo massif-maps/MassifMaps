@@ -57,6 +57,7 @@ MassifProperty const MassifPropertyBelowHorizonVisible = @"belowHorizonVisible";
 MassifProperty const MassifPropertyBigEndian = @"bigEndian";
 MassifProperty const MassifPropertyBillboardOcclusionEnabled = @"billboardOcclusionEnabled";
 MassifProperty const MassifPropertyBillboardOcclusionTolerance = @"billboardOcclusionTolerance";
+MassifProperty const MassifPropertyBillboardsUnderLabels = @"billboardsUnderLabels";
 MassifProperty const MassifPropertyBitmap = @"bitmap";
 MassifProperty const MassifPropertyBitmapScale = @"bitmapScale";
 MassifProperty const MassifPropertyBool = @"bool";

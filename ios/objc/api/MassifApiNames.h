@@ -118,6 +118,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyBigEndian;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBillboardOcclusionEnabled;
 /** Returns the billboard/label terrain occlusion tolerance. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBillboardOcclusionTolerance;
+/** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyBillboardsUnderLabels;
 /** Returns the bitmap of the image. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBitmap;
 /** Returns the bitmap scaling factor. */

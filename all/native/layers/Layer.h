@@ -109,7 +109,7 @@ namespace massif {
          * Set the opacity of the layer.
          * @param opacity The opacity of the layer in range (0..1). 1.0 is the default value.
          */
-        void setOpacity(float opacity);
+        virtual void setOpacity(float opacity);
 
         /**
          * Returns the visibility of this layer.
@@ -134,6 +134,19 @@ namespace massif {
          * @param postProcessed The new post-processing state of the layer.
          */
         void setPostProcessed(bool postProcessed);
+
+        /**
+         * Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers
+         * that render them last, rather than over everything. The default is false.
+         * @return True if the billboards draw under the last labels.
+         */
+        bool isBillboardsUnderLabels() const;
+        /**
+         * Sets whether the billboards of this layer draw under the labels of the vector tile layers that render them
+         * last (VECTOR_TILE_RENDER_ORDER_LAST), still over the layers' ground. Meant for a marker that belongs to the ground, like a selection.
+         * @param underLabels The new state of the layer.
+         */
+        void setBillboardsUnderLabels(bool underLabels);
 
         /**
          * Returns the visible zoom range of this layer.
@@ -247,6 +260,7 @@ namespace massif {
         
         std::atomic<bool> _visible;
         std::atomic<bool> _postProcessed;
+        std::atomic<bool> _billboardsUnderLabels;
 
         MapRange _visibleZoomRange;
         mutable std::mutex _visibleZoomRangeMutex; // not the layer mutex, see getVisibleZoomRange

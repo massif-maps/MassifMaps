@@ -106,7 +106,7 @@ namespace massif {
         void requestDetailLevels(int extraLevels);
         /**
          * Shader tap distance in ground metres (TerrainOptions::getNormalSampleDistance); borders widen to
-         * keep taps on real neighbour data. 0 keeps the 1-texel border. A change re-encodes everything.
+         * keep taps on real neighbour data. 0 keeps the minimum border. A change re-encodes everything.
          */
         void setBorderMetres(float metres);
 

@@ -107,6 +107,10 @@ puts one more thing in the later pass: a lower layer's billboards now draw over 
 geometry, as its extrusions already did. An app that wants everything strictly inside the layer
 sets `BuildingRenderOrder` to `LAYER` as well — the rule then puts both back in the 2D pass.
 
+An app's own billboards (markers, popups) are drawn after every layer, over every tile layer's
+labels. A layer with `Layer::setBillboardsUnderLabels(true)` has them drawn between the two passes
+instead: over the layers' ground, under the labels and extrusions a tile layer renders `LAST`.
+
 ## What causes a frame
 
 The renderer is **not** a free-running loop. A frame is drawn when something calls

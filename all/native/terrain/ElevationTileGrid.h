@@ -82,10 +82,12 @@ namespace massif {
         void encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, std::vector<std::uint8_t>& textureData) const;
 
         /**
-         * The border keeping taps reaching 'reachMetres' (equator metres) inside real data: 1 for a
-         * reach of 0, capped at MAX_TEXTURE_BORDER_TEXELS and the grid size.
+         * The border keeping taps reaching 'reachMetres' (equator metres) inside real data: the minimum
+         * for a reach of 0, capped at MAX_TEXTURE_BORDER_TEXELS and the grid size.
          */
         int getTextureBorderTexels(double reachMetres) const;
+        // The terrain paint's smooth gradient reads a 4x4 block, two texels past a tile's edge.
+        static constexpr int MIN_TEXTURE_BORDER_TEXELS = 2;
         static constexpr int MAX_TEXTURE_BORDER_TEXELS = 32;
 
         /**

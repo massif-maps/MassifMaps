@@ -34,6 +34,7 @@
 %attributeval(massif::Layer, massif::MapRange, VisibleZoomRange, getVisibleZoomRange, setVisibleZoomRange)
 %attribute(massif::Layer, float, Opacity, getOpacity, setOpacity)
 %attribute(massif::Layer, bool, PostProcessed, isPostProcessed, setPostProcessed)
+%attribute(massif::Layer, bool, BillboardsUnderLabels, isBillboardsUnderLabels, setBillboardsUnderLabels)
 %ignore massif::Layer::onDrawFrame;
 %ignore massif::Layer::onDrawFrame3D;
 %ignore massif::Layer::getBackgroundBitmap;

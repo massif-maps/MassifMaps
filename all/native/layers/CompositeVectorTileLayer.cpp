@@ -227,6 +227,20 @@ namespace massif {
         }
     }
 
+    void CompositeVectorTileLayer::setOpacity(float opacity) {
+        VectorTileLayer::setOpacity(opacity);
+
+        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        for (const DrawItem& item : _drawItems) {
+            if (item.groupLayer) {
+                item.groupLayer->setOpacity(opacity);
+            }
+            if (item.slotLayer) {
+                item.slotLayer->setOpacity(opacity);
+            }
+        }
+    }
+
     // Group layers (everything above the first external slot) answer no click without a listener.
     // External children are left out: a click on them is on their own source's features.
     void CompositeVectorTileLayer::setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener) {
@@ -372,6 +386,7 @@ namespace massif {
         // The groups render the same source as this layer, so they must select the same tiles.
         groupLayer->setZoomLevelBias(getZoomLevelBias());
         groupLayer->setPreloading(isPreloading());
+        groupLayer->setOpacity(getOpacity());
         // Groups are rebuilt on every style or slot change, long after the app set its click state.
         groupLayer->setClickRadius(getClickRadius());
         groupLayer->setClickHandlerLayerFilter(getClickHandlerLayerFilter());
@@ -394,6 +409,7 @@ namespace massif {
         slotLayer->setLabelRenderOrder(getLabelRenderOrder());
         slotLayer->setBuildingRenderOrder(getBuildingRenderOrder());
         slotLayer->setVisibleZoomRange(source.childLayer->getVisibleZoomRange());
+        slotLayer->setOpacity(getOpacity());
         std::shared_ptr<Layer> child = slotLayer;
         if (_componentsSet) {
             wireChild(child);

@@ -93,6 +93,8 @@ namespace massif::vt {
     static constexpr int SHADOW_CASTER_SURFACE_BUDGET = 2;
     // Scene light quantisation in a drape fingerprint: every step crossed re-bakes the whole cover.
     static constexpr float DRAPE_LIGHT_STEPS = 16.0f;
+    // Layer opacity quantisation in a drape fingerprint: below one 8-bit alpha step it cannot show.
+    static constexpr float DRAPE_OPACITY_STEPS = 255.0f;
     // maplibre covering_tiles.ts / mercator_utils.ts verbatim: tallest assumed feature, the angle
     // above the horizon where the culling box starts growing to hold it, and the horizon.
     static constexpr double ASSUMED_MAX_FEATURE_HEIGHT_METERS = 500.0;
@@ -1612,7 +1614,7 @@ namespace massif::vt {
         return refresh;
     }
     
-    void GLTileRenderer::renderGeometry(bool geom2D, bool geom3D, bool inline3D) {
+    void GLTileRenderer::renderGeometry(bool geom2D, bool geom3D, bool inline3D, float layerOpacity) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
@@ -1800,7 +1802,7 @@ namespace massif::vt {
             glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);
 
-            renderGeometry3D(*_visibleRenderTiles, inline3D);
+            renderGeometry3D(*_visibleRenderTiles, inline3D, layerOpacity);
 
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
@@ -1809,7 +1811,7 @@ namespace massif::vt {
         }
     }
     
-    void GLTileRenderer::renderLabels(bool labels2D, bool labels3D) {
+    void GLTileRenderer::renderLabels(bool labels2D, bool labels3D, float layerOpacity) {
         VT_STAT_CLOCK(lockClock);
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_SPLIT(mutexWaitNs, lockClock);
@@ -1819,7 +1821,20 @@ namespace massif::vt {
         if (!_visiblePassLabels[0] || !_visiblePassLabels[1]) {
             return;
         }
-        
+
+        // Labels are batched with their own colours, bitmap icons included: fade them as one image.
+        bool fade = layerOpacity < 1.0f && ((labels2D && !_visiblePassLabels[0]->empty()) || (labels3D && !_visiblePassLabels[1]->empty()));
+        GLint previousFBO = 0;
+        if (fade) {
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFBO);
+            if (_overlayBuffer3D.fbo == 0) {
+                createFrameBuffer(_overlayBuffer3D, true, true, true);
+            }
+            glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer3D.fbo);
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
@@ -1834,6 +1849,11 @@ namespace massif::vt {
             if ((pass == 0 && labels2D) || (pass == 1 && labels3D)) {
                 renderLabels(*_visiblePassLabels[pass]);
             }
+        }
+
+        if (fade) {
+            glBindFramebuffer(GL_FRAMEBUFFER, previousFBO);
+            blendScreenTexture(layerOpacity, _overlayBuffer3D.colorTexture);
         }
         
         glEnable(GL_DEPTH_TEST);
@@ -3470,7 +3490,7 @@ namespace massif::vt {
         _drawOncePass = DrawOncePass::NONE;
     }
     
-    void GLTileRenderer::renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline) {
+    void GLTileRenderer::renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity) {
         std::map<int, std::vector<const RenderTileLayer*>> renderLayerMap;
         for (const RenderTile& renderTile : renderTiles) {
             if (!renderTile.visible) {
@@ -3518,7 +3538,7 @@ namespace massif::vt {
                 continue;
             }
             int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
-            Pass3DState pass = begin3DPass(renderLayers, renderTiles, allowInline);
+            Pass3DState pass = begin3DPass(renderLayers, renderTiles, allowInline, layerOpacity);
 
             // Translucent extrusions draw twice - depth only, then colour with depth pulled one unit
             // forward - so one fragment per pixel blends (mapbox's depth prepass, minus the stencil).
@@ -3565,11 +3585,11 @@ namespace massif::vt {
         }
     }
 
-    GLTileRenderer::Pass3DState GLTileRenderer::begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline) {
+    GLTileRenderer::Pass3DState GLTileRenderer::begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity) {
         Pass3DState state;
         const std::shared_ptr<const TileLayer>& layer = renderLayers.front()->layer;
 
-        state.layerOpacity = (layer->getOpacityFunc())(_viewState);
+        state.layerOpacity = (layer->getOpacityFunc())(_viewState) * layerOpacity;
         if (!layer->getCompOp()) { // use the hack to conform with normal '2D' layers
             std::swap(state.layerOpacity, state.geometryOpacity);
         }
@@ -5704,6 +5724,12 @@ namespace massif::vt {
         }
     }
 
+    // Fine DEMs (< 6 m per texel, about zoom 14.7) take the smooth gradient; coarser keep the crisp quadratic.
+    static float terrainPaintSmoothFlag(float metersPerTexel) {
+        constexpr float SMOOTH_BELOW_METERS_PER_TEXEL = 6.0f;
+        return metersPerTexel < SMOOTH_BELOW_METERS_PER_TEXEL ? 1.0f : 0.0f;
+    }
+
     int GLTileRenderer::renderTerrainPaint(const TileId& targetTileId) {
         // A paint is a function of the elevation texture already bound for this tile: ONE quad into the
         // shared drape at this layer's bake slot, nothing fetched or uploaded.
@@ -5740,7 +5766,7 @@ namespace massif::vt {
             // 1/cos(latitude) stretch comes per fragment (vElevCosh).
             float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(terrainTexture.metersPerTexel) / terrainTexture.metersPerTexel;
             glUniform2f(shaderProgram.uniforms[U_PAINTSLOPESCALE], slopeScale, slopeScale);
-            glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, 0.0f, 0.0f);
+            glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, terrainPaintSmoothFlag(terrainTexture.metersPerTexel), 0.0f);
             _lightingShaderNormalMap->setupFunc(shaderProgram.program, _viewState);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -5826,7 +5852,7 @@ namespace massif::vt {
 
                 float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(resolved.second.metersPerTexel) / resolved.second.metersPerTexel;
                 glUniform2f(shaderProgram.uniforms[U_PAINTSLOPESCALE], slopeScale, slopeScale);
-                glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, 0.0f, 0.0f);
+                glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, terrainPaintSmoothFlag(resolved.second.metersPerTexel), 0.0f);
                 if (asGround) {
                     glUniform4f(shaderProgram.uniforms[U_GROUNDCOLOR], _terrainGroundColor[0], _terrainGroundColor[1], _terrainGroundColor[2], _terrainGroundColor[3]);
                 }
@@ -5972,6 +5998,11 @@ namespace massif::vt {
             combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * DRAPE_LIGHT_STEPS) * (i + 1));
         }
         combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * DRAPE_LIGHT_STEPS) * 4);
+        // The SDK layer opacity is baked in too; the opaque case adds nothing, so existing fingerprints hold.
+        float layerOpacity = std::max(0.0f, std::min(1.0f, calculateDrapeLayerOpacity()));
+        if (layerOpacity < 1.0f) {
+            combine(static_cast<std::size_t>(layerOpacity * DRAPE_OPACITY_STEPS) * 5 + 1);
+        }
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
             const RenderTileLayer& renderLayer = it->second;
             // Contact shadows are baked in but their extrusions are not drapeable: count them, or a
@@ -6011,9 +6042,9 @@ namespace massif::vt {
         // The style layer opacity, passed on screen as element opacity; a comp-op layer needs the
         // overlay buffer the bake lacks, so it keeps full opacity.
         if (!renderLayer.layer || renderLayer.layer->getCompOp()) {
-            return 1.0f;
+            return calculateDrapeLayerOpacity();
         }
-        return (renderLayer.layer->getOpacityFunc())(_viewState);
+        return (renderLayer.layer->getOpacityFunc())(_viewState) * calculateDrapeLayerOpacity();
     }
 
     bool GLTileRenderer::hasGroundAOContent(const RenderTileLayer& renderLayer) const {

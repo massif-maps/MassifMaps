@@ -707,8 +707,11 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     }
 
     function emitHillshadeSlot(layer: MapboxLayer, layerIndex: number): boolean {
-        const sdk = (layer.metadata as Record<string, Json> | undefined)?.['massif:sdk-layer'] as Record<string, Json> | undefined;
-        if (!sdk || typeof sdk !== 'object' || sdk.type !== 'hillshade') return false;
+        const metadata = layer.metadata as Record<string, Json> | undefined;
+        const layerSettings = metadata?.['massif:sdk-layer'] as Record<string, Json> | undefined;
+        if (!layerSettings || typeof layerSettings !== 'object' || layerSettings.type !== 'hillshade') return false;
+        // `massif:sdk-slot`: the slot's own values, expressions over a parameter, where `massif:sdk-layer` stays literal for a standalone layer
+        const sdk = { ...layerSettings, ...(metadata?.['massif:sdk-slot'] as Record<string, Json> | undefined) };
         const declarations: string[] = [];
         for (const [key, property] of HILLSHADE_SLOT_PROPERTIES) {
             if (sdk[key] === undefined) continue;

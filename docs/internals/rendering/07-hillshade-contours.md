@@ -56,10 +56,23 @@ Device measurement with a background-only style (`--es minimal true`, north pan,
 are a wash, because the base map's own geometry is the frame; the hillshade's cost there is tile
 loading, which the frame timer does not see.
 
+**Below 6 m per texel the gradient is the normal map's.** The quadratic term takes second differences
+of the DEM, which amplify texel noise (white noise of variance s2, CPU model: the gradient's variance
+is 1.04 s2 on average and 2.04 s2 at a texel edge, against 0.11 s2 for bilinear Sobel/8), and it jumps
+at every texel edge across the axis it does not differentiate. On a 0.4-1.2 m DEM (Mapterhorn z16-17,
+lidar) this reads as speckle and facets that the 2D path, which interpolates Sobel/8 normals, does not show.
+`uPaintParams.z` (`terrainPaintSmoothFlag`) switches `terrainPaintSampleSmooth`: Sobel/8 at the four
+texel centres round the fragment (a 4x4 block, 16 fetches, hence the 2-texel texture border),
+bilinear between them, and `elevation` bilinear too. Coarser DEMs keep the quadratic, which follows
+features of 4-8 texels more closely (CPU model, clean DEM, slope amplitude 0.4: RMS slope error 0.07
+and 0.02 against 0.18 and 0.08 for Sobel/8) and costs 9 fetches. With 0.15 m white noise on a
+smooth DEM, slope error quadratic / Sobel: 0.088 / 0.032 at 2.4 m, 0.25 / 0.082 at 0.84 m, 0.50 / 0.16 at 0.42 m; shading
+roughness (RMS second difference) 12x lower at 0.84 m. Not measured on device.
+
 Two things the port had to get right:
 
 - **The relief boost follows sampling density, not a tile id.** The low-zoom boost was keyed off tile
-  zoom × bitmap resolution; the terrain's grids are 514² at z11 (38.2 m/texel, the density of an old
+  zoom × bitmap resolution; the terrain's grids are 516² at z11 (38.2 m/texel, the density of an old
   z12 256² tile), so keying off the grid's own zoom made the paint ~1.5× too strong. It now derives
   the zoom from metres per texel.
 - **A paint has no per-tile fingerprint.** Its appearance rides `TileLayer::drapeStackSignature` and

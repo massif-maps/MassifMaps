@@ -236,6 +236,8 @@ namespace massif::vt {
         void setRadiance(const cglib::vec3<float>& radiance) { _radiance = radiance; }
         // Emitted (unlit) fraction of the map background's colour; a Map setting, one value per style.
         void setBackgroundEmissive(float emissive) { _backgroundEmissive = emissive; }
+        // The SDK layer's opacity, baked into an external drape (the layer's own screen blend never sees it).
+        void setLayerOpacity(float opacity) { _layerOpacity = opacity; }
         // The Map block's building-emissive, for extrusions whose rule sets none; kept so a draw can
         // restore u_emissive after a rule overrode it.
         void setBuildingEmissive(float emissive) { _buildingEmissive = emissive; }
@@ -361,8 +363,9 @@ namespace massif::vt {
         void deinitializeRenderer();
 
         bool startFrame(float dt);
-        void renderGeometry(bool geom2D, bool geom3D, bool inline3D = false);
-        void renderLabels(bool labels2D, bool labels3D);
+        // layerOpacity: the SDK layer's, for a pass no screen-space blend wraps (the 3D pass).
+        void renderGeometry(bool geom2D, bool geom3D, bool inline3D = false, float layerOpacity = 1.0f);
+        void renderLabels(bool labels2D, bool labels3D, float layerOpacity = 1.0f);
         bool endFrame();
 
         /** Returns false when the culler's slice ran out before this layer's labels did; `empty`: there were none. */
@@ -594,7 +597,7 @@ namespace massif::vt {
         void findTileBitmapIntersections(const TileId& tileId, const std::shared_ptr<const TileBitmap>& bitmap, const std::shared_ptr<const TileSurface>& tileSurface, const std::vector<cglib::ray3<double>>& rays, float tileSize, std::vector<BitmapIntersectionInfo>& results) const;
 
         void renderGeometry2D(const std::vector<RenderTile>& renderTiles, GLint stencilBits);
-        void renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline);
+        void renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity);
         // What begin3DPass set up, and what end3DPass has to undo. One layer's worth.
         struct Pass3DState {
             bool useOverlay = false;
@@ -608,7 +611,7 @@ namespace massif::vt {
         };
         // Opens one style layer's 3D pass (overlay FBO, occluder pre-pass, depth/blend state); draws up to
         // end3DPass resolve against the ground as extrusions do.
-        Pass3DState begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline);
+        Pass3DState begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity);
         void end3DPass(const Pass3DState& state);
         // POLYGON3D geometries in draw order, optionally only over coveredBy and including the shadow caster
         // tiles past the view; the callback returns false to skip the rest of that layer.
@@ -684,9 +687,11 @@ namespace massif::vt {
         bool hasGroundAOContent(const RenderTileLayer& renderLayer) const;
         bool hasGroundAOTiles(float zoomFade) const;
         void refreshGroundAOBakeable(); // caller holds _mutex; see isGroundAOBakeable
-        // Element opacity a draped layer is baked with: the style's layer opacity, or 1 when the
-        // layer has a comp-op (which the bake can not reproduce).
+        // Element opacity a draped layer is baked with: the style's layer opacity (1 with a comp-op,
+        // which the bake can not reproduce) times the SDK layer's.
         float calculateDrapeOpacity(const RenderTileLayer& renderLayer) const;
+        // Only an external drape bakes the SDK opacity; a layer's own drape is drawn inside its screen blend.
+        float calculateDrapeLayerOpacity() const { return _externalDrapeTarget ? _layerOpacity : 1.0f; }
         bool tileCovers(const TileId& tileId, const TileId& targetTileId) const;
         bool isTileDraped(const TileId& targetTileId) const;
         cglib::mat4x4<float> calculateDrapeMVPMatrix(const TileId& sourceTileId, const TileId& targetTileId) const;
@@ -904,6 +909,7 @@ namespace massif::vt {
         double _metersToInternal = 0;
         cglib::vec3<float> _radiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         float _backgroundEmissive = 1.0f;
+        float _layerOpacity = 1.0f;
         float _buildingEmissive = 0.0f; // the Map block's; a rule may override it per draw
         int _terrainShadowCascades = 1;
         // mapbox's u_shadow_bias: constant, slope scale, slope cap - normalised depth, all cascades.

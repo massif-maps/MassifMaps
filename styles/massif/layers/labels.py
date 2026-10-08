@@ -1,6 +1,4 @@
-from lib import boosted, by_hour, get, in_class, layer, zoom_ramp
-
-NAME = ['coalesce', get('name'), get('name_int')]
+from lib import NAME, boosted, by_hour, get, in_class, layer, zoom_ramp
 # a summit's name over its height, the name alone where the tiles carry no height
 PEAK_TEXT = ['case', ['==', ['to-string', ['coalesce', get('ele'), '']], ''], NAME,
              ['concat', NAME, '\n', ['to-string', get('ele')], ' m']]
@@ -69,9 +67,11 @@ def low(v):
                       # Alpimaps' size and its narrow wrap, two or three words a line
                       'text-size': zoom_ramp(12, 9, 18, 14), 'text-letter-spacing': 0.05, 'text-max-width': 5},
               **water),
-        layer('water-name', 'symbol', 'water_name', minzoom=3,
+        layer('water-name', 'symbol', 'water_name',
               filter=['==', ['geometry-type'], 'Point'],
+              # the world tiles carry the oceans from z0; an ocean outranks a bay where they collide
               layout={'text-field': NAME, 'text-font': ITALIC,
+                      'symbol-sort-key': ['match', get('class'), 'ocean', 0, 'sea', 1, 2],
                       'text-size': zoom_ramp(3, ['match', get('class'), ['ocean', 'sea'], 12, 10],
                                              14, ['match', get('class'), ['ocean', 'sea'], 18, 13]),
                       'text-letter-spacing': ['match', get('class'), 'ocean', 0.25, 'sea', 0.15, 0.01],
@@ -143,6 +143,8 @@ def places(v):
            'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.5,
            'text-justify': 'auto'}
     return [
+        place('place-continent', ['continent'], 0, 4, zoom_ramp(0, 11, 3, 16), c, font=BOLD, color='label-soft',
+              extra={**soft, 'text-letter-spacing': 0.2, 'text-max-width': 6}),
         place('place-hamlet', ['hamlet', 'isolated_dwelling', 'farm'], 13, 18,
               zoom_ramp(13, 10, 16, 13), c, color='label-soft'),
         place('place-neighbourhood', ['neighbourhood', 'quarter'], 13, 17,

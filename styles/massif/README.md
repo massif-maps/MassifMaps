@@ -50,9 +50,23 @@ palette plus the modules it adds.
   the SDK lights it with Standard's moon; the ground AO fades in over z17-18.
 - **Water names**: rivers from z9 (`river_label_min_zoom`), a lake's name upright at the middle of
   its centreline from whatever zoom the tiles carry it, a word a line, as Alpimaps sets it; in a
-  softer blue on a half-transparent halo.
+  deep blue (`water-label`, 5.4:1 against the water fill on streets, outdoor and topo) on a
+  half-transparent halo. Oceans and seas are drawn from z0, an ocean ahead of a
+  bay where they collide (`symbol-sort-key`), and continents (`place` class `continent`, z0-3) come
+  from the world archive's low zooms: nothing named them before.
+- **Names follow the app's language**, as Alpimaps' OSM style chose them: `name:<lang>`, then
+  `name:<fallback_lang>`, `name_int`, `name:en`, `name`, and a way's `ref` last (`lib.name_of`). On
+  the SDK the two languages are the style parameters `lang` (the one the app already sets) and
+  `fallback_lang`, read live in the field name (`[name:[param::lang]]`); MapLibre has no parameter in
+  a property name, so its files carry the chain for the defaults (`name:en`, `name_int`, `name`).
+  Tiles built by Alpimaps' planetiler carry `name` and `name_int` only, so there the chain is
+  `name_int`, `name`, whatever the language; the world archive and stock OpenMapTiles/OpenFreeMap
+  tiles add `name:en` and a few other `name:xx`.
 - **Woods over the landuse**, as Standard's one landuse layer draws them: a park's woods read a
   darker green instead of vanishing under its lawn.
+- **A national park is a dashed outline from z4**, plus a tint (`national-park`) that is gone by
+  z10: drawn above the water so a park over the sea shows, where an outline alone is lost. Beyond
+  z10 the tint would hide the relief and the textures under it. Its name is a POI (`poi-national-park`, z4-9).
 - **A track is a double line**, MapTiler's and IGN's, so it never reads as a single-line trail: a
   dashed outline (`track-<grade>-casing`) around a white fill (`track-fill`). The outline carries
   `tracktype`, OSM Carto's ladder from grade1's long dashes to grade5's dots; it is never solid, or
@@ -88,11 +102,12 @@ palette plus the modules it adds.
 **Low zoom comes from a second, optional archive.** The alpimaps bathymap (`global_landcover`:
 ESA WorldCover classes, `depth`: Natural Earth isobaths, z0-6) is the `bathymap` source, drawn the
 way Standard draws its own landcover and water-depth: generalised greens, white glaciers and a
-darker veil per isobath, handing over to OMT's landcover by crossfade over z7.8-8. The style names
-the source with no public URL - an app that ships the archive merges it into its main tiles
-(`MergedMBVTTileDataSource`, which cuts the archive's z6 tiles into the z7-8 ones the crossfade
-needs), where the rules find the two layers by name; one that does not simply has no landcover
-below z7. `min_depth 0` is the whole ocean, which also paints the sea a regional
+darker veil per isobath. The landcover sits under OMT's own, which comes in over z8-8.2 while the
+archive's fades out over z8-9 (`lowzoom_landcover`, below); the isobaths fade out over z6-8 on
+their own. The style names the source with no public URL - an app that ships the archive merges
+it into its main tiles (`MergedMBVTTileDataSource`, which cuts the archive's z6 tiles into the
+z7-8 ones, z8 for the fade-out), where the rules find the two layers by name; one that does not
+simply has no landcover below z7. `min_depth 0` is the whole ocean, which also paints the sea a regional
 tileset stops short of.
 
 `landcover_name`, `landuse_name` and the richer landuse classes exist only in our fork; the layers
@@ -172,13 +187,22 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
 (a base colour with its own night, like a label halo, is inverted from its day value). What colour says elsewhere is said here by texture and weight:
 
 - **Patterns** from `sprite-src/pattern/`, the ones Alpimaps' e-ink style uses: openstreetmap-carto's
-  trees, scrub, wetland, rock, beach, ice sheet, graves and hatching, baked to one grey at 45 %
+  trees, scrub, wetland, rock, ice sheet, graves and hatching, baked to one grey at 45 %
   alpha on a clear ground so a road still reads through them; dots for grass and parks. Rock is our
-  own sparse scree marks: the openstreetmap-carto texture was a grey noise over two thirds of the tile. Each lays
-  over a flat grey fill from the zoom its texture says something (`PATTERNS` in `layers/land.py`,
-  Alpimaps' zooms: wood 11, rock and scree 12, wetland 13, parks and graves 14), because a pattern
-  is a textured fill per tile and at z8 a wood's trees are noise. A patterned fill is its own layer
-  id (`landcover-wood-pattern`), e-ink only.
+  own sparse scree marks: the openstreetmap-carto texture was a grey noise over two thirds of the tile.
+  Drawn for this project, in the same grey: sand (a stipple, the beach texture was 4 % grey and
+  vanished), vineyard (rows), orchard and plant nursery (trees as rings), plain farmland (ticks) and
+  golf courses and pitches (crosses), parking (a P), industrial landuse (a fine grid) and plain grass (sparse dots,
+  the one on trial: remove `grass` from `PATTERNS` to turn it off). Each lays over a flat grey fill from the zoom its texture says
+  something (`PATTERNS` in `layers/land.py`: sand and glacier 10, wetland 12 (`wetland_pattern_zoom`),
+  farmland, vineyard and orchard 12, wood 11, rock and scrub 12, industrial and military 13, grass, parks,
+  graves and pitches 14, parking 15), because a pattern is a textured fill per tile and at z8 a wood's trees are noise.
+  A glacier is a light grey blob below its pattern. A patterned fill is its own layer id
+  (`landcover-wood-pattern`), e-ink only. Residential, commercial, schools and hospitals
+  stay white, told by their edge (`polygons_border`).
+- **A coast at low zoom.** The sea is white and the land white, so below z8 `water-outline-low` draws
+  the water's outline in a thin dark line (0.7 px at z0, 0.3 at z10), above the bathymap's ocean fill
+  and fading out over z7-10 as `water-outline`'s grey takes over.
 - **Ground stays white.** A class's flat grey fills only below the zoom its pattern starts, then
   hands over to the pattern alone; landuse (residential, commercial, schools...) is white too,
   told by its edge. Nothing on the page is lit (`lighting` 0: every emissive strength is 1), so white
@@ -222,6 +246,9 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
 ## Style parameters an app sets
 
 - `variant` — `streets`, `outdoor`, `topo`, `hybrid`, `eink`; `carto/<variant>.json` picks one.
+- `lang` (`en`), `fallback_lang` (`en`) — the language of every name: `name:<lang>`, then
+  `name:<fallback_lang>`, `name_int`, `name:en`, `name` (Alpimaps' OSM style's chain, the same parameter
+  names). Alpimaps sets `lang` already; a value no feature carries falls through to the next.
 - `building_opacity` (1, as Standard) — the 3D buildings' alpha looking straight down; below 1 the
   tunnels under them show through, and so do the ground's shadows. They turn opaque as the camera
   leans in, between tilt 85 and 70. The MapLibre file draws them opaque: the ramp is over the camera angle,
@@ -259,14 +286,28 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink; 9 at the lowest, the OSM example's), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
-  `wetland_pattern_zoom` (13) — where e-ink's textures start.
+  `wetland_pattern_zoom` (12) — where e-ink's textures start.
 - `hillshade_max_zoom` (16) — where the relief ENDS: the `#hillshade` slot draws while
   `zoom < hillshade_max_zoom` (a `massif:maxzoom-param`). SDK only, through the composite slot:
   MapLibre's `maxzoom` and its exaggeration fade stay at 16, and a standalone
   `HillshadeRasterTileLayer` built from `massif:sdk-layer` keeps its `visibleZoomRange` [0, 16].
 
+The relief's look (SDK only, the composite slot: `massif:sdk-slot` holds the expressions over these, where
+`massif:sdk-layer` stays literal for a standalone layer; the MapLibre paint is unchanged). Each is the
+variant's own value until an app sets one, so a choice survives a variant change:
+
+- `hillshade_shadow_color`, `hillshade_highlight_color`, `hillshade_accent_color` (`auto`) — a `#rrggbb`.
+- `hillshade_method` (`auto`: `standard`) — `standard`, `combined`, `igor`, `multidirectional`, `basic`.
+- `hillshade_contrast`, `hillshade_height_scale` (-0.5) — any negative is the variant's own (0.5 topo,
+  0.35 others; 1). The default is -0.5, not -1: an integer default types the parameter an integer, which
+  rejects 0.35.
+
 Switches (0/1):
 
+- `lowzoom_landcover` (0) — 1 draws the bathymap's landcover under OMT's: up to z9 (fading out over
+  z8-9), the detailed landcover and residential landuse coming in over z8-8.2. Set it only where the
+  archive is merged in (Alpimaps does). 0 does not draw the archive's landcover and draws OMT's whole
+  from its minzoom, no fade. The isobaths (`depth`) do not follow it.
 - `road_shields` (1), `show_boundaries` (1), `sub_boundaries` (1, states and communes).
 - `show_tram` (1), `show_underground` (1, rail and metro in tunnels), `emphasis_rails` (0: main
   lines, no `service`, dark and wide from z6).
@@ -362,7 +403,10 @@ lost over the countryside. The fill fades from the low colour to the street's ov
 casing grows in (z13–14), so the switch never pops. It used to follow the fill down to z3, Liberty's way; over a city grid (Denver at z12) that
 drew every street as a dark outlined line and the grid read as mesh, where Standard's reads as a
 map. E-ink keeps Liberty's casings (`casing-low`): its roads are white on white, and the casing is
-all there is of them.
+all there is of them. At the lowest zooms though an outline thicker than the line only clutters, so
+a motorway, trunk and primary are a plain dark line (`road-low`) until their outline comes in at
+the OSM variant's steps (`road_osm_low`'s: motorway z8-9, trunk z9-9.5, primary z10), the white fill
+growing in with it.
 
 **`--fold-casings` is a no-op for this style.** There is no casing/fill pair left to fold. It was
 already doing nothing before the change — the fold refuses a pair whose fill states a

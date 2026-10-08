@@ -1,4 +1,4 @@
-from lib import by_hour, get, layer, zoom_ramp
+from lib import NAME, by_hour, get, layer, name_of, zoom_ramp
 
 # Standard's road-label, one layer per class instead of its zoom step inside the filter. Least
 # important first, so the primary's name is placed first and wins the collision.
@@ -18,7 +18,7 @@ def ways(v):
     c = v.palette
     return [layer(id, 'symbol', 'transportation_name', minzoom=minzoom, filter=['==', get('class'), cls],
                   layout={'symbol-placement': 'line',
-                          'text-field': ['coalesce', get('name'), get('name_int'), get('ref')],
+                          'text-field': name_of(get('ref')),
                           'text-font': 'italic',
                           'text-size': zoom_ramp(14, 10, 18, 12),
                           'text-max-angle': 30,
@@ -44,7 +44,7 @@ def names(v, classes):
         layer(id, 'symbol', 'transportation_name', minzoom=minzoom,
               filter=['in', get('class'), ['literal', classes]],
               layout={'symbol-placement': 'line',
-                      'text-field': ['coalesce', get('name'), get('name_int')],
+                      'text-field': NAME,
                       'text-font': 'medium',
                       'text-size': zoom_ramp(10, size[0], 18, size[1]),
                       'text-transform': 'uppercase',

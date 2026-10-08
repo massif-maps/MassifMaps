@@ -490,6 +490,28 @@
           }
         },
         {
+          "id": "vineyard",
+          "label": "Vineyard",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "farmland",
+            "subclass": "vineyard"
+          },
+          "attachment": "^(landcover_vineyard_pattern)(_b[0-9]+)?$"
+        },
+        {
+          "id": "orchard",
+          "label": "Orchard, nursery",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "farmland",
+            "subclass": "orchard"
+          },
+          "attachment": "^(landcover_orchard_pattern)(_b[0-9]+)?$"
+        },
+        {
           "id": "residential",
           "label": "Residential",
           "layer": "landuse",
@@ -514,6 +536,15 @@
           "geometry": "polygon",
           "properties": {
             "class": "industrial"
+          }
+        },
+        {
+          "id": "parking",
+          "label": "Parking",
+          "layer": "landuse",
+          "geometry": "polygon",
+          "properties": {
+            "class": "parking"
           }
         },
         {

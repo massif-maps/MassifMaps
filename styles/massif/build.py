@@ -69,14 +69,14 @@ SOURCES = {
             'encoding': 'terrarium', 'tileSize': 512, 'maxzoom': 16},
 }
 
-STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
+STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, land.parks, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges,
            rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels, labels.low, road_labels.major, shields.layers, road_labels.layers, pois.trees, pois.landmarks, pois.barriers, pois.mountain, pois.layers,
            labels.peaks, labels.places]
 
 # bottom to top; among the labels, the later a layer the higher its placement priority, so POIs come
 # after the road and trail names, as in Standard and MapTiler. The first variant is the SDK's default.
-OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
+OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, land.parks, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, outdoor.routes, roads.ground, rail.ground, roads.bridges,
            rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels,
            labels.low, road_labels.major, shields.layers, outdoor.sac_labels, road_labels.layers,

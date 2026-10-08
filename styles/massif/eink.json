@@ -5,6 +5,8 @@
     "massif:schema": "openmaptiles",
     "massif:variant": "eink",
     "massif:live-config": [
+      "lang",
+      "fallback_lang",
       "poiStyle",
       "bare_icon_scale",
       "poi_label_scale",
@@ -44,6 +46,13 @@
       "rock_pattern_zoom",
       "wetland_pattern_zoom",
       "hillshade_max_zoom",
+      "hillshade_method",
+      "hillshade_contrast",
+      "hillshade_height_scale",
+      "hillshade_shadow_color",
+      "hillshade_highlight_color",
+      "hillshade_accent_color",
+      "lowzoom_landcover",
       "poi-boost",
       "glyph"
     ]
@@ -129,7 +138,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -148,9 +157,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -181,7 +190,21 @@
             0.3,
             "hsl(0, 0%, 93%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -189,7 +212,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -208,9 +231,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -241,7 +264,21 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -249,7 +286,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -268,9 +305,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -301,7 +338,21 @@
             0.3,
             "hsl(0, 0%, 94%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -309,7 +360,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -328,9 +379,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -361,7 +412,21 @@
             0.3,
             "hsl(0, 0%, 94%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -369,7 +434,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -388,9 +453,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -421,7 +486,21 @@
             0.3,
             "hsl(0, 0%, 93%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -429,7 +508,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -448,9 +527,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -481,7 +560,21 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -489,7 +582,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -508,9 +601,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -541,7 +634,21 @@
             0.3,
             "hsl(0, 0%, 96%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -549,7 +656,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -568,9 +675,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -601,7 +708,21 @@
             0.3,
             "hsl(0, 0%, 96%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -609,7 +730,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -628,9 +749,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -661,7 +782,21 @@
             0.3,
             "hsl(0, 0%, 97%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -669,7 +804,7 @@
       "type": "fill",
       "source": "bathymap",
       "source-layer": "global_landcover",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "==",
         [
@@ -688,9 +823,9 @@
           [
             "zoom"
           ],
-          7.8,
-          1,
           8,
+          1,
+          9,
           0
         ],
         "fill-antialias": false
@@ -721,7 +856,21 @@
             0.3,
             "hsl(0, 0%, 97%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "lowzoom_landcover"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -756,9 +905,9 @@
           [
             "zoom"
           ],
-          6,
-          0,
-          9,
+          8,
+          1,
+          8.2,
           1
         ]
       },
@@ -821,10 +970,14 @@
           [
             "zoom"
           ],
-          7.8,
-          0,
           8,
-          1
+          1,
+          8.2,
+          1,
+          11,
+          1,
+          12,
+          0
         ]
       },
       "metadata": {
@@ -857,6 +1010,51 @@
       }
     },
     {
+      "id": "landcover-farmland-pattern",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "farmland"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "literal",
+              [
+                "vineyard",
+                "orchard",
+                "plant_nursery"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-pattern": "pattern-farmland"
+      },
+      "metadata": {}
+    },
+    {
       "id": "landcover-grass",
       "type": "fill",
       "source": "openmaptiles",
@@ -886,9 +1084,9 @@
           [
             "zoom"
           ],
-          7.8,
-          0,
           8,
+          1,
+          8.2,
           1,
           13,
           1,
@@ -932,15 +1130,41 @@
       "source-layer": "landcover",
       "minzoom": 14,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "grass"
+            ]
+          ]
         ],
         [
-          "literal",
+          "!",
           [
-            "grass"
+            "in",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "literal",
+              [
+                "scrub",
+                "heath",
+                "park",
+                "garden",
+                "village_green",
+                "recreation_ground",
+                "allotments",
+                "golf_course"
+              ]
+            ]
           ]
         ]
       ],
@@ -979,13 +1203,13 @@
           [
             "zoom"
           ],
-          7.8,
-          0,
           8,
           1,
-          12,
+          8.2,
           1,
-          13,
+          11,
+          1,
+          12,
           0
         ]
       },
@@ -1023,7 +1247,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "minzoom": 13,
+      "minzoom": 12,
       "filter": [
         "in",
         [
@@ -1074,13 +1298,13 @@
           [
             "zoom"
           ],
-          7.8,
-          0,
           8,
           1,
-          11,
+          8.2,
           1,
-          12,
+          9,
+          1,
+          10,
           0
         ]
       },
@@ -1118,7 +1342,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "minzoom": 12,
+      "minzoom": 10,
       "filter": [
         "in",
         [
@@ -1167,9 +1391,9 @@
           [
             "zoom"
           ],
-          7.8,
-          0,
           8,
+          1,
+          8.2,
           1,
           11,
           1,
@@ -1252,7 +1476,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 100%)",
+        "fill-color": "hsl(0, 0%, 90%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1262,13 +1486,13 @@
           [
             "zoom"
           ],
-          7.8,
-          0,
           8,
           1,
-          10,
+          8.2,
           1,
-          11,
+          9,
+          1,
+          10,
           0
         ]
       },
@@ -1294,9 +1518,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 0%)",
+            "hsl(0, 0%, 10%)",
             0.3,
-            "hsl(0, 0%, 100%)"
+            "hsl(0, 0%, 90%)"
           ]
         }
       }
@@ -1306,7 +1530,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "minzoom": 11,
+      "minzoom": 10,
       "filter": [
         "in",
         [
@@ -1322,6 +1546,55 @@
       ],
       "paint": {
         "fill-pattern": "pattern-glacier"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "landcover-vineyard-pattern",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "subclass"
+        ],
+        [
+          "literal",
+          [
+            "vineyard"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-pattern": "pattern-vineyard"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "landcover-orchard-pattern",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "subclass"
+        ],
+        [
+          "literal",
+          [
+            "orchard",
+            "plant_nursery"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-pattern": "pattern-orchard"
       },
       "metadata": {}
     },
@@ -1541,7 +1814,21 @@
       "paint": {
         "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
-        "fill-opacity": 1
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          13,
+          1,
+          14,
+          0
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -1573,14 +1860,46 @@
       }
     },
     {
-      "id": "park",
+      "id": "landcover-pitch-sub-pattern",
       "type": "fill",
       "source": "openmaptiles",
-      "source-layer": "park",
-      "minzoom": 5,
+      "source-layer": "landcover",
+      "minzoom": 14,
+      "filter": [
+        "in",
+        [
+          "get",
+          "subclass"
+        ],
+        [
+          "literal",
+          [
+            "golf_course"
+          ]
+        ]
+      ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 97%)",
-        "fill-opacity": [
+        "fill-pattern": "pattern-pitch"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "national-park-outline",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 4,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "national_park"
+      ],
+      "paint": {
+        "line-color": "hsl(0, 0%, 35%)",
+        "line-width": [
           "interpolate",
           [
             "linear"
@@ -1588,17 +1907,34 @@
           [
             "zoom"
           ],
-          5,
-          0,
-          6,
+          4,
+          0.8,
+          9,
+          1.2,
+          14,
+          2
+        ],
+        "line-dasharray": [
+          3,
+          2
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
           0.5,
-          13,
-          0.3
+          9,
+          0.8
         ]
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": [
+          "line-emissive-strength": [
             "match",
             [
               "config",
@@ -1608,7 +1944,7 @@
             1,
             0.2
           ],
-          "fill-color": [
+          "line-color": [
             "interpolate",
             [
               "linear"
@@ -1618,9 +1954,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 3%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 97%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -1631,6 +1967,14 @@
       "source": "openmaptiles",
       "source-layer": "park",
       "minzoom": 9,
+      "filter": [
+        "!=",
+        [
+          "get",
+          "class"
+        ],
+        "national_park"
+      ],
       "paint": {
         "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
@@ -1704,19 +2048,7 @@
       "paint": {
         "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
-        "fill-opacity": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          0,
-          10,
-          1
-        ]
+        "fill-opacity": 1
       },
       "metadata": {
         "massif:paint": {
@@ -1782,10 +2114,12 @@
           [
             "zoom"
           ],
-          9,
-          0,
-          10,
-          1
+          11,
+          1,
+          12,
+          1,
+          13,
+          0
         ]
       },
       "metadata": {
@@ -1818,6 +2152,35 @@
       }
     },
     {
+      "id": "landuse-industrial-pattern",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "industrial",
+            "garages",
+            "railway",
+            "quarry",
+            "dam",
+            "bus_station"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-pattern": "pattern-industrial"
+      },
+      "metadata": {}
+    },
+    {
       "id": "landuse-education",
       "type": "fill",
       "source": "openmaptiles",
@@ -1844,19 +2207,7 @@
       "paint": {
         "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
-        "fill-opacity": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          0,
-          10,
-          1
-        ]
+        "fill-opacity": 1
       },
       "metadata": {
         "massif:paint": {
@@ -1909,19 +2260,7 @@
       "paint": {
         "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
-        "fill-opacity": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          0,
-          10,
-          1
-        ]
+        "fill-opacity": 1
       },
       "metadata": {
         "massif:paint": {
@@ -1982,9 +2321,7 @@
           [
             "zoom"
           ],
-          9,
-          0,
-          10,
+          12,
           1,
           13,
           1,
@@ -2079,9 +2416,7 @@
           [
             "zoom"
           ],
-          9,
-          0,
-          10,
+          12,
           1,
           13,
           1,
@@ -2178,10 +2513,12 @@
           [
             "zoom"
           ],
-          9,
-          0,
-          10,
-          1
+          12,
+          1,
+          13,
+          1,
+          14,
+          0
         ]
       },
       "metadata": {
@@ -2212,6 +2549,32 @@
           ]
         }
       }
+    },
+    {
+      "id": "landuse-pitch-pattern",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 14,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "pitch",
+            "track",
+            "playground"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-pattern": "pattern-pitch"
+      },
+      "metadata": {}
     },
     {
       "id": "landuse-parking",
@@ -2245,10 +2608,12 @@
           [
             "zoom"
           ],
-          9,
-          0,
-          10,
-          1
+          13,
+          1,
+          14,
+          1,
+          15,
+          0
         ]
       },
       "metadata": {
@@ -2281,6 +2646,32 @@
       }
     },
     {
+      "id": "landuse-parking-pattern",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "parking",
+            "pedestrian",
+            "square"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-pattern": "pattern-parking"
+      },
+      "metadata": {}
+    },
+    {
       "id": "landuse-military",
       "type": "fill",
       "source": "openmaptiles",
@@ -2310,9 +2701,7 @@
           [
             "zoom"
           ],
-          9,
-          0,
-          10,
+          11,
           1,
           12,
           1,
@@ -2415,9 +2804,9 @@
           [
             "zoom"
           ],
-          7.8,
-          0,
           8,
+          1,
+          8.2,
           1,
           10,
           1,
@@ -3621,6 +4010,132 @@
       }
     },
     {
+      "id": "water-outline-low",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "maxzoom": 10,
+      "filter": [
+        "!=",
+        [
+          "get",
+          "brunnel"
+        ],
+        "tunnel"
+      ],
+      "paint": {
+        "line-color": "hsl(0, 0%, 20%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.7,
+          8,
+          0.5,
+          10,
+          0.3
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          10,
+          0
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 80%)",
+            0.3,
+            "hsl(0, 0%, 20%)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "national-park",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "national_park"
+      ],
+      "paint": {
+        "fill-color": "hsl(0, 0%, 97%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          0.5,
+          7,
+          0.5,
+          10,
+          0
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ],
+          "fill-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 3%)",
+            0.3,
+            "hsl(0, 0%, 97%)"
+          ]
+        }
+      }
+    },
+    {
       "id": "hillshade",
       "type": "hillshade",
       "source": "dem",
@@ -3657,6 +4172,92 @@
           "visibleZoomRange": [
             0,
             16
+          ]
+        },
+        "massif:sdk-slot": {
+          "hillshadeMethod": [
+            "match",
+            [
+              "config",
+              "hillshade_method"
+            ],
+            "auto",
+            "standard",
+            [
+              "config",
+              "hillshade_method"
+            ]
+          ],
+          "contrast": [
+            "case",
+            [
+              "<",
+              [
+                "config",
+                "hillshade_contrast"
+              ],
+              0
+            ],
+            0.35,
+            [
+              "config",
+              "hillshade_contrast"
+            ]
+          ],
+          "heightScale": [
+            "case",
+            [
+              "<",
+              [
+                "config",
+                "hillshade_height_scale"
+              ],
+              0
+            ],
+            1,
+            [
+              "config",
+              "hillshade_height_scale"
+            ]
+          ],
+          "shadowColor": [
+            "match",
+            [
+              "config",
+              "hillshade_shadow_color"
+            ],
+            "auto",
+            "#4c4c4c",
+            [
+              "config",
+              "hillshade_shadow_color"
+            ]
+          ],
+          "highlightColor": [
+            "match",
+            [
+              "config",
+              "hillshade_highlight_color"
+            ],
+            "auto",
+            "#ffffff",
+            [
+              "config",
+              "hillshade_highlight_color"
+            ]
+          ],
+          "accentColor": [
+            "match",
+            [
+              "config",
+              "hillshade_accent_color"
+            ],
+            "auto",
+            "#737373",
+            [
+              "config",
+              "hillshade_accent_color"
+            ]
           ]
         },
         "massif:maxzoom-param": "hillshade_max_zoom",
@@ -5048,36 +5649,6 @@
           [
             "zoom"
           ],
-          3,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            0.45,
-            "trunk",
-            0.45,
-            "primary",
-            0.0,
-            0.0
-          ],
-          6,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            0.45,
-            "trunk",
-            0.45,
-            "primary",
-            0.27,
-            0.0
-          ],
           8,
           [
             "match",
@@ -5086,11 +5657,11 @@
               "class"
             ],
             "motorway",
-            0.54,
+            0.0,
             "trunk",
-            0.54,
+            0.0,
             "primary",
-            0.54,
+            0.0,
             0.0
           ],
           9,
@@ -5101,11 +5672,41 @@
               "class"
             ],
             "motorway",
-            0.81,
+            0.9,
             "trunk",
-            0.81,
+            0.0,
             "primary",
-            0.81,
+            0.0,
+            0.0
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            0.9900000000000001,
+            "trunk",
+            0.54,
+            "primary",
+            0.0,
+            0.0
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.08,
+            "trunk",
+            1.08,
+            "primary",
+            0.9,
             0.0
           ],
           12,
@@ -5278,6 +5879,82 @@
           ],
           [
             "zoom"
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "primary",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
           ],
           12,
           [
@@ -5574,6 +6251,202 @@
             ],
             [
               "zoom"
+            ],
+            8,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9.5,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            10,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "primary",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "primary",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
             ],
             12,
             [
@@ -10183,6 +11056,82 @@
           [
             "zoom"
           ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "primary",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
           12,
           [
             "match",
@@ -10309,6 +11258,202 @@
             ],
             [
               "zoom"
+            ],
+            8,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9.5,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            10,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "primary",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "primary",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
             ],
             12,
             [
@@ -10740,36 +11885,6 @@
           [
             "zoom"
           ],
-          3,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            0.45,
-            "trunk",
-            0.45,
-            "primary",
-            0.0,
-            0.0
-          ],
-          6,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            0.45,
-            "trunk",
-            0.45,
-            "primary",
-            0.27,
-            0.0
-          ],
           8,
           [
             "match",
@@ -10778,11 +11893,11 @@
               "class"
             ],
             "motorway",
-            0.54,
+            0.0,
             "trunk",
-            0.54,
+            0.0,
             "primary",
-            0.54,
+            0.0,
             0.0
           ],
           9,
@@ -10793,11 +11908,41 @@
               "class"
             ],
             "motorway",
-            0.81,
+            0.9,
             "trunk",
-            0.81,
+            0.0,
             "primary",
-            0.81,
+            0.0,
+            0.0
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            0.9900000000000001,
+            "trunk",
+            0.54,
+            "primary",
+            0.0,
+            0.0
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.08,
+            "trunk",
+            1.08,
+            "primary",
+            0.9,
             0.0
           ],
           12,
@@ -10980,6 +12125,82 @@
           ],
           [
             "zoom"
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "primary",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
           ],
           12,
           [
@@ -11274,6 +12495,202 @@
             ],
             [
               "zoom"
+            ],
+            8,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9.5,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            10,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "primary",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "primary",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
             ],
             12,
             [
@@ -11707,36 +13124,6 @@
           [
             "zoom"
           ],
-          3,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            0.45,
-            "trunk",
-            0.45,
-            "primary",
-            0.0,
-            0.0
-          ],
-          6,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            0.45,
-            "trunk",
-            0.45,
-            "primary",
-            0.27,
-            0.0
-          ],
           8,
           [
             "match",
@@ -11745,11 +13132,11 @@
               "class"
             ],
             "motorway",
-            0.54,
+            0.0,
             "trunk",
-            0.54,
+            0.0,
             "primary",
-            0.54,
+            0.0,
             0.0
           ],
           9,
@@ -11760,11 +13147,41 @@
               "class"
             ],
             "motorway",
-            0.81,
+            0.9,
             "trunk",
-            0.81,
+            0.0,
             "primary",
-            0.81,
+            0.0,
+            0.0
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            0.9900000000000001,
+            "trunk",
+            0.54,
+            "primary",
+            0.0,
+            0.0
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.08,
+            "trunk",
+            1.08,
+            "primary",
+            0.9,
             0.0
           ],
           12,
@@ -11949,6 +13366,82 @@
           ],
           [
             "zoom"
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "primary",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
           ],
           12,
           [
@@ -12243,6 +13736,202 @@
             ],
             [
               "zoom"
+            ],
+            8,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9.5,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            10,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "primary",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "primary",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
             ],
             12,
             [
@@ -15210,6 +16899,82 @@
           [
             "zoom"
           ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          9.5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
+          10,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            "hsl(0, 0%, 100%)",
+            "trunk",
+            "hsl(0, 0%, 100%)",
+            "primary",
+            "hsl(0, 0%, 100%)",
+            "secondary",
+            "hsl(0, 0%, 30%)",
+            [
+              "minor",
+              "service"
+            ],
+            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 30%)"
+          ],
           12,
           [
             "match",
@@ -15503,6 +17268,202 @@
             ],
             [
               "zoom"
+            ],
+            8,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            9.5,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
+            ],
+            10,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "measure-light",
+                "brightness"
+              ],
+              0.25,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 0%)",
+                "trunk",
+                "hsl(0, 0%, 0%)",
+                "primary",
+                "hsl(0, 0%, 0%)",
+                "secondary",
+                "hsl(0, 0%, 70%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 70%)"
+              ],
+              0.3,
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "hsl(0, 0%, 100%)",
+                "trunk",
+                "hsl(0, 0%, 100%)",
+                "primary",
+                "hsl(0, 0%, 100%)",
+                "secondary",
+                "hsl(0, 0%, 30%)",
+                [
+                  "minor",
+                  "service"
+                ],
+                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 30%)"
+              ]
             ],
             12,
             [
@@ -17677,11 +19638,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -17908,11 +19873,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -18044,11 +20013,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -18162,11 +20135,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -18266,7 +20243,6 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "water_name",
-      "minzoom": 3,
       "filter": [
         "==",
         [
@@ -18279,15 +20255,31 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
           "Noto Sans Italic"
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "ocean",
+          0,
+          "sea",
+          1,
+          2
         ],
         "text-size": [
           "interpolate",
@@ -18428,11 +20420,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -18538,11 +20534,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -18644,11 +20644,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -18766,11 +20770,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -20986,11 +22994,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ],
           [
             "get",
@@ -21090,11 +23102,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ],
           [
             "get",
@@ -21199,11 +23215,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -21306,11 +23326,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -21413,11 +23437,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -21521,11 +23549,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -21732,6 +23764,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -21931,6 +23965,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -22093,6 +24128,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -22189,6 +24225,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -22504,6 +24542,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -22657,6 +24696,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -22773,6 +24813,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -22813,11 +24855,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -22980,6 +25026,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -23142,6 +25189,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -23238,6 +25286,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -23553,6 +25603,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -23706,6 +25757,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -23815,6 +25867,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -23839,11 +25893,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -23962,6 +26020,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -24189,6 +26249,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -24229,11 +26291,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -24396,6 +26462,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -24558,6 +26625,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -24654,6 +26722,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -24969,6 +27039,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -25122,6 +27193,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -25240,6 +27312,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -25280,11 +27354,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -25447,6 +27525,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -25609,6 +27688,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -25705,6 +27785,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -26020,6 +28102,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -26173,6 +28256,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -26289,6 +28373,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -26329,11 +28415,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -26496,6 +28586,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -26658,6 +28749,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -26754,6 +28846,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -27069,6 +29163,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -27222,6 +29317,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -27337,6 +29433,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -27389,11 +29487,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -27556,6 +29658,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -27718,6 +29821,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -27814,6 +29918,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -28173,6 +30279,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -28326,6 +30433,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -28445,6 +30553,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -28626,6 +30736,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -28788,6 +30899,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -28884,6 +30996,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -29153,6 +31267,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -29306,6 +31421,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -29422,6 +31538,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -29446,11 +31564,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -29613,6 +31735,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -29775,6 +31898,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -29871,6 +31995,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -30140,6 +32266,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -30293,6 +32420,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -30421,6 +32549,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -30602,6 +32732,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -30764,6 +32895,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -30860,6 +32992,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -31129,6 +33263,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -31282,6 +33417,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -31407,6 +33543,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -31431,11 +33569,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -31598,6 +33740,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -31760,6 +33903,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -31856,6 +34000,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -32125,6 +34271,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -32278,6 +34425,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -32403,6 +34551,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -32584,6 +34734,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -32746,6 +34897,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -32842,6 +34994,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -33111,6 +35265,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -33264,6 +35419,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -33386,6 +35542,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -33410,11 +35568,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -33577,6 +35739,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -33739,6 +35902,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -33835,6 +35999,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -34104,6 +36270,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -34257,6 +36424,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -34377,6 +36545,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -34410,11 +36580,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ]
           ],
@@ -34423,11 +36597,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -34593,6 +36771,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -34755,6 +36934,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -34851,6 +37031,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -35102,6 +37284,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -35255,6 +37438,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -35378,6 +37562,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -35413,11 +37599,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -35582,6 +37772,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -35744,6 +37935,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -35840,6 +38032,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -36127,6 +38321,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -36280,6 +38475,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -36390,6 +38586,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -36414,11 +38612,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -36583,6 +38785,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -36745,6 +38948,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -36841,6 +39045,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -37106,6 +39312,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -37259,6 +39466,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -37394,6 +39602,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -37414,11 +39624,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -37583,6 +39797,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -37745,6 +39960,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -37841,6 +40057,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -38085,6 +40303,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -38105,11 +40325,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -38274,6 +40498,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -38436,6 +40661,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -38532,6 +40758,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -38741,6 +40969,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -38765,11 +40995,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -38935,6 +41169,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -39097,6 +41332,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -39193,6 +41429,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -39459,6 +41697,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -39612,6 +41851,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -39800,11 +42040,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -39955,6 +42199,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -39975,11 +42221,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -40144,6 +42394,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -40306,6 +42557,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -40402,6 +42654,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -40653,6 +42907,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -40806,6 +43061,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -40916,6 +43172,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -40949,11 +43207,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -41118,6 +43380,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -41280,6 +43543,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -41376,6 +43640,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -41659,6 +43925,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -41812,6 +44079,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -41854,6 +44122,691 @@
                 ]
               ]
             ]
+          ],
+          "text-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ],
+          "icon-occlusion-opacity": [
+            "match",
+            [
+              "config",
+              "label_occlusion"
+            ],
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-national-park",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 4,
+      "maxzoom": 9,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "national_park"
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "coalesce",
+          [
+            "image",
+            [
+              "concat",
+              [
+                "get",
+                "subclass"
+              ],
+              "-mono"
+            ]
+          ],
+          [
+            "image",
+            [
+              "concat",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "national_park",
+                "park",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
+              ],
+              "-mono"
+            ]
+          ],
+          [
+            "image",
+            "default-mono"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "step",
+          [
+            "zoom"
+          ],
+          "",
+          7,
+          [
+            "coalesce",
+            [
+              "get",
+              "name:en"
+            ],
+            [
+              "get",
+              "name_int"
+            ],
+            [
+              "get",
+              "name"
+            ]
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "*",
+          12,
+          0.9
+        ],
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color",
+          "icon-halo-width"
+        ],
+        "massif:template": "poi",
+        "massif:attachment": "poi",
+        "massif:layout": {
+          "icon-image": [
+            "coalesce",
+            [
+              "image",
+              [
+                "get",
+                "subclass"
+              ],
+              {
+                "params": {
+                  "background": [
+                    "match",
+                    [
+                      "config",
+                      "poiStyle"
+                    ],
+                    "plain",
+                    "transparent",
+                    [
+                      "match",
+                      [
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "allotments",
+                        "artwork",
+                        "biergarten",
+                        "convenience",
+                        "deli",
+                        "food_court",
+                        "gallery",
+                        "greengrocer",
+                        "kindergarten",
+                        "nature_reserve",
+                        "picnic_table",
+                        "pub",
+                        "supermarket",
+                        "theme_park"
+                      ],
+                      "hsl(0, 0%, 100%)",
+                      "viewpoint",
+                      "transparent",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "shelter_type"
+                        ],
+                        [
+                          "basic_hut",
+                          "lean_to",
+                          "picnic_shelter",
+                          "rock_shelter",
+                          "weather_shelter",
+                          "wilderness_hut"
+                        ],
+                        "hsl(0, 0%, 100%)",
+                        [
+                          "match",
+                          [
+                            "get",
+                            "class"
+                          ],
+                          [
+                            "adit",
+                            "aerialway",
+                            "airfield",
+                            "airport",
+                            "alcohol_shop",
+                            "alpine_hut",
+                            "american_football",
+                            "amusement_park",
+                            "aquarium",
+                            "archaeological_site",
+                            "art_gallery",
+                            "atm",
+                            "attraction",
+                            "bakery",
+                            "bank",
+                            "bar",
+                            "baseball",
+                            "basketball",
+                            "beach",
+                            "beer",
+                            "bicycle",
+                            "bicycle_rental",
+                            "bird_hide",
+                            "bus",
+                            "butcher",
+                            "cafe",
+                            "campsite",
+                            "car",
+                            "castle",
+                            "cave_entrance",
+                            "cemetery",
+                            "cinema",
+                            "clothing_store",
+                            "college",
+                            "cricket",
+                            "dentist",
+                            "doctors",
+                            "dog_park",
+                            "embassy",
+                            "fast_food",
+                            "ferry",
+                            "fire_station",
+                            "florist",
+                            "fort",
+                            "fountain",
+                            "fuel",
+                            "furniture",
+                            "gift",
+                            "golf",
+                            "grocery",
+                            "hairdresser",
+                            "harbor",
+                            "heliport",
+                            "hospital",
+                            "ice_cream",
+                            "information",
+                            "laundry",
+                            "library",
+                            "lighthouse",
+                            "lodging",
+                            "monument",
+                            "mountain",
+                            "museum",
+                            "music",
+                            "national_park",
+                            "nightclub",
+                            "park",
+                            "parking",
+                            "parking_garage",
+                            "pharmacy",
+                            "pitch",
+                            "place_of_worship",
+                            "playground",
+                            "police",
+                            "post",
+                            "prison",
+                            "railway",
+                            "railway_light",
+                            "railway_metro",
+                            "ranger_station",
+                            "restaurant",
+                            "ruins",
+                            "school",
+                            "shop",
+                            "skiing",
+                            "soccer",
+                            "spring",
+                            "stadium",
+                            "sushi",
+                            "swimming",
+                            "tennis",
+                            "theatre",
+                            "town_hall",
+                            "veterinary",
+                            "volcano",
+                            "water",
+                            "waterfall",
+                            "wetland",
+                            "wilderness_hut",
+                            "windmill",
+                            "zoo"
+                          ],
+                          "hsl(0, 0%, 100%)",
+                          "transparent"
+                        ]
+                      ]
+                    ]
+                  ],
+                  "background-stroke": [
+                    "match",
+                    [
+                      "config",
+                      "poiStyle"
+                    ],
+                    "plain",
+                    "transparent",
+                    [
+                      "match",
+                      [
+                        "get",
+                        "subclass"
+                      ],
+                      [
+                        "allotments",
+                        "artwork",
+                        "biergarten",
+                        "convenience",
+                        "deli",
+                        "food_court",
+                        "gallery",
+                        "greengrocer",
+                        "kindergarten",
+                        "nature_reserve",
+                        "picnic_table",
+                        "pub",
+                        "supermarket",
+                        "theme_park"
+                      ],
+                      "hsl(0, 0%, 0%)",
+                      "viewpoint",
+                      "transparent",
+                      [
+                        "match",
+                        [
+                          "get",
+                          "shelter_type"
+                        ],
+                        [
+                          "basic_hut",
+                          "lean_to",
+                          "picnic_shelter",
+                          "rock_shelter",
+                          "weather_shelter",
+                          "wilderness_hut"
+                        ],
+                        "hsl(0, 0%, 0%)",
+                        [
+                          "match",
+                          [
+                            "get",
+                            "class"
+                          ],
+                          [
+                            "adit",
+                            "aerialway",
+                            "airfield",
+                            "airport",
+                            "alcohol_shop",
+                            "alpine_hut",
+                            "american_football",
+                            "amusement_park",
+                            "aquarium",
+                            "archaeological_site",
+                            "art_gallery",
+                            "atm",
+                            "attraction",
+                            "bakery",
+                            "bank",
+                            "bar",
+                            "baseball",
+                            "basketball",
+                            "beach",
+                            "beer",
+                            "bicycle",
+                            "bicycle_rental",
+                            "bird_hide",
+                            "bus",
+                            "butcher",
+                            "cafe",
+                            "campsite",
+                            "car",
+                            "castle",
+                            "cave_entrance",
+                            "cemetery",
+                            "cinema",
+                            "clothing_store",
+                            "college",
+                            "cricket",
+                            "dentist",
+                            "doctors",
+                            "dog_park",
+                            "embassy",
+                            "fast_food",
+                            "ferry",
+                            "fire_station",
+                            "florist",
+                            "fort",
+                            "fountain",
+                            "fuel",
+                            "furniture",
+                            "gift",
+                            "golf",
+                            "grocery",
+                            "hairdresser",
+                            "harbor",
+                            "heliport",
+                            "hospital",
+                            "ice_cream",
+                            "information",
+                            "laundry",
+                            "library",
+                            "lighthouse",
+                            "lodging",
+                            "monument",
+                            "mountain",
+                            "museum",
+                            "music",
+                            "national_park",
+                            "nightclub",
+                            "park",
+                            "parking",
+                            "parking_garage",
+                            "pharmacy",
+                            "pitch",
+                            "place_of_worship",
+                            "playground",
+                            "police",
+                            "post",
+                            "prison",
+                            "railway",
+                            "railway_light",
+                            "railway_metro",
+                            "ranger_station",
+                            "restaurant",
+                            "ruins",
+                            "school",
+                            "shop",
+                            "skiing",
+                            "soccer",
+                            "spring",
+                            "stadium",
+                            "sushi",
+                            "swimming",
+                            "tennis",
+                            "theatre",
+                            "town_hall",
+                            "veterinary",
+                            "volcano",
+                            "water",
+                            "waterfall",
+                            "wetland",
+                            "wilderness_hut",
+                            "windmill",
+                            "zoo"
+                          ],
+                          "hsl(0, 0%, 0%)",
+                          "transparent"
+                        ]
+                      ]
+                    ]
+                  ],
+                  "icon": "hsl(0, 0%, 0%)",
+                  "radius": [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "airfield",
+                    8,
+                    "airport",
+                    8,
+                    "heliport",
+                    8,
+                    "railway",
+                    5,
+                    "railway_light",
+                    11,
+                    21
+                  ],
+                  "background-stroke-width": [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "airfield",
+                    1.75,
+                    "airport",
+                    1.75,
+                    "heliport",
+                    1.75,
+                    "railway",
+                    1.5,
+                    "railway_light",
+                    2,
+                    3
+                  ]
+                }
+              }
+            ],
+            [
+              "image",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                [
+                  "border_control",
+                  "sally_port"
+                ],
+                "barrier",
+                "national_park",
+                "park",
+                "spring",
+                "water",
+                [
+                  "get",
+                  "class"
+                ]
+              ]
+            ],
+            [
+              "image",
+              "default"
+            ]
+          ],
+          "icon-size": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            0.6,
+            0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ],
+          "symbol-sort-key": [
+            "-",
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    [
+                      "get",
+                      "subclass"
+                    ],
+                    [
+                      "config",
+                      "poi-boost"
+                    ]
+                  ],
+                  0
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "subclass"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ],
+              [
+                "coalesce",
+                [
+                  "get",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "config",
+                    "poi-boost"
+                  ]
+                ],
+                0
+              ]
+            ]
+          ],
+          "symbol-z-elevate": [
+            "==",
+            [
+              "config",
+              "poi_on_roof"
+            ],
+            1
+          ]
+        },
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 0%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
           ],
           "text-occlusion-opacity": [
             "match",
@@ -41947,6 +44900,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -42126,6 +45081,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -42288,6 +45244,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -42384,6 +45341,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -42635,6 +45594,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -42788,6 +45748,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -42957,6 +45918,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -43140,6 +46103,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -43302,6 +46266,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -43398,6 +46363,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -43663,6 +46630,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -43816,6 +46784,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -43926,6 +46895,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -44105,6 +47076,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -44267,6 +47239,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -44363,6 +47336,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -44614,6 +47589,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -44767,6 +47743,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -44878,6 +47855,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -44898,11 +47877,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -45067,6 +48050,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -45229,6 +48213,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -45325,6 +48310,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -45576,6 +48563,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -45729,6 +48717,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -46149,6 +49138,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -46191,11 +49182,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -46360,6 +49355,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -46522,6 +49518,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -46618,6 +49615,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -46635,11 +49634,37 @@
             "coalesce",
             [
               "get",
-              "name"
+              [
+                "concat",
+                "name:",
+                [
+                  "config",
+                  "lang"
+                ]
+              ]
+            ],
+            [
+              "get",
+              [
+                "concat",
+                "name:",
+                [
+                  "config",
+                  "fallback_lang"
+                ]
+              ]
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name:en"
+            ],
+            [
+              "get",
+              "name"
             ]
           ],
           "icon-size": [
@@ -46930,6 +49955,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -47083,6 +50109,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -47519,6 +50546,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -47559,6 +50588,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -47692,6 +50723,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -47833,6 +50865,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -47894,11 +50927,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ],
             ""
@@ -47908,11 +50945,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -48083,6 +51124,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -48245,6 +51287,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -48341,6 +51384,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -48373,6 +51418,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -48428,11 +51475,37 @@
                 "coalesce",
                 [
                   "get",
-                  "name"
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "lang"
+                    ]
+                  ]
+                ],
+                [
+                  "get",
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "fallback_lang"
+                    ]
+                  ]
                 ],
                 [
                   "get",
                   "name_int"
+                ],
+                [
+                  "get",
+                  "name:en"
+                ],
+                [
+                  "get",
+                  "name"
                 ]
               ],
               ""
@@ -48442,11 +51515,37 @@
               "coalesce",
               [
                 "get",
-                "name"
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "lang"
+                  ]
+                ]
+              ],
+              [
+                "get",
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "fallback_lang"
+                  ]
+                ]
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name:en"
+              ],
+              [
+                "get",
+                "name"
               ]
             ]
           ],
@@ -48738,6 +51837,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -48891,6 +51991,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -49330,6 +52431,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -49350,11 +52453,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -49519,6 +52626,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -49681,6 +52789,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -49777,6 +52886,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -50028,6 +53139,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -50181,6 +53293,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -50621,6 +53734,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -50818,6 +53933,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -50980,6 +54096,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -51076,6 +54193,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -51374,6 +54493,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -51527,6 +54647,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -51972,6 +55093,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -52012,6 +55135,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -52145,6 +55270,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -52286,6 +55412,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -52347,11 +55474,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ],
             ""
@@ -52361,11 +55492,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -52536,6 +55671,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -52698,6 +55834,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -52794,6 +55931,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -52826,6 +55965,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -52881,11 +56022,37 @@
                 "coalesce",
                 [
                   "get",
-                  "name"
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "lang"
+                    ]
+                  ]
+                ],
+                [
+                  "get",
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "fallback_lang"
+                    ]
+                  ]
                 ],
                 [
                   "get",
                   "name_int"
+                ],
+                [
+                  "get",
+                  "name:en"
+                ],
+                [
+                  "get",
+                  "name"
                 ]
               ],
               ""
@@ -52895,11 +56062,37 @@
               "coalesce",
               [
                 "get",
-                "name"
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "lang"
+                  ]
+                ]
+              ],
+              [
+                "get",
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "fallback_lang"
+                  ]
+                ]
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name:en"
+              ],
+              [
+                "get",
+                "name"
               ]
             ]
           ],
@@ -53191,6 +56384,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -53344,6 +56538,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -53784,6 +56979,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -53804,11 +57001,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -53973,6 +57174,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -54135,6 +57337,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -54231,6 +57434,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -54482,6 +57687,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -54635,6 +57841,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -55111,6 +58318,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -55151,6 +58360,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -55284,6 +58495,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -55425,6 +58637,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -55486,11 +58699,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ],
             ""
@@ -55500,11 +58717,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -55675,6 +58896,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -55837,6 +59059,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -55933,6 +59156,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -55965,6 +59190,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -56020,11 +59247,37 @@
                 "coalesce",
                 [
                   "get",
-                  "name"
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "lang"
+                    ]
+                  ]
+                ],
+                [
+                  "get",
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "fallback_lang"
+                    ]
+                  ]
                 ],
                 [
                   "get",
                   "name_int"
+                ],
+                [
+                  "get",
+                  "name:en"
+                ],
+                [
+                  "get",
+                  "name"
                 ]
               ],
               ""
@@ -56034,11 +59287,37 @@
               "coalesce",
               [
                 "get",
-                "name"
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "lang"
+                  ]
+                ]
+              ],
+              [
+                "get",
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "fallback_lang"
+                  ]
+                ]
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name:en"
+              ],
+              [
+                "get",
+                "name"
               ]
             ]
           ],
@@ -56330,6 +59609,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -56483,6 +59763,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -56914,6 +60195,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -56934,11 +60217,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -57103,6 +60390,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -57265,6 +60553,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -57361,6 +60650,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -57612,6 +60903,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -57765,6 +61057,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -58201,6 +61494,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -58241,6 +61536,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -58352,6 +61649,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -58493,6 +61791,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -58554,11 +61853,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ],
             ""
@@ -58568,11 +61871,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -58743,6 +62050,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -58905,6 +62213,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -59001,6 +62310,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -59033,6 +62344,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -59088,11 +62401,37 @@
                 "coalesce",
                 [
                   "get",
-                  "name"
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "lang"
+                    ]
+                  ]
+                ],
+                [
+                  "get",
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "fallback_lang"
+                    ]
+                  ]
                 ],
                 [
                   "get",
                   "name_int"
+                ],
+                [
+                  "get",
+                  "name:en"
+                ],
+                [
+                  "get",
+                  "name"
                 ]
               ],
               ""
@@ -59102,11 +62441,37 @@
               "coalesce",
               [
                 "get",
-                "name"
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "lang"
+                  ]
+                ]
+              ],
+              [
+                "get",
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "fallback_lang"
+                  ]
+                ]
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name:en"
+              ],
+              [
+                "get",
+                "name"
               ]
             ]
           ],
@@ -59348,6 +62713,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -59501,6 +62867,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -59985,6 +63352,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -60025,6 +63394,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -60158,6 +63529,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -60299,6 +63671,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -60360,11 +63733,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ],
             ""
@@ -60374,11 +63751,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -60549,6 +63930,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -60711,6 +64093,7 @@
                               "mountain",
                               "museum",
                               "music",
+                              "national_park",
                               "nightclub",
                               "park",
                               "parking",
@@ -60807,6 +64190,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -60839,6 +64224,8 @@
                     "sally_port"
                   ],
                   "barrier",
+                  "national_park",
+                  "park",
                   "spring",
                   "water",
                   [
@@ -60894,11 +64281,37 @@
                 "coalesce",
                 [
                   "get",
-                  "name"
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "lang"
+                    ]
+                  ]
+                ],
+                [
+                  "get",
+                  [
+                    "concat",
+                    "name:",
+                    [
+                      "config",
+                      "fallback_lang"
+                    ]
+                  ]
                 ],
                 [
                   "get",
                   "name_int"
+                ],
+                [
+                  "get",
+                  "name:en"
+                ],
+                [
+                  "get",
+                  "name"
                 ]
               ],
               ""
@@ -60908,11 +64321,37 @@
               "coalesce",
               [
                 "get",
-                "name"
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "lang"
+                  ]
+                ]
+              ],
+              [
+                "get",
+                [
+                  "concat",
+                  "name:",
+                  [
+                    "config",
+                    "fallback_lang"
+                  ]
+                ]
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name:en"
+              ],
+              [
+                "get",
+                "name"
               ]
             ]
           ],
@@ -61204,6 +64643,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -61357,6 +64797,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -61478,6 +64919,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -61517,11 +64960,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -61688,6 +65135,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -61850,6 +65298,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -61946,6 +65395,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -62230,6 +65681,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -62383,6 +65835,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -62512,6 +65965,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -62551,11 +66006,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -62723,6 +66182,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -62885,6 +66345,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -62981,6 +66442,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -63265,6 +66728,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -63418,6 +66882,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -63547,6 +67012,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -63586,11 +67053,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -63757,6 +67228,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -63919,6 +67391,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -64015,6 +67488,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -64299,6 +67774,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -64452,6 +67928,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -64592,6 +68069,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -64631,11 +68110,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ]
         ],
@@ -64803,6 +68286,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -64965,6 +68449,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -65061,6 +68546,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -65345,6 +68832,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -65498,6 +68986,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -65649,6 +69138,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -65669,11 +69160,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -65838,6 +69333,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -66000,6 +69496,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -66096,6 +69593,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -66347,6 +69846,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -66500,6 +70000,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -66627,6 +70128,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -66647,11 +70150,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -66816,6 +70323,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -66978,6 +70486,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -67074,6 +70583,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -67325,6 +70836,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -67478,6 +70990,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -67599,6 +71112,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -67778,6 +71293,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -67940,6 +71456,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -68036,6 +71553,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -68287,6 +71806,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -68440,6 +71960,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -68562,6 +72083,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -68582,11 +72105,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -68751,6 +72278,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -68913,6 +72441,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -69009,6 +72538,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -69260,6 +72791,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -69413,6 +72945,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -69523,6 +73056,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -69556,11 +73091,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -69725,6 +73264,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -69887,6 +73427,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -69983,6 +73524,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -70230,6 +73773,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -70265,11 +73810,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -70436,6 +73985,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -70598,6 +74148,7 @@
                             "mountain",
                             "museum",
                             "music",
+                            "national_park",
                             "nightclub",
                             "park",
                             "parking",
@@ -70694,6 +74245,8 @@
                   "sally_port"
                 ],
                 "barrier",
+                "national_park",
+                "park",
                 "spring",
                 "water",
                 [
@@ -70986,6 +74539,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -71139,6 +74693,7 @@
                     "mountain",
                     "museum",
                     "music",
+                    "national_park",
                     "nightclub",
                     "park",
                     "parking",
@@ -71291,11 +74846,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ],
           [
@@ -71304,11 +74863,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ],
             "\n",
@@ -71551,11 +75114,15 @@
             "coalesce",
             [
               "get",
-              "name"
+              "name:en"
             ],
             [
               "get",
               "name_int"
+            ],
+            [
+              "get",
+              "name"
             ]
           ],
           [
@@ -71564,11 +75131,15 @@
               "coalesce",
               [
                 "get",
-                "name"
+                "name:en"
               ],
               [
                 "get",
                 "name_int"
+              ],
+              [
+                "get",
+                "name"
               ]
             ],
             "\n",
@@ -71746,6 +75317,125 @@
       }
     },
     {
+      "id": "place-continent",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 0,
+      "maxzoom": 4,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "continent"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name:en"
+          ],
+          [
+            "get",
+            "name_int"
+          ],
+          [
+            "get",
+            "name"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          11,
+          3,
+          16
+        ],
+        "text-max-width": 6,
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.2
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 2.25
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 75%)",
+            0.3,
+            "hsl(0, 0%, 25%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 0%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
+        }
+      }
+    },
+    {
       "id": "place-hamlet",
       "type": "symbol",
       "source": "openmaptiles",
@@ -71772,11 +75462,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -71886,11 +75580,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72001,11 +75699,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72116,11 +75818,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72229,11 +75935,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72344,11 +76054,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72459,11 +76173,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72590,11 +76308,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72705,11 +76427,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72840,11 +76566,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -72966,11 +76696,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -73092,11 +76826,15 @@
           "coalesce",
           [
             "get",
-            "name"
+            "name:en"
           ],
           [
             "get",
             "name_int"
+          ],
+          [
+            "get",
+            "name"
           ]
         ],
         "text-font": [
@@ -73184,6 +76922,12 @@
     }
   ],
   "schema": {
+    "lang": {
+      "default": "en"
+    },
+    "fallback_lang": {
+      "default": "en"
+    },
     "poiStyle": {
       "default": "badge",
       "values": [
@@ -73381,10 +77125,43 @@
       "default": 12
     },
     "wetland_pattern_zoom": {
-      "default": 13
+      "default": 12
     },
     "hillshade_max_zoom": {
       "default": 16
+    },
+    "hillshade_method": {
+      "default": "auto",
+      "values": [
+        "auto",
+        "standard",
+        "combined",
+        "igor",
+        "multidirectional",
+        "basic"
+      ]
+    },
+    "hillshade_contrast": {
+      "default": -0.5
+    },
+    "hillshade_height_scale": {
+      "default": -0.5
+    },
+    "hillshade_shadow_color": {
+      "default": "auto"
+    },
+    "hillshade_highlight_color": {
+      "default": "auto"
+    },
+    "hillshade_accent_color": {
+      "default": "auto"
+    },
+    "lowzoom_landcover": {
+      "default": 0,
+      "values": [
+        0,
+        1
+      ]
     },
     "poi-boost": {
       "default": {}

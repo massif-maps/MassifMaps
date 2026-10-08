@@ -5,6 +5,9 @@ state its own default (build.py's `Variant(params=...)`); a layer reads one thro
 SWITCH = [0, 1]
 
 PARAMS = {
+    # the label language chain: lang, fallback_lang, name_int, name:en, name (the app sets `lang`)
+    'lang': {'default': 'en'},
+    'fallback_lang': {'default': 'en'},
     'poiStyle': {'default': 'badge', 'values': ['badge', 'plain']},
     'bare_icon_scale': {'default': 1.3},
     'poi_label_scale': {'default': 0.9},
@@ -44,8 +47,17 @@ PARAMS = {
     'forest_pattern_zoom': {'default': 11},
     'scrub_pattern_zoom': {'default': 12},
     'rock_pattern_zoom': {'default': 12},
-    'wetland_pattern_zoom': {'default': 13},
+    'wetland_pattern_zoom': {'default': 12},
     'hillshade_max_zoom': {'default': 16},
+    # the SDK slot's relief: `auto` (colours, method) or a negative (contrast, height scale) is the variant's own;
+    # -0.5 and not -1 so the parameter is typed a real: an integer default rejects 0.35
+    'hillshade_method': {'default': 'auto', 'values': ['auto', 'standard', 'combined', 'igor', 'multidirectional', 'basic']},
+    'hillshade_contrast': {'default': -0.5},
+    'hillshade_height_scale': {'default': -0.5},
+    'hillshade_shadow_color': {'default': 'auto'},
+    'hillshade_highlight_color': {'default': 'auto'},
+    'hillshade_accent_color': {'default': 'auto'},
+    'lowzoom_landcover': {'default': 0, 'values': SWITCH},
     # tables an app sets one entry of as `poi-boost.<class>`; the converter fills `glyph` (KNOWN_SDK)
     'poi-boost': {'default': {}},
     'glyph': {'default': {}},

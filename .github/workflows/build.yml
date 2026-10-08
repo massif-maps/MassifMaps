@@ -7,7 +7,7 @@ on:
     inputs:
       version:
        required: false
-       description: 'version number'
+       description: 'MassifMaps SDK version newer than the latest vX.Y.Z tag; use the separate style release workflows for styles or style tools'
       publish:
         description: "Should we publish on Github?"
         default: true

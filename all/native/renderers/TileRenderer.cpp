@@ -64,6 +64,7 @@ namespace massif {
         _vtRenderer(),
         _interactionMode(false),
         _layerBlendingSpeed(1.0f),
+        _layerOpacity(1.0f),
         _labelBlendingSpeed(vt::DEFAULT_LABEL_BLENDING_SPEED),
         _labelPerspectiveScaling(0.5f),
         _labelOrder(0),
@@ -145,6 +146,11 @@ namespace massif {
     void TileRenderer::setLayerBlendingSpeed(float speed) {
         std::lock_guard<std::mutex> lock(_mutex);
         _layerBlendingSpeed = speed;
+    }
+
+    void TileRenderer::setLayerOpacity(float opacity) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _layerOpacity = opacity;
     }
 
     void TileRenderer::setLabelBlendingSpeed(float speed) {
@@ -352,6 +358,7 @@ namespace massif {
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
         tileRenderer->setRadiance(_resolvedRadiance);
         tileRenderer->setBackgroundEmissive(_backgroundEmissive);
+        tileRenderer->setLayerOpacity(_layerOpacity);
         tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
         pushTerrainDrapeState();
@@ -1231,16 +1238,16 @@ namespace massif {
         try {
             VT_STAT_CLOCK(passClock);
             if (_labelOrder == 1) {
-                tileRenderer->renderLabels(true, false);
+                tileRenderer->renderLabels(true, false, _layerOpacity);
             }
             VT_STAT_SPLIT(pass3DLabels2DNs, passClock);
             if (_buildingOrder == 1) {
                 // Inline (tangram's way): nothing after the extrusions depth-tests against them.
-                tileRenderer->renderGeometry(false, true, isInline3DEnabled());
+                tileRenderer->renderGeometry(false, true, isInline3DEnabled(), _layerOpacity);
             }
             VT_STAT_SPLIT(pass3DGeometryNs, passClock);
             if (_labelOrder >= 0 && drawsBillboardLabelsHere(1)) {
-                tileRenderer->renderLabels(false, true);
+                tileRenderer->renderLabels(false, true, _layerOpacity);
             }
             VT_STAT_SPLIT(pass3DLabels3DNs, passClock);
 

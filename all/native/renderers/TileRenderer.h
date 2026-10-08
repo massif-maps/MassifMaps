@@ -58,6 +58,8 @@ namespace massif {
         void setTerrainDepthWriteMode(bool enabled);
         void setTerrainRenderOrder(int order);
         void setLayerBlendingSpeed(float speed);
+        // The layer's opacity for what its screen blend does not cover: the 3D pass and an external drape.
+        void setLayerOpacity(float opacity);
         void setLabelBlendingSpeed(float speed);
         void setLabelPerspectiveScaling(float scaling);
         void setLabelOrder(int order);
@@ -241,6 +243,7 @@ namespace massif {
         unsigned int _labelOcclusionDepthVersion = 0; // the terrain occlusion depth the labels were last placed against
         bool _interactionMode;
         float _layerBlendingSpeed;
+        float _layerOpacity;
         float _labelBlendingSpeed;
         float _labelPerspectiveScaling;
         int _labelOrder;

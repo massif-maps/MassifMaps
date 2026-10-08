@@ -109,7 +109,7 @@ namespace massif {
          * Set the opacity of the layer.
          * @param opacity The opacity of the layer in range (0..1). 1.0 is the default value.
          */
-        void setOpacity(float opacity);
+        virtual void setOpacity(float opacity);
 
         /**
          * Returns the visibility of this layer.

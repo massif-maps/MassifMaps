@@ -638,6 +638,17 @@ with `opacity: 0.5` baked fully opaque. `calculateDrapeOpacity` now supplies it,
 on-screen path passes as element opacity. Comp-op layers keep 1: reproducing them needs the overlay
 buffer the bake has no equivalent of.
 
+**The SDK layer's own opacity (`Layer::setOpacity`) is a separate input.** In the 2D pass the layer
+wraps its draw in a screen buffer and blends it once, which covers everything that pass draws. A
+draped layer is never drawn there, and the 3D pass is not wrapped (extrusions depth-test against the
+terrain), so a layer at 0.5 kept its roads, buildings and billboard labels at full strength. The layer
+now hands its opacity to the renderer each frame (`TileRenderer::setLayerOpacity`): the bake multiplies
+it into `calculateDrapeOpacity` and the fingerprint carries it at 8-bit steps, so cached textures
+re-bake when it moves; the 3D pass multiplies it into the extrusion layer opacity (the existing overlay
+path) and draws its labels into the 3D overlay buffer, composited once. It applies only under an
+external drape: a layer's own drape draws inside its screen blend, where it would count twice. Overlapping
+features of one layer fade individually in the bake, not as a group, as a style `opacity` already does.
+
 Stand-ins from the previous generation are pushed **after** the tile's own entry, not before: the
 surfaces coincide and the later draw wins, so pushed first they are buried under the fill they were
 meant to replace — the whole screen going white for a moment on every zoom out.

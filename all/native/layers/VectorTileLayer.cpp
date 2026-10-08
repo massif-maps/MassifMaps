@@ -627,6 +627,7 @@ namespace massif {
         
     bool VectorTileLayer::onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
         if (auto mapRenderer = getMapRenderer()) {
+            _tileRenderer->setLayerOpacity(getOpacity());
             return _tileRenderer->onDrawFrame3D(deltaSeconds, viewState);
         }
         return false;

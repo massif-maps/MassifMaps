@@ -4,7 +4,7 @@ import shutil
 import argparse
 from build.sdk_build_utils import *
 
-ANDROID_ABIS = ['armeabi-v7a', 'x86', 'arm64-v8a', 'x86_64']
+ANDROID_ABIS = ['armeabi-v7a', 'arm64-v8a', 'x86_64']
 
 def gradle(args, dir, *cmdArgs):
     return execute(args.gradle, dir, *cmdArgs)

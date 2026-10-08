@@ -98,6 +98,27 @@ never change, so they are pure ccache fodder. With ninja + ccache one ABI goes 7
 13.8 s warm; raise the cache first (`ccache --max-size 30G`), since one ABI writes about 1 GB and
 the 5 GB default has the four ABIs evicting each other.
 
+### The release workflow (`build.yml`)
+
+Before this, a release run cached nothing: the ccache save failed (`tar` exit 2, no `ccache-*`
+entry ever existed) and every job compiled from scratch, with `iOS lite` (72 min) setting the wall clock. Now:
+
+- **Android** — ccache in `.ccache` inside the workspace, `CCACHE_COMPILERCHECK=content` (the NDK is
+  restored from a cache on every run, so its `mtime` is new each time and the default check
+  misses everything), 2 GB, and a `restore`/`save` pair with `if: always()` so a failed release
+  still keeps the objects it compiled. One cache per profile: a profile changes `SDK_CPP_DEFINES`,
+  which is on every compile line, so profiles share nothing. The scripts build `armeabi-v7a`,
+  `arm64-v8a`, `x86_64` by default; 32-bit `x86` is gone from the scripts and the dev app too.
+- **iOS** — the Xcode generator ignores `CMAKE_<LANG>_COMPILER_LAUNCHER`, so ccache cannot reach
+  it. Xcode 26 compilation caching does: `COMPILATION_CACHE_ENABLE_CACHING` +
+  `COMPILATION_CACHE_CAS_PATH` passed through `--cmake-options`, the CAS directory cached like
+  ccache. Measured on one `lite` arm64-simulator slice, Xcode 26.5: 1024 misses cold, 1023 hits
+  warm, 131 s to 74 s; the remainder is the single-threaded `-flto=full` prelink, which no cache
+  covers.
+- **css2xml** is no longer built here: it ships as an npm package (it was a serial `make` inside the
+  `lite` job of both platforms, 430 s on Android and 979 s on the iOS job that set the wall clock).
+- **SWIG's autotools** install only when the SWIG cache misses, instead of on every job.
+
 ## Open, roughly by value
 
 - **iOS leftovers.** The static framework now gets `-flto=full` (#67; Mac Catalyst still does not —

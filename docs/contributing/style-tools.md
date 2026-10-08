@@ -152,9 +152,6 @@ one grammar is how it hid; one pinned Boost is half of not repeating it, and the
 [massif-maps-libs#78](https://github.com/massif-maps/massif-maps-libs/pull/78), which took the
 choice out of the grammar. Only headers are needed, never a compiled Boost.
 
-`build_css2xml.yml` stays as it is — it builds native binaries for local debugging, which is a
-different job from shipping the tool.
-
 ## The palette: `variables.mss`
 
 `mapbox2css` writes three files, not two. `style.mss` holds the rules and is generated — the next

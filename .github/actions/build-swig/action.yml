@@ -30,6 +30,9 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          sudo apt-get install -y --no-install-recommends autoconf automake libtool build-essential
+        fi
         # Clone with retry
         for attempt in 1 2 3; do
           if git clone --depth=1 https://github.com//massif-maps/mobile-swig.git; then
@@ -40,7 +43,8 @@ runs:
           if [ "$attempt" -eq 3 ]; then echo "All clone attempts failed"; exit 1; fi
         done
         cd mobile-swig
-        if command -v brew >/dev/null 2>&1; then
+        if [ "$RUNNER_OS" = "macOS" ]; then
+          brew install autoconf automake libtool
           export PATH="$(brew --prefix autoconf)/bin:$(brew --prefix automake)/bin:$(brew --prefix libtool)/bin:$PATH"
         fi
 

@@ -9,6 +9,16 @@ def get(field):
     return ['get', field]
 
 
+def name_of(*tail):
+    """the label text, as Alpimaps' OSM style chose it: the app's `lang`, then `fallback_lang`, then
+    name_int, name:en, name and `tail`. Tiles that carry no name:xx fall through to name_int / name."""
+    return ['coalesce', *[['get', ['concat', 'name:', ['config', param]]] for param in ('lang', 'fallback_lang')],
+            get('name_int'), get('name:en'), get('name'), *tail]
+
+
+NAME = name_of()
+
+
 def zoom_ramp(*stops, base=None):
     """['interpolate', curve, ['zoom'], z0, v0, z1, v1, ...]."""
     curve = ['linear'] if base is None else ['exponential', base]
@@ -188,6 +198,10 @@ def fold_config(expr, params):
     if len(expr) == 2 and expr[0] == 'config':
         return params[expr[1]]
     expr = [fold_config(x, params) for x in expr]
+    if expr[0] == 'concat' and all(isinstance(x, str) for x in expr[1:]):
+        return ''.join(expr[1:])
+    if expr[0] == 'coalesce':
+        expr = expr[:1] + [x for i, x in enumerate(expr[1:], 1) if x not in expr[1:i]]
     if expr[0] == 'match' and not isinstance(expr[1], (list, dict)):
         for i in range(2, len(expr) - 1, 2):
             labels = expr[i] if isinstance(expr[i], list) else [expr[i]]

@@ -13,6 +13,7 @@ def osm_low(osm, standard):
     return ['match', ['config', 'road_osm_low'], 1, osm, standard]
 
 
+MAJOR = ('motorway', 'trunk', 'primary')
 ROAD_CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'other']
 # per class at each stop; the last stops are both looks'
 STANDARD_WIDTH = {
@@ -128,7 +129,13 @@ def fill_color(c):
             'secondary', c['secondary'], 'tertiary', c['tertiary'], c['road']]
     # over the zoom the casing grows in (major_only_below, from_zoom)
     end = c.get('casing-from', 14)
-    return ['interpolate', ['linear'], ['zoom'], end - 1, low, end, high]
+    steps = []
+    if c.get('casing-low'):
+        # a road is the dark low colour until its outline comes in, then the street's white inside it
+        for z, casing in zip(OUTLINE_STEPS[::2], OUTLINE_STEPS[1::2]):
+            outlined = [cls for cls in MAJOR if class_value(casing, cls)]
+            steps += [z, ['match', get('class'), *[x for cls in outlined for x in (cls, c[cls])], *low[2 + 2 * len(MAJOR):]]]
+    return ['interpolate', ['linear'], ['zoom'], *steps, end - 1, low, end, high]
 
 
 def case_color(c, key='case'):
@@ -137,27 +144,39 @@ def case_color(c, key='case'):
             c['road-' + key]]
 
 
+def class_value(match, cls):
+    if not isinstance(match, list):
+        return match
+    for i in range(2, len(match) - 1, 2):
+        if match[i] == cls or (isinstance(match[i], list) and cls in match[i]):
+            return match[i + 1]
+    return match[-1]
+
+
 def major_only_below(expr, z):
     """A per-class width ramp whose stops below zoom z keep motorway, trunk and primary only."""
-    def value(match, cls):
-        if not isinstance(match, list):
-            return match
-        for i in range(2, len(match) - 1, 2):
-            if match[i] == cls or (isinstance(match[i], list) and cls in match[i]):
-                return match[i + 1]
-        return match[-1]
     if not isinstance(expr, list) or expr[0] != 'interpolate':
         return expr
     out = expr[:3]
     for i in range(3, len(expr), 2):
         stop, match = expr[i], expr[i + 1]
         if stop < z:
-            match = ['match', get('class'), *[x for cls in ('motorway', 'trunk', 'primary') for x in (cls, value(match, cls))], 0]
+            match = ['match', get('class'), *[x for cls in MAJOR for x in (cls, class_value(match, cls))], 0]
         elif out[-2] < z - 1:
             # the small roads' casing grows over z13-14, as from_zoom's does, not from the stop before
             out += [z - 1, out[-1]]
         out += [stop, match]
     return out
+
+
+# e-ink's outlined roads: OSM Carto's steps (LOW_CASING_WIDTH's up to z10) for the major classes
+OUTLINE_STEPS = major_only_below(LOW_CASING_WIDTH, 11)[3:11]
+
+
+def osm_low_steps(expr):
+    """a casing ramp whose stops below z12 are OSM Carto's: no outline on a road until its own step"""
+    first = next(i for i in range(3, len(expr), 2) if expr[i] >= 12)
+    return expr[:3] + OUTLINE_STEPS + expr[first:] if first > 3 else expr
 
 
 def draw_once(c, id, metadata=None):
@@ -172,7 +191,7 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     case_layout = {**layout, 'line-cap': case_cap} if case_cap else layout
     # e-ink orders the major roads by the weight of their outline, having no colour to do it with; the
     # small ones stay uncased below z14 as elsewhere, a grey line rather than a heavy double one
-    casing = scaled(major_only_below(casing, c.get('casing-from', 14)) if c.get('casing-low') else from_zoom(casing, 14),
+    casing = scaled(osm_low_steps(major_only_below(casing, c.get('casing-from', 14))) if c.get('casing-low') else from_zoom(casing, 14),
                     c.get('casing-scale', 1))
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:

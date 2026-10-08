@@ -556,6 +556,13 @@
       "border": 3,
       "halo": 0
     },
+    "national_park": {
+      "disc": "hsl(110, 70%, 40%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3,
+      "halo": 0
+    },
     "nightclub": {
       "disc": "hsl(190, 75%, 50%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -1543,6 +1550,13 @@
         "halo": 0
       },
       "music": {
+        "disc": "hsl(0, 0%, 100%)",
+        "glyph": "hsl(0, 0%, 0%)",
+        "radius": 21,
+        "border": 3,
+        "halo": 0
+      },
+      "national_park": {
         "disc": "hsl(0, 0%, 100%)",
         "glyph": "hsl(0, 0%, 0%)",
         "radius": 21,

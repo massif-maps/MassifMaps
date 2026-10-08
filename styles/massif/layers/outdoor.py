@@ -31,6 +31,12 @@ MTB = [
 ]
 
 
+def or_param(name, auto):
+    """the variant's `auto` value until an app sets parameter `name`: `auto` as a string, a negative as a number"""
+    value = ['config', name]
+    return ['case', ['<', value, 0], auto, value] if isinstance(auto, (int, float)) else ['match', value, 'auto', auto, value]
+
+
 def hillshade(v):
     c = v.palette
     # gone by z16 as in Standard: in a street the relief is noise, and on the SDK a raster over the
@@ -47,6 +53,13 @@ def hillshade(v):
                                                 'highlightColor': hex_color(c['hillshade-highlight']),
                                                 'accentColor': hex_color(c['hillshade-accent']),
                                                 'visibleZoomRange': [0, 16]},
+                          # the composite slot reads these over parameters, so an app's choice survives a variant change
+                          'massif:sdk-slot': {'hillshadeMethod': or_param('hillshade_method', 'standard'),
+                                              'contrast': or_param('hillshade_contrast', c['relief']),
+                                              'heightScale': or_param('hillshade_height_scale', 1),
+                                              'shadowColor': or_param('hillshade_shadow_color', hex_color(c['hillshade-shadow'])),
+                                              'highlightColor': or_param('hillshade_highlight_color', hex_color(c['hillshade-highlight'])),
+                                              'accentColor': or_param('hillshade_accent_color', hex_color(c['hillshade-accent']))},
                           'massif:maxzoom-param': 'hillshade_max_zoom'}}]
 
 

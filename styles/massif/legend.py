@@ -17,8 +17,9 @@ TRACK_LABELS = {'grade1': 'Track, paved or solid', 'grade2': 'Track, gravel', 'g
                 'grade4': 'Track, mostly soft', 'grade5': 'Track, soft', 'unknown': 'Track, surface unknown'}
 FILL_LABELS = {'wood': 'Forest', 'scrub': 'Scrub', 'grass': 'Grass, meadow', 'park': 'Park', 'wetland': 'Wetland',
                'rock': 'Rock, scree', 'sand': 'Sand', 'glacier': 'Glacier', 'farmland': 'Farmland',
+               'vineyard': 'Vineyard', 'orchard': 'Orchard, nursery',
                'cemetery': 'Cemetery', 'military': 'Military area', 'residential': 'Residential',
-               'commercial': 'Commercial', 'industrial': 'Industrial'}
+               'commercial': 'Commercial', 'industrial': 'Industrial', 'parking': 'Parking'}
 # (category, label, the class a POI of it carries)
 POIS = [('food_and_drink', 'Food and drink', 'restaurant'), ('store_like', 'Shops', 'shop'),
         ('arts_and_entertainment', 'Culture', 'museum'), ('commercial_services', 'Services', 'bank'),
@@ -106,9 +107,14 @@ def spec():
               for key, classes in land.LANDCOVER],
             *[item(key, FILL_LABELS[key], 'landcover', 'polygon', {'class': 'grass', 'subclass': subclasses[0]})
               for key, subclasses in land.LANDCOVER_SUBCLASS if key in FILL_LABELS],
+            # e-ink's textures only: the other variants draw a crop as farmland
+            *[item(key, FILL_LABELS[key], 'landcover', 'polygon', {'class': 'farmland', 'subclass': subclasses[0]},
+                   only('landcover-' + key + '-pattern'))
+              for key, subclasses in land.CROPS],
             *[item(key, FILL_LABELS[key], 'landuse', 'polygon', {'class': cls})
               for key, cls in [('residential', 'residential'), ('commercial', 'commercial'),
-                               ('industrial', 'industrial'), ('cemetery', 'cemetery'), ('military', 'military')]],
+                               ('industrial', 'industrial'), ('parking', 'parking'), ('cemetery', 'cemetery'),
+                               ('military', 'military')]],
             # named: hybrid draws no unnamed tree
             item('tree', 'Tree', 'poi', 'point', {'class': 'tree', 'name': 'Chêne'}, zoom=17),
         ]},

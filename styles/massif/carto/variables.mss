@@ -198,9 +198,10 @@
 @secondary_low: hsl(224, 25%, 79.5%);
 @tertiary: hsl(224, 25%, 82.5%);
 @tertiary_case: hsl(224, 22%, 72.5%);
-@text_fill: hsl(205, 50%, 40%);
+@text_fill: hsl(205, 60%, 18%);
 @text_fill_2: hsl(200, 80%, 85%);
 @text_halo_fill: hsla(0, 0%, 0%, 0.75);
+@text_halo_fill_2: hsla(0, 0%, 100%, 0.7);
 @track: hsl(30, 55%, 35%);
 @track_fill_stroke: hsla(0, 0%, 100%, 0.3);
 @track_label: hsl(30, 50%, 30%);
@@ -216,7 +217,7 @@
 @water: hsl(200, 100%, 80%);
 @water_fill: hsl(199, 44%, 62%);
 @water_halo: hsla(0, 0%, 100%, 0.55);
-@water_label: hsl(205, 60%, 45%);
+@water_label: hsl(205, 60%, 30%);
 @water_night: hsl(200, 100%, 62%);
 @waterway: hsl(205, 75%, 66%);
 @waterway_mono_bed_stroke: hsl(0, 0%, 16%);

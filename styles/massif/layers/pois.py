@@ -7,7 +7,7 @@ import json
 import os
 from collections import OrderedDict
 
-from lib import boosted, by_hour, gate, get, layer, scaled, zoom_ramp
+from lib import NAME, boosted, by_hour, gate, get, layer, scaled, zoom_ramp
 
 # Standard's poi-label text-color, read off mapbox/standard: night (brightness 0.25) and day (0.3).
 # disc: Standard's day disc, a shade lighter than its text (day); night: both at night
@@ -46,7 +46,8 @@ CLASSES = {
                           'nightclub', 'pitch', 'skiing', 'soccer', 'stadium', 'swimming', 'tennis'],
     # adit, cave_entrance, fort...: Alpimaps' planetiler keeps OSM's value where OpenMapTiles has no class
     'park_like': ['adit', 'beach', 'bird_hide', 'campsite', 'cave_entrance', 'cemetery', 'dog_park', 'garden',
-                  'mountain', 'park', 'playground', 'ranger_station', 'tree', 'viewpoint', 'volcano', 'wetland'],
+                  'mountain', 'national_park', 'park', 'playground', 'ranger_station', 'tree', 'viewpoint', 'volcano',
+                  'wetland'],
     'water': ['drinking_water', 'spring', 'water', 'water_point', 'watering_place', 'waterfall'],
     'medical': ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary'],
     'education': ['college', 'library', 'school'],
@@ -75,7 +76,7 @@ ICONS = sorted(f[:-4] for f in os.listdir(os.path.join(os.path.dirname(__file__)
 DEFAULT_ICON = 'default'
 UNKNOWN_ZOOM = 17
 # a class drawn with another's glyph
-ALIAS = {'border_control': 'barrier', 'sally_port': 'barrier', 'spring': 'water'}
+ALIAS = {'border_control': 'barrier', 'national_park': 'park', 'sally_port': 'barrier', 'spring': 'water'}
 KNOWN = sorted((set(ICONS) | set(ALIAS)) - {DEFAULT_ICON})
 
 # A subclass that belongs to another category than its class. Liberty reads `subclass` for the ICON
@@ -349,8 +350,6 @@ def mono_params(fixed_bare=None):
             'background-stroke-width': shape_match('border')}
 
 
-NAME = ['coalesce', get('name'), get('name_int')]
-
 
 def bare_scale(filter, bare):
     """`bare_icon_scale` for a glyph that is not a place (furniture, landmarks), 1 for a badge: tested
@@ -555,7 +554,16 @@ def mountain(v):
         out.append(lay)
         if id == 'poi-mountain-water':
             out += springs(v)
-    return out
+    return out + national_parks(v)
+
+
+def national_parks(v):
+    """a national park's label point, from Alpimaps' `park` layer (z4-9: beyond, the polygon's name, `park-label`)"""
+    lay = poi_layer('poi-national-park', 4, ['all', ['==', ['geometry-type'], 'Point'],
+                                              ['==', get('class'), 'national_park']], v,
+                    maxzoom=9, text=['step', ['zoom'], '', 7, NAME], category='park_like')
+    lay['source-layer'] = 'park'
+    return [lay]
 
 
 # a campsite seen from afar is a small glyph, at a POI's size by z13 where its name joins it

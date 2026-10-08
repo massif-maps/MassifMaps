@@ -73,6 +73,40 @@ encode-only, so the linked cost should land well under the 254 KB. It is reached
 `MBVectorTileDecoder` once an app sets `TILE_FORMAT_MLT`, but the code is unconditionally linked —
 `--gc-sections` cannot drop it. Gating the subproject behind a profile flag is still open.
 
+## What the dependencies are trimmed to
+
+Each dependency was built alone for arm64 at `-Oz -flto=thin` with `--gc-sections`, before and after
+(sizes are of that stub library, so they are the saving per ABI, not a share of the full `.so`). A
+size-only flag has to be proven to link and run: a stub linked with undefined symbols allowed hid
+that two of the first SQLite flags do not compile in this amalgamation.
+
+| dependency | before | after | how |
+|---|---|---|---|
+| freetype | 525,480 | 316,384 (**−209 KB**) | `config/freetype/config/ftmodule.h` shadows the upstream module list (all drivers) with TrueType, CFF, SDF and the renderers; `ftoption.h` drops the bytecode interpreter, Mac fonts, LZW and the autofit-only HarfBuzz hook |
+| harfbuzz | 559,608 | 514,032 (**−45 KB**) | `HB_NO_VAR`, `NAME`, `STYLE`, `OT_FONT_GLYPH_NAMES`, `OT_SHAPE_FRACTIONS`, `HINTING`, `SUBSET_LAYOUT` on top of the existing set |
+| sqlite | 564,280 | 548,200 (**−16 KB**) | `OMIT_FOREIGN_KEY` (−12), `PROGRESS_CALLBACK`, `INTROSPECTION_PRAGMAS`, `UTF16`, `DEFAULT_MEMSTATUS=0` |
+
+freetype was linking every driver because `ftmodule.h` is upstream's, and the SDK loads TrueType and
+OpenType faces with `FT_LOAD_NO_HINTING` only (`vt` renders normal and SDF bitmaps), so Type 1, CID,
+PFR, Type 42, Windows FNT, PCF, BDF, SVG and the autohinter were dead weight. WOFF1 (zlib) and WOFF2
+(brotli) stay. Output equality was checked on the host against the old configuration: glyph
+metrics, normal and SDF bitmaps and HarfBuzz shaping of Roboto, Arial Unicode (Latin, Arabic,
+Devanagari, Thai, CJK, Hangul) and a CFF OpenType face (Javanese) hash identically.
+
+`SQLITE_OMIT_ANALYZE` and `SQLITE_OMIT_ALTERTABLE` look free and do not link
+(`sqlite3ExprForVectorField`), as `OMIT_WINDOWFUNC` and `OMIT_TRIGGER` do not compile. The wrapper
+`sqlite3pp` calls `sqlite3_set_authorizer` and `sqlite3_column_decltype`, so `OMIT_AUTHORIZATION` and
+`OMIT_DECLTYPE` stay off.
+
+### Packed relocations, and why `minSdk` is 23
+
+`.rela.dyn` was 574 KB of the `full` library, 24-byte `R_AARCH64_RELATIVE` entries for every vtable
+and string table. `-Wl,--pack-dyn-relocs=android` encodes them as deltas: on freetype + harfbuzz
+alone the section goes from 38,664 to 7,567 bytes (−80%), on a synthetic 24k-entry table −87%. The
+platform linker reads the format from API 23, so `minSdk` is 23 and `build-android.py` builds against
+API 23. RELR (`--pack-dyn-relocs=android+relr`) would cut it to a few KB but needs API 28, with
+`--use-android-relr-tags` below API 30.
+
 ## Two mechanisms worth knowing
 
 **`--gc-sections` cannot drop a translation unit that has a namespace-scope static.** `.init_array`
@@ -110,6 +144,7 @@ the 5 GB default has the four ABIs evicting each other.
   needs the callback paths audited before it can be trusted.
 - Unset and cheap: `-Wl,--exclude-libs,ALL`, `-fmerge-all-constants`, `-fno-math-errno`. No PGO
   anywhere.
+- **RELR** once `minSdk` can be 28; see above.
 
 ## Measured NOT to work — `RegisterNatives`
 

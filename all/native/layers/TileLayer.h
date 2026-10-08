@@ -531,6 +531,7 @@ class ProjectionSurface;
         const DirectorPtr<TileDataSource> _dataSource;
         std::shared_ptr<DataSourceListener> _dataSourceListener;
 
+        friend class CompositeVectorTileLayer; // wires its groups' renderers to each other (setExtrusionPeers)
         std::shared_ptr<TileRenderer> _tileRenderer;
     
         FetchingTileTasks _fetchingTileTasks;

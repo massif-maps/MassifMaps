@@ -126,6 +126,11 @@ namespace massif {
     }
 
     // Timed: what a cull-thread tile-set change costs the frame; refreshTilesLockNs is the other side.
+    void TileRenderer::setExtrusionPeers(std::vector<std::weak_ptr<TileRenderer>> peers) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _extrusionPeers = std::move(peers);
+    }
+
     std::unique_lock<std::mutex> TileRenderer::lockTimed() const {
         VT_STAT_CLOCK(lockClock);
         std::unique_lock<std::mutex> lock(_mutex);
@@ -361,6 +366,15 @@ namespace massif {
         tileRenderer->setLayerOpacity(_layerOpacity);
         tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
+        _frameTileRenderer = tileRenderer;
+        std::vector<std::weak_ptr<const vt::GLTileRenderer>> peerRenderers;
+        for (const std::weak_ptr<TileRenderer>& weakPeer : _extrusionPeers) {
+            std::shared_ptr<TileRenderer> peer = weakPeer.lock();
+            if (peer && peer.get() != this) {
+                peerRenderers.push_back(peer->_frameTileRenderer);
+            }
+        }
+        tileRenderer->setExtrusionPeers(std::move(peerRenderers));
         pushTerrainDrapeState();
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);

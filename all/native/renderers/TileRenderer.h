@@ -55,6 +55,8 @@ namespace massif {
         void setTileTransformer(const std::shared_ptr<vt::TileTransformer>& tileTransformer);
     
         void setInteractionMode(bool enabled);
+        // The other renderers of one composite layer: a POI drawn here stands on, and is hidden by, their buildings.
+        void setExtrusionPeers(std::vector<std::weak_ptr<TileRenderer>> peers);
         void setTerrainDepthWriteMode(bool enabled);
         void setTerrainRenderOrder(int order);
         void setLayerBlendingSpeed(float speed);
@@ -239,6 +241,9 @@ namespace massif {
         std::shared_ptr<vt::TileTransformer> _tileTransformer;
 
         std::shared_ptr<VTRenderer> _vtRenderer;
+        std::vector<std::weak_ptr<TileRenderer>> _extrusionPeers;
+        // Written and read by peers on the render thread only, so no lock: peers never take each other's _mutex.
+        std::weak_ptr<const vt::GLTileRenderer> _frameTileRenderer;
         bool _labelPlacementOwed = false; // see consumeLabelPlacementOwed
         unsigned int _labelOcclusionDepthVersion = 0; // the terrain occlusion depth the labels were last placed against
         bool _interactionMode;

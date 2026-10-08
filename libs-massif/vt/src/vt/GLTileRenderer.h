@@ -334,6 +334,9 @@ namespace massif::vt {
         // Ground under an extrusion, internal z; reports missing data, as a guessed 0 buries a baked base.
         void setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)> provider);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
+        // Renderers drawing other style layers of the same tiles (a composite's groups): their buildings carry
+        // and hide this one's labels too. Render thread only, as their tiles are read there.
+        void setExtrusionPeers(std::vector<std::weak_ptr<const GLTileRenderer>> peers);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
         void setRasterFilterMode(RasterFilterMode filterMode);
@@ -617,6 +620,9 @@ namespace massif::vt {
         // tiles past the view; the callback returns false to skip the rest of that layer.
         template <typename Func>
         void forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const;
+        // forEachVisibleExtrusion over this renderer and its peers, for what labels stand on and are hidden by.
+        template <typename Func>
+        void forEachLabelExtrusion(bool offscreen, Func&& func) const;
         void renderLabels(const std::vector<std::shared_ptr<Label>>& labels);
         // One batching pass in list order; CALLOUT leader lines get their own pass first, under all glyphs.
         void renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass);
@@ -890,6 +896,7 @@ namespace massif::vt {
             cglib::bbox3<double> bounds;
         };
         std::vector<RoofSurface> _roofSurfaces;
+        std::vector<std::weak_ptr<const GLTileRenderer>> _extrusionPeers;
         std::size_t _roofSignature = 0;
         // Dirties the z-elevated labels when the roofs moved; false when nothing changed.
         bool refreshRoofSurfaces();

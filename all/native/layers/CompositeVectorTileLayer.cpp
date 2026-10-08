@@ -8,6 +8,7 @@
 #include "rastertiles/TerrariumElevationDataDecoder.h"
 #include "rastertiles/MapBoxElevationDataDecoder.h"
 #include "renderers/MapRenderer.h"
+#include "renderers/TileRenderer.h"
 #include "graphics/ViewState.h"
 #include "graphics/Color.h"
 #include "core/MapRange.h"
@@ -535,6 +536,16 @@ namespace massif {
                 Log::Warnf("CompositeVectorTileLayer: external source '%s' is not listed in the style 'layers' - it will not be drawn", s.name.c_str());
             }
             applyChildTileProperties(s);
+        }
+        // A slot between the buildings and the POIs puts them in different groups, each its own renderer.
+        std::vector<std::weak_ptr<TileRenderer>> peers { _tileRenderer };
+        for (const DrawItem& item : _drawItems) {
+            if (std::shared_ptr<TileLayer> groupLayer = std::dynamic_pointer_cast<TileLayer>(item.groupLayer)) {
+                peers.push_back(groupLayer->_tileRenderer);
+            }
+        }
+        for (const std::weak_ptr<TileRenderer>& peer : peers) {
+            peer.lock()->setExtrusionPeers(peers);
         }
         snapshotChildTileLayers();
     }

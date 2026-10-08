@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <set>
 
@@ -684,6 +685,16 @@ namespace massif::vt {
         }
     }
 
+    template <typename Func>
+    void GLTileRenderer::forEachLabelExtrusion(bool offscreen, Func&& func) const {
+        forEachVisibleExtrusion(nullptr, offscreen, func);
+        for (const std::weak_ptr<const GLTileRenderer>& weakPeer : _extrusionPeers) {
+            if (std::shared_ptr<const GLTileRenderer> peer = weakPeer.lock()) {
+                peer->forEachVisibleExtrusion(nullptr, offscreen, func);
+            }
+        }
+    }
+
     // The shared grid surface is a flat unit square a spherical tile matrix cannot curve, so the globe
     // takes per-tile surfaces. Only the geometry differs: the painter depth model is the same.
     bool GLTileRenderer::terrainGridSurfaces() const {
@@ -1049,6 +1060,10 @@ namespace massif::vt {
             return;
         }
         _pendingLabelElevationTiles.insert(_pendingLabelElevationTiles.end(), tileIds.begin(), tileIds.end());
+    }
+
+    void GLTileRenderer::setExtrusionPeers(std::vector<std::weak_ptr<const GLTileRenderer>> peers) {
+        _extrusionPeers = std::move(peers);
     }
 
     void GLTileRenderer::setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)> provider) {
@@ -4371,6 +4386,7 @@ namespace massif::vt {
         };
 
         std::vector<double> anchorBases(anchors.size(), 0.0);
+        std::vector<double> anchorFeet(anchors.size(), 0.0);
         for (std::size_t a = 0; a < anchors.size(); a++) {
             const TileGeometry::BaseAnchor& anchor = anchors[a];
             // The SMOOTHED field, so a building's pieces agree without seeing each other. An undecoded
@@ -4387,26 +4403,41 @@ namespace massif::vt {
                 double metersToZ = metersToInternal * std::cosh(2.0 * 3.14159265358979323846 * anchorPos(1));
                 // mapbox's floor, per footprint: its roof keeps 2 m above the highest ground under it, so
                 // a part anchored under its own street is not a hole and one on a DEM bump is not buried.
-                double maxGround = 0;
+                double maxGround = 0, minGround = 0;
                 bool haveGround = false;
                 for (const cglib::vec2<float>& point : anchor.floorPoints) {
                     double ground = 0;
                     if (sampleGround(point, false, ground)) {
                         maxGround = haveGround ? std::max(maxGround, ground) : ground;
+                        minGround = haveGround ? std::min(minGround, ground) : ground;
                         haveGround = true;
                     }
                 }
                 if (haveGround) {
                     double maxHeightZ = anchor.maxHeightUnits / static_cast<double>(params.heightScale) / tileUnitsPerMeter * metersToZ;
                     base = std::max(base, maxGround + 2.0 * metersToZ - maxHeightZ);
+                    anchorFeet[a] = std::min(base, minGround);
                 }
+                else {
+                    anchorFeet[a] = base;
+                }
+            }
+            else {
+                anchorFeet[a] = base;
             }
             anchorBases[a] = base;
         }
+        // A wall's foot is drawn on the ground under it, not at the base, and polygon3DVsh ignores the base
+        // there: it carries the lowest ground instead, so the label occluder's walls reach down that far too.
         for (const TileGeometry::BaseRun& run : runs) {
             float base = static_cast<float>(anchorBases[run.anchorIndex]);
+            float foot = static_cast<float>(anchorFeet[run.anchorIndex]);
             for (std::uint32_t k = run.begin; k < run.end; k++) {
-                geometry->setVertexBase(k, base);
+                std::int16_t height = 0;
+                if (params.heightOffset >= 0) {
+                    std::memcpy(&height, vertexGeometry.data() + k * params.vertexSize + params.heightOffset, sizeof(height));
+                }
+                geometry->setVertexBase(k, height > 0 ? base : foot);
             }
         }
         geometry->setBaseResolved(true);
@@ -5277,7 +5308,7 @@ namespace massif::vt {
         if (!_frameOccludersValid) {
             _frameOccludersValid = true;
             _frameOccluders.clear();
-            forEachVisibleExtrusion(nullptr, false, [this](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+            forEachLabelExtrusion(false, [this](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
                 // A SPAN is the surface its own symbols stand on; a translated layer is not where its mesh says.
                 const ExtrusionOccluder* occluder = geometry->getOccluder().get();
                 if (!occluder || !geometry->getSpanRecords().empty() || geometry->getStyleParameters().translate) {
@@ -5317,12 +5348,6 @@ namespace massif::vt {
                 onRoof = true;
             }
         }
-        // Standing on its roof, as mapbox Standard's are, it is not occluded: at street tilt any roof a few metres
-        // taller in front hid the anchor while the billboard drew over it (06-labels.mdx).
-        if (onRoof && label.isZElevated()) {
-            return 1.0f;
-        }
-
         // Four rays, mapbox's square of taps: from the eye to the corners of the occluder square around
         // the anchor, at the anchor's distance. On a roof the square stands on it: its lower half was inside.
         const cglib::vec3<double>& eye = _viewState.origin;
@@ -5331,9 +5356,25 @@ namespace massif::vt {
         double half = 0.5 * LABEL_OCCLUSION_SIZE_PIXELS * pixel;
         cglib::vec3<double> right = cglib::vec3<double>::convert(_viewState.orientation[0]) * half;
         cglib::vec3<double> up = cglib::vec3<double>::convert(_viewState.orientation[1]) * half;
-        int visible = 0;
+        std::array<cglib::vec3<double>, 4> taps;
         for (int tap = 0; tap < 4; tap++) {
-            cglib::vec3<double> tapTarget = target + right * (tap & 1 ? 1.0 : -1.0) + up * (onRoof ? (tap & 2 ? 2.0 : 0.0) : (tap & 2 ? 1.0 : -1.0));
+            taps[tap] = target + right * (tap & 1 ? 1.0 : -1.0) + up * (onRoof ? (tap & 2 ? 2.0 : 0.0) : (tap & 2 ? 1.0 : -1.0));
+        }
+        // A label on its roof is tested over the box it is DRAWN in: a billboard standing above a taller roof in
+        // front stays, one wholly behind it fades. Its anchor alone was hidden by any roof a few metres taller.
+        std::array<cglib::vec3<float>, 4> envelope;
+        if (onRoof && label.isZElevated() && !label.isLineRun() && label.calculateEnvelope(_viewState, envelope)) {
+            cglib::vec3<double> center(0, 0, 0);
+            for (const cglib::vec3<float>& corner : envelope) {
+                center = center + cglib::vec3<double>::convert(corner) * 0.25;
+            }
+            for (int tap = 0; tap < 4; tap++) {
+                taps[tap] = eye + center + (cglib::vec3<double>::convert(envelope[tap]) - center) * 0.5;
+                taps[tap](2) = std::max(taps[tap](2), target(2) + margin); // below the roof plane, its own roof took it
+            }
+        }
+        int visible = 0;
+        for (const cglib::vec3<double>& tapTarget : taps) {
             cglib::vec3<double> dir = tapTarget - eye;
             double length = cglib::length(dir);
             double t1 = (length > margin ? 1.0 - margin / length : 0.0);
@@ -5367,7 +5408,7 @@ namespace massif::vt {
         float growth = buildingHeightScale(1.0f);
         std::size_t signature = std::hash<float>()(growth) ^ (static_cast<std::size_t>(_extrusionBaseVersion.load(std::memory_order_relaxed)) << 1) ^ (_extrusionElevationProvider ? 1 : 0);
         // Off-screen tiles too: the set then moves as tiles load, not with every pan.
-        forEachVisibleExtrusion(nullptr, true, [&](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+        forEachLabelExtrusion(true, [&](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
             if (!geometry->getOccluder() || !geometry->getSpanRecords().empty() || geometry->getStyleParameters().translate) {
                 return true;
             }
@@ -5379,7 +5420,8 @@ namespace massif::vt {
             roof.heightScale = growth / geometry->getVertexGeometryLayoutParameters().heightScale * tileMatrix(2, 2);
             roof.bounds = _transformer->calculateTileBBox(renderLayer.sourceTileId);
             if (roof.heightScale > 0) {
-                signature ^= std::hash<const void*>()(geometry.get()) + 0x9e3779b9 + (signature << 6) + (signature >> 2);
+                // A peer resolves its own bases, so their version is part of where the roofs are.
+                signature ^= std::hash<const void*>()(geometry.get()) + geometry->getBaseElevationVersion() + (geometry->isBaseResolved() ? 0x9e3779b9 : 0) + (signature << 6) + (signature >> 2);
                 roofs.push_back(roof);
             }
             return true;

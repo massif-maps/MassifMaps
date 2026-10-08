@@ -60,6 +60,14 @@ and no effect. Set them on the source (`setLabelStubsEnabled`, `setLabelInterval
 the first slot), then each draw item — a child raster/hillshade layer, or an internal
 `VectorTileLayer` rendering a later style-layer group.
 
+**The groups share their buildings with each other's labels** (`TileRenderer::setExtrusionPeers`,
+wired in `rebuildDrawItems`). Each group is its own renderer, and a POI found its roof and its
+occluders only among its own renderer's tiles. Massif puts the contour-label slot between `building`
+and `housenumber`/`poi`, so with a contour source the POIs fell into the next group: drawn on the
+ground, over the building faces, never hidden by one (alpimaps, 2026-10-08; web repro in Paris
+with and without the slot). A renderer reads its peers' published tiles on the render thread, never
+their mutex.
+
 `setOpacity` is virtual and the composite forwards it to every internal layer (style groups and
 depth-split vector slots), also at creation, because groups are rebuilt on every style or slot change.
 Each layer fades its own content once. External children keep the opacity the app set on them.

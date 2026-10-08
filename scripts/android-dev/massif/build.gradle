@@ -3,7 +3,7 @@ apply plugin: 'com.android.library'
 // IMPORTANT!
 // This variable should normally reflect the value of '--profile' argument when generating wrappers via 'swigpp-java.py' script!
 def profiles = "standard+valhalla+geocoding+routing+packagemanager"
-def DEFAULT_ABIS = ["x86", "x86_64", "armeabi-v7a", "arm64-v8a"]
+def DEFAULT_ABIS = ["x86_64", "armeabi-v7a", "arm64-v8a"]
 // -PabiFilters=<abi>[,<abi>] narrows the build down to those abis. The CLI passes the abis of the
 // devices it is about to deploy to, unless --no-filter-devices-arch was given.
 def requestedAbis = project.hasProperty("abiFilters")

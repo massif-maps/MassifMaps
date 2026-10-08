@@ -245,6 +245,12 @@ jobs:
     needs: [create-release, prepare, release-preflight]
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped')
     name: "MassifMaps ${{ matrix.variant }} - Profile: ${{ matrix.profile }}"
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_MAXSIZE: 2G
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_COMPILERCHECK: content
     steps:
       - name: Runner platform name
         run: |
@@ -322,22 +328,10 @@ jobs:
           python-version: 3.12
           check-latest: false
 
-      - name: Cache apt packages
-        if: matrix.variant == 'android'
-        uses: actions/cache@v6
-        with:
-          path: /var/cache/apt/archives
-          key: apt-${{ runner.os }}-autoconf-automake-libtool-build-essential
-
       - name: Install build tools (Android)
         if: matrix.variant == 'android'
         run: |
-          sudo apt-get install -y autoconf automake libtool build-essential
-
-      - name: Install build tools (iOS)
-        if: matrix.variant == 'ios'
-        run: |
-          brew install autoconf automake libtool
+          sudo apt-get install -y --no-install-recommends ccache ninja-build
 
       - name: ensure dist
         run: |
@@ -345,34 +339,36 @@ jobs:
 
       - name: fetch externals
         run: |
-          git submodule update --init --recursive
+          git submodule update --init --recursive --jobs 8
 
       - name: Prepare Boost
         uses: ./.github/actions/prepare-boost
 
-      - name: Setup ccache
-        uses: actions/cache@v6
+      - name: Restore ccache
+        if: matrix.variant == 'android'
+        id: ccache
+        uses: actions/cache/restore@v6
         with:
-          path: |
-            ~/.ccache
-            ~/Library/Caches/ccache
-          key: ccache-${{ matrix.variant }}-${{ matrix.profile }}-${{ github.sha }}
+          path: .ccache
+          key: ccache-${{ matrix.variant }}-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ccache-${{ matrix.variant }}-${{ matrix.profile }}-
+
+      # Xcode 26 compilation caching: the Xcode generator ignores CMAKE_<LANG>_COMPILER_LAUNCHER, so
+      # ccache cannot reach these compiles.
+      - name: Restore Xcode compilation cache
+        if: matrix.variant == 'ios'
+        id: xcodecas
+        uses: actions/cache/restore@v6
+        with:
+          path: .xcode-cas
+          key: xcode-cas-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            xcode-cas-${{ matrix.profile }}-
 
       - name: Build SWIG
         id: swig
         uses: ./.github/actions/build-swig
-
-      - name: Build CSS2XML
-        if: matrix.profile == 'lite'
-        run: |
-          cd libs-massif/cartocss/util
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-          cd build
-          make css2xml
-          mv css2xml css2xml_${{ env.PLATFORM }}
-          zip ../../../../dist/css2xml_${{ env.PLATFORM }}.zip css2xml_${{ env.PLATFORM }}
 
       - name: Build swig-objc
         if: matrix.variant == 'ios'
@@ -398,14 +394,7 @@ jobs:
         if: matrix.variant == 'ios'
         run: |
           cd scripts
-          python build-ios.py --profile ${{ matrix.profile }} --build-version ${{ github.event.inputs.version }} --configuration=Release --build-xcframework --use-metalangle
-      - name: Upload Release Asset
-        if: github.event.inputs.publish == 'true' && matrix.profile == 'lite'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/css2xml_*.zip
-
+          python build-ios.py --profile ${{ matrix.profile }} --build-version ${{ github.event.inputs.version }} --configuration=Release --build-xcframework --use-metalangle --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
       - name: Upload Release Asset
         if: github.event.inputs.publish == 'true' && matrix.variant == 'android'
         env:
@@ -452,15 +441,20 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish != 'true' && matrix.profile == 'lite'
+      - name: Save ccache
+        if: always() && matrix.variant == 'android' && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
         with:
-          name:  Massif-${{matrix.variant}}-${{ matrix.profile }}-css2xml
-          path: |
-            dist/css2xml_*.zip
-          retention-days: 7
-          if-no-files-found: error
-  
+          path: .ccache
+          key: ccache-${{ matrix.variant }}-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save Xcode compilation cache
+        if: always() && matrix.variant == 'ios' && steps.xcodecas.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .xcode-cas
+          key: xcode-cas-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+
   build-routing:
     permissions:
       contents: write
@@ -471,6 +465,12 @@ jobs:
     needs: [create-release, prepare, release-preflight]
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped')
     name: "ValhallaRouting ${{ matrix.variant }}"
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_MAXSIZE: 1G
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_COMPILERCHECK: content
     steps:
       - uses: actions/checkout@v7
         with:
@@ -546,7 +546,7 @@ jobs:
       - name: Install build tools (Android)
         if: matrix.variant == 'android'
         run: |
-          sudo apt-get install -y autoconf automake libtool build-essential
+          sudo apt-get install -y --no-install-recommends autoconf automake libtool build-essential ccache ninja-build
 
       - name: Cache Homebrew packages
         if: matrix.variant == 'ios'
@@ -572,20 +572,30 @@ jobs:
 
       - name: fetch externals
         run: |
-          git submodule update --init --recursive
+          git submodule update --init --recursive --jobs 8
 
       - name: Prepare Boost
         uses: ./.github/actions/prepare-boost
 
-      - name: Setup ccache
-        uses: actions/cache@v6
+      - name: Restore ccache
+        if: matrix.variant == 'android'
+        id: ccache
+        uses: actions/cache/restore@v6
         with:
-          path: |
-            ~/.ccache
-            ~/Library/Caches/ccache
-          key: ccache-${{ matrix.variant }}-routing-${{ github.sha }}
+          path: .ccache
+          key: ccache-${{ matrix.variant }}-routing-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ccache-${{ matrix.variant }}-routing-
+
+      - name: Restore Xcode compilation cache
+        if: matrix.variant == 'ios'
+        id: xcodecas
+        uses: actions/cache/restore@v6
+        with:
+          path: .xcode-cas
+          key: xcode-cas-routing-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            xcode-cas-routing-
 
       - name: Build ValhallaRouting for Android
         if: matrix.variant == 'android'
@@ -599,7 +609,7 @@ jobs:
         if: matrix.variant == 'ios'
         run: |
           cd scripts
-          python build-routing-ios.py --build-version ${{ github.event.inputs.version }} --build-xcframework --configuration=Release
+          python build-routing-ios.py --build-version ${{ github.event.inputs.version }} --build-xcframework --configuration=Release --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
 
       - name: Upload routing release asset (Android)
         if: github.event.inputs.publish == 'true' && matrix.variant == 'android'
@@ -642,6 +652,20 @@ jobs:
           path: dist/routing-android/*.aar
           retention-days: 7
           if-no-files-found: error
+
+      - name: Save ccache
+        if: always() && matrix.variant == 'android' && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.variant }}-routing-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save Xcode compilation cache
+        if: always() && matrix.variant == 'ios' && steps.xcodecas.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .xcode-cas
+          key: xcode-cas-routing-${{ github.run_id }}-${{ github.run_attempt }}
 
   build-web:
     # The web SDK: the wasm module and its typed API, as a zip on the release and two npm packages

@@ -535,6 +535,15 @@ namespace massif::vt {
                     _texCoords[i] = cglib::transform(_texCoords[i], *transform);
                 }
             }
+            if (!span && _coords.size() > i0 && !_polygon3DFloorPoints.empty()) {
+                Polygon3DFootprint footprint;
+                footprint.firstVertex = i0;
+                footprint.vertexCount = _coords.size() - i0;
+                for (const cglib::vec2<float>& p : _polygon3DFloorPoints) {
+                    footprint.floorPoints.push_back(transform ? cglib::transform(p, *transform) : p);
+                }
+                _polygon3DFootprints.push_back(std::move(footprint));
+            }
         };
     }
 
@@ -905,6 +914,7 @@ namespace massif::vt {
         _attribs.clear();
         _spanInfos.clear();
         _polygon3DAnchorExtent = 0.0f;
+        _polygon3DFootprints.clear();
         _indices.clear();
         _ids.clear();
         _geoPosIndexes.clear();
@@ -1132,10 +1142,45 @@ namespace massif::vt {
                 remappedGeoPosIndexes.append(_geoPosIndexes[offset + i]);
             }
 
+            std::size_t geometryCount = geometryList.size();
             packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedSpanInfos, remappedIndices, remappedIds, remappedGeoPosIndexes, styleParameters, std::move(remappedStyleRanges), geometryList);
+            if (geometryList.size() > geometryCount && !_polygon3DFootprints.empty() && !texCoords.empty()) {
+                setBaseFootprints(*geometryList.back(), indexTable, texCoords, heights, heightScale);
+            }
 
             offset += count;
         }
+    }
+
+    void TileLayerBuilder::setBaseFootprints(TileGeometry& geometry, const std::vector<std::size_t>& indexTable, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<float>& heights, float heightScale) const {
+        // A footprint's triangles are contiguous in the index list and share no vertex with another, so
+        // the vertices this chunk kept of it are one contiguous range.
+        std::vector<TileGeometry::BaseAnchor> anchors;
+        std::vector<TileGeometry::BaseRun> runs;
+        for (const Polygon3DFootprint& footprint : _polygon3DFootprints) {
+            std::size_t begin = 65536, end = 0;
+            float maxHeightUnits = 0;
+            for (std::size_t i = footprint.firstVertex; i < footprint.firstVertex + footprint.vertexCount; i++) {
+                maxHeightUnits = std::max(maxHeightUnits, heights.empty() ? 0.0f : heights[i] * heightScale);
+                if (indexTable[i] != 65536) {
+                    begin = std::min(begin, indexTable[i]);
+                    end = std::max(end, indexTable[i] + 1);
+                }
+            }
+            if (begin >= end) {
+                continue;
+            }
+            TileGeometry::BaseAnchor anchor;
+            anchor.pos = texCoords[footprint.firstVertex];
+            for (const cglib::vec2<float>& p : footprint.floorPoints) {
+                cglib::vec3<float> point = _transformer->calculatePoint(p);
+                anchor.floorPoints.emplace_back(point(0), point(1));
+            }
+            anchor.maxHeightUnits = maxHeightUnits;
+            runs.push_back(TileGeometry::BaseRun { static_cast<std::uint32_t>(begin), static_cast<std::uint32_t>(end), static_cast<std::uint32_t>(anchors.size()) });
+            anchors.push_back(anchor);
+        }
+        geometry.setBaseFootprints(std::move(anchors), std::move(runs));
     }
 
     void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<SpanVertexInfo>& spanInfos, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t>& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
@@ -1751,6 +1796,7 @@ namespace massif::vt {
 
     bool TileLayerBuilder::tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& rawPointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style) {
         _tesselator.clear();
+        _polygon3DFloorPoints.clear();
         // Drop repeated points, including the one an MVT ring closes with. A zero-length edge only
         // ever produced a zero-area wall quad, but the bevel spans corner to corner and turns one
         // into a NaN tangent - a vertex that quantises to garbage and streaks across the tile.
@@ -1823,6 +1869,7 @@ namespace massif::vt {
         if (!_tesselator.tesselate(roofList)) {
             return false;
         }
+        _polygon3DFloorPoints = ExtrusionFloor::floorPoints(pointsList, _tesselator.getVertices(), _tesselator.getElements());
 
         // A duplicated footprint puts two roofs on one plane, which z-fights. Decided BEFORE the
         // walls, because the chamfer closes this feature's own roof and so follows the roof.

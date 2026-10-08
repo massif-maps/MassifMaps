@@ -17,6 +17,7 @@ void testLineJoinReach();
 void testLineEndArrowClip();
 void testExtrusionBase();
 void testExtrusionFloor();
+void testExtrusionFloorClip();
 void testLabelDistance();
 void testSpanGeometry();
 void testShadowCasterClip();
@@ -66,6 +67,7 @@ int main() {
     testLineEndArrowClip();
     testExtrusionBase();
     testExtrusionFloor();
+    testExtrusionFloorClip();
     testLabelDistance();
     testSpanGeometry();
     testShadowCasterClip();

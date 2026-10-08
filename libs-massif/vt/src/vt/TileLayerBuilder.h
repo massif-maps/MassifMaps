@@ -154,6 +154,7 @@ namespace massif::vt {
         void packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         // The skirt stream, packed once per layer into its own POLYGON3DGROUND geometry.
         void packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
+        void setBaseFootprints(TileGeometry& geometry, const std::vector<std::size_t>& indexTable, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<float>& heights, float heightScale) const;
         void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<SpanVertexInfo>& spanInfos, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         void registerStyleVariantSlot(int styleIndex);
 
@@ -225,6 +226,14 @@ namespace massif::vt {
         // How far any anchor of this layer lies from the tile, so packGeometry can fit the coord
         // scale to it: a palace's centroid is tiles away from the z20 piece drawing it.
         float _polygon3DAnchorExtent = 0.0f;
+        // Each footprint's vertices and floor points, taken from its WHOLE ring: packing keeps only this
+        // tile's triangles, and a floor read from those lifted one building differently per tile.
+        struct Polygon3DFootprint {
+            std::size_t firstVertex = 0, vertexCount = 0;
+            std::vector<cglib::vec2<float>> floorPoints;
+        };
+        std::vector<Polygon3DFootprint> _polygon3DFootprints;
+        std::vector<cglib::vec2<float>> _polygon3DFloorPoints; // the current footprint's, untransformed
         float _polygon3DGradientHeight = 0.0f;
         // Roofs already emitted this layer, matched whole - which catches a duplicated footprint,
         // the case that actually z-fights. A building:part normally differs in height from its

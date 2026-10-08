@@ -7,30 +7,37 @@
 #ifndef _MASSIF_VT_EXTRUSIONFLOOR_H_
 #define _MASSIF_VT_EXTRUSIONFLOOR_H_
 
+#include <cstddef>
+#include <vector>
+
+#include <cglib/vec.h>
+
 namespace massif::vt {
 
     /**
-     * Which few of a footprint's vertices the drawn ground under a building is read at: the floor is the max
-     * ground over eight support points, footprint vertices unlike mapbox's bbox corners (04-terrain.md).
+     * Where the drawn ground under a footprint is read for its floor: every ring vertex, then the centroid of
+     * every roof triangle - inside, where a thin wall's crest is - thinned evenly to MAX_POINTS (04-terrain.md).
      */
     struct ExtrusionFloor {
-        static constexpr int SUPPORT_DIRECTIONS = 8;
+        static constexpr std::size_t MAX_POINTS = 32;
 
-        /**
-         * How far a point reaches along one support direction; the highest-scoring vertex is its support point.
-         * The diagonals catch the extremes of a building at 45 degrees, which a bbox misses.
-         */
-        static float supportScore(int direction, float x, float y) {
-            switch (direction) {
-            case 0: return x;
-            case 1: return -x;
-            case 2: return y;
-            case 3: return -y;
-            case 4: return x + y;
-            case 5: return x - y;
-            case 6: return -x + y;
-            default: return -x - y;
+        static std::vector<cglib::vec2<float>> floorPoints(const std::vector<std::vector<cglib::vec2<float>>>& rings, const std::vector<cglib::vec2<float>>& vertices, const std::vector<int>& elements) {
+            std::vector<cglib::vec2<float>> points;
+            for (const std::vector<cglib::vec2<float>>& ring : rings) {
+                points.insert(points.end(), ring.begin(), ring.end());
             }
+            for (std::size_t i = 0; i + 2 < elements.size(); i += 3) {
+                points.push_back((vertices[elements[i]] + vertices[elements[i + 1]] + vertices[elements[i + 2]]) * (1.0f / 3.0f));
+            }
+            if (points.size() > MAX_POINTS) {
+                std::vector<cglib::vec2<float>> thinned;
+                thinned.reserve(MAX_POINTS);
+                for (std::size_t k = 0; k < MAX_POINTS; k++) {
+                    thinned.push_back(points[k * points.size() / MAX_POINTS]);
+                }
+                points.swap(thinned);
+            }
+            return points;
         }
     };
 

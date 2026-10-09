@@ -243,7 +243,7 @@ namespace massif {
         bool isDrawnSlot(const std::string& name) const;
         // Drawn by its own child, rather than by one slot layer per depth. Caller holds _sourceMutex.
         bool isDrawnByChild(const std::string& name) const;
-        void applyConfig(const ExternalSource& source, const mvt::ResolvedLayerConfig& config, const ViewState& viewState);
+        void applyConfig(const ExternalSource& source, const mvt::ResolvedLayerConfig& config, const ViewState& viewState, unsigned int configVersion);
         // Applies '#name' values to ContourTileDataSource generation parameters, off the render thread (loadData).
         // Only changed values are re-applied, to avoid reload loops.
         void applyVectorSourceConfigs();

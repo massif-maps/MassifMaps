@@ -101,12 +101,12 @@
 @landuse_residential_fill_2: hsl(45, 10%, 86%);
 @line_stroke: hsl(0, 0%, 75%);
 @line_stroke_10: hsl(0, 0%, 58%);
-@line_stroke_2: hsl(0, 0%, 85%);
+@line_stroke_2: hsl(0, 0%, 70%);
 @line_stroke_3: hsl(0, 0%, 60%);
 @line_stroke_4: hsl(0, 0%, 40%);
-@line_stroke_5: hsla(0, 0%, 0%, 0.2);
-@line_stroke_6: hsl(0, 0%, 55%);
-@line_stroke_7: hsl(0, 0%, 45%);
+@line_stroke_5: hsl(0, 0%, 55%);
+@line_stroke_6: hsl(0, 0%, 45%);
+@line_stroke_7: hsla(0, 0%, 0%, 0.2);
 @line_stroke_8: hsl(0, 0%, 20%);
 @line_stroke_9: hsl(0, 0%, 80%);
 @lowzoom_built: hsl(20, 12%, 91%);
@@ -123,7 +123,6 @@
 @national_park: hsl(115, 30%, 84%);
 @national_park_line: hsl(115, 35%, 60%);
 @no_access: hsla(0, 70%, 65%, 0.7);
-@outline_stroke: hsl(0, 0%, 50%);
 @park: hsl(115, 60%, 80%);
 @park_fill: hsl(79, 35%, 78%);
 @parking: hsl(20, 3%, 93%);
@@ -177,7 +176,7 @@
 @road_shield_plate_background_fill: #4a63c9;
 @road_shield_plate_background_fill_2: #ffe266;
 @road_shield_plate_background_fill_3: #e8474b;
-@road_stroke: hsl(0, 0%, 70%);
+@road_stroke: hsl(0, 0%, 50%);
 @road_stroke_2: hsla(0, 0%, 0%, 0.25);
 @road_stroke_3: hsla(50, 90%, 92%, 0.6);
 @road_stroke_4: hsla(50, 90%, 85%, 0.7);
@@ -198,8 +197,9 @@
 @tertiary: hsl(224, 25%, 82.5%);
 @tertiary_case: hsl(224, 22%, 72.5%);
 @text_background_fill: #ffffff;
-@text_fill: hsl(205, 60%, 18%);
-@text_fill_2: hsl(200, 80%, 85%);
+@text_fill: hsl(0, 0%, 85%);
+@text_fill_2: hsl(205, 60%, 18%);
+@text_fill_3: hsl(200, 80%, 85%);
 @text_halo_fill: hsla(0, 0%, 0%, 0.75);
 @text_halo_fill_2: hsla(0, 0%, 100%, 0.7);
 @track: hsl(30, 55%, 35%);

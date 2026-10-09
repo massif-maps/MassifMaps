@@ -4546,7 +4546,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-width": [
           "interpolate",
           [
@@ -4590,9 +4590,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       },
@@ -4638,7 +4638,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 40%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -4696,9 +4696,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 60%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 40%)"
           ]
         },
         "massif:filter": [
@@ -4769,7 +4769,7 @@
               "subclass"
             ],
             "bridleway",
-            "hsl(0, 0%, 35%)",
+            "hsl(0, 0%, 45%)",
             "hsl(0, 0%, 100%)"
           ],
           16,
@@ -4780,7 +4780,7 @@
               "subclass"
             ],
             "bridleway",
-            "hsl(0, 0%, 35%)",
+            "hsl(0, 0%, 45%)",
             "hsl(0, 0%, 100%)"
           ]
         ],
@@ -4842,7 +4842,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 65%)",
+                "hsl(0, 0%, 55%)",
                 "hsl(0, 0%, 0%)"
               ],
               0.3,
@@ -4853,7 +4853,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 35%)",
+                "hsl(0, 0%, 45%)",
                 "hsl(0, 0%, 100%)"
               ]
             ],
@@ -4875,7 +4875,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 65%)",
+                "hsl(0, 0%, 55%)",
                 "hsl(0, 0%, 0%)"
               ],
               0.3,
@@ -4886,7 +4886,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 35%)",
+                "hsl(0, 0%, 45%)",
                 "hsl(0, 0%, 100%)"
               ]
             ]
@@ -5052,7 +5052,7 @@
         "visibility": "none"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -5098,9 +5098,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -5150,7 +5150,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 40%)",
         "line-width": [
           "interpolate",
           [
@@ -5221,9 +5221,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 60%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 40%)"
           ]
         }
       }
@@ -5262,7 +5262,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -5335,9 +5335,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -5410,16 +5410,16 @@
             "class"
           ],
           "motorway",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "trunk",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "primary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 45%)",
           "secondary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 50%)",
           "tertiary",
-          "hsl(0, 0%, 30%)",
-          "hsl(0, 0%, 30%)"
+          "hsl(0, 0%, 50%)",
+          "hsl(0, 0%, 50%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -5777,16 +5777,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "trunk",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "primary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 55%)",
               "secondary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 70%)",
-              "hsl(0, 0%, 70%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ],
             0.3,
             [
@@ -5796,16 +5796,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "trunk",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "primary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 45%)",
               "secondary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 30%)",
-              "hsl(0, 0%, 30%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ]
           ]
         }
@@ -5888,13 +5888,13 @@
               "class"
             ],
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9,
           [
@@ -5906,13 +5906,13 @@
             "motorway",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9.5,
           [
@@ -5926,13 +5926,13 @@
             "trunk",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           10,
           [
@@ -5948,13 +5948,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           12,
           [
@@ -5970,13 +5970,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           13,
           [
@@ -6270,13 +6270,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -6286,13 +6286,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9,
@@ -6315,13 +6315,13 @@
                 "motorway",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -6333,13 +6333,13 @@
                 "motorway",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9.5,
@@ -6364,13 +6364,13 @@
                 "trunk",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -6384,13 +6384,13 @@
                 "trunk",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             10,
@@ -6417,13 +6417,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -6439,13 +6439,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             12,
@@ -6472,13 +6472,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -6494,13 +6494,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             13,
@@ -6613,7 +6613,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 40%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -6671,9 +6671,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 60%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 40%)"
           ]
         },
         "massif:filter": [
@@ -6763,7 +6763,7 @@
               "subclass"
             ],
             "bridleway",
-            "hsl(0, 0%, 35%)",
+            "hsl(0, 0%, 45%)",
             "hsl(0, 0%, 100%)"
           ],
           16,
@@ -6774,7 +6774,7 @@
               "subclass"
             ],
             "bridleway",
-            "hsl(0, 0%, 35%)",
+            "hsl(0, 0%, 45%)",
             "hsl(0, 0%, 100%)"
           ]
         ],
@@ -6836,7 +6836,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 65%)",
+                "hsl(0, 0%, 55%)",
                 "hsl(0, 0%, 0%)"
               ],
               0.3,
@@ -6847,7 +6847,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 35%)",
+                "hsl(0, 0%, 45%)",
                 "hsl(0, 0%, 100%)"
               ]
             ],
@@ -6869,7 +6869,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 65%)",
+                "hsl(0, 0%, 55%)",
                 "hsl(0, 0%, 0%)"
               ],
               0.3,
@@ -6880,7 +6880,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 35%)",
+                "hsl(0, 0%, 45%)",
                 "hsl(0, 0%, 100%)"
               ]
             ]
@@ -7084,7 +7084,7 @@
         "visibility": "none"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -7130,9 +7130,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -7191,7 +7191,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 40%)",
         "line-width": [
           "interpolate",
           [
@@ -7262,9 +7262,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 60%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 40%)"
           ]
         }
       }
@@ -7412,7 +7412,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -7457,9 +7457,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -7527,7 +7527,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -7572,9 +7572,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -7652,7 +7652,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -7697,9 +7697,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -7767,7 +7767,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -7812,9 +7812,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -7873,7 +7873,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -7918,9 +7918,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -7968,7 +7968,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -8013,9 +8013,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -8063,7 +8063,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -8108,9 +8108,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -8158,7 +8158,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -8203,9 +8203,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -8253,7 +8253,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -8298,9 +8298,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -8348,7 +8348,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -8393,9 +8393,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -8443,7 +8443,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -8488,9 +8488,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -8538,7 +8538,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -8583,9 +8583,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -8633,7 +8633,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -8678,9 +8678,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -8728,7 +8728,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -8773,9 +8773,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -8982,7 +8982,7 @@
         "visibility": "none"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -9028,9 +9028,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -9158,7 +9158,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -9223,9 +9223,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -9273,7 +9273,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -9338,9 +9338,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -9388,7 +9388,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -9453,9 +9453,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -9503,7 +9503,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -9568,9 +9568,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -9618,7 +9618,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -9683,9 +9683,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -9726,7 +9726,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -9791,9 +9791,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -9913,7 +9913,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -9964,9 +9964,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -10018,7 +10018,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -10073,9 +10073,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -10127,7 +10127,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -10182,9 +10182,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -10240,7 +10240,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -10295,9 +10295,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -10342,7 +10342,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -10381,9 +10381,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -10486,7 +10486,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -10529,9 +10529,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -10814,16 +10814,16 @@
             "class"
           ],
           "motorway",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "trunk",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "primary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 45%)",
           "secondary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 50%)",
           "tertiary",
-          "hsl(0, 0%, 30%)",
-          "hsl(0, 0%, 30%)"
+          "hsl(0, 0%, 50%)",
+          "hsl(0, 0%, 50%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -10936,16 +10936,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "trunk",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "primary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 55%)",
               "secondary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 70%)",
-              "hsl(0, 0%, 70%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ],
             0.3,
             [
@@ -10955,16 +10955,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "trunk",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "primary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 45%)",
               "secondary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 30%)",
-              "hsl(0, 0%, 30%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ]
           ]
         }
@@ -11064,13 +11064,13 @@
               "class"
             ],
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9,
           [
@@ -11082,13 +11082,13 @@
             "motorway",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9.5,
           [
@@ -11102,13 +11102,13 @@
             "trunk",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           10,
           [
@@ -11124,13 +11124,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           12,
           [
@@ -11146,13 +11146,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           13,
           [
@@ -11277,13 +11277,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -11293,13 +11293,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9,
@@ -11322,13 +11322,13 @@
                 "motorway",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -11340,13 +11340,13 @@
                 "motorway",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9.5,
@@ -11371,13 +11371,13 @@
                 "trunk",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -11391,13 +11391,13 @@
                 "trunk",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             10,
@@ -11424,13 +11424,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -11446,13 +11446,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             12,
@@ -11479,13 +11479,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -11501,13 +11501,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             13,
@@ -11646,16 +11646,16 @@
             "class"
           ],
           "motorway",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "trunk",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "primary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 45%)",
           "secondary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 50%)",
           "tertiary",
-          "hsl(0, 0%, 30%)",
-          "hsl(0, 0%, 30%)"
+          "hsl(0, 0%, 50%)",
+          "hsl(0, 0%, 50%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -12008,16 +12008,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "trunk",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "primary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 55%)",
               "secondary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 70%)",
-              "hsl(0, 0%, 70%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ],
             0.3,
             [
@@ -12027,16 +12027,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "trunk",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "primary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 45%)",
               "secondary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 30%)",
-              "hsl(0, 0%, 30%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ]
           ]
         }
@@ -12134,13 +12134,13 @@
               "class"
             ],
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9,
           [
@@ -12152,13 +12152,13 @@
             "motorway",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9.5,
           [
@@ -12172,13 +12172,13 @@
             "trunk",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           10,
           [
@@ -12194,13 +12194,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           12,
           [
@@ -12216,13 +12216,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           13,
           [
@@ -12514,13 +12514,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -12530,13 +12530,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9,
@@ -12559,13 +12559,13 @@
                 "motorway",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -12577,13 +12577,13 @@
                 "motorway",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9.5,
@@ -12608,13 +12608,13 @@
                 "trunk",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -12628,13 +12628,13 @@
                 "trunk",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             10,
@@ -12661,13 +12661,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -12683,13 +12683,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             12,
@@ -12716,13 +12716,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -12738,13 +12738,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             13,
@@ -12885,16 +12885,16 @@
             "class"
           ],
           "motorway",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "trunk",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 35%)",
           "primary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 45%)",
           "secondary",
-          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 50%)",
           "tertiary",
-          "hsl(0, 0%, 30%)",
-          "hsl(0, 0%, 30%)"
+          "hsl(0, 0%, 50%)",
+          "hsl(0, 0%, 50%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -13247,16 +13247,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "trunk",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 65%)",
               "primary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 55%)",
               "secondary",
-              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 70%)",
-              "hsl(0, 0%, 70%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ],
             0.3,
             [
@@ -13266,16 +13266,16 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "trunk",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 35%)",
               "primary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 45%)",
               "secondary",
-              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 50%)",
               "tertiary",
-              "hsl(0, 0%, 30%)",
-              "hsl(0, 0%, 30%)"
+              "hsl(0, 0%, 50%)",
+              "hsl(0, 0%, 50%)"
             ]
           ]
         }
@@ -13375,13 +13375,13 @@
               "class"
             ],
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9,
           [
@@ -13393,13 +13393,13 @@
             "motorway",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9.5,
           [
@@ -13413,13 +13413,13 @@
             "trunk",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           10,
           [
@@ -13435,13 +13435,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           12,
           [
@@ -13457,13 +13457,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           13,
           [
@@ -13755,13 +13755,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -13771,13 +13771,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9,
@@ -13800,13 +13800,13 @@
                 "motorway",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -13818,13 +13818,13 @@
                 "motorway",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9.5,
@@ -13849,13 +13849,13 @@
                 "trunk",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -13869,13 +13869,13 @@
                 "trunk",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             10,
@@ -13902,13 +13902,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -13924,13 +13924,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             12,
@@ -13957,13 +13957,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -13979,13 +13979,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             13,
@@ -14936,7 +14936,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -15009,9 +15009,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -15409,7 +15409,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -15454,9 +15454,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -15496,7 +15496,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-width": [
           "interpolate",
           [
@@ -15570,9 +15570,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -15611,7 +15611,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -15656,9 +15656,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         },
         "massif:filter": [
@@ -15723,7 +15723,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-width": [
           "interpolate",
           [
@@ -15797,9 +15797,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         },
         "massif:filter": [
@@ -15867,7 +15867,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 40%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -15925,9 +15925,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 60%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 40%)"
           ]
         },
         "massif:filter": [
@@ -15998,7 +15998,7 @@
               "subclass"
             ],
             "bridleway",
-            "hsl(0, 0%, 35%)",
+            "hsl(0, 0%, 45%)",
             "hsl(0, 0%, 100%)"
           ],
           16,
@@ -16009,7 +16009,7 @@
               "subclass"
             ],
             "bridleway",
-            "hsl(0, 0%, 35%)",
+            "hsl(0, 0%, 45%)",
             "hsl(0, 0%, 100%)"
           ]
         ],
@@ -16071,7 +16071,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 65%)",
+                "hsl(0, 0%, 55%)",
                 "hsl(0, 0%, 0%)"
               ],
               0.3,
@@ -16082,7 +16082,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 35%)",
+                "hsl(0, 0%, 45%)",
                 "hsl(0, 0%, 100%)"
               ]
             ],
@@ -16104,7 +16104,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 65%)",
+                "hsl(0, 0%, 55%)",
                 "hsl(0, 0%, 0%)"
               ],
               0.3,
@@ -16115,7 +16115,7 @@
                   "subclass"
                 ],
                 "bridleway",
-                "hsl(0, 0%, 35%)",
+                "hsl(0, 0%, 45%)",
                 "hsl(0, 0%, 100%)"
               ]
             ]
@@ -16281,7 +16281,7 @@
         "visibility": "none"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -16327,9 +16327,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         },
         "massif:filter": [
@@ -16379,7 +16379,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 40%)",
         "line-width": [
           "interpolate",
           [
@@ -16450,9 +16450,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 60%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 40%)"
           ]
         }
       }
@@ -16525,10 +16525,10 @@
             "class"
           ],
           "motorway",
-          "hsl(0, 0%, 0%)",
+          "hsl(0, 0%, 30%)",
           "trunk",
-          "hsl(0, 0%, 0%)",
-          "hsl(0, 0%, 0%)"
+          "hsl(0, 0%, 30%)",
+          "hsl(0, 0%, 40%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -16808,10 +16808,10 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 100%)",
+              "hsl(0, 0%, 70%)",
               "trunk",
-              "hsl(0, 0%, 100%)",
-              "hsl(0, 0%, 100%)"
+              "hsl(0, 0%, 70%)",
+              "hsl(0, 0%, 60%)"
             ],
             0.3,
             [
@@ -16821,10 +16821,10 @@
                 "class"
               ],
               "motorway",
-              "hsl(0, 0%, 0%)",
+              "hsl(0, 0%, 30%)",
               "trunk",
-              "hsl(0, 0%, 0%)",
-              "hsl(0, 0%, 0%)"
+              "hsl(0, 0%, 30%)",
+              "hsl(0, 0%, 40%)"
             ]
           ]
         }
@@ -16907,13 +16907,13 @@
               "class"
             ],
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9,
           [
@@ -16925,13 +16925,13 @@
             "motorway",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           9.5,
           [
@@ -16945,13 +16945,13 @@
             "trunk",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           10,
           [
@@ -16967,13 +16967,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           12,
           [
@@ -16989,13 +16989,13 @@
             "primary",
             "hsl(0, 0%, 100%)",
             "secondary",
-            "hsl(0, 0%, 30%)",
+            "hsl(0, 0%, 50%)",
             [
               "minor",
               "service"
             ],
-            "hsl(0, 0%, 30%)",
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 50%)",
+            "hsl(0, 0%, 50%)"
           ],
           13,
           [
@@ -17287,13 +17287,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -17303,13 +17303,13 @@
                   "class"
                 ],
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9,
@@ -17332,13 +17332,13 @@
                 "motorway",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -17350,13 +17350,13 @@
                 "motorway",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             9.5,
@@ -17381,13 +17381,13 @@
                 "trunk",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -17401,13 +17401,13 @@
                 "trunk",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             10,
@@ -17434,13 +17434,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -17456,13 +17456,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             12,
@@ -17489,13 +17489,13 @@
                 "primary",
                 "hsl(0, 0%, 0%)",
                 "secondary",
-                "hsl(0, 0%, 70%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 70%)",
-                "hsl(0, 0%, 70%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ],
               0.3,
               [
@@ -17511,13 +17511,13 @@
                 "primary",
                 "hsl(0, 0%, 100%)",
                 "secondary",
-                "hsl(0, 0%, 30%)",
+                "hsl(0, 0%, 50%)",
                 [
                   "minor",
                   "service"
                 ],
-                "hsl(0, 0%, 30%)",
-                "hsl(0, 0%, 30%)"
+                "hsl(0, 0%, 50%)",
+                "hsl(0, 0%, 50%)"
               ]
             ],
             13,
@@ -17607,7 +17607,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 25%)",
+        "line-color": "hsl(0, 0%, 35%)",
         "line-width": [
           "interpolate",
           [
@@ -17680,9 +17680,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -17719,7 +17719,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 0%)",
+        "line-color": "hsl(0, 0%, 40%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -17762,9 +17762,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 60%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 40%)"
           ]
         }
       }
@@ -17863,7 +17863,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -17908,9 +17908,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -17941,7 +17941,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-width": [
           "interpolate",
           [
@@ -18015,9 +18015,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         }
       }
@@ -18047,7 +18047,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -18092,9 +18092,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         },
         "massif:filter": [
@@ -18150,7 +18150,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 15%)",
+        "line-color": "hsl(0, 0%, 30%)",
         "line-width": [
           "interpolate",
           [
@@ -18224,9 +18224,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 85%)",
+            "hsl(0, 0%, 70%)",
             0.3,
-            "hsl(0, 0%, 15%)"
+            "hsl(0, 0%, 30%)"
           ]
         },
         "massif:filter": [
@@ -22144,7 +22144,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 0%)"
+        "text-color": "hsl(0, 0%, 25%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22192,9 +22192,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -22253,7 +22253,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 0%)"
+        "text-color": "hsl(0, 0%, 25%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22301,9 +22301,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -22362,7 +22362,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 0%)"
+        "text-color": "hsl(0, 0%, 25%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22410,9 +22410,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -22471,7 +22471,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 0%)"
+        "text-color": "hsl(0, 0%, 25%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22519,9 +22519,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -22580,7 +22580,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 0%)"
+        "text-color": "hsl(0, 0%, 25%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22628,9 +22628,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -22689,7 +22689,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 0%)"
+        "text-color": "hsl(0, 0%, 25%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22737,9 +22737,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 100%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 0%)"
+            "hsl(0, 0%, 25%)"
           ]
         }
       }
@@ -22798,7 +22798,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 25%)"
+        "text-color": "hsl(0, 0%, 35%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22846,9 +22846,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -22907,7 +22907,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 25%)"
+        "text-color": "hsl(0, 0%, 35%)"
       },
       "metadata": {
         "massif:layout": {
@@ -22955,9 +22955,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -23016,7 +23016,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 25%)"
+        "text-color": "hsl(0, 0%, 35%)"
       },
       "metadata": {
         "massif:layout": {
@@ -23064,9 +23064,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -23125,7 +23125,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 25%)"
+        "text-color": "hsl(0, 0%, 35%)"
       },
       "metadata": {
         "massif:layout": {
@@ -23173,9 +23173,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -23234,7 +23234,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 25%)"
+        "text-color": "hsl(0, 0%, 35%)"
       },
       "metadata": {
         "massif:layout": {
@@ -23282,9 +23282,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }
@@ -23343,7 +23343,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 25%)"
+        "text-color": "hsl(0, 0%, 35%)"
       },
       "metadata": {
         "massif:layout": {
@@ -23391,9 +23391,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 75%)",
+            "hsl(0, 0%, 65%)",
             0.3,
-            "hsl(0, 0%, 25%)"
+            "hsl(0, 0%, 35%)"
           ]
         }
       }

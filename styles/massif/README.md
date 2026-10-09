@@ -213,12 +213,16 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
   on white inside a thin mid-grey shore - two dark shores around a plain river read as a road.
   Rivers and streams are dashed grey lines on a pale bed (`waterway-mono-bed`, from z12), where a
   track's dashes run on nothing; intermittent ones dotted.
-- **Roads** are white with black casings, their hierarchy carried by the casing's weight
-  (`casing-scale` 1.8). Below z13 only motorways, trunks and primaries keep a casing; the small
-  roads are an uncased line in the casing's grey at the other variants' width, fading to white
-  over the zoom their casing grows in (`casing-from`). **Tracks, trails and via ferratas** are black and white
-  (the via ferrata's core white), tracks and trails 1.6 times as wide as elsewhere, over a white
-  margin (`line-halo`) that keeps them readable across a patterned wood.
+- **Roads** are white with grey casings, their hierarchy carried by the casing's weight
+  (`casing-scale` 1.8) and, lightly, its grey: motorway and trunk 35 % (L* 38), primary 45 %, the
+  rest 50 %. Below z13 only motorways, trunks and primaries keep a casing; the small
+  roads are an uncased line in the casing's grey (`road-low`, 50 %) at the other variants' width, fading to white
+  over the zoom their casing grows in (`casing-from`). **Tracks, trails and via ferratas** are dark grey
+  and white (the via ferrata's core white; trails and MTB lines 25 %, alpine trails 35 %, tracks 30 %,
+  rail 30 %), tracks and trails 1.6 times as wide as elsewhere, over a white
+  margin (`line-halo`) that keeps them readable across a patterned wood. No road, track, path or rail
+  is darker than 25 %, so a route drawn in black on top (the app's, the style has no route band here)
+  stays the darkest thing on the page.
 - **Every label's halo is a pixel wider** (`lib.wider_halo`): a black word on a thin halo was lost over
   a dark pattern or a road casing.
 - **Shields** are one white plate with a black ring, for every country. The US ones keep their
@@ -409,7 +413,7 @@ casing grows in (z13–14), so the switch never pops. It used to follow the fill
 drew every street as a dark outlined line and the grid read as mesh, where Standard's reads as a
 map. E-ink keeps Liberty's casings (`casing-low`): its roads are white on white, and the casing is
 all there is of them. At the lowest zooms though an outline thicker than the line only clutters, so
-a motorway, trunk and primary are a plain dark line (`road-low`) until their outline comes in at
+a motorway, trunk and primary are a plain grey line (`road-low`) until their outline comes in at
 the OSM variant's steps (`road_osm_low`'s: motorway z8-9, trunk z9-9.5, primary z10), the white fill
 growing in with it.
 

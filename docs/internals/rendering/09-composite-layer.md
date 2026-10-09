@@ -41,7 +41,8 @@ and pushed to the child only when the value changed):
   `-illumination-direction`, `-shadow-color`, `-highlight-color`, `-accent-color`,
   **`-contour-interval`, `-contour-color`, `-contour-width`** (interval > 0 turns contours on).
   `-height-scale`, `-contrast` and `-contour-interval` re-decode the normal map, so they apply only
-  at an integer zoom change, or a zoom-interpolated value would never settle;
+  at an integer zoom change, or a zoom-interpolated value would never settle, and once when a
+  style parameter changes (the decoder's config version), or the new value would wait for the next zoom level;
 - raster: `raster-opacity`, `raster-filter-mode` (`raster-comp-op` is parsed and ignored, below);
 - merged/child vector sources that are a `ContourTileDataSource`: `contour-base-interval`,
   `contour-resolution`, `contour-min-visible-zoom`, `contour-simplify-tolerance`.

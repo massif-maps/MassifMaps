@@ -763,17 +763,20 @@ namespace massif {
         return false;
     }
 
-    void CompositeVectorTileLayer::applyConfig(const ExternalSource& source, const mvt::ResolvedLayerConfig& config, const ViewState& viewState) {
+    void CompositeVectorTileLayer::applyConfig(const ExternalSource& source, const mvt::ResolvedLayerConfig& config, const ViewState& viewState, unsigned int configVersion) {
         auto getValue = [&](const std::string& key) -> const mvt::Value* {
             auto it = config.values.find(key);
             return it != config.values.end() ? &it->second : nullptr;
         };
         // Setters baked into the normal map re-decode the tile, so they apply only at integer zoom changes
-        // (where tiles reload anyway) or a zoom-interpolated value would never settle.
+        // (where tiles reload anyway) or a zoom-interpolated value would never settle; and once when the
+        // decoder's config changed (a style parameter), or a new value would wait for the next zoom level.
         std::map<std::string, double>& applied = _lastChildConfig[source.name];
         int intZoom = static_cast<int>(std::floor(viewState.getZoom()));
         bool decodeZoomChanged = (applied.find("__izoom") == applied.end()) || (static_cast<int>(applied["__izoom"]) != intZoom);
         applied["__izoom"] = static_cast<double>(intZoom);
+        bool configVersionChanged = (applied.find("__version") == applied.end()) || (static_cast<unsigned int>(applied["__version"]) != configVersion);
+        applied["__version"] = static_cast<double>(configVersion);
 
         // Every setter below calls Layer::redraw(): applying unchanged values would keep the map from going idle.
         auto changed = [&applied](const std::string& key, double value) {
@@ -823,7 +826,7 @@ namespace massif {
                 if (changed("exaggeration", exaggeration)) { hillshade->setExaggeration(exaggeration); }
             }
 
-            if (decodeZoomChanged) {
+            if (decodeZoomChanged || configVersionChanged) {
                 if (const mvt::Value* v = getValue("height-scale")) {
                     float heightScale = valueToFloat(*v, 1.0f);
                     if (changed("height-scale", heightScale)) { hillshade->setHeightScale(heightScale); }
@@ -948,7 +951,7 @@ namespace massif {
                     mvt::ResolvedLayerConfig config = resolveLayerConfigCached(decoder, item.slot, viewState.getZoom());
                     FRAME_PROF_ADD(prePaintConfigMs, profConfigStart);
                     FRAME_PROF_NOW(profApplyStart);
-                    applyConfig(*source, config, viewState);
+                    applyConfig(*source, config, viewState, decoder->getConfigVersion());
                     FRAME_PROF_ADD(prePaintApplyMs, profApplyStart);
                     if (!config.visible) {
                         continue;
@@ -1017,7 +1020,7 @@ namespace massif {
             // Vector children have no config symbolizer: their own decode already zoom-filters them.
             if (visible && source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
                 mvt::ResolvedLayerConfig config = resolveLayerConfigCached(decoder, item.slot, viewState.getZoom());
-                applyConfig(*source, config, viewState);
+                applyConfig(*source, config, viewState, decoder->getConfigVersion());
                 visible = config.visible;
             }
             if (visible) {

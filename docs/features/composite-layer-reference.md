@@ -81,7 +81,8 @@ meta data (`terrarium`/`mapbox`) unless passed explicitly.
 per-frame shader uniform (default 1.0 = normal look, higher = stronger), so
 `linear([view::zoom], (4, 0.6), (12, 1.4))` glides smoothly. `hillshade-height-scale` is the
 raw geometric scale baked into the normal map; changing it re-decodes tiles, so it only
-updates when the integer zoom changes (per-zoom-level steps), never continuously.
+updates when the integer zoom changes (per-zoom-level steps), never continuously, and once when a style
+parameter it reads changes.
 
 ### Vector / contour (`COMPOSITE_SOURCE_TYPE_VECTOR`, or `addVectorDataSource`)
 Rendered as its own child `VectorTileLayer` over its own source, styled by the master CSS,

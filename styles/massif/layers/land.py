@@ -112,7 +112,8 @@ def layers(v):
     for key, classes in LANDUSE:
         out.append(layer('landuse-' + key, 'fill', 'landuse', minzoom=9, filter=in_class(classes),
                          paint={**fill(key), **opacity(key, None)}, emissive=0.25))
-        out += patterned('landuse-' + key, key, 'landuse', 9, in_class(classes))
+        # the pattern is the lot's own: a pedestrian area or a square is flat ground, not parking
+        out += patterned('landuse-' + key, key, 'landuse', 9, in_class(['parking'] if key == 'parking' else classes))
     # a wood over the landuse, as Standard's one landuse layer draws it: a park's woods read darker
     # instead of vanishing under its lawn
     out += landcover('wood', dict(LANDCOVER)['wood'])

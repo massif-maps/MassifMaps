@@ -447,14 +447,6 @@ Map {
   polygon-pattern-file: url('icons/pattern-parking.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 15][class = 'pedestrian']['param::variant' = 'eink']::landuse_parking_pattern {
-  polygon-pattern-file: url('icons/pattern-parking.png');
-  polygon-pattern-emissive-strength: 0;
-}
-#landuse[zoom >= 15][class = 'square']['param::variant' = 'eink']::landuse_parking_pattern {
-  polygon-pattern-file: url('icons/pattern-parking.png');
-  polygon-pattern-emissive-strength: 0;
-}
 #landuse[zoom >= 9][class = 'military']['param::variant' != 'hybrid']::landuse_military {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @military);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);

@@ -38,7 +38,7 @@ An ES 3.0 **context** is already requested everywhere, with an ES 2.0 fallback:
 
 | Platform | Context | Notes |
 |---|---|---|
-| Android | `MapView.java` queries `reqGlEsVersion`, asks ES3, falls back to 2 | minSdk 21; manifest still declares `glEsVersion 0x00020000` |
+| Android | `MapView.java` queries `reqGlEsVersion`, asks ES3, falls back to 2 | minSdk 23; manifest still declares `glEsVersion 0x00020000` |
 | iOS | `MapView.mm` asks ES3, falls back to 2 | EAGL by default; MetalANGLE behind `--use-metalangle` |
 | Mac Catalyst | MetalANGLE only | `build-ios.py` refuses a Catalyst build without it |
 | UWP | `EGLContextWrapper.cpp` hardcodes client version **2** | already ANGLE, on the D3D backend |
@@ -359,7 +359,7 @@ Two traps, both of which a `-fsyntax-only` check passes straight through:
 change `GLTileRenderer`'s constructor, which is beyond this phase — fold it in whenever that
 signature next changes.
 
-Devices lost: pre-2013 GPUs (Mali-400, Adreno 200/305, Tegra 3, PowerVR SGX). At minSdk 21 and an
+Devices lost: pre-2013 GPUs (Mali-400, Adreno 200/305, Tegra 3, PowerVR SGX). At minSdk 23 and an
 iOS 13 floor — where every device is A7+ — that is a rounding error. The app-facing consequence is
 in [migration.md](../../migration.md#opengl-es-30-is-required).
 

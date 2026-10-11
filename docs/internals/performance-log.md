@@ -2569,6 +2569,8 @@ tilt 50, Massif streets on the Rhône-Alpes pmtiles, 60 s per run; a temporary t
 | whole source tile, first-come overlap | 775 ms | 6.1 ms |
 | points within 32 m, local ranked overlap ([19-models](rendering/19-models.md)) | 101-111 ms | 0.8 ms |
 
-Frame time over the same sequence: shadows on 80-200 ms with or without the models (5-10 fps),
-shadows off 50-57 ms (13-17 fps). The models' own draw and caster cost is inside the run-to-run noise;
-the slow zoom is the shadow passes. Not measured: a device.
+Those decode runs were on an emulator that had come up on SwiftShader (software GL, `gles_mode_selected:
+swangle` in its log; start it with `-gpu host`), so its frame times (5-17 fps) measured the CPU
+rasteriser and are void. On the host GPU the same sequence draws at 40-48 fps, 6-15 ms a frame, with
+models and shadows on, models off, or shadows off alike; the decode totals moved by under 10%.
+Not measured: a device.

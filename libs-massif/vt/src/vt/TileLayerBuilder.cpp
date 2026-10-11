@@ -775,7 +775,7 @@ namespace massif::vt {
         std::vector<std::shared_ptr<TileModelInstances>> models;
         for (const std::shared_ptr<ModelGroup>& group : _modelGroups) {
             if (!group->instances.empty()) {
-                models.push_back(std::make_shared<TileModelInstances>(group->style, group->instances, group->ids, group->geoPosIndexes));
+                models.push_back(std::make_shared<TileModelInstances>(group->style, group->instances, group->ids, group->featureIds, group->geoPosIndexes));
             }
         }
         return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList, _drawOnceGroup, std::move(models));
@@ -794,7 +794,7 @@ namespace massif::vt {
             group->style = style;
             _modelGroups.push_back(group);
         }
-        return [group, this](long long id, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
+        return [group, this](long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
             // Half-open, so a point on a tile edge is placed by exactly one of the two tiles
             if (vertex(0) < 0 || vertex(0) >= 1 || vertex(1) < 0 || vertex(1) >= 1) {
                 return;
@@ -803,6 +803,7 @@ namespace massif::vt {
             instance.position = cglib::vec2<float>(pos(0), pos(1));
             group->instances.push_back(instance);
             group->ids.push_back(id);
+            group->featureIds.push_back(featureId);
             group->geoPosIndexes.push_back(geoPointIndex);
         };
     }

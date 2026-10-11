@@ -49,6 +49,21 @@ fragment stage and culling is off for the draw: generated foliage is single quad
 the next `startFrame` returns as a refresh — the map keeps drawing only while a spinning model was
 drawn in the last frame. `setModelAnimationsEnabled(false)` stops the clock and the refresh.
 
+## Picking and highlight
+
+`findGeometryIntersections` adds `findTileModelIntersections` to its 3D pass: per instance whose
+anchor the target tile owns (the same test as `modelVsh`), the anchor is lifted onto the terrain
+with the labels' elevation provider and the click ray is taken into model space by
+`intersectModelInstance` (`TileModels.h`, host-tested). The slab test is written out there:
+`cglib::intersect_bbox` lets a ray parallel to a slab through from outside it, which is every
+straight-down click on a flat map. A spinning style is tested against `modelPickBounds`, the cube
+around everything its spin sweeps.
+
+The hit reports the tile-local id the decoder re-reads the feature by. The highlight is keyed the
+other way, by the SOURCE feature id and point index the app got from the click, which is why
+`TileModelInstances` keeps both; `renderTileModels` turns it into the instance index the vertex
+shader compares (`uModelHighlight`), so a highlight is a uniform, not a buffer rewrite.
+
 ## Caches
 
 `_compiledModelMap` (per `Model`) and `_compiledModelInstancesMap` (per `TileModelInstances`, with one
@@ -60,6 +75,7 @@ VAO per program and mesh — see `CompiledGeometry` for why programs never share
 
 - Globe mode skips models (`renderTileModels` returns on a spherical transformer).
 - No transparency sort; `BLEND` materials blend in draw order.
-- Verified: host tests (loader, `random()`, instance building), NDK syntax gate, `glslangValidator` on
-  every model program variant. **Not yet verified on a device**: the render itself, shadow casting,
-  the spin redraw cost.
+- A highlight scans the instance list of every drawn tile for its feature id, linearly.
+- Verified: host tests (loader, `random()`, instance building, the pick math), NDK syntax gate,
+  `glslangValidator` on every model program variant. **Not yet verified on a device**: the render
+  itself, shadow casting, picking through the click path, the spin redraw cost.

@@ -2135,6 +2135,9 @@ namespace massif::vt {
                         }
                     }
                 }
+                if (geom3D && !renderLayer.layer->getModels().empty() && !_transformer->isSpherical()) {
+                    findTileModelIntersections(renderLayer, rays, results3D);
+                }
             }
         }
 
@@ -2146,6 +2149,48 @@ namespace massif::vt {
         return results.size() > initialResultCount;
     }
     
+    double GLTileRenderer::modelMetresToTileUnits(const TileId& tileId) {
+        constexpr double PI_D = 3.14159265358979323846;
+        double tileScale = static_cast<double>(1 << tileId.zoom);
+        double latitude = 0.5 * PI_D - 2.0 * std::atan(std::exp(2.0 * PI_D * ((tileId.y + 0.5) / tileScale - 0.5)));
+        return tileScale / (2.0 * PI_D * 6378137.0 * std::cos(latitude));
+    }
+
+    void GLTileRenderer::setModelHighlight(const std::optional<ModelHighlight>& highlight) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelHighlight = highlight;
+    }
+
+    void GLTileRenderer::findTileModelIntersections(const RenderTileLayer& renderLayer, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const {
+        cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId);
+        double metres = modelMetresToTileUnits(renderLayer.sourceTileId) * tileMatrix(0, 0);
+        cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(renderLayer.targetTileId)) * calculateTileMatrix2D(renderLayer.sourceTileId);
+        for (const std::shared_ptr<TileModelInstances>& models : renderLayer.layer->getModels()) {
+            if (!models->getStyle().model) {
+                continue;
+            }
+            cglib::bbox3<double> bounds = modelPickBounds(models->getStyle());
+            const std::vector<ModelInstance>& instances = models->getInstances();
+            for (std::size_t i = 0; i < instances.size(); i++) {
+                // The target tile that draws the anchor answers for it, as in modelVsh
+                cglib::vec2<double> clipPos = cglib::transform_point(cglib::vec2<double>(instances[i].position(0), 1.0 - instances[i].position(1)), clipTransform);
+                if (clipPos(0) < 0 || clipPos(1) < 0 || clipPos(0) >= 1 || clipPos(1) >= 1) {
+                    continue;
+                }
+                cglib::vec3<double> anchor = cglib::transform_point(cglib::vec3<double>(instances[i].position(0), instances[i].position(1), 0), tileMatrix);
+                if (_terrainMode && _labelElevationProvider) {
+                    anchor = _transformer->calculateElevatedPos(anchor, _labelElevationProvider(_transformer->calculateMercatorPos(anchor), renderLayer.sourceTileId.zoom));
+                }
+                for (std::size_t rayIndex = 0; rayIndex < rays.size(); rayIndex++) {
+                    double t = 0;
+                    if (intersectModelInstance(bounds, instances[i], anchor, metres, rays[rayIndex], t)) {
+                        results.emplace_back(renderLayer.sourceTileId, renderLayer.layer->getLayerIndex(), models->getIds()[i], models->getGeoPosIndexes()[i], rayIndex, t);
+                    }
+                }
+            }
+        }
+    }
+
     bool GLTileRenderer::findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, float buffer, bool labels2D, bool labels3D, std::vector<GeometryIntersectionInfo>& results) const {
 
         std::lock_guard<std::mutex> lock(_mutex);
@@ -7014,14 +7059,23 @@ namespace massif::vt {
 
         cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(sourceTileId));
         glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, tileMatrix.data());
-        // Metres to tile units at the tile's centre latitude, as DefaultVertexTransformer::calculateHeight
-        constexpr double PI_D = 3.14159265358979323846;
-        double tileScale = static_cast<double>(1 << sourceTileId.zoom);
-        double latitude = 0.5 * PI_D - 2.0 * std::atan(std::exp(2.0 * PI_D * ((sourceTileId.y + 0.5) / tileScale - 0.5)));
-        glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], static_cast<float>(tileScale / (2.0 * PI_D * 6378137.0 * std::cos(latitude))));
+        glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], static_cast<float>(modelMetresToTileUnits(sourceTileId)));
         glUniform4f(shaderProgram.uniforms[U_MODELSPIN], style.spinAxis(0), style.spinAxis(1), style.spinAxis(2), style.spinSpeed);
         glUniform1f(shaderProgram.uniforms[U_MODELTIME], _modelTime);
-        glUniform1f(shaderProgram.uniforms[U_MODELHIGHLIGHT], -1.0f);
+        float highlightIndex = -1.0f;
+        if (_modelHighlight && !caster) {
+            const std::vector<long long>& featureIds = models->getFeatureIds();
+            const std::vector<int>& geoPosIndexes = models->getGeoPosIndexes();
+            for (std::size_t i = 0; i < featureIds.size(); i++) {
+                if (featureIds[i] == _modelHighlight->featureId && geoPosIndexes[i] == _modelHighlight->geoPointIndex) {
+                    highlightIndex = static_cast<float>(i);
+                    break;
+                }
+            }
+            std::array<float, 4> rgba = _modelHighlight->color.rgba();
+            glUniform4fv(shaderProgram.uniforms[U_MODELHIGHLIGHTCOLOR], 1, rgba.data());
+        }
+        glUniform1f(shaderProgram.uniforms[U_MODELHIGHLIGHT], highlightIndex);
         glUniform1f(shaderProgram.uniforms[U_OPACITY], alpha);
         if (!caster && _lightingShader3D) {
             _lightingShader3D->setupFunc(shaderProgram.program, _viewState);

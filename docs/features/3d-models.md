@@ -70,6 +70,33 @@ over the tower with `model-z-offset`. The map keeps redrawing while a spinning m
 `Options.modelAnimationsEnabled = false` freezes them, for battery-bound or e-ink apps (in the demo
 app: `--es apiSet modelAnimationsEnabled=false`).
 
+## Clicking and highlighting a model
+
+A click on a model fires the layer's `vectortile.clicked` event like any other feature, with the
+feature that placed it and, for a MultiPoint, the index of the point that was hit
+(`VectorTileClickInfo.getFeaturePosIndex()`). The test is the model's bounding box, turned and
+scaled as drawn and standing on the terrain; a spinning part is tested against every box its spin
+sweeps.
+
+Hand the same two values back to draw that one instance in a highlight colour:
+
+```java
+layer.setVectorTileEventListener(new VectorTileEventListener() {
+    @Override
+    public boolean onVectorTileClicked(VectorTileClickInfo info) {
+        layer.setModelHighlight(info.getFeatureId(), info.getFeaturePosIndex(), new Color(0xffff8800));
+        return true;
+    }
+});
+// later
+layer.clearModelHighlight();
+```
+
+The colour's alpha is how much of the model's own colour it replaces. Through the facade API:
+`call(layer, "setModelHighlight", [featureId, featurePosIndex, 0xffff8800])` and
+`call(layer, "clearModelHighlight", [])`. A highlight picks the instance by feature id and point
+index, so it singles out one instance only where the source gives its features distinct ids.
+
 ## Limits
 
 - Points only: a line or polygon feature is skipped with a warning.

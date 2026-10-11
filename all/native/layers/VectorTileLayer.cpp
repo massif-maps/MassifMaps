@@ -178,6 +178,20 @@ namespace massif {
         _layerBlendingSpeed.store(speed);
     }
     
+    void VectorTileLayer::setModelHighlight(long long featureId, int featurePosIndex, const Color& color) {
+        vt::GLTileRenderer::ModelHighlight highlight;
+        highlight.featureId = featureId;
+        highlight.geoPointIndex = featurePosIndex;
+        highlight.color = vt::Color(color.getR() / 255.0f, color.getG() / 255.0f, color.getB() / 255.0f, color.getA() / 255.0f);
+        _tileRenderer->setModelHighlight(highlight);
+        redraw();
+    }
+
+    void VectorTileLayer::clearModelHighlight() {
+        _tileRenderer->setModelHighlight(std::nullopt);
+        redraw();
+    }
+
     float VectorTileLayer::getLabelBlendingSpeed() const {
         return _labelBlendingSpeed.load();
     }

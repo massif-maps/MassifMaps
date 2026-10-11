@@ -244,6 +244,13 @@ namespace massif::vt {
         void setBuildingEmissive(float emissive) { _buildingEmissive = emissive; }
         // Spinning models (model-spin) keep the map redrawing while one is drawn; off freezes them.
         void setModelAnimationsEnabled(bool enabled) { _modelAnimationsEnabled = enabled; }
+        // One model instance drawn in a highlight colour: by its source feature id and point index.
+        struct ModelHighlight {
+            long long featureId = 0;
+            int geoPointIndex = 0;
+            Color color;
+        };
+        void setModelHighlight(const std::optional<ModelHighlight>& highlight);
         // The projection's metres-to-internal factor, so shadows do not need a DEM to be fitted.
         void setMetersToInternal(double metersToInternal) { _metersToInternal = metersToInternal; _spanResolver.setMetersToInternal(metersToInternal); }
         // The owner renders the casters from the light into its own framebuffer and hands the texture back here.
@@ -1081,6 +1088,10 @@ namespace massif::vt {
         std::map<std::weak_ptr<const TileModelInstances>, CompiledModelInstances, std::owner_less<std::weak_ptr<const TileModelInstances>>> _compiledModelInstancesMap;
         std::shared_ptr<const Bitmap> _modelWhiteBitmap = std::make_shared<Bitmap>(1, 1, std::vector<std::uint32_t>(1, 0xffffffffu));
         bool _modelAnimationsEnabled = true;
+        std::optional<ModelHighlight> _modelHighlight;
+        // Metres to vertex frame units at a tile's centre latitude, as DefaultVertexTransformer::calculateHeight.
+        static double modelMetresToTileUnits(const TileId& tileId);
+        void findTileModelIntersections(const RenderTileLayer& renderLayer, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const;
         bool _modelsAnimating = false; // a spinning model was drawn last frame
         float _modelTime = 0.0f;       // seconds the spin has run
 

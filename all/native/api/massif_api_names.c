@@ -286,6 +286,7 @@ static const char* const kNames[] = {
     "minVisibleZoom",
     "minZoom",
     "minimumClusterDistance",
+    "modelAnimationsEnabled",
     "modelAsset",
     "name",
     "near",

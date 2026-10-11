@@ -3,7 +3,7 @@
 
 %module VectorTileLayer
 
-!proxy_imports(massif::VectorTileLayer, datasources.TileDataSource, datasources.components.TileData, layers.TileLayer, layers.VectorTileEventListener, vectortiles.VectorTileDecoder)
+!proxy_imports(massif::VectorTileLayer, datasources.TileDataSource, datasources.components.TileData, graphics.Color, layers.TileLayer, layers.VectorTileEventListener, vectortiles.VectorTileDecoder)
 
 %{
 #include "layers/VectorTileLayer.h"
@@ -16,6 +16,7 @@
 %include <massifswig.i>
 
 %import "datasources/TileDataSource.i"
+%import "graphics/Color.i"
 %import "layers/VectorTileEventListener.i"
 %import "layers/TileLayer.i"
 %import "vectortiles/VectorTileDecoder.i"
@@ -26,6 +27,8 @@
 
 !event(massif::VectorTileLayer, vectortile.clicked, payload(massif::VectorTileClickInfo), consumable)
 !spec(massif::VectorTileLayer, layer, vector, alias(source, dataSource), alias(style, decoder))
+!method(massif::VectorTileLayer, setModelHighlight, arg(featureId, int), arg(featurePosIndex, int), arg(color, int), returns(void))
+!method(massif::VectorTileLayer, clearModelHighlight, returns(void))
 %attribute(massif::VectorTileLayer, std::size_t, TileCacheCapacity, getTileCacheCapacity, setTileCacheCapacity)
 %attribute(massif::VectorTileLayer, massif::VectorTileRenderOrder::VectorTileRenderOrder, LabelRenderOrder, getLabelRenderOrder, setLabelRenderOrder)
 %attribute(massif::VectorTileLayer, massif::VectorTileRenderOrder::VectorTileRenderOrder, BuildingRenderOrder, getBuildingRenderOrder, setBuildingRenderOrder)

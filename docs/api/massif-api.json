@@ -6191,6 +6191,15 @@
           "doc": "Returns the direction of the main light."
         },
         {
+          "name": "modelAnimationsEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether animated 3D models (a CartoCSS model-spin) move."
+        },
+        {
           "name": "orbitAroundPivot",
           "type": "BOOL",
           "readOnly": false,
@@ -10489,7 +10498,35 @@
       "aliases": {
         "style": "tileDecoder"
       },
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::VectorTileLayer",
+          "name": "clearModelHighlight",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::VectorTileLayer",
+          "name": "setModelHighlight",
+          "args": [
+            {
+              "name": "featureId",
+              "type": "int"
+            },
+            {
+              "name": "featurePosIndex",
+              "type": "int"
+            },
+            {
+              "name": "color",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": [
         {
           "cppClass": "massif::VectorTileLayer",

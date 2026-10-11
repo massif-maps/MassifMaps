@@ -153,6 +153,11 @@ namespace massif {
         _layerBlendingSpeed = speed;
     }
 
+    void TileRenderer::setModelHighlight(const std::optional<vt::GLTileRenderer::ModelHighlight>& highlight) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelHighlight = highlight;
+    }
+
     void TileRenderer::setLayerOpacity(float opacity) {
         std::lock_guard<std::mutex> lock(_mutex);
         _layerOpacity = opacity;
@@ -885,6 +890,7 @@ namespace massif {
         tileRenderer->setRasterFilterMode(_rasterFilterMode);
         tileRenderer->setLayerBlendingSpeed(_layerBlendingSpeed);
         tileRenderer->setLabelBlendingSpeed(_labelBlendingSpeed);
+        tileRenderer->setModelHighlight(_modelHighlight);
         // Pushing the filter resets the label maps' skip guard, so only a new filter or renderer gets it.
         if (_rendererLayerFilterTarget.lock() != tileRenderer) {
             tileRenderer->setRendererLayerFilter(_rendererLayerFilter);

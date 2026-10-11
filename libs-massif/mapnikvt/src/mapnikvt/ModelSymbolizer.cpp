@@ -83,7 +83,7 @@ namespace massif::mvt {
                             it = processors.emplace(file, style.model ? layerBuilder.createModelProcessor(style) : vt::TileLayerBuilder::ModelProcessor()).first;
                         }
                         if (it->second) {
-                            it->second(featureCollection.getLocalId(featureIndex), vertex, instance, pointGeometry->getPartIndex(part));
+                            it->second(featureCollection.getLocalId(featureIndex), featureCollection.getFeatureId(featureIndex), vertex, instance, pointGeometry->getPartIndex(part));
                         }
                     }
                 }

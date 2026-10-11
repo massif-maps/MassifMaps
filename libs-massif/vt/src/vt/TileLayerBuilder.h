@@ -59,7 +59,7 @@ namespace massif::vt {
         using TextLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
         // An instance's position is filled in from the vertex; one outside the tile is dropped, as the
         // neighbour that owns it places it.
-        using ModelProcessor = std::function<void(long long id, const Vertex& vertex, ModelInstance instance, int geoPointIndex)>;
+        using ModelProcessor = std::function<void(long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex)>;
 
         explicit TileLayerBuilder(std::string layerName, int layerIdx, const TileId& tileId, const std::shared_ptr<const TileTransformer>& transformer, float tileSize, float geomScale);
 
@@ -290,6 +290,7 @@ namespace massif::vt {
             ModelStyle style;
             std::vector<ModelInstance> instances;
             std::vector<long long> ids;
+            std::vector<long long> featureIds;
             std::vector<int> geoPosIndexes;
         };
         std::vector<std::shared_ptr<ModelGroup>> _modelGroups;

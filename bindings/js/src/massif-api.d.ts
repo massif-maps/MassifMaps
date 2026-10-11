@@ -4299,6 +4299,8 @@ export interface PropertyTypes {
         'mainLightColor': number;
         /** Returns the direction of the main light. */
         'mainLightDirection': Position;
+        /** Returns whether animated 3D models (a CartoCSS model-spin) move. */
+        'modelAnimationsEnabled': boolean;
         /** Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre. */
         'orbitAroundPivot': boolean;
         /** Returns the map panning bounds constraints. Map bounds minimum and maximum points are in the base projection's coordinate system. */
@@ -11385,6 +11387,7 @@ export interface MethodTypes {
     'massif::CompositeVectorTileLayer': {
         addExternalDataSource: { args: [name: string, dataSource: Handle, type: number]; result: void };
         addVectorDataSource: { args: [name: string, dataSource: Handle]; result: void };
+        clearModelHighlight: { args: []; result: void };
         clearTileCaches: { args: [all: boolean]; result: void };
         getExternalChildLayer: { args: [name: string]; result: Handle<'massif::Layer'>; resultClass: 'massif::Layer' };
         getExternalDataSourceNames: { args: []; result: Json };
@@ -11392,6 +11395,7 @@ export interface MethodTypes {
         removeExternalDataSource: { args: [name: string]; result: boolean };
         setExternalDataSourceMaxOverzoomLevel: { args: [name: string, level: number]; result: void };
         setExternalDataSourceZoomLevelBias: { args: [name: string, bias: number]; result: void };
+        setModelHighlight: { args: [featureId: number, featurePosIndex: number, color: number]; result: void };
     };
     'massif::ContourTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
@@ -11863,8 +11867,10 @@ export interface MethodTypes {
     'massif::TorqueTileDecoder': {
     };
     'massif::TorqueTileLayer': {
+        clearModelHighlight: { args: []; result: void };
         clearTileCaches: { args: [all: boolean]; result: void };
         refresh: { args: []; result: void };
+        setModelHighlight: { args: [featureId: number, featurePosIndex: number, color: number]; result: void };
     };
     'massif::TouchHandlerListener': {
     };
@@ -11921,8 +11927,10 @@ export interface MethodTypes {
         getFeature: { args: [index: number]; result: Handle<'massif::VectorTileFeature'>; resultClass: 'massif::VectorTileFeature' };
     };
     'massif::VectorTileLayer': {
+        clearModelHighlight: { args: []; result: void };
         clearTileCaches: { args: [all: boolean]; result: void };
         refresh: { args: []; result: void };
+        setModelHighlight: { args: [featureId: number, featurePosIndex: number, color: number]; result: void };
     };
     'massif::VectorTileSearchService': {
         findFeatures: { args: [request: Handle]; result: Handle<'massif::VectorTileFeatureCollection'>; resultClass: 'massif::VectorTileFeatureCollection' };

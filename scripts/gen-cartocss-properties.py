@@ -136,6 +136,7 @@ SYMBOLIZER_CLASSES = {
     "text": "TextSymbolizer",
     "shield": "ShieldSymbolizer",
     "building": "BuildingSymbolizer",
+    "model": "ModelSymbolizer",
     "raster": "RasterConfigSymbolizer",
     "hillshade": "HillshadeConfigSymbolizer",
     "contour": "ContourConfigSymbolizer",

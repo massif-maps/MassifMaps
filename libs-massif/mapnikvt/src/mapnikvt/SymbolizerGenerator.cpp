@@ -5,6 +5,7 @@
 #include "PolygonSymbolizer.h"
 #include "PolygonPatternSymbolizer.h"
 #include "BuildingSymbolizer.h"
+#include "ModelSymbolizer.h"
 #include "MarkersSymbolizer.h"
 #include "TextSymbolizer.h"
 #include "ShieldSymbolizer.h"
@@ -36,6 +37,9 @@ namespace massif::mvt {
         }
         else if (dynamic_cast<const BuildingSymbolizer*>(&symbolizer)) {
             type = "BuildingSymbolizer";
+        }
+        else if (dynamic_cast<const ModelSymbolizer*>(&symbolizer)) {
+            type = "ModelSymbolizer";
         }
         else if (dynamic_cast<const MarkersSymbolizer*>(&symbolizer)) {
             type = "MarkersSymbolizer";

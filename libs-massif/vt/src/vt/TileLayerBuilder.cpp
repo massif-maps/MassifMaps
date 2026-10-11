@@ -772,7 +772,39 @@ namespace massif::vt {
         packGeometry(geometryList);
         packGroundSkirt(geometryList);
 
-        return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList, _drawOnceGroup);
+        std::vector<std::shared_ptr<TileModelInstances>> models;
+        for (const std::shared_ptr<ModelGroup>& group : _modelGroups) {
+            if (!group->instances.empty()) {
+                models.push_back(std::make_shared<TileModelInstances>(group->style, group->instances, group->ids, group->geoPosIndexes));
+            }
+        }
+        return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList, _drawOnceGroup, std::move(models));
+    }
+
+    TileLayerBuilder::ModelProcessor TileLayerBuilder::createModelProcessor(const ModelStyle& style) {
+        if (!style.model) {
+            return ModelProcessor();
+        }
+        auto it = std::find_if(_modelGroups.begin(), _modelGroups.end(), [&style](const std::shared_ptr<ModelGroup>& group) { return group->style == style; });
+        std::shared_ptr<ModelGroup> group;
+        if (it != _modelGroups.end()) {
+            group = *it;
+        } else {
+            group = std::make_shared<ModelGroup>();
+            group->style = style;
+            _modelGroups.push_back(group);
+        }
+        return [group, this](long long id, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
+            // Half-open, so a point on a tile edge is placed by exactly one of the two tiles
+            if (vertex(0) < 0 || vertex(0) >= 1 || vertex(1) < 0 || vertex(1) >= 1) {
+                return;
+            }
+            cglib::vec3<float> pos = _transformer->calculatePoint(vertex);
+            instance.position = cglib::vec2<float>(pos(0), pos(1));
+            group->instances.push_back(instance);
+            group->ids.push_back(id);
+            group->geoPosIndexes.push_back(geoPointIndex);
+        };
     }
 
     void TileLayerBuilder::packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {

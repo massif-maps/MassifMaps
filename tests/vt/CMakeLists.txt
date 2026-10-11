@@ -54,6 +54,7 @@ add_executable(vt_tests
   LabelYieldTest.cpp
   LabelGroupDistanceTest.cpp
   GLBParserTest.cpp
+  ModelInstancesTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   # The yield and group distance tests run a placement pass.

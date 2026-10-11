@@ -12,6 +12,7 @@
 #include "TileGeometry.h"
 #include "TileLabel.h"
 #include "TileLayer.h"
+#include "TileModels.h"
 #include "TileTransformer.h"
 #include "Styles.h"
 #include "ExtrusionAnchors.h"
@@ -56,6 +57,9 @@ namespace massif::vt {
         using Polygon3DProcessor = std::function<void(long long id, const VerticesList& verticesList, float minHeight, float maxHeight)>;
         using PointLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
         using TextLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
+        // An instance's position is filled in from the vertex; one outside the tile is dropped, as the
+        // neighbour that owns it places it.
+        using ModelProcessor = std::function<void(long long id, const Vertex& vertex, ModelInstance instance, int geoPointIndex)>;
 
         explicit TileLayerBuilder(std::string layerName, int layerIdx, const TileId& tileId, const std::shared_ptr<const TileTransformer>& transformer, float tileSize, float geomScale);
 
@@ -95,6 +99,7 @@ namespace massif::vt {
         Polygon3DProcessor createPolygon3DProcessor(const Polygon3DStyle& style);
         PointLabelProcessor createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
         TextLabelProcessor createTextLabelProcessor(const TextLabelStyle& style, const TextFormatter& formatter);
+        ModelProcessor createModelProcessor(const ModelStyle& style);
 
         std::shared_ptr<TileLayer> buildTileLayer() const;
 
@@ -280,6 +285,14 @@ namespace massif::vt {
         std::vector<std::shared_ptr<TileBitmap>> _bitmapList;
         std::vector<std::shared_ptr<TileGeometry>> _geometryList;
         std::vector<std::shared_ptr<TileLabel>> _labelList;
+
+        struct ModelGroup {
+            ModelStyle style;
+            std::vector<ModelInstance> instances;
+            std::vector<long long> ids;
+            std::vector<int> geoPosIndexes;
+        };
+        std::vector<std::shared_ptr<ModelGroup>> _modelGroups;
     };
 }
 

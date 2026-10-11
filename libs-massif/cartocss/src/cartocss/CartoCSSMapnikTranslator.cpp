@@ -19,6 +19,7 @@
 #include "mapnikvt/MarkersSymbolizer.h"
 #include "mapnikvt/ShieldSymbolizer.h"
 #include "mapnikvt/BuildingSymbolizer.h"
+#include "mapnikvt/ModelSymbolizer.h"
 #include "mapnikvt/RasterConfigSymbolizer.h"
 #include "mapnikvt/HillshadeConfigSymbolizer.h"
 #include "mapnikvt/ContourConfigSymbolizer.h"
@@ -529,6 +530,9 @@ namespace massif::css {
         else if (symbolizerType == "building") {
             mapnikSymbolizer = std::make_shared<mvt::BuildingSymbolizer>(_logger);
         }
+        else if (symbolizerType == "model") {
+            mapnikSymbolizer = std::make_shared<mvt::ModelSymbolizer>(_logger);
+        }
         else if (symbolizerType == "raster") {
             mapnikSymbolizer = std::make_shared<mvt::RasterConfigSymbolizer>(_logger);
         }
@@ -673,6 +677,7 @@ namespace massif::css {
         "marker",
         "shield",
         "building",
+        "model",
         "hillshade",
         "raster",
         "contour"
@@ -912,6 +917,16 @@ namespace massif::css {
         { "building-geometry-transform", "geometry-transform" },
         { "building-elevation-mode", "elevation-mode" },
         { "building-emissive-strength", "emissive-strength" },
+        { "model-file", "file" },
+        { "model-scale", "scale" },
+        { "model-rotation", "rotation" },
+        { "model-z-offset", "z-offset" },
+        { "model-color", "color" },
+        { "model-color-mix", "color-mix" },
+        { "model-opacity", "opacity" },
+        { "model-cast-shadows", "cast-shadows" },
+        { "model-spin", "spin" },
+        { "model-spin-axis", "spin-axis" },
         // NOTE: comp-op not supported for building symbolizer
 
         // Config symbolizers for external data sources (CompositeVectorTileLayer).

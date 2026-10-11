@@ -21,6 +21,7 @@
 #include "vectortiles/utils/MVTValueConverter.h"
 #include "vectortiles/utils/MVTLogger.h"
 #include "vectortiles/utils/VTBitmapLoader.h"
+#include "vectortiles/utils/VTModelLoader.h"
 #include "vectortiles/utils/CartoCSSAssetLoader.h"
 #include "utils/AssetPackage.h"
 #include "utils/FileUtils.h"
@@ -413,7 +414,7 @@ namespace massif {
         // Settings snapshot the parameters that scale geometry and glyphs, so they are rebuilt
         // whenever a parameter changes structurally.
         _symbolizerContextSettings = std::make_shared<mvt::SymbolizerContext::Settings>(_tileSize, _parameterStore, _symbolizerContextSettings->getFallbackFont(), _pixelScale, _selectionState);
-        _symbolizerContext = std::make_shared<mvt::SymbolizerContext>(_symbolizerContext->getBitmapManager(), _symbolizerContext->getFontManager(), _symbolizerContext->getStrokeMap(), _symbolizerContext->getGlyphMap(), *_symbolizerContextSettings);
+        _symbolizerContext = std::make_shared<mvt::SymbolizerContext>(_symbolizerContext->getBitmapManager(), _symbolizerContext->getFontManager(), _symbolizerContext->getStrokeMap(), _symbolizerContext->getGlyphMap(), *_symbolizerContextSettings, _symbolizerContext->getModelManager());
     }
 
     bool MBVectorTileDecoder::areParametersRepaintable(const std::vector<std::string>& params) const {
@@ -1054,7 +1055,7 @@ namespace massif {
             }
             auto strokeMap = std::make_shared<vt::StrokeMap>(STROKEMAP_SIZE, STROKEMAP_SIZE);
             auto glyphMap = std::make_shared<vt::GlyphMap>(GLYPHMAP_SIZE, GLYPHMAP_SIZE);
-            it->second = std::make_shared<mvt::SymbolizerContext>(symbolizerContext->getBitmapManager(), symbolizerContext->getFontManager(), strokeMap, glyphMap, symbolizerContext->getSettings());
+            it->second = std::make_shared<mvt::SymbolizerContext>(symbolizerContext->getBitmapManager(), symbolizerContext->getFontManager(), strokeMap, glyphMap, symbolizerContext->getSettings(), symbolizerContext->getModelManager());
         }
     }
 
@@ -1071,6 +1072,7 @@ namespace massif {
             auto fontManager = std::make_shared<vt::FontManager>(GLYPHMAP_SIZE, GLYPHMAP_SIZE);
             auto bitmapLoader = std::make_shared<VTBitmapLoader>(FileUtils::GetFilePath(styleAssetName), assetPackage);
             auto bitmapManager = std::make_shared<vt::BitmapManager>(bitmapLoader);
+            auto modelManager = std::make_shared<vt::ModelManager>(std::make_shared<VTModelLoader>(FileUtils::GetFilePath(styleAssetName), assetPackage));
             auto strokeMap = std::make_shared<vt::StrokeMap>(STROKEMAP_SIZE, STROKEMAP_SIZE);
             auto glyphMap = std::make_shared<vt::GlyphMap>(GLYPHMAP_SIZE, GLYPHMAP_SIZE);
 
@@ -1131,7 +1133,7 @@ namespace massif {
                 }
             }
             mvt::SymbolizerContext::Settings settings(_tileSize, std::make_shared<mvt::StyleParameterStore>(), fallbackFont, _pixelScale);
-            symbolizerContext = std::make_shared<mvt::SymbolizerContext>(bitmapManager, fontManager, strokeMap, glyphMap, settings);
+            symbolizerContext = std::make_shared<mvt::SymbolizerContext>(bitmapManager, fontManager, strokeMap, glyphMap, settings, modelManager);
         }
 
         for (auto it = _parameterValueMap.begin(); it != _parameterValueMap.end(); ) {
@@ -1173,7 +1175,7 @@ namespace massif {
         updateSelectionState();
 
         _symbolizerContextSettings = std::make_shared<mvt::SymbolizerContext::Settings>(_tileSize, _parameterStore, symbolizerContext->getSettings().getFallbackFont(), _pixelScale, _selectionState);
-        _symbolizerContext = std::make_shared<mvt::SymbolizerContext>(symbolizerContext->getBitmapManager(), symbolizerContext->getFontManager(), symbolizerContext->getStrokeMap(), symbolizerContext->getGlyphMap(), *_symbolizerContextSettings);
+        _symbolizerContext = std::make_shared<mvt::SymbolizerContext>(symbolizerContext->getBitmapManager(), symbolizerContext->getFontManager(), symbolizerContext->getStrokeMap(), symbolizerContext->getGlyphMap(), *_symbolizerContextSettings, symbolizerContext->getModelManager());
         _cachedFeatureDecoder.first.reset();
         _cachedFeatureDecoder.second.reset();
     }

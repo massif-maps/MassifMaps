@@ -84,7 +84,7 @@ namespace massif::mvt {
         }
 
         auto addTileLayer = [&tileLayers](std::shared_ptr<vt::TileLayer> tileLayer) {
-            if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !tileLayer->getCompOp())) {
+            if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && tileLayer->getModels().empty() && !tileLayer->getCompOp())) {
                 tileLayers.push_back(std::move(tileLayer));
             }
         };

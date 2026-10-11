@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-249 properties across 12 symbolizers.
+259 properties across 13 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 63 of 249.
+Live-capable properties: 64 of 259.
 
 ## `building`
 
@@ -148,6 +148,21 @@ Live-capable properties: 63 of 249.
 | `marker-transform` | `transform` | transform |  |  |  |
 | `marker-type` | `marker-type` | value | `auto` |  |  |
 | `marker-width` | `width` | float | `0.0` |  | yes |
+
+## `model`
+
+| CartoCSS | mapnik | Value | Default | Live | Baked |
+|---|---|---|---|---|---|
+| `model-cast-shadows` | `cast-shadows` | bool | `true` |  |  |
+| `model-color` | `color` | color | `#ffffff` |  |  |
+| `model-color-mix` | `color-mix` | float | `0.0` |  |  |
+| `model-file` | `file` | string |  |  | yes |
+| `model-opacity` | `opacity` | float | `1.0` | yes |  |
+| `model-rotation` | `rotation` | float | `0.0` |  |  |
+| `model-scale` | `scale` | float | `1.0` |  |  |
+| `model-spin` | `spin` | float | `0.0` |  |  |
+| `model-spin-axis` | `spin-axis` | string | `y` |  |  |
+| `model-z-offset` | `z-offset` | float | `0.0` |  |  |
 
 ## `point`
 

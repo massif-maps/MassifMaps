@@ -37,6 +37,9 @@ LANDUSE = [
     ('military', ['military']),
 ]
 RESIDENTIAL = ['residential', 'suburb', 'quarter', 'neighbourhood']
+# the tiles give a `layer` to a landuse feature under the ground (an underground car park, below a square):
+# not drawn, or the square reads as a car park
+ABOVE_GROUND = ['!', ['has', 'layer']]
 
 
 def background(v):
@@ -67,7 +70,7 @@ def layers(v):
     # z9, so they come in over z8-8.2; 0 draws them whole from their minzoom
     fade = zoom_ramp(8, ['match', ['config', 'lowzoom_landcover'], 1, 0, 1], 8.2, 1)
     out = [
-        layer('landuse-residential', 'fill', 'landuse', minzoom=6, filter=in_class(RESIDENTIAL),
+        layer('landuse-residential', 'fill', 'landuse', minzoom=6, filter=['all', ABOVE_GROUND, in_class(RESIDENTIAL)],
               paint={'fill-color': c['residential'], 'fill-opacity': fade}, emissive=0.25),
     ]
     # Standard's woods are a paler green that deepens as the forests resolve into stands
@@ -110,10 +113,11 @@ def layers(v):
               emissive=0.2),
     ]
     for key, classes in LANDUSE:
-        out.append(layer('landuse-' + key, 'fill', 'landuse', minzoom=9, filter=in_class(classes),
+        out.append(layer('landuse-' + key, 'fill', 'landuse', minzoom=9, filter=['all', ABOVE_GROUND, in_class(classes)],
                          paint={**fill(key), **opacity(key, None)}, emissive=0.25))
         # the pattern is the lot's own: a pedestrian area or a square is flat ground, not parking
-        out += patterned('landuse-' + key, key, 'landuse', 9, in_class(['parking'] if key == 'parking' else classes))
+        out += patterned('landuse-' + key, key, 'landuse', 9,
+                         ['all', ABOVE_GROUND, in_class(['parking'] if key == 'parking' else classes)])
     # a wood over the landuse, as Standard's one landuse layer draws it: a park's woods read darker
     # instead of vanishing under its lawn
     out += landcover('wood', dict(LANDCOVER)['wood'])
@@ -124,13 +128,14 @@ def layers(v):
                           paint={'line-color': c['landcover-outline'], 'line-width': zoom_ramp(12, 0.6, 16, 1),
                                  'line-dasharray': [1, 2]}), v, 'polygons_border'))
     out.append(gate(layer('landuse-outline', 'line', 'landuse', minzoom=13,
-                          filter=['all', ['==', ['geometry-type'], 'Polygon'], ['!', in_class(RESIDENTIAL)]],
+                          filter=['all', ['==', ['geometry-type'], 'Polygon'], ['!', in_class(RESIDENTIAL)], ABOVE_GROUND],
                           paint={'line-color': c['landcover-outline'], 'line-width': zoom_ramp(13, 0.4, 16, 0.8)}),
                     v, 'polygons_border'))
     out += [
-        layer('landuse-military-line', 'line', 'landuse', minzoom=12, filter=['==', get('class'), 'military'],
+        layer('landuse-military-line', 'line', 'landuse', minzoom=12, filter=['all', ABOVE_GROUND, ['==', get('class'), 'military']],
               paint={'line-color': c['military-line'], 'line-width': 1, 'line-dasharray': [4, 2]}, emissive=0.25),
-        layer('pitch-outline', 'line', 'landuse', minzoom=15, filter=in_class(['pitch', 'playground']),
+        layer('pitch-outline', 'line', 'landuse', minzoom=15,
+              filter=['all', ABOVE_GROUND, in_class(['pitch', 'playground'])],
               paint={'line-color': c['pitch-line']}, emissive=0.15),
         layer('barrier', 'line', 'landcover', minzoom=15, filter=['==', get('class'), 'barrier'],
               paint={'line-color': c['barrier'], 'line-width': zoom_ramp(15, 0.5, 18, 1.5)}, emissive=0.15),

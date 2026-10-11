@@ -428,6 +428,18 @@ namespace massif {
         void setLabelViewDistance(float viewDistance);
 
         /**
+         * Returns whether animated 3D models (a CartoCSS model-spin) move.
+         * @return True when they do. The default is true.
+         */
+        bool isModelAnimationsEnabled() const;
+        /**
+         * Sets whether animated 3D models move. While one is on screen the map redraws every frame;
+         * turn this off on an e-ink display or to save battery, and they stand still.
+         * @param enabled True to animate them.
+         */
+        void setModelAnimationsEnabled(bool enabled);
+
+        /**
          * Returns how far outside the viewport labels are placed, in screen pixels.
          * @return The label padding, or a negative value while it follows the tilt.
          */
@@ -920,6 +932,7 @@ namespace massif {
     
         float _drawDistance;
         float _labelViewDistance;
+        bool _modelAnimationsEnabled;
         float _labelPadding;
 
         float _fovY;

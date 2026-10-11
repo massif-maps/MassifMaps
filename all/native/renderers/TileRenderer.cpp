@@ -876,6 +876,7 @@ namespace massif {
         vtViewState.deviceResolution = static_cast<float>(viewState.getHeight());
         if (auto options = _options.lock()) {
             vtViewState.labelViewDistance = options->getLabelViewDistance();
+            tileRenderer->setModelAnimationsEnabled(options->isModelAnimationsEnabled());
         }
         tileRenderer->setViewState(vtViewState);
         // Device pixels per unscaled-DPI unit, so the antialias ramp is one pixel wide (lineFsh).

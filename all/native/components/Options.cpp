@@ -42,6 +42,7 @@ namespace massif {
         _dpi(160.0f),
         _drawDistance(16),
         _labelViewDistance(static_cast<float>(vt::LabelDistance::DEFAULT_VIEW_DISTANCE)),
+        _modelAnimationsEnabled(true),
         _labelPadding(-1.0f),
         _fovY(36.87f),
         _panningMode(PanningMode::PANNING_MODE_FREE),
@@ -443,6 +444,22 @@ namespace massif {
             _labelViewDistance = clamped;
         }
         notifyOptionChanged("LabelViewDistance");
+    }
+
+    bool Options::isModelAnimationsEnabled() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _modelAnimationsEnabled;
+    }
+
+    void Options::setModelAnimationsEnabled(bool enabled) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_modelAnimationsEnabled == enabled) {
+                return;
+            }
+            _modelAnimationsEnabled = enabled;
+        }
+        notifyOptionChanged("ModelAnimationsEnabled");
     }
 
     float Options::getLabelPadding() const {

@@ -100,11 +100,16 @@ namespace massif::vt {
         PointLabelProcessor createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
         TextLabelProcessor createTextLabelProcessor(const TextLabelStyle& style, const TextFormatter& formatter);
         ModelProcessor createModelProcessor(const ModelStyle& style);
+        // Whether a model point can bear on this tile's placement: the overlap rule reads the
+        // neighbours within MODEL_REACH of the tile, so the rest need not be evaluated at all.
+        bool isModelPointInReach(const Vertex& vertex) const;
 
         std::shared_ptr<TileLayer> buildTileLayer() const;
 
     private:
         static constexpr unsigned int RESERVED_VERTICES = 4096;
+        // Metres: twice the widest crown radius whose placement stays the same across zooms
+        static constexpr float MODEL_REACH = 32.0f;
         // At twice the tile's size: a tile is drawn up to one zoom level past its own.
         static constexpr float EDGE_CORNER_MIN_PIXELS = 1.0f;
 
@@ -286,17 +291,22 @@ namespace massif::vt {
         std::vector<std::shared_ptr<TileGeometry>> _geometryList;
         std::vector<std::shared_ptr<TileLabel>> _labelList;
 
-        struct ModelGroup {
-            ModelStyle style;
-            std::vector<ModelInstance> instances;
-            std::vector<long long> ids;
-            std::vector<long long> featureIds;
-            std::vector<int> geoPosIndexes;
+        // Every model point in reach, placed together in buildTileLayer: the overlap rule needs a
+        // point's neighbours on both sides before it can keep or drop it.
+        struct ModelCandidate {
+            std::size_t styleIndex;
+            ModelInstance instance;
+            long long id;
+            long long featureId;
+            int geoPointIndex;
+            Vertex vertex;
+            float radius;
+            std::uint64_t priority;
         };
-        std::vector<std::shared_ptr<ModelGroup>> _modelGroups;
-        // Model instances thinned to one per cell, shared by every model rule of the layer.
-        std::shared_ptr<std::unordered_set<int>> _modelOccupancy = std::make_shared<std::unordered_set<int>>();
-        std::shared_ptr<ModelFootprints> _modelFootprints = std::make_shared<ModelFootprints>();
+        std::vector<ModelStyle> _modelStyles;
+        std::vector<ModelCandidate> _modelCandidates;
+
+        std::vector<std::shared_ptr<TileModelInstances>> placeModels() const;
     };
 }
 

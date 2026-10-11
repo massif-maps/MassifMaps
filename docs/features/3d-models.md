@@ -77,12 +77,14 @@ app: `--es apiSet modelAnimationsEnabled=false`).
 - **Density**: as mapbox does for its trees, each tile keeps one instance per cell of a grid shared
   by every model rule of the layer — 100 cells a side up to z14, 256 at z15, no thinning from z16
   (mapbox's table for a z14 source). `model-allow-density-reduction: false` keeps every point.
-- **Overlap**: as `marker-allow-overlap` does for icons, a model whose crown crosses one already
-  placed in the tile is left out. The crown is the disc inscribed in the model's box, seen from
-  above, times `model-scale`. It is measured in metres and decided over the whole source tile,
-  points outside the drawn tile included, so zooming in keeps every tree where it was and only adds
-  the ones the density grid had thinned. The models of one point (a tower and its rotor) never collide with each other.
-  `model-allow-overlap: true` places every point.
+- **Overlap**: as `marker-allow-overlap` does for icons, models do not cross. The crown is the disc
+  inscribed in the model's box, seen from above, times `model-scale`, in metres. Of two crossing
+  crowns the one ranked higher stays; the rank is drawn from the point's position, so it is the same
+  at every zoom, and zooming in keeps every tree where it was, only adding those the density grid had
+  thinned. A crown can lose to a neighbour that itself lost, so a dense row keeps fewer trees than a
+  first-come rule would. The models of one point (a tower and its rotor) never collide.
+  `model-allow-overlap: true` places every point. Crowns wider than 16 m in radius may differ
+  between zooms near tile edges.
 - **Fade-in**: give `model-opacity` a zoom ramp, `linear([view::zoom], (15, 0), (16, 1))`.
 - **Detail by zoom**: pick a lighter file at lower zooms with `step([zoom], ...)` in `model-file`;
   the choice is made per tile, at its zoom.

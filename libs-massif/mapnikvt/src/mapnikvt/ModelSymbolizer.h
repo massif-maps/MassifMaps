@@ -28,8 +28,7 @@ namespace massif::mvt {
 
         virtual std::string getTypeName() const override { return "model"; }
 
-        // Placement against the overlap rule sees every point of the source tile, so it decides the
-        // same way whichever overzoomed tile is cut from it.
+        // The overlap rule reads a point's neighbours across the tile edge, which the clip would cut.
         virtual bool needsUnclippedFeatures() const override { return true; }
 
         // [mapnik::seed] for a point: its world position, so the value survives re-cutting the tile.

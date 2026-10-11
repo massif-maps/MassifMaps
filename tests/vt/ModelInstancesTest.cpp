@@ -95,11 +95,10 @@ void testModelOverlap() {
         instance.scale = scale;
         auto east = [&](float metres) { return cglib::vec2<float>(0.5f + metres * unitsPerMetre, 0.5f); };
         processor(1, 1, east(0), instance, 0);
-        processor(1, 1, east(5), instance, 1);  // crowns cross
-        processor(1, 1, east(8.5f), instance, 2); // touches neither
-        processor(1, 1, east(15), instance, 3);
-        processor(2, 2, east(15), instance, 0); // another feature at a point taken
-        processor(1, 1, east(15), instance, 3); // the same point again: a tower and its rotor
+        processor(1, 1, east(5), instance, 1);  // the two crowns cross: one stays
+        processor(1, 1, east(20), instance, 2); // alone
+        processor(2, 2, east(40), instance, 0); // a tower and its rotor: one point, two models
+        processor(2, 2, east(40), instance, 0);
         std::size_t count = 0;
         std::shared_ptr<TileLayer> layer = builder.buildTileLayer();
         for (const std::shared_ptr<TileModelInstances>& models : layer->getModels()) {
@@ -107,14 +106,14 @@ void testModelOverlap() {
         }
         return count;
     };
-    TEST_CHECK(countPlaced(false, 1.0f) == 4, "a crown crossing a placed one is dropped, unless it belongs to the same point");
-    TEST_CHECK(countPlaced(true, 1.0f) == 6, "model-allow-overlap: true keeps every point");
+    TEST_CHECK(countPlaced(false, 1.0f) == 4, "of two crossing crowns the higher-ranked stays, the models of one point never collide");
+    TEST_CHECK(countPlaced(true, 1.0f) == 5, "model-allow-overlap: true keeps every point");
     TEST_CHECK(countPlaced(false, 0.5f) == 5, "the disc follows the instance's scale");
 }
 
 void testModelOverlapAcrossZooms() {
-    // Every tile cut from one source sees all its points (TileReader feeds a model rule unclipped),
-    // so a child tile keeps exactly the trees its parent kept inside it.
+    // The rule is local: a tile that sees every neighbour within reach (the symbolizer hands it the
+    // unclipped source, cut to isModelPointInReach) keeps exactly the trees its parent kept there.
     auto transformer = std::make_shared<DefaultTileTransformer>(1.0f);
     TileId parent(17, 67000, 46500), child(18, 134001, 93000);
     float unitsPerMetre = transformer->createTileVertexTransformer(parent)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
@@ -131,7 +130,10 @@ void testModelOverlapAcrossZooms() {
         style.model = crown;
         auto processor = builder.createModelProcessor(style);
         for (std::size_t i = 0; i < points.size(); i++) {
-            processor(1, 1, cglib::vec2<float>(points[i](0) * scale - offsetX, points[i](1) * scale - offsetY), ModelInstance(), static_cast<int>(i));
+            cglib::vec2<float> vertex(points[i](0) * scale - offsetX, points[i](1) * scale - offsetY);
+            if (builder.isModelPointInReach(vertex)) {
+                processor(1, 1, vertex, ModelInstance(), static_cast<int>(i));
+            }
         }
         std::vector<int> kept;
         std::shared_ptr<TileLayer> layer = builder.buildTileLayer();
@@ -140,14 +142,19 @@ void testModelOverlapAcrossZooms() {
         }
         return kept;
     };
-    std::vector<int> fromParent;
-    for (int index : placed(parent, 1.0f, 0.0f, 0.0f)) {
-        if (points[index](0) >= 0.5f && points[index](1) < 0.5f) {
-            fromParent.push_back(index);
+    std::vector<int> fromParent, all = placed(parent, 1.0f, 0.0f, 0.0f);
+    bool apart = true;
+    for (int a : all) {
+        for (int b : all) {
+            apart = apart && (a == b || cglib::length(points[a] - points[b]) >= 8 * unitsPerMetre * 0.999f);
+        }
+        if (points[a](0) >= 0.5f && points[a](1) < 0.5f) {
+            fromParent.push_back(a);
         }
     }
+    TEST_CHECK(apart && all.size() > 20, "no two kept crowns cross");
     std::vector<int> fromChild = placed(child, 2.0f, 1.0f, 0.0f);
-    TEST_CHECK(fromParent.size() > 10 && fromChild == fromParent, "zooming in keeps the trees the parent tile placed");
+    TEST_CHECK(fromParent.size() > 5 && fromChild == fromParent, "zooming in keeps the trees the parent tile placed");
 }
 
 void testModelInstancePick() {

@@ -2556,3 +2556,19 @@ visible set per vector layer, 6.6 MB of cache accounting (put-time `TileInfo::ge
 (10 MB cap per layer) for no change in the hold, so they are dropped as before.
 
 Not measured: Android, iOS, the Crosscall. The first rise is unchanged within run-to-run noise.
+
+## 44. 3D tree placement read the whole source tile (2026-10-11)
+
+Method: arm64 emulator (host load 7-9), Grenoble 5.7300/45.1880, demo `--es anim zoomseq` from z16
+tilt 50, Massif streets on the Rhône-Alpes pmtiles, 60 s per run; a temporary timer around
+`TileReader::readTile` and around the model styles' `processLayer`, ~130 tiles a run.
+
+| Placement | model decode, total | per tile |
+| --- | --- | --- |
+| clipped tile (trees swap on zoom) | 89 ms | 0.7 ms |
+| whole source tile, first-come overlap | 775 ms | 6.1 ms |
+| points within 32 m, local ranked overlap ([19-models](rendering/19-models.md)) | 101-111 ms | 0.8 ms |
+
+Frame time over the same sequence: shadows on 80-200 ms with or without the models (5-10 fps),
+shadows off 50-57 ms (13-17 fps). The models' own draw and caster cost is inside the run-to-run noise;
+the slow zoom is the shadow passes. Not measured: a device.

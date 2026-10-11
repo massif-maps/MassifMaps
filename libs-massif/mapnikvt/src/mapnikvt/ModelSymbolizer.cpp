@@ -6,11 +6,7 @@
 
 namespace massif::mvt {
     long long ModelSymbolizer::instanceSeed(const vt::TileId& tileId, const cglib::vec2<float>& vertex) {
-        // 2^-26 of the world, about 0.6 m at the equator: finer than any tile's coordinate grid
-        double worldScale = std::ldexp(1.0, 26 - tileId.zoom);
-        long long x = std::llround((tileId.x + static_cast<double>(vertex(0))) * worldScale);
-        long long y = std::llround((tileId.y + static_cast<double>(vertex(1))) * worldScale);
-        return x * 73856093LL ^ y * 19349663LL;
+        return vt::modelPointSeed(tileId, vertex);
     }
 
     ModelSymbolizer::FeatureProcessor ModelSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
@@ -68,6 +64,9 @@ namespace massif::mvt {
                 const PointGeometry::VerticesList& verticesList = pointGeometry->getVerticesList();
                 for (std::size_t part = 0; part < verticesList.size(); part++) {
                     for (const cglib::vec2<float>& vertex : verticesList[part]) {
+                        if (!layerBuilder.isModelPointInReach(vertex)) {
+                            continue;
+                        }
                         long long seed = instanceSeed(context.getTileId(), vertex);
                         vt::ModelInstance instance = featureInstance;
                         std::string file = featureFile;

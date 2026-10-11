@@ -4,12 +4,14 @@
 #include "Color.h"
 #include "Model.h"
 #include "Styles.h"
+#include "TileId.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -68,27 +70,50 @@ namespace massif::vt {
         const std::vector<int> _geoPosIndexes;
     };
 
-    // Crowns placed so far in one tile layer, as discs; a model rule without allow-overlap keeps a
-    // point only when its disc touches none. Discs of one point (a tower and its rotor) never collide.
+    // Seed of a point: its world position, quantised to 2^-26 of the world (about 0.6 m at the
+    // equator, finer than any tile's coordinate grid), so it survives re-cutting the tile.
+    inline long long modelPointSeed(const TileId& tileId, const cglib::vec2<float>& vertex) {
+        double worldScale = std::ldexp(1.0, 26 - tileId.zoom);
+        long long x = std::llround((tileId.x + static_cast<double>(vertex(0))) * worldScale);
+        long long y = std::llround((tileId.y + static_cast<double>(vertex(1))) * worldScale);
+        return x * 73856093LL ^ y * 19349663LL;
+    }
+
+    // Crowns of one tile layer, as discs ranked by a per-point priority. A crown is outranked when a
+    // higher-ranked disc of another point crosses it: a local test with no cascade, so it decides the
+    // same way in every tile that sees the neighbours within reach (TileLayerBuilder::MODEL_REACH).
     class ModelFootprints final {
     public:
-        bool overlaps(const cglib::vec2<float>& position, float radius, long long id, int geoPointIndex) const {
+        struct Footprint {
+            cglib::vec2<float> position;
+            float radius;
+            long long id;
+            int geoPointIndex;
+            std::uint64_t priority;
+        };
+
+        bool outranked(const Footprint& footprint) const {
+            auto beats = [&](const Footprint& other) {
+                if (other.id == footprint.id && other.geoPointIndex == footprint.geoPointIndex) {
+                    return false;
+                }
+                if (!(cglib::length(other.position - footprint.position) < other.radius + footprint.radius)) {
+                    return false;
+                }
+                return std::tie(other.priority, other.id, other.geoPointIndex) > std::tie(footprint.priority, footprint.id, footprint.geoPointIndex);
+            };
             if (_cellSize <= 0) {
                 return false;
             }
-            auto hits = [&](const Footprint& other) {
-                float reach = radius + other.radius;
-                return !(other.id == id && other.geoPointIndex == geoPointIndex) && cglib::length(other.position - position) < reach;
-            };
-            int range = static_cast<int>(std::ceil((radius + _maxRadius) / _cellSize));
+            int range = static_cast<int>(std::ceil((footprint.radius + _maxRadius) / _cellSize));
             if (range > 8) {
-                return std::any_of(_footprints.begin(), _footprints.end(), hits);
+                return std::any_of(_footprints.begin(), _footprints.end(), beats);
             }
-            int cx = static_cast<int>(std::floor(position(0) / _cellSize)), cy = static_cast<int>(std::floor(position(1) / _cellSize));
+            int cx = static_cast<int>(std::floor(footprint.position(0) / _cellSize)), cy = static_cast<int>(std::floor(footprint.position(1) / _cellSize));
             for (int y = cy - range; y <= cy + range; y++) {
                 for (int x = cx - range; x <= cx + range; x++) {
                     auto it = _cells.find(cellKey(x, y));
-                    if (it != _cells.end() && std::any_of(it->second.begin(), it->second.end(), [&](std::size_t index) { return hits(_footprints[index]); })) {
+                    if (it != _cells.end() && std::any_of(it->second.begin(), it->second.end(), [&](std::size_t index) { return beats(_footprints[index]); })) {
                         return true;
                     }
                 }
@@ -96,26 +121,19 @@ namespace massif::vt {
             return false;
         }
 
-        void add(const cglib::vec2<float>& position, float radius, long long id, int geoPointIndex) {
-            if (!(radius > 0)) {
+        void add(const Footprint& footprint) {
+            if (!(footprint.radius > 0)) {
                 return;
             }
             if (_cellSize <= 0) {
-                _cellSize = 2 * radius;
+                _cellSize = 2 * footprint.radius;
             }
-            _maxRadius = std::max(_maxRadius, radius);
-            _cells[cellKey(static_cast<int>(std::floor(position(0) / _cellSize)), static_cast<int>(std::floor(position(1) / _cellSize)))].push_back(_footprints.size());
-            _footprints.push_back(Footprint { position, radius, id, geoPointIndex });
+            _maxRadius = std::max(_maxRadius, footprint.radius);
+            _cells[cellKey(static_cast<int>(std::floor(footprint.position(0) / _cellSize)), static_cast<int>(std::floor(footprint.position(1) / _cellSize)))].push_back(_footprints.size());
+            _footprints.push_back(footprint);
         }
 
     private:
-        struct Footprint {
-            cglib::vec2<float> position;
-            float radius;
-            long long id;
-            int geoPointIndex;
-        };
-
         static long long cellKey(int x, int y) { return (static_cast<long long>(x) << 32) ^ static_cast<unsigned int>(y); }
 
         float _cellSize = 0;

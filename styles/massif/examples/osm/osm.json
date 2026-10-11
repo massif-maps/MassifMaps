@@ -4,6 +4,7 @@
     "osm-colors.mss",
     "variables.mss",
     "style.mss",
+    "models.mss",
     "osm-rules.mss"
   ],
   "styleparameters": {

@@ -291,7 +291,24 @@ def convert(out='carto', extra=()):
             if f.endswith(('.json', '.mss')):
                 shutil.copy(os.path.join(folder, f), os.path.join(HERE, out, f))
     legend.write(os.path.join(HERE, out))
+    add_models(out)
     return next(line for line in report.splitlines() if line.startswith('Coverage'))
+
+
+def add_models(out):
+    """SDK only: the 3D models (models/gen_models.py) and models.mss placing them, listed after the
+    converted rules so a child project restating `styles` can leave them out."""
+    src = os.path.join(HERE, 'models')
+    os.makedirs(os.path.join(HERE, out, 'models'), exist_ok=True)
+    for f in sorted(os.listdir(src)):
+        if f.endswith('.glb'):
+            shutil.copy(os.path.join(src, f), os.path.join(HERE, out, 'models', f))
+    shutil.copy(os.path.join(src, 'models.mss'), os.path.join(HERE, out, 'models.mss'))
+    path = os.path.join(HERE, out, 'project.json')
+    project = json.load(open(path))
+    if 'models.mss' not in project['styles']:
+        project['styles'].insert(project['styles'].index('style.mss') + 1, 'models.mss')
+    open(path, 'w').write(json.dumps(project, indent=2, ensure_ascii=False) + '\n')
 
 
 def main(args):

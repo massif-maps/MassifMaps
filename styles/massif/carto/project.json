@@ -1,7 +1,8 @@
 {
   "styles": [
     "variables.mss",
-    "style.mss"
+    "style.mss",
+    "models.mss"
   ],
   "layers": [
     "place::place_country",

@@ -4,6 +4,7 @@
     "custom-colors.mss",
     "variables.mss",
     "style.mss",
+    "models.mss",
     "custom-rules.mss"
   ],
   "styleparameters": {

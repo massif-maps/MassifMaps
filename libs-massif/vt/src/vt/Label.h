@@ -72,6 +72,8 @@ namespace massif::vt {
         bool isPartlyOccluded() const { return _occlusion < 1.0f; }
         // The anchor the occlusion rays aim at, world coordinates; null before placement.
         const cglib::vec3<double>* getAnchorPosition() const { return _placement ? &_placement->position : nullptr; }
+        // A point label's anchor before it is placed (its first tile's copy); false for a label on a line.
+        bool getPointAnchor(cglib::vec3<double>& position) const;
 
         bool isVisible() const { return _visible; }
         void setVisible(bool visible) { _visible = visible; }

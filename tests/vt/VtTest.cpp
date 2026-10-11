@@ -36,6 +36,7 @@ void testRenderTileBlend();
 void testGroundCover();
 void testLabelSlice();
 void testLabelFade();
+void testLabelSpot();
 void testLayerContentFlags();
 void testDrawOnce();
 void testPointGeoPosIndex();
@@ -86,6 +87,7 @@ int main() {
     testGroundCover();
     testLabelSlice();
     testLabelFade();
+    testLabelSpot();
     testLayerContentFlags();
     testDrawOnce();
     testPointGeoPosIndex();

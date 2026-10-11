@@ -13,6 +13,7 @@
 #include "RenderTileBlend.h"
 #include "GroundCover.h"
 #include "LabelCuller.h"
+#include "LabelSpot.h"
 #include "RenderStats.h"
 #include "ShadowBox.h"
 
@@ -96,6 +97,8 @@ namespace massif::vt {
     static constexpr float DRAPE_LIGHT_STEPS = 16.0f;
     // Layer opacity quantisation in a drape fingerprint: below one 8-bit alpha step it cannot show.
     static constexpr float DRAPE_OPACITY_STEPS = 255.0f;
+    // A label spot is a tile this deep, 2^-28 of the world (~0.15 m): combineAnchorId's cell.
+    static constexpr int LABEL_SPOT_ZOOM = 28;
     // maplibre covering_tiles.ts / mercator_utils.ts verbatim: tallest assumed feature, the angle
     // above the horizon where the culling box starts growing to hold it, and the horizon.
     static constexpr double ASSUMED_MAX_FEATURE_HEIGHT_METERS = 500.0;
@@ -2843,6 +2846,40 @@ namespace massif::vt {
         }
 
         VT_STAT_SPLIT(labelReleaseNs, labelMapClock);
+        // A new id where a label of the layer stood is the same POI: it keeps the icon's state, the text fades in.
+        // A fresh start hid it until the next placement pass, a blink at every zoom level its name appears at.
+        std::map<LabelSpot, std::shared_ptr<Label>> oldSpots;
+        bool oldSpotsCollected = false;
+        double spotCellSize = _transformer->calculateTileBBox(TileId(LABEL_SPOT_ZOOM, 0, 0)).size()(0);
+        auto takeOldSpot = [&](const Label& newLabel) {
+            cglib::vec3<double> position;
+            if (newLabel.isLineRun() || !newLabel.getPointAnchor(position)) {
+                return std::shared_ptr<Label>();
+            }
+            if (!oldSpotsCollected) {
+                oldSpotsCollected = true;
+                for (auto layerIt = _layerLabelMap.begin(); layerIt != _layerLabelMap.end(); layerIt++) {
+                    auto carriedIt = newLayerLabelMap.find(layerIt->first);
+                    for (auto labelIt = layerIt->second.begin(); labelIt != layerIt->second.end(); labelIt++) {
+                        if (!labelIt->second) {
+                            continue; // the slot the caller is about to fill
+                        }
+                        const cglib::vec3<double>* anchor = labelIt->second->getAnchorPosition();
+                        bool carried = carriedIt != newLayerLabelMap.end() && carriedIt->second.count(labelIt->first) > 0;
+                        if (anchor && !labelIt->second->isLineRun() && !carried) {
+                            oldSpots.emplace(calculateLabelSpot(layerIt->first, *anchor, spotCellSize), labelIt->second);
+                        }
+                    }
+                }
+            }
+            auto spotIt = oldSpots.find(calculateLabelSpot(newLabel.getLayerIndex(), position, spotCellSize));
+            if (spotIt == oldSpots.end()) {
+                return std::shared_ptr<Label>();
+            }
+            std::shared_ptr<Label> oldLabel = spotIt->second;
+            oldSpots.erase(spotIt);
+            return oldLabel;
+        };
         for (auto newLayerLabelIt = newLayerLabelMap.begin(); newLayerLabelIt != newLayerLabelMap.end(); newLayerLabelIt++) {
             const GlobalIdLabelMap& newLabelMap = newLayerLabelIt->second;
             GlobalIdLabelMap& labelMap = _layerLabelMap[newLayerLabelIt->first];
@@ -2860,6 +2897,14 @@ namespace massif::vt {
                     newLabel->setOpacity(label->getOpacity());
                     newLabel->setTextOpacity(label->getTextOpacity());
                     newLabel->snapPlacement(*label);
+                }
+                else if (std::shared_ptr<Label> oldLabel = takeOldSpot(*newLabel)) {
+                    newLabel->setVisible(oldLabel->isVisible());
+                    newLabel->setOpacity(oldLabel->getOpacity());
+                    newLabel->setTextOpacity(0);
+                    newLabel->snapPlacement(*oldLabel);
+                    oldLabel->setOpacity(0); // the new one draws its icon now; two would overlap
+                    oldLabel->setTextOpacity(0);
                 }
                 else {
                     newLabel->setVisible(false);

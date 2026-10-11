@@ -76,22 +76,22 @@ Map {
   polygon-opacity: linear([view::zoom], (8, 1), (9, 0));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landuse[zoom >= 6][class = 'residential']['param::variant' != 'hybrid']::landuse_residential {
+#landuse[zoom >= 6][class = 'residential'][layer = null]['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (8, (([param::lowzoom_landcover] = 1) ? 0 : 1)), (8.2, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 6][class = 'suburb']['param::variant' != 'hybrid']::landuse_residential {
+#landuse[zoom >= 6][class = 'suburb'][layer = null]['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (8, (([param::lowzoom_landcover] = 1) ? 0 : 1)), (8.2, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 6][class = 'quarter']['param::variant' != 'hybrid']::landuse_residential {
+#landuse[zoom >= 6][class = 'quarter'][layer = null]['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (8, (([param::lowzoom_landcover] = 1) ? 0 : 1)), (8.2, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 6][class = 'neighbourhood']['param::variant' != 'hybrid']::landuse_residential {
+#landuse[zoom >= 6][class = 'neighbourhood'][layer = null]['param::variant' != 'hybrid']::landuse_residential {
   polygon-fill: (([param::variant] = 'outdoor') ? @landuse_residential_fill : (([param::variant] = 'topo') ? @landuse_residential_fill_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @residential)));
   polygon-opacity: linear([view::zoom], (8, (([param::lowzoom_landcover] = 1) ? 0 : 1)), (8.2, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -248,211 +248,211 @@ Map {
   line-opacity: 0.6;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.2);
 }
-#landuse[zoom >= 9][class = 'commercial']['param::variant' != 'hybrid']::landuse_commercial {
+#landuse[zoom >= 9][class = 'commercial'][layer = null]['param::variant' != 'hybrid']::landuse_commercial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_commercial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @commercial));
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'retail']['param::variant' != 'hybrid']::landuse_commercial {
+#landuse[zoom >= 9][class = 'retail'][layer = null]['param::variant' != 'hybrid']::landuse_commercial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_commercial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @commercial));
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'industrial']['param::variant' != 'hybrid']::landuse_industrial {
+#landuse[zoom >= 9][class = 'industrial'][layer = null]['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'garages']['param::variant' != 'hybrid']::landuse_industrial {
+#landuse[zoom >= 9][class = 'garages'][layer = null]['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'railway']['param::variant' != 'hybrid']::landuse_industrial {
+#landuse[zoom >= 9][class = 'railway'][layer = null]['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'quarry']['param::variant' != 'hybrid']::landuse_industrial {
+#landuse[zoom >= 9][class = 'quarry'][layer = null]['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'dam']['param::variant' != 'hybrid']::landuse_industrial {
+#landuse[zoom >= 9][class = 'dam'][layer = null]['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'bus_station']['param::variant' != 'hybrid']::landuse_industrial {
+#landuse[zoom >= 9][class = 'bus_station'][layer = null]['param::variant' != 'hybrid']::landuse_industrial {
   polygon-fill: (([param::variant] = 'topo') ? @landuse_industrial_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @industrial));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 13][class = 'industrial']['param::variant' = 'eink']::landuse_industrial_pattern {
+#landuse[zoom >= 13][class = 'industrial'][layer = null]['param::variant' = 'eink']::landuse_industrial_pattern {
   polygon-pattern-file: url('icons/pattern-industrial.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 13][class = 'garages']['param::variant' = 'eink']::landuse_industrial_pattern {
+#landuse[zoom >= 13][class = 'garages'][layer = null]['param::variant' = 'eink']::landuse_industrial_pattern {
   polygon-pattern-file: url('icons/pattern-industrial.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 13][class = 'railway']['param::variant' = 'eink']::landuse_industrial_pattern {
+#landuse[zoom >= 13][class = 'railway'][layer = null]['param::variant' = 'eink']::landuse_industrial_pattern {
   polygon-pattern-file: url('icons/pattern-industrial.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 13][class = 'quarry']['param::variant' = 'eink']::landuse_industrial_pattern {
+#landuse[zoom >= 13][class = 'quarry'][layer = null]['param::variant' = 'eink']::landuse_industrial_pattern {
   polygon-pattern-file: url('icons/pattern-industrial.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 13][class = 'dam']['param::variant' = 'eink']::landuse_industrial_pattern {
+#landuse[zoom >= 13][class = 'dam'][layer = null]['param::variant' = 'eink']::landuse_industrial_pattern {
   polygon-pattern-file: url('icons/pattern-industrial.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 13][class = 'bus_station']['param::variant' = 'eink']::landuse_industrial_pattern {
+#landuse[zoom >= 13][class = 'bus_station'][layer = null]['param::variant' = 'eink']::landuse_industrial_pattern {
   polygon-pattern-file: url('icons/pattern-industrial.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 9][class = 'school']['param::variant' != 'hybrid']::landuse_education {
+#landuse[zoom >= 9][class = 'school'][layer = null]['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'university']['param::variant' != 'hybrid']::landuse_education {
+#landuse[zoom >= 9][class = 'university'][layer = null]['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'kindergarten']['param::variant' != 'hybrid']::landuse_education {
+#landuse[zoom >= 9][class = 'kindergarten'][layer = null]['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'college']['param::variant' != 'hybrid']::landuse_education {
+#landuse[zoom >= 9][class = 'college'][layer = null]['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'library']['param::variant' != 'hybrid']::landuse_education {
+#landuse[zoom >= 9][class = 'library'][layer = null]['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'education']['param::variant' != 'hybrid']::landuse_education {
+#landuse[zoom >= 9][class = 'education'][layer = null]['param::variant' != 'hybrid']::landuse_education {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @education);
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'hospital']['param::variant' != 'hybrid']::landuse_hospital {
+#landuse[zoom >= 9][class = 'hospital'][layer = null]['param::variant' != 'hybrid']::landuse_hospital {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @hospital);
   polygon-opacity: 1;
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'cemetery']['param::variant' != 'hybrid']::landuse_cemetery {
+#landuse[zoom >= 9][class = 'cemetery'][layer = null]['param::variant' != 'hybrid']::landuse_cemetery {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @cemetery);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 14][class = 'cemetery']['param::variant' = 'eink']::landuse_cemetery_pattern {
+#landuse[zoom >= 14][class = 'cemetery'][layer = null]['param::variant' = 'eink']::landuse_cemetery_pattern {
   polygon-pattern-file: url('icons/pattern-cemetery.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 9][class = 'park']['param::variant' != 'hybrid']::landuse_park {
+#landuse[zoom >= 9][class = 'park'][layer = null]['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'garden']['param::variant' != 'hybrid']::landuse_park {
+#landuse[zoom >= 9][class = 'garden'][layer = null]['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'stadium']['param::variant' != 'hybrid']::landuse_park {
+#landuse[zoom >= 9][class = 'stadium'][layer = null]['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'theme_park']['param::variant' != 'hybrid']::landuse_park {
+#landuse[zoom >= 9][class = 'theme_park'][layer = null]['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'zoo']['param::variant' != 'hybrid']::landuse_park {
+#landuse[zoom >= 9][class = 'zoo'][layer = null]['param::variant' != 'hybrid']::landuse_park {
   polygon-fill: (([param::variant] = 'topo') ? @park_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @halo_night), (0.3, @road_label_halo)) : @park));
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 14][class = 'park']['param::variant' = 'eink']::landuse_park_pattern {
+#landuse[zoom >= 14][class = 'park'][layer = null]['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'garden']['param::variant' = 'eink']::landuse_park_pattern {
+#landuse[zoom >= 14][class = 'garden'][layer = null]['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'stadium']['param::variant' = 'eink']::landuse_park_pattern {
+#landuse[zoom >= 14][class = 'stadium'][layer = null]['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'theme_park']['param::variant' = 'eink']::landuse_park_pattern {
+#landuse[zoom >= 14][class = 'theme_park'][layer = null]['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'zoo']['param::variant' = 'eink']::landuse_park_pattern {
+#landuse[zoom >= 14][class = 'zoo'][layer = null]['param::variant' = 'eink']::landuse_park_pattern {
   polygon-pattern-file: url('icons/pattern-park.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 9][class = 'pitch']['param::variant' != 'hybrid']::landuse_pitch {
+#landuse[zoom >= 9][class = 'pitch'][layer = null]['param::variant' != 'hybrid']::landuse_pitch {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @pitch);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'track']['param::variant' != 'hybrid']::landuse_pitch {
+#landuse[zoom >= 9][class = 'track'][layer = null]['param::variant' != 'hybrid']::landuse_pitch {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @pitch);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'playground']['param::variant' != 'hybrid']::landuse_pitch {
+#landuse[zoom >= 9][class = 'playground'][layer = null]['param::variant' != 'hybrid']::landuse_pitch {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @pitch);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (12, 1), (13, 1), (14, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 14][class = 'pitch']['param::variant' = 'eink']::landuse_pitch_pattern {
+#landuse[zoom >= 14][class = 'pitch'][layer = null]['param::variant' = 'eink']::landuse_pitch_pattern {
   polygon-pattern-file: url('icons/pattern-pitch.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'track']['param::variant' = 'eink']::landuse_pitch_pattern {
+#landuse[zoom >= 14][class = 'track'][layer = null]['param::variant' = 'eink']::landuse_pitch_pattern {
   polygon-pattern-file: url('icons/pattern-pitch.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 14][class = 'playground']['param::variant' = 'eink']::landuse_pitch_pattern {
+#landuse[zoom >= 14][class = 'playground'][layer = null]['param::variant' = 'eink']::landuse_pitch_pattern {
   polygon-pattern-file: url('icons/pattern-pitch.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 9][class = 'parking']['param::variant' != 'hybrid']::landuse_parking {
+#landuse[zoom >= 9][class = 'parking'][layer = null]['param::variant' != 'hybrid']::landuse_parking {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @parking);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (13, 1), (14, 1), (15, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'pedestrian']['param::variant' != 'hybrid']::landuse_parking {
+#landuse[zoom >= 9][class = 'pedestrian'][layer = null]['param::variant' != 'hybrid']::landuse_parking {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @parking);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (13, 1), (14, 1), (15, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 9][class = 'square']['param::variant' != 'hybrid']::landuse_parking {
+#landuse[zoom >= 9][class = 'square'][layer = null]['param::variant' != 'hybrid']::landuse_parking {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @parking);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (13, 1), (14, 1), (15, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 15][class = 'parking']['param::variant' = 'eink']::landuse_parking_pattern {
+#landuse[zoom >= 15][class = 'parking'][layer = null]['param::variant' = 'eink']::landuse_parking_pattern {
   polygon-pattern-file: url('icons/pattern-parking.png');
   polygon-pattern-emissive-strength: 0;
 }
-#landuse[zoom >= 9][class = 'military']['param::variant' != 'hybrid']::landuse_military {
+#landuse[zoom >= 9][class = 'military'][layer = null]['param::variant' != 'hybrid']::landuse_military {
   polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @polygon_fill_5), (0.3, @polygon_fill_6)) : @military);
   polygon-opacity: (([param::variant] = 'eink') ? linear([view::zoom], (11, 1), (12, 1), (13, 0)) : 1);
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 13][class = 'military']['param::variant' = 'eink']::landuse_military_pattern {
+#landuse[zoom >= 13][class = 'military'][layer = null]['param::variant' = 'eink']::landuse_military_pattern {
   polygon-pattern-file: url('icons/pattern-military.png');
   polygon-pattern-emissive-strength: 0;
 }
@@ -471,22 +471,22 @@ Map {
   line-dasharray: 1,1.4;
   line-emissive-strength: 0;
 }
-#landuse[zoom >= 13]['mapnik::geometry_type' = 3][class != 'residential'][class != 'suburb'][class != 'quarter'][class != 'neighbourhood']['param::polygons_border' = 1]['param::variant' != 'hybrid']::landuse_outline {
+#landuse[zoom >= 13]['mapnik::geometry_type' = 3][class != 'residential'][class != 'suburb'][class != 'quarter'][class != 'neighbourhood'][layer = null]['param::polygons_border' = 1]['param::variant' != 'hybrid']::landuse_outline {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_5), (0.3, @line_stroke_6)) : @landcover_outline);
   line-width: linear([view::zoom], (13, 0.4), (16, 0.8));
   line-emissive-strength: 0;
 }
-#landuse[zoom >= 12][class = 'military']['param::variant' != 'hybrid']::landuse_military_line {
+#landuse[zoom >= 12][class = 'military'][layer = null]['param::variant' != 'hybrid']::landuse_military_line {
   line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_2), (0.3, @road_label_halo_night)) : @military_line);
   line-width: 1;
   line-dasharray: 4,2;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
-#landuse[zoom >= 15][class = 'pitch']['param::variant' != 'hybrid']::pitch_outline {
+#landuse[zoom >= 15][class = 'pitch'][layer = null]['param::variant' != 'hybrid']::pitch_outline {
   line-color: (([param::variant] = 'eink') ? @road_stroke : @pitch_line);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
-#landuse[zoom >= 15][class = 'playground']['param::variant' != 'hybrid']::pitch_outline {
+#landuse[zoom >= 15][class = 'playground'][layer = null]['param::variant' != 'hybrid']::pitch_outline {
   line-color: (([param::variant] = 'eink') ? @road_stroke : @pitch_line);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }

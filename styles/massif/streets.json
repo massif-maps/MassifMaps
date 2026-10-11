@@ -726,18 +726,28 @@
       "source-layer": "landuse",
       "minzoom": 6,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "residential",
-            "suburb",
-            "quarter",
-            "neighbourhood"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "residential",
+              "suburb",
+              "quarter",
+              "neighbourhood"
+            ]
           ]
         ]
       ],
@@ -1321,16 +1331,26 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "commercial",
-            "retail"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "commercial",
+              "retail"
+            ]
           ]
         ]
       ],
@@ -1361,20 +1381,30 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "industrial",
-            "garages",
-            "railway",
-            "quarry",
-            "dam",
-            "bus_station"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "industrial",
+              "garages",
+              "railway",
+              "quarry",
+              "dam",
+              "bus_station"
+            ]
           ]
         ]
       ],
@@ -1405,20 +1435,30 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "school",
-            "university",
-            "kindergarten",
-            "college",
-            "library",
-            "education"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "school",
+              "university",
+              "kindergarten",
+              "college",
+              "library",
+              "education"
+            ]
           ]
         ]
       ],
@@ -1449,15 +1489,25 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "hospital"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "hospital"
+            ]
           ]
         ]
       ],
@@ -1488,15 +1538,25 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "cemetery"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "cemetery"
+            ]
           ]
         ]
       ],
@@ -1527,19 +1587,29 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "park",
-            "garden",
-            "stadium",
-            "theme_park",
-            "zoo"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "park",
+              "garden",
+              "stadium",
+              "theme_park",
+              "zoo"
+            ]
           ]
         ]
       ],
@@ -1570,17 +1640,27 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "pitch",
-            "track",
-            "playground"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "pitch",
+              "track",
+              "playground"
+            ]
           ]
         ]
       ],
@@ -1611,17 +1691,27 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "parking",
-            "pedestrian",
-            "square"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "parking",
+              "pedestrian",
+              "square"
+            ]
           ]
         ]
       ],
@@ -1652,15 +1742,25 @@
       "source-layer": "landuse",
       "minzoom": 9,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "military"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "military"
+            ]
           ]
         ]
       ],
@@ -1830,6 +1930,13 @@
               ]
             ]
           ]
+        ],
+        [
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ]
       ],
       "paint": {
@@ -1872,12 +1979,22 @@
       "source-layer": "landuse",
       "minzoom": 12,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
-        "military"
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "military"
+        ]
       ],
       "paint": {
         "line-color": "hsl(0, 50%, 70%)",
@@ -1909,16 +2026,26 @@
       "source-layer": "landuse",
       "minzoom": 15,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "!",
+          [
+            "has",
+            "layer"
+          ]
         ],
         [
-          "literal",
+          "in",
           [
-            "pitch",
-            "playground"
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "pitch",
+              "playground"
+            ]
           ]
         ]
       ],

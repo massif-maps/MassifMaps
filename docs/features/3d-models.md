@@ -79,8 +79,9 @@ app: `--es apiSet modelAnimationsEnabled=false`).
   (mapbox's table for a z14 source). `model-allow-density-reduction: false` keeps every point.
 - **Overlap**: as `marker-allow-overlap` does for icons, a model whose crown crosses one already
   placed in the tile is left out. The crown is the disc inscribed in the model's box, seen from
-  above, times `model-scale`; it is measured in metres, so which trees stay does not change with the
-  zoom. The models of one point (a tower and its rotor) never collide with each other.
+  above, times `model-scale`. It is measured in metres and decided over the whole source tile,
+  points outside the drawn tile included, so zooming in keeps every tree where it was and only adds
+  the ones the density grid had thinned. The models of one point (a tower and its rotor) never collide with each other.
   `model-allow-overlap: true` places every point.
 - **Fade-in**: give `model-opacity` a zoom ramp, `linear([view::zoom], (15, 0), (16, 1))`.
 - **Detail by zoom**: pick a lighter file at lower zooms with `step([zoom], ...)` in `model-file`;

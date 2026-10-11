@@ -15,7 +15,7 @@ feature page, [3D models](../../features/3d-models.md).
 | --- | --- | --- |
 | load | `vt/GLBParser.cpp`, `VTModelLoader` | GLB → `vt::Model`: triangles of the default scene, node transforms flattened, glTF Y-up turned Z-up (`x, -z, y`), primitives merged per material, linear colours turned into display values. Cached per file in `vt::ModelManager`, failures too. |
 | decode | `mapnikvt/ModelSymbolizer.cpp` | one instance per point; properties reading `[mapnik::seed]` (`random()` without a seed) are evaluated per point with the seed set to the point's world position quantised to 2^-26 of the world |
-| build | `TileLayerBuilder::createModelProcessor` | instances grouped by `ModelStyle` (model, opacity, shadows, spin) into `TileModelInstances` on the `TileLayer`; points outside the half-open tile are dropped, the neighbour places them; mapbox's density grid (`model_bucket.ts` `lookupDim`) keeps one instance per cell across all the layer's model rules; then `ModelFootprints` drops an instance whose crown disc (metres, through `calculateHeight`) crosses a placed one of another point |
+| build | `TileLayerBuilder::createModelProcessor` | instances grouped by `ModelStyle` (model, opacity, shadows, spin) into `TileModelInstances` on the `TileLayer`; points outside the half-open tile are dropped, the neighbour places them; mapbox's density grid (`model_bucket.ts` `lookupDim`) keeps one instance per cell across all the layer's model rules; before that, `ModelFootprints` drops an instance whose crown disc (metres, through `calculateHeight`) crosses a placed one of another point. A style whose symbolizers are all models reads the source tile UNCLIPPED (`Symbolizer::needsUnclippedFeatures`), so every overzoomed tile runs the same placement over the same points and keeps the same trees; the tile filter and the grid come after it |
 | draw | `GLTileRenderer::renderTileModels` | one `glDrawElementsInstanced` per mesh, inside the 3D pass of `renderGeometry3D` |
 | shadow | `renderShadowCasters` | the same vertex shader with `shadowCasterFsh`, walked by `forEachVisibleRenderLayer` like the extrusions |
 
@@ -92,5 +92,7 @@ VAO per program and mesh — see `CompiledGeometry` for why programs never share
   syntax gate, `glslangValidator` on every program variant, and on the Android emulator (2026-10-11,
   Grenoble, `rhone-alpes.pmtiles`, the demo's `--es models`): the Massif trees drawn and occluded by
   the buildings, a tap picking one tree of a packed MultiPoint and tinting it, a rotor turning
-  between frames. **Not yet seen**: shadows and terrain draping on a device, a physical GPU, iOS,
+  between frames; with `--es terrainLight true --es appSun true --es sunHour 13 --es shadow 2`, the
+  trees casting shadows on the ground, and the same trees kept from z18 to z19. **Not yet seen**:
+  terrain draping on relief, the unclipped placement's decode cost at a tree-dense z14 tile, a physical GPU, iOS,
   the web build, the spin's battery cost.

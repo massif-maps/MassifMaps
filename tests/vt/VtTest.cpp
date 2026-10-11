@@ -59,6 +59,7 @@ void testModelInstances();
 void testModelInstancePick();
 void testModelDensityReduction();
 void testModelOverlap();
+void testModelOverlapAcrossZooms();
 
 int main() {
     testPlateBitmap();
@@ -114,6 +115,7 @@ int main() {
     testModelInstancePick();
     testModelDensityReduction();
     testModelOverlap();
+    testModelOverlapAcrossZooms();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

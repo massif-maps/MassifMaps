@@ -28,6 +28,10 @@ namespace massif::mvt {
 
         virtual std::string getTypeName() const override { return "model"; }
 
+        // Placement against the overlap rule sees every point of the source tile, so it decides the
+        // same way whichever overzoomed tile is cut from it.
+        virtual bool needsUnclippedFeatures() const override { return true; }
+
         // [mapnik::seed] for a point: its world position, so the value survives re-cutting the tile.
         static long long instanceSeed(const vt::TileId& tileId, const cglib::vec2<float>& vertex);
 

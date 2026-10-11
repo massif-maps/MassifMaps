@@ -112,6 +112,44 @@ void testModelOverlap() {
     TEST_CHECK(countPlaced(false, 0.5f) == 5, "the disc follows the instance's scale");
 }
 
+void testModelOverlapAcrossZooms() {
+    // Every tile cut from one source sees all its points (TileReader feeds a model rule unclipped),
+    // so a child tile keeps exactly the trees its parent kept inside it.
+    auto transformer = std::make_shared<DefaultTileTransformer>(1.0f);
+    TileId parent(17, 67000, 46500), child(18, 134001, 93000);
+    float unitsPerMetre = transformer->createTileVertexTransformer(parent)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
+    auto crown = std::make_shared<Model>();
+    crown->bounds = cglib::bbox3<float>(cglib::vec3<float>(-4, -4, 0), cglib::vec3<float>(4, 4, 10));
+    std::vector<cglib::vec2<float>> points; // parent frame: a jittered grid 5 m apart, crowns 8 m
+    for (int i = 0; i < 400; i++) {
+        float jx = static_cast<float>((i * 7919) % 100) / 100.0f, jy = static_cast<float>((i * 104729) % 100) / 100.0f;
+        points.emplace_back((0.3f + (i % 20) * 5 * unitsPerMetre) + jx * 2 * unitsPerMetre, (0.3f + (i / 20) * 5 * unitsPerMetre) + jy * 2 * unitsPerMetre);
+    }
+    auto placed = [&](const TileId& tileId, float scale, float offsetX, float offsetY) {
+        TileLayerBuilder builder("trees", 0, tileId, transformer, 256.0f, 1.0f);
+        ModelStyle style;
+        style.model = crown;
+        auto processor = builder.createModelProcessor(style);
+        for (std::size_t i = 0; i < points.size(); i++) {
+            processor(1, 1, cglib::vec2<float>(points[i](0) * scale - offsetX, points[i](1) * scale - offsetY), ModelInstance(), static_cast<int>(i));
+        }
+        std::vector<int> kept;
+        std::shared_ptr<TileLayer> layer = builder.buildTileLayer();
+        for (const std::shared_ptr<TileModelInstances>& models : layer->getModels()) {
+            kept = models->getGeoPosIndexes();
+        }
+        return kept;
+    };
+    std::vector<int> fromParent;
+    for (int index : placed(parent, 1.0f, 0.0f, 0.0f)) {
+        if (points[index](0) >= 0.5f && points[index](1) < 0.5f) {
+            fromParent.push_back(index);
+        }
+    }
+    std::vector<int> fromChild = placed(child, 2.0f, 1.0f, 0.0f);
+    TEST_CHECK(fromParent.size() > 10 && fromChild == fromParent, "zooming in keeps the trees the parent tile placed");
+}
+
 void testModelInstancePick() {
     // A box 2 m wide, 4 m long towards the model's north, 3 m tall; scaled 2x, turned to face east
     cglib::bbox3<double> bounds(cglib::vec3<double>(-1, 0, 0), cglib::vec3<double>(1, 4, 3));

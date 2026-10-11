@@ -806,6 +806,15 @@ namespace massif::vt {
         const cglib::bbox3<float>& bounds = style.model->bounds;
         float crownRadius = bounds.empty() ? 0.0f : 0.5f * std::min(bounds.size()(0), bounds.size()(1));
         return [group, occupancy, footprints, lookupDim, crownRadius, this](long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
+            // Points outside the tile still take their place: the decoder hands a model rule the whole
+            // source tile, so every tile cut from it keeps the same trees.
+            cglib::vec3<float> pos = _transformer->calculatePoint(vertex);
+            instance.position = cglib::vec2<float>(pos(0), pos(1));
+            float radius = _transformer->calculateHeight(vertex, crownRadius * instance.scale);
+            if (!group->style.allowOverlap && footprints->overlaps(instance.position, radius, id, geoPointIndex)) {
+                return;
+            }
+            footprints->add(instance.position, radius, id, geoPointIndex);
             // Half-open, so a point on a tile edge is placed by exactly one of the two tiles
             if (vertex(0) < 0 || vertex(0) >= 1 || vertex(1) < 0 || vertex(1) >= 1) {
                 return;
@@ -816,13 +825,6 @@ namespace massif::vt {
                     return;
                 }
             }
-            cglib::vec3<float> pos = _transformer->calculatePoint(vertex);
-            instance.position = cglib::vec2<float>(pos(0), pos(1));
-            float radius = _transformer->calculateHeight(vertex, crownRadius * instance.scale);
-            if (!group->style.allowOverlap && footprints->overlaps(instance.position, radius, id, geoPointIndex)) {
-                return;
-            }
-            footprints->add(instance.position, radius, id, geoPointIndex);
             group->instances.push_back(instance);
             group->ids.push_back(id);
             group->featureIds.push_back(featureId);

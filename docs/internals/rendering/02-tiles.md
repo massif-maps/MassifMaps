@@ -442,6 +442,17 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
   camera (47.28324, 11.39146 z12.05 tilt 25), 1200x800, WASMFS, a first 360 degree turn of 6 s: a
   blank tile in 159 of 309 culls with 2 tile threads and 10 MB caches, 86-107 of ~235 with 6
   threads and screen-sized caches, **0 of ~249** with the stand-ins too; the second turn 0-4.
+- **...so a zoom out looks for the four children first** (`childrenCoverTile`, maplibre-native's
+  `updateRenderables`). `findParentTile` runs before `findChildTiles`, and with the stand-ins above
+  a parent is always there: crossing z17 -> z16, every z16 tile still decoding was drawn from its
+  z12/z13 stand-in instead of the z17 tiles just on screen, which the cache still held. The map
+  dropped to a decode four levels coarser (no buildings, a handful of POIs, coarser point positions)
+  until z16 landed, then popped back - on terrain the drape baked that picture over the finer
+  generation it had seeded from, since a covering tile counts as complete. Measured on the emulator,
+  Grenoble 5.72722/45.19172 tilt 47, an animated z17.49 -> 15.3 zoom over 10 s, frames whose detail
+  (mean horizontal gradient) falls under 75% of their neighbours': 12, 6 and 21 dip frames before,
+  1, 0, 0, 0 and 0 after. Only when all four children are loaded: three leave a hole, and the parent
+  stands in as before.
 - Tiles live in the layer's memory cache plus an optional persistent cache
   (`PersistentCacheTileDataSource`). The persistent cache is why a device re-run is not a cold run —
   `pm clear` is the only reliable reset ([10-performance.md](10-performance.md)).

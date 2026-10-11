@@ -199,7 +199,8 @@ class ProjectionSurface;
 
         /**
          * Sets the maximum underzoom level for this layer.
-         * If a tile for the given zoom level Z is not available, SDK will try to use tiles with zoom levels Z-1, ..., Z-MaxOverzoomLevel and then Z+1, ..., Z+MaxUnderzoomLevel.
+         * If a tile for the given zoom level Z is not available, SDK will use its four Z+1 tiles when all of them are loaded,
+         * otherwise try tiles with zoom levels Z-1, ..., Z-MaxOverzoomLevel and then Z+1, ..., Z+MaxUnderzoomLevel. 0 turns off both child steps.
          * The default is 3.
          * @param underzoomLevel The new maximum underzoom value.
          */

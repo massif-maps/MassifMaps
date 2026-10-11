@@ -1173,7 +1173,10 @@ namespace massif {
                 if (foundSubstitute) {
                     calculateDrawData(visTile, prevFrameTile, preloadingTiles);
                 } else {
-                    if (tile.getZoom() > 0) {
+                    if (getMaxUnderzoomLevel() > 0 && childrenCoverTile(tile, [&](const MapTile& child) { return tileExists(getTileId(child), preloadingCache); })) {
+                        foundSubstitute = findChildTiles(visTile, tile, 1, preloadingCache, preloadingTiles) > 0;
+                    }
+                    if (!foundSubstitute && tile.getZoom() > 0) {
                         foundSubstitute = findParentTile(visTile, tile, getMaxStandInLevel(), preloadingCache, preloadingTiles);
                     }
                     if (!foundSubstitute) {

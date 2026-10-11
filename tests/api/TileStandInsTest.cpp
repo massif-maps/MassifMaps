@@ -7,6 +7,9 @@
  * blank tile in 86-107 of ~235 culls. What the rule must get right: few tiles (one per 4^delta of the view),
  * the same ancestor findParentTile walks to, and nothing finer than the tile or coarser than the source.
  *
+ * childrenCoverTile is the zoom-out half: the stand-ins always give a parent, so without it a zoom out
+ * swapped the cached full-detail children for a tile four levels coarser until the new level decoded.
+ *
  * NOT covered here: TileLayer fetching them at parent priority and refreshing on their arrival, which needs
  * the layer and the renderer.
  */
@@ -53,4 +56,12 @@ void testTileStandIns() {
 
     std::vector<MapTile> wrapped = calculateStandInTiles({ MapTile(-1, 5, 4, 0) }, 4, 0);
     TEST_CHECK(wrapped.size() == 1u && contains(wrapped, 0, 0, 0), "a tile across the antimeridian maps into the world");
+
+    // A zoom out: the previous level's four children are loaded, the new tile is not.
+    std::vector<MapTile> loaded = { MapTile(33620, 23500, 16, 0), MapTile(33621, 23500, 16, 0), MapTile(33620, 23501, 16, 0), MapTile(33621, 23501, 16, 0) };
+    auto exists = [&loaded](const MapTile& tile) { return contains(loaded, tile.getX(), tile.getY(), tile.getZoom()); };
+    TEST_CHECK(childrenCoverTile(MapTile(16810, 11750, 15, 0), exists), "four loaded children stand in for their parent");
+    loaded.pop_back();
+    TEST_CHECK(!childrenCoverTile(MapTile(16810, 11750, 15, 0), exists), "three of four leave a hole: the ancestor stands in instead");
+    TEST_CHECK(!childrenCoverTile(MapTile(16811, 11750, 15, 0), exists), "a neighbour's children do not cover a tile");
 }

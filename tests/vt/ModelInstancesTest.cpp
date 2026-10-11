@@ -63,7 +63,7 @@ void testModelDensityReduction() {
         other.model = std::make_shared<Model>();
         auto otherProcessor = builder.createModelProcessor(other);
         processor(1, 1, cglib::vec2<float>(0.5f, 0.5f), ModelInstance(), 0);
-        processor(1, 1, cglib::vec2<float>(0.5001f, 0.5001f), ModelInstance(), 1);
+        processor(1, 1, cglib::vec2<float>(0.503f, 0.503f), ModelInstance(), 1);
         otherProcessor(1, 1, cglib::vec2<float>(0.5002f, 0.5f), ModelInstance(), 2);
         processor(1, 1, cglib::vec2<float>(0.9f, 0.1f), ModelInstance(), 3);
         std::size_t count = 0;
@@ -75,7 +75,8 @@ void testModelDensityReduction() {
     };
     TEST_CHECK(countPlaced(14, true) == 2, "points sharing a grid cell keep the first, whichever model rule placed it");
     TEST_CHECK(countPlaced(14, false) == 4, "model-allow-density-reduction: false keeps every point");
-    TEST_CHECK(countPlaced(18, true) == 4, "no reduction from z18, as mapbox");
+    TEST_CHECK(countPlaced(15, true) == 3, "a finer grid at z15, the first zoom past a z14 source: only the shared cell drops");
+    TEST_CHECK(countPlaced(16, true) == 4, "no thinning further in, as mapbox past canonical + 1");
 }
 
 void testModelInstancePick() {

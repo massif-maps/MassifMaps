@@ -80,9 +80,8 @@ namespace massif::vt {
         return bounds;
     }
 
-    // Where a ray meets an instance's box, as the ray's own parameter: the ray is taken into model
-    // space (metres, unturned, unscaled), which an affine map does without changing t.
-    // metres: world units per metre at the anchor, which is the instance's drawn ground point.
+    // Where a ray meets an instance's box, as the ray's own parameter. metres: world units per metre
+    // at the anchor; the ray goes into model space by an affine map, which keeps t.
     inline bool intersectModelInstance(const cglib::bbox3<double>& bounds, const ModelInstance& instance, const cglib::vec3<double>& anchor, double metres, const cglib::ray3<double>& ray, double& t) {
         double unit = metres * instance.scale;
         if (!(unit > 0)) {
@@ -94,6 +93,9 @@ namespace massif::vt {
         };
         cglib::vec3<double> origin = toModel(ray.origin - anchor) - cglib::vec3<double>(0, 0, instance.zOffset / instance.scale);
         cglib::vec3<double> direction = toModel(ray.direction);
+        if (!std::isfinite(origin(0)) || !std::isfinite(origin(1)) || !std::isfinite(origin(2))) {
+            return false; // a NaN skips every slab below and would hit everywhere
+        }
         // Slabs by hand: cglib::intersect_bbox lets a ray parallel to a slab through from outside it,
         // which is every straight-down click on a flat map.
         double tmin = -std::numeric_limits<double>::infinity(), tmax = std::numeric_limits<double>::infinity();

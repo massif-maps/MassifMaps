@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <map>
+#include <set>
 
 #include <cglib/mat.h>
 #include <rapidjson/document.h>
@@ -16,6 +17,9 @@ namespace massif::vt {
         constexpr std::uint32_t CHUNK_JSON = 0x4E4F534A;
         constexpr std::uint32_t CHUNK_BIN = 0x004E4942;
         constexpr int MAX_NODE_DEPTH = 64;
+        // Caps on a file that may come from anywhere: a model for a map symbol is far below them.
+        constexpr std::uint64_t MAX_ACCESSOR_COUNT = 1u << 22;
+        constexpr std::size_t MAX_MODEL_VERTICES = 1u << 22;
 
         std::uint32_t readU32(const unsigned char* p) {
             return static_cast<std::uint32_t>(p[0]) | (static_cast<std::uint32_t>(p[1]) << 8) | (static_cast<std::uint32_t>(p[2]) << 16) | (static_cast<std::uint32_t>(p[3]) << 24);
@@ -24,6 +28,10 @@ namespace massif::vt {
         int getInt(const JsonValue& obj, const char* key, int defaultValue) {
             auto it = obj.FindMember(key);
             return it != obj.MemberEnd() && it->value.IsInt() ? it->value.GetInt() : defaultValue;
+        }
+
+        double numberAt(const JsonValue& array, rapidjson::SizeType i, double defaultValue) {
+            return array[i].IsNumber() ? array[i].GetDouble() : defaultValue;
         }
 
         double getNumber(const JsonValue& obj, const char* key, double defaultValue) {
@@ -54,7 +62,7 @@ namespace massif::vt {
             Reader(const JsonValue& doc, const unsigned char* bin, std::size_t binSize, const ModelImageDecoder& imageDecoder, std::string& error) : _doc(doc), _bin(bin), _binSize(binSize), _imageDecoder(imageDecoder), _error(error) { }
 
             // Reads an accessor as doubles, `components` per element; normalized integers map to [0, 1] / [-1, 1]
-            bool readAccessor(int index, std::vector<double>& values, int& components) const {
+            bool readAccessor(int index, std::vector<double>& values, int& components, bool indices = false) const {
                 const JsonValue* accessor = getElement(_doc, "accessors", index);
                 if (!accessor) {
                     return fail("missing accessor");
@@ -67,26 +75,33 @@ namespace massif::vt {
                 int componentType = getInt(*accessor, "componentType", 0);
                 int componentSize = (componentType == 5120 || componentType == 5121) ? 1 : (componentType == 5122 || componentType == 5123) ? 2 : (componentType == 5125 || componentType == 5126) ? 4 : 0;
                 int count = getInt(*accessor, "count", -1);
-                if (components == 0 || componentSize == 0 || count < 0) {
+                if (components == 0 || componentSize == 0 || count < 0 || static_cast<std::uint64_t>(count) > MAX_ACCESSOR_COUNT) {
                     return fail("unsupported accessor layout");
+                }
+                if (indices && (components != 1 || !(componentType == 5121 || componentType == 5123 || componentType == 5125))) {
+                    return fail("indices must be unsigned integers");
                 }
                 const JsonValue* view = getElement(_doc, "bufferViews", getInt(*accessor, "bufferView", -1));
                 if (!view || getInt(*view, "buffer", 0) != 0 || !_bin) {
                     return fail("accessor without a GLB buffer view");
                 }
-                std::size_t elementSize = static_cast<std::size_t>(components) * componentSize;
-                std::size_t stride = getInt(*view, "byteStride", 0) > 0 ? static_cast<std::size_t>(getInt(*view, "byteStride", 0)) : elementSize;
-                std::size_t viewOffset = static_cast<std::size_t>(std::max(0, getInt(*view, "byteOffset", 0)));
-                std::size_t viewLength = static_cast<std::size_t>(std::max(0, getInt(*view, "byteLength", 0)));
-                std::size_t start = viewOffset + static_cast<std::size_t>(std::max(0, getInt(*accessor, "byteOffset", 0)));
-                if (viewOffset + viewLength > _binSize || (count > 0 && start + stride * (count - 1) + elementSize > viewOffset + viewLength)) {
+                // 64-bit sums: on a 32-bit target (armeabi-v7a, wasm32) a crafted stride or length wraps size_t
+                std::uint64_t elementSize = static_cast<std::uint64_t>(components) * componentSize;
+                std::uint64_t stride = getInt(*view, "byteStride", 0) > 0 ? static_cast<std::uint64_t>(getInt(*view, "byteStride", 0)) : elementSize;
+                std::uint64_t viewOffset = static_cast<std::uint64_t>(std::max(0, getInt(*view, "byteOffset", 0)));
+                std::uint64_t viewLength = static_cast<std::uint64_t>(std::max(0, getInt(*view, "byteLength", 0)));
+                std::uint64_t start = viewOffset + static_cast<std::uint64_t>(std::max(0, getInt(*accessor, "byteOffset", 0)));
+                if (stride < elementSize || stride > 252) {
+                    return fail("invalid byte stride");
+                }
+                if (viewOffset + viewLength > _binSize || (count > 0 && start + stride * static_cast<std::uint64_t>(count - 1) + elementSize > viewOffset + viewLength)) {
                     return fail("accessor out of bounds");
                 }
                 bool normalized = (*accessor).HasMember("normalized") && (*accessor)["normalized"].IsBool() && (*accessor)["normalized"].GetBool();
 
                 values.resize(static_cast<std::size_t>(count) * components);
                 for (int i = 0; i < count; i++) {
-                    const unsigned char* element = _bin + start + stride * i;
+                    const unsigned char* element = _bin + static_cast<std::size_t>(start + stride * static_cast<std::uint64_t>(i));
                     for (int c = 0; c < components; c++) {
                         const unsigned char* p = element + c * componentSize;
                         double value = 0;
@@ -121,7 +136,7 @@ namespace massif::vt {
                         auto factor = pbr->value.FindMember("baseColorFactor");
                         if (factor != pbr->value.MemberEnd() && factor->value.IsArray() && factor->value.Size() == 4) {
                             const JsonValue& f = factor->value;
-                            material.baseColor = Color(linearToDisplay(f[0].GetFloat()), linearToDisplay(f[1].GetFloat()), linearToDisplay(f[2].GetFloat()), f[3].GetFloat());
+                            material.baseColor = Color(linearToDisplay(static_cast<float>(numberAt(f, 0, 1))), linearToDisplay(static_cast<float>(numberAt(f, 1, 1))), linearToDisplay(static_cast<float>(numberAt(f, 2, 1))), static_cast<float>(numberAt(f, 3, 1)));
                         }
                         auto textureInfo = pbr->value.FindMember("baseColorTexture");
                         if (textureInfo != pbr->value.MemberEnd() && textureInfo->value.IsObject()) {
@@ -142,15 +157,16 @@ namespace massif::vt {
                         material.alphaCutoff = static_cast<float>(getNumber(source, "alphaCutoff", 0.5));
                     }
                     material.blend = alphaMode == "BLEND";
-                    material.doubleSided = source.HasMember("doubleSided") && source["doubleSided"].IsBool() && source["doubleSided"].GetBool();
                     materials.push_back(material);
                 }
                 return true;
             }
 
-            bool readNode(int index, const cglib::mat4x4<double>& parentMatrix, int depth, Model& model, std::map<int, std::size_t>& meshIndices) const {
+            bool readNode(int index, const cglib::mat4x4<double>& parentMatrix, int depth, Model& model, std::map<int, std::size_t>& meshIndices) {
                 const JsonValue* node = getElement(_doc, "nodes", index);
-                if (!node || depth > MAX_NODE_DEPTH) {
+                // glTF nodes form a strict tree: a node reached twice is a cycle or a shared subtree,
+                // which a crafted file uses to multiply its meshes exponentially
+                if (!node || depth > MAX_NODE_DEPTH || !_visitedNodes.insert(index).second) {
                     return fail("invalid node hierarchy");
                 }
                 cglib::mat4x4<double> matrix = parentMatrix * nodeMatrix(*node);
@@ -206,7 +222,7 @@ namespace massif::vt {
                 auto matrix = node.FindMember("matrix");
                 if (matrix != node.MemberEnd() && matrix->value.IsArray() && matrix->value.Size() == 16) {
                     for (int i = 0; i < 16; i++) {
-                        m(i % 4, i / 4) = matrix->value[i].GetDouble(); // column-major
+                        m(i % 4, i / 4) = numberAt(matrix->value, i, i % 5 == 0 ? 1 : 0); // column-major
                     }
                     return m;
                 }
@@ -214,7 +230,7 @@ namespace massif::vt {
                     auto it = node.FindMember(key);
                     if (it != node.MemberEnd() && it->value.IsArray() && it->value.Size() == size) {
                         for (std::size_t i = 0; i < size; i++) {
-                            out[i] = it->value[static_cast<rapidjson::SizeType>(i)].GetDouble();
+                            out[i] = numberAt(it->value, static_cast<rapidjson::SizeType>(i), out[i]);
                         }
                     }
                 };
@@ -237,7 +253,7 @@ namespace massif::vt {
                 return m;
             }
 
-            bool readPrimitive(const JsonValue& primitive, const cglib::mat4x4<double>& matrix, Model& model, std::map<int, std::size_t>& meshIndices) const {
+            bool readPrimitive(const JsonValue& primitive, const cglib::mat4x4<double>& matrix, Model& model, std::map<int, std::size_t>& meshIndices) {
                 auto attributes = primitive.FindMember("attributes");
                 if (attributes == primitive.MemberEnd() || !attributes->value.IsObject() || !attributes->value.HasMember("POSITION")) {
                     return fail("primitive without POSITION");
@@ -264,7 +280,7 @@ namespace massif::vt {
                 }
                 std::vector<std::uint32_t> indices;
                 if (primitive.HasMember("indices")) {
-                    if (!readAccessor(getInt(primitive, "indices", -1), indexValues, components) || components != 1) {
+                    if (!readAccessor(getInt(primitive, "indices", -1), indexValues, components, true)) {
                         return fail("invalid indices");
                     }
                     indices.reserve(indexValues.size());
@@ -281,6 +297,10 @@ namespace massif::vt {
                     }
                 }
                 indices.resize(indices.size() - indices.size() % 3);
+                _vertexCount += normals.empty() ? indices.size() : vertexCount;
+                if (_vertexCount > MAX_MODEL_VERTICES) {
+                    return fail("too many vertices");
+                }
 
                 // glTF is Y up, the map Z up: x stays, map y = -gltf z, map z = gltf y
                 cglib::mat4x4<double> zUp = cglib::mat4x4<double>::identity();
@@ -376,6 +396,8 @@ namespace massif::vt {
                 return true;
             }
 
+            std::set<int> _visitedNodes;
+            std::size_t _vertexCount = 0;
             const JsonValue& _doc;
             const unsigned char* _bin;
             std::size_t _binSize;
@@ -390,13 +412,13 @@ namespace massif::vt {
             error = "not a glTF 2.0 binary";
             return std::shared_ptr<Model>();
         }
-        std::size_t length = readU32(data + 8);
+        std::uint64_t length = readU32(data + 8);
         const unsigned char* json = nullptr;
         std::size_t jsonSize = 0;
         const unsigned char* bin = nullptr;
         std::size_t binSize = 0;
-        for (std::size_t offset = 12; offset + 8 <= length; ) {
-            std::size_t chunkSize = readU32(data + offset);
+        for (std::uint64_t offset = 12; offset + 8 <= length; ) {
+            std::uint64_t chunkSize = readU32(data + offset);
             std::uint32_t chunkType = readU32(data + offset + 4);
             if (offset + 8 + chunkSize > length) {
                 error = "truncated chunk";
@@ -404,17 +426,18 @@ namespace massif::vt {
             }
             if (chunkType == CHUNK_JSON && !json) {
                 json = data + offset + 8;
-                jsonSize = chunkSize;
+                jsonSize = static_cast<std::size_t>(chunkSize);
             }
             else if (chunkType == CHUNK_BIN && !bin) {
                 bin = data + offset + 8;
-                binSize = chunkSize;
+                binSize = static_cast<std::size_t>(chunkSize);
             }
             offset += 8 + chunkSize;
         }
 
         rapidjson::Document doc;
-        if (!json || doc.Parse(reinterpret_cast<const char*>(json), jsonSize).HasParseError() || !doc.IsObject()) {
+        // Iterative: the recursive parser follows a nesting depth the file chooses, onto the thread's stack
+        if (!json || doc.Parse<rapidjson::kParseIterativeFlag>(reinterpret_cast<const char*>(json), jsonSize).HasParseError() || !doc.IsObject()) {
             error = "invalid JSON chunk";
             return std::shared_ptr<Model>();
         }

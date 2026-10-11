@@ -437,15 +437,14 @@ namespace massif::mvt {
                 }
             }
             else {
-                long long id = ValueConverter<long long>::convert(vals[2]);
-                seed = static_cast<std::uint32_t>(id ^ (id >> 32));
+                seed = static_cast<std::uint32_t>(ValueConverter<long long>::convert(vals[2])); // ToInt32, as mapbox
             }
             std::uint32_t t = seed + 0x6D2B79F5u;
             t = (t ^ (t >> 15)) * (t | 1u);
             t ^= t + (t ^ (t >> 7)) * (t | 61u);
             double r = static_cast<double>(t ^ (t >> 14)) / 4294967296.0;
             double min = ValueConverter<double>::convert(vals[0]), max = ValueConverter<double>::convert(vals[1]);
-            return Value(min + r * (max - min));
+            return Value(max > min ? min + r * (max - min) : min);
         }
         // Table lookups: a style parameter can hold an object or an array, so a style reads a
         // per-class value out of one the app owns instead of declaring a parameter per class.

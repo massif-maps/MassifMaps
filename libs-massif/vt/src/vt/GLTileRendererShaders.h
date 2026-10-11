@@ -2560,6 +2560,26 @@ namespace massif::vt {
         }
     )GLSL";
 
+    // The model's caster: a MASK texture discards as the drawn model does, so a leaf casts its cut-out.
+    static const std::string modelShadowCasterFsh = R"GLSL(
+        uniform sampler2D uTexture;
+        uniform lowp vec4 uColor;
+        uniform mediump float uAlphaCutoff;
+        varying lowp vec4 vColor;
+        varying mediump vec2 vUV;
+
+        void main(void) {
+            if (uAlphaCutoff >= 0.0 && uAlphaCutoff <= 1.0 && (uColor * texture2D(uTexture, vUV) * vColor).a < uAlphaCutoff) {
+                discard;
+            }
+            highp float depth = gl_FragCoord.z;
+            highp vec3 enc = vec3(1.0, 255.0, 65025.0) * depth;
+            enc = fract(enc);
+            enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
+            glFragColor = vec4(enc, 1.0);
+        }
+    )GLSL";
+
     static const std::string modelFsh = R"GLSL(
         uniform sampler2D uTexture;
         uniform lowp vec4 uColor;      // the material's base colour
@@ -2580,8 +2600,11 @@ namespace massif::vt {
         #ifndef LIGHTING_VSH
             color *= vColor;
         #endif
-            if (color.a < uAlphaCutoff) {
-                discard;
+            if (uAlphaCutoff <= 1.0) {
+                if (color.a < uAlphaCutoff) {
+                    discard;
+                }
+                color.a = 1.0; // OPAQUE ignores alpha, MASK is solid where it passes
             }
             color.rgb = mix(color.rgb, vTint.rgb, vTint.a);
             color = vec4(color.rgb * color.a, color.a) * uOpacity;

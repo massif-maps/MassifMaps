@@ -74,8 +74,8 @@ app: `--es apiSet modelAnimationsEnabled=false`).
 ## Density, fade and detail by zoom
 
 - **Density**: as mapbox does for its trees, each tile keeps one instance per cell of a grid shared
-  by every model rule of the layer — 100 cells a side up to z15, 75 at z16, 256 at z17, no thinning
-  from z18. `model-allow-density-reduction: false` keeps every point.
+  by every model rule of the layer — 100 cells a side up to z14, 256 at z15, no thinning from z16
+  (mapbox's table for a z14 source). `model-allow-density-reduction: false` keeps every point.
 - **Fade-in**: give `model-opacity` a zoom ramp, `linear([view::zoom], (15, 0), (16, 1))`.
 - **Detail by zoom**: pick a lighter file at lower zooms with `step([zoom], ...)` in `model-file`;
   the choice is made per tile, at its zoom.

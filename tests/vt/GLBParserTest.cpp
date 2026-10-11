@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -41,7 +42,7 @@ namespace {
     }
 
     // One triangle: float positions, uint16 indices, normalized RGBA8 colours; `node` is the node's JSON.
-    std::vector<unsigned char> triangleGLB(const std::string& node, const std::string& extra = std::string()) {
+    std::vector<unsigned char> triangleGLB(const std::string& node, const std::string& extra = std::string(), const std::function<std::string(std::string)>& edit = {}) {
         float positions[9] = { 0, 0, 0, 1, 0, 0, 0, 2, 0 };
         std::uint16_t indices[3] = { 0, 1, 2 };
         unsigned char colors[12] = { 128, 0, 0, 255, 128, 0, 0, 255, 128, 0, 0, 255 };
@@ -58,7 +59,7 @@ namespace {
             "bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":12},
                            {"buffer":0,"byteOffset":48,"byteLength":6}],
             "buffers":[{"byteLength":56}])" + extra + "}";
-        return buildGLB(json, bin);
+        return buildGLB(edit ? edit(json) : json, bin);
     }
 
     bool near(float a, float b) {
@@ -101,4 +102,30 @@ void testGLBParser() {
     glb = triangleGLB(R"({"mesh":0})");
     model = parseGLB(glb.data(), glb.size() - 8, ModelImageDecoder(), error);
     TEST_CHECK(!model && !error.empty(), "a truncated file is refused");
+
+    // Hostile files: each would read out of bounds, or multiply its meshes, if it were not refused
+    glb = triangleGLB(R"({"mesh":0,"children":[1,1]},{"mesh":0})");
+    model = parseGLB(glb.data(), glb.size(), ModelImageDecoder(), error);
+    TEST_CHECK(!model, "a node shared by two parents is refused");
+    glb = triangleGLB(R"({"children":[1]},{"mesh":0,"children":[0]})");
+    model = parseGLB(glb.data(), glb.size(), ModelImageDecoder(), error);
+    TEST_CHECK(!model, "a node cycle is refused");
+    auto replace = [](std::string from, std::string to) {
+        return [from, to](std::string json) { return json.replace(json.find(from), from.size(), to); };
+    };
+    glb = triangleGLB(R"({"mesh":0})", "", replace(R"("byteOffset":0,"byteLength":36})", R"("byteOffset":0,"byteLength":36,"byteStride":1073741824})"));
+    model = parseGLB(glb.data(), glb.size(), ModelImageDecoder(), error);
+    TEST_CHECK(!model, "a stride that wraps the bounds check on a 32-bit target is refused");
+    glb = triangleGLB(R"({"mesh":0})", "", replace(R"("componentType":5123,"count":3,"type":"SCALAR")", R"("componentType":5126,"count":1,"type":"SCALAR")"));
+    model = parseGLB(glb.data(), glb.size(), ModelImageDecoder(), error);
+    TEST_CHECK(!model, "float indices are refused");
+    glb = triangleGLB(R"({"mesh":0})");
+    std::uint32_t hugeChunk = 0xFFFFFFF0u;
+    std::memcpy(glb.data() + 12, &hugeChunk, 4);
+    model = parseGLB(glb.data(), glb.size(), ModelImageDecoder(), error);
+    TEST_CHECK(!model, "a chunk length that wraps the bounds check is refused");
+    std::string deep = R"({"asset":{"version":"2.0"},"extras":)" + std::string(200000, '[') + std::string(200000, ']') + "}";
+    glb = buildGLB(deep, std::vector<unsigned char>());
+    model = parseGLB(glb.data(), glb.size(), ModelImageDecoder(), error);
+    TEST_CHECK(!model, "deeply nested JSON is parsed without recursing (and refused for having no scene)");
 }

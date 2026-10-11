@@ -40,7 +40,7 @@ namespace massif::mvt {
         FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
         BoolProperty _castShadows = BoolProperty(true);
         FloatProperty _spin = FloatProperty(0.0f);     // revolutions per minute
-        StringProperty _spinAxis = StringProperty("y"); // the model's own axis: x, y (forward) or z (up)
+        StringProperty _spinAxis = StringProperty("y"); // the model's own axis, map frame: x east, y north (glTF -z), z up
         BoolProperty _allowDensityReduction = BoolProperty(true);
     };
 }

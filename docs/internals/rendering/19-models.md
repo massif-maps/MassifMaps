@@ -35,6 +35,13 @@ An overzoomed source tile is drawn once per target tile. The anchor is mapped in
 with `uTileMatrix`; an instance outside it collapses to a point outside the clip volume, so each
 instance is drawn exactly once without a per-fragment discard.
 
+## Alpha
+
+glTF's three modes travel in `uAlphaCutoff`: below 0 OPAQUE (alpha ignored), 0-1 MASK (discard
+below, solid above), above 1 BLEND. `modelShadowCasterFsh` applies the same MASK test, so a cut-out
+leaf casts its shape. A translucent draw turns blending on even in the overlay, where it is off and
+the model would otherwise replace the wall behind it.
+
 ## Lighting, shadow, fog
 
 `applyLighting3D` is the extrusions' (`TileRenderer::LIGHTING_SHADER_3D`) with `wallT = sideVertex =
@@ -45,7 +52,8 @@ fragment stage and culling is off for the draw: generated foliage is single quad
 
 ## Spin and redraw
 
-`_modelTime` advances in `startFrame(dt)`. A draw of a spinning style sets `_modelsAnimating`, which
+`_modelTime` (double) advances in `startFrame(dt)` and is wrapped per draw to one turn of that style's
+spin, so the angle never jumps. A draw of a spinning style sets `_modelsAnimating`, which
 the next `startFrame` returns as a refresh — the map keeps drawing only while a spinning model was
 drawn in the last frame. `setModelAnimationsEnabled(false)` stops the clock and the refresh.
 
@@ -75,10 +83,14 @@ VAO per program and mesh — see `CompiledGeometry` for why programs never share
 
 - Globe mode skips models (`renderTileModels` returns on a spherical transformer).
 - No transparency sort; `BLEND` materials blend in draw order.
-- The density grid keys mapbox's table by the DRAWN tile's zoom, as if the source were their z16
-  model tiles: the builder does not know the source tile's zoom. On a z14 source that keeps the
-  z15 grid at z15-16 where mapbox would use 256 and none.
+- The density grid assumes a z14 source (OpenMapTiles): the builder does not see the source tile's
+  zoom, so a z16 source is thinned to 256 cells at z15 where mapbox would keep 100.
+- A spinning model's shadow follows the shadow map's own refresh, not every frame: the rotor's
+  shadow steps.
 - A highlight scans the instance list of every drawn tile for its feature id, linearly.
-- Verified: host tests (loader, `random()`, instance building, the pick math), NDK syntax gate,
-  `glslangValidator` on every model program variant. **Not yet verified on a device**: the render
-  itself, shadow casting, picking through the click path, the spin redraw cost.
+- Verified: host tests (loader, hostile files, `random()`, instance building, the pick math), NDK
+  syntax gate, `glslangValidator` on every program variant, and on the Android emulator (2026-10-11,
+  Grenoble, `rhone-alpes.pmtiles`, the demo's `--es models`): the Massif trees drawn and occluded by
+  the buildings, a tap picking one tree of a packed MultiPoint and tinting it, a rotor turning
+  between frames. **Not yet seen**: shadows and terrain draping on a device, a physical GPU, iOS,
+  the web build, the spin's battery cost.

@@ -243,7 +243,7 @@ namespace massif::vt {
         // restore u_emissive after a rule overrode it.
         void setBuildingEmissive(float emissive) { _buildingEmissive = emissive; }
         // Spinning models (model-spin) keep the map redrawing while one is drawn; off freezes them.
-        void setModelAnimationsEnabled(bool enabled) { _modelAnimationsEnabled = enabled; }
+        void setModelAnimationsEnabled(bool enabled);
         // One model instance drawn in a highlight colour: by its source feature id and point index.
         struct ModelHighlight {
             long long featureId = 0;
@@ -1093,7 +1093,7 @@ namespace massif::vt {
         static double modelMetresToTileUnits(const TileId& tileId);
         void findTileModelIntersections(const RenderTileLayer& renderLayer, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const;
         bool _modelsAnimating = false; // a spinning model was drawn last frame
-        float _modelTime = 0.0f;       // seconds the spin has run
+        double _modelTime = 0.0;       // seconds the spin has run
 
         VertexArray<cglib::vec3<float>> _labelVertices;
         VertexArray<cglib::vec3<float>> _labelOffsets;

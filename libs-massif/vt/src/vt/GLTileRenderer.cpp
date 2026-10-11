@@ -1653,7 +1653,7 @@ namespace massif::vt {
         _labelBatchCounter = 0;
 
         if (_modelAnimationsEnabled) {
-            _modelTime = std::fmod(_modelTime + dt, 3600.0f);
+            _modelTime += dt;
         }
         refresh = _modelsAnimating || refresh;
         _modelsAnimating = false;
@@ -2156,6 +2156,11 @@ namespace massif::vt {
         return tileScale / (2.0 * PI_D * 6378137.0 * std::cos(latitude));
     }
 
+    void GLTileRenderer::setModelAnimationsEnabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelAnimationsEnabled = enabled;
+    }
+
     void GLTileRenderer::setModelHighlight(const std::optional<ModelHighlight>& highlight) {
         std::lock_guard<std::mutex> lock(_mutex);
         _modelHighlight = highlight;
@@ -2179,7 +2184,8 @@ namespace massif::vt {
                 }
                 cglib::vec3<double> anchor = cglib::transform_point(cglib::vec3<double>(instances[i].position(0), instances[i].position(1), 0), tileMatrix);
                 if (_terrainMode && _labelElevationProvider) {
-                    anchor = _transformer->calculateElevatedPos(anchor, _labelElevationProvider(_transformer->calculateMercatorPos(anchor), renderLayer.sourceTileId.zoom));
+                    double height = _labelElevationProvider(_transformer->calculateMercatorPos(anchor), renderLayer.sourceTileId.zoom);
+                    anchor = _transformer->calculateElevatedPos(anchor, std::isfinite(height) ? height : 0.0); // NaN: no DEM held there
                 }
                 for (std::size_t rayIndex = 0; rayIndex < rays.size(); rayIndex++) {
                     double t = 0;
@@ -7040,8 +7046,9 @@ namespace massif::vt {
         if (!style.model || models->getInstances().empty() || (_transformer && _transformer->isSpherical()) || (caster && !style.castShadows)) {
             return;
         }
-        float alpha = blend * opacity * evaluateFloatFunc(style.opacityFunc);
-        if (!caster && alpha <= 0.0f) {
+        float styleOpacity = evaluateFloatFunc(style.opacityFunc);
+        float alpha = blend * opacity * styleOpacity;
+        if (caster ? styleOpacity < SHADOW_NO_CAST_OPACITY_CUTOFF : alpha <= 0.0f) {
             return;
         }
 
@@ -7049,7 +7056,7 @@ namespace massif::vt {
         bool shadowReceiver = terrainVTF && !caster && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
         unsigned int terrainFlag = terrainVTF ? TERRAIN_VTF_FLAG | (caster ? 0 : TERRAIN_FLAG) : 0;
         const ShaderProgram& shaderProgram = caster
-            ? buildShaderProgram("modelshadow", modelVsh, shadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag)
+            ? buildShaderProgram("modelshadow", modelVsh, modelShadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag)
             : buildShaderProgram("model", modelVsh, modelFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, terrainFlag | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG | SHADOW_RECEIVER_3D_FLAG : 0) | fogFlag());
         useProgram(shaderProgram);
         if (!caster) {
@@ -7061,7 +7068,10 @@ namespace massif::vt {
         glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, tileMatrix.data());
         glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], static_cast<float>(modelMetresToTileUnits(sourceTileId)));
         glUniform4f(shaderProgram.uniforms[U_MODELSPIN], style.spinAxis(0), style.spinAxis(1), style.spinAxis(2), style.spinSpeed);
-        glUniform1f(shaderProgram.uniforms[U_MODELTIME], _modelTime);
+        // Wrapped to one turn of THIS spin on the CPU, in double: the angle stays continuous and the
+        // float the shader multiplies stays small
+        double turn = (style.spinSpeed != 0.0f ? 6.283185307179586 / std::abs(style.spinSpeed) : 1.0);
+        glUniform1f(shaderProgram.uniforms[U_MODELTIME], static_cast<float>(std::fmod(_modelTime, turn)));
         float highlightIndex = -1.0f;
         if (_modelHighlight && !caster) {
             const std::vector<long long>& featureIds = models->getFeatureIds();
@@ -7087,25 +7097,34 @@ namespace massif::vt {
 
         const std::vector<CompiledModelMesh>& meshes = buildCompiledModel(style.model);
         CompiledModelInstances& instances = buildCompiledModelInstances(models);
-        // Leaves are single quads seen from both sides, so nothing is culled here.
+        // Leaves are single quads seen from both sides, so nothing is culled here. A translucent model
+        // blends even in the overlay, where blending is off and it would replace the wall behind it.
         GLboolean cullFace = glIsEnabled(GL_CULL_FACE);
         glDisable(GL_CULL_FACE);
+        GLboolean blending = glIsEnabled(GL_BLEND);
+        if (!caster && alpha < 1.0f && !blending) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        }
         for (std::size_t i = 0; i < meshes.size(); i++) {
             const ModelMesh& mesh = style.model->meshes[i];
             const ModelMaterial* material = (mesh.material >= 0 ? &style.model->materials[mesh.material] : nullptr);
-            if (!caster) {
-                std::array<float, 4> baseColor = material ? material->baseColor.rgba() : Color(1, 1, 1, 1).rgba();
-                glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, baseColor.data());
-                glUniform1f(shaderProgram.uniforms[U_ALPHACUTOFF], material ? material->alphaCutoff : -1.0f);
-                std::shared_ptr<const Bitmap> texture = (material && material->baseColorTexture ? material->baseColorTexture : _modelWhiteBitmap);
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, buildCompiledBitmap(texture, true).texture);
-                glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
-            }
+            // The caster needs them too: a MASK leaf casts its cut-out, not its quad.
+            std::array<float, 4> baseColor = material ? material->baseColor.rgba() : Color(1, 1, 1, 1).rgba();
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, baseColor.data());
+            // glTF alpha modes in one number: < 0 OPAQUE, [0, 1] MASK at that cutoff, > 1 BLEND
+            glUniform1f(shaderProgram.uniforms[U_ALPHACUTOFF], !material ? -1.0f : material->blend ? 2.0f : material->alphaCutoff);
+            std::shared_ptr<const Bitmap> texture = (material && material->baseColorTexture ? material->baseColorTexture : _modelWhiteBitmap);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, buildCompiledBitmap(texture, true).texture);
+            glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
 
             GLuint& vao = instances.vaos[std::make_pair(shaderProgram.program, i)];
             if (vao == 0) {
                 glGenVertexArrays(1, &vao);
+                if (vao == 0) {
+                    continue; // the divisors below would stay on VAO 0 and reach every later draw
+                }
                 glBindVertexArray(vao);
                 glBindBuffer(GL_ARRAY_BUFFER, meshes[i].vertexVBO);
                 enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, MODEL_VERTEX_SIZE, bufferGLOffset(0));
@@ -7132,6 +7151,9 @@ namespace massif::vt {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         if (cullFace) {
             glEnable(GL_CULL_FACE);
+        }
+        if (!caster && alpha < 1.0f && !blending) {
+            glDisable(GL_BLEND);
         }
         glBindTexture(GL_TEXTURE_2D, 0);
         checkGLError();

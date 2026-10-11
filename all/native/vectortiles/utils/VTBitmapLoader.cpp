@@ -55,25 +55,32 @@ namespace massif {
             }
         }
         
-        std::shared_ptr<Bitmap> sourceBitmap = Bitmap::CreateFromCompressed(fileData->data(), fileData->size());
-        if (!sourceBitmap) {
+        std::shared_ptr<const vt::Bitmap> bitmap = DecodeBitmap(fileData->data(), fileData->size());
+        if (!bitmap) {
             Log::Errorf("VTBitmapLoader: Failed to decode bitmap: %s", url.c_str());
-            return std::shared_ptr<vt::Bitmap>();                
+            return std::shared_ptr<vt::Bitmap>();
+        }
+        resolution = 1.0f; // reset resolution
+        return bitmap;
+    }
+
+    std::shared_ptr<const vt::Bitmap> VTBitmapLoader::DecodeBitmap(const unsigned char* data, std::size_t size) {
+        std::shared_ptr<Bitmap> sourceBitmap = Bitmap::CreateFromCompressed(data, size);
+        if (!sourceBitmap) {
+            return std::shared_ptr<vt::Bitmap>();
         }
         sourceBitmap = sourceBitmap->getRGBABitmap();
 
-        std::vector<std::uint32_t> data(sourceBitmap->getWidth() * sourceBitmap->getHeight());
+        std::vector<std::uint32_t> pixels(sourceBitmap->getWidth() * sourceBitmap->getHeight());
         for (unsigned int y = 0; y < sourceBitmap->getHeight(); y++) {
             int dataOffset = (sourceBitmap->getHeight() - 1 - y) * sourceBitmap->getWidth();
             int bitmapOffset = y * sourceBitmap->getWidth() * sourceBitmap->getBytesPerPixel();
             for (unsigned int x = 0; x < sourceBitmap->getWidth(); x++) {
-                data[dataOffset++] = *reinterpret_cast<const std::uint32_t*>(&sourceBitmap->getPixelData()[bitmapOffset]);
+                pixels[dataOffset++] = *reinterpret_cast<const std::uint32_t*>(&sourceBitmap->getPixelData()[bitmapOffset]);
                 bitmapOffset += 4;
             }
         }
-
-        resolution = 1.0f; // reset resolution
-        return std::make_shared<vt::Bitmap>(sourceBitmap->getWidth(), sourceBitmap->getHeight(), std::move(data));
+        return std::make_shared<vt::Bitmap>(sourceBitmap->getWidth(), sourceBitmap->getHeight(), std::move(pixels));
     }
     
     std::shared_ptr<const vt::Bitmap> VTBitmapLoader::loadSVG(const std::vector<unsigned char>& fileData, float& resolution) const {

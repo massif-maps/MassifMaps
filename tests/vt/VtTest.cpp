@@ -54,6 +54,7 @@ void testLabelTextOpacity();
 void testLabelRadialOffset();
 void testLabelEdgeOffset();
 void testLabelYield();
+void testGLBParser();
 
 int main() {
     testPlateBitmap();
@@ -104,6 +105,7 @@ int main() {
     testLabelRadialOffset();
     testLabelEdgeOffset();
     testLabelYield();
+    testGLBParser();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

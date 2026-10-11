@@ -896,6 +896,16 @@
       "baked": true
     },
     {
+      "cartocss": "model-allow-density-reduction",
+      "mapnik": "allow-density-reduction",
+      "symbolizer": "model",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "true",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "model-cast-shadows",
       "mapnik": "cast-shadows",
       "symbolizer": "model",

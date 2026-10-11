@@ -294,6 +294,8 @@ namespace massif::vt {
             std::vector<int> geoPosIndexes;
         };
         std::vector<std::shared_ptr<ModelGroup>> _modelGroups;
+        // Model instances thinned to one per cell, shared by every model rule of the layer.
+        std::shared_ptr<std::unordered_set<int>> _modelOccupancy = std::make_shared<std::unordered_set<int>>();
     };
 }
 

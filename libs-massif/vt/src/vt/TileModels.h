@@ -23,9 +23,10 @@ namespace massif::vt {
         bool castShadows = true;
         float spinSpeed = 0.0f; // radians per second about spinAxis, through the model origin
         cglib::vec3<float> spinAxis = cglib::vec3<float>(0, 1, 0);
+        bool densityReduction = true; // see TileLayerBuilder::createModelProcessor
 
         bool operator == (const ModelStyle& other) const {
-            return model == other.model && opacityFunc == other.opacityFunc && castShadows == other.castShadows && spinSpeed == other.spinSpeed && spinAxis == other.spinAxis;
+            return model == other.model && opacityFunc == other.opacityFunc && castShadows == other.castShadows && spinSpeed == other.spinSpeed && spinAxis == other.spinAxis && densityReduction == other.densityReduction;
         }
     };
 

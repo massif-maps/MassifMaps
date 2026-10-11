@@ -50,6 +50,34 @@ void testModelInstances() {
     TEST_CHECK(layer->getFeatureCount() == 3, "instances count as features");
 }
 
+void testModelDensityReduction() {
+    auto transformer = std::make_shared<DefaultTileTransformer>(1.0f);
+    auto model = std::make_shared<Model>();
+    auto countPlaced = [&](int zoom, bool reduce) {
+        TileLayerBuilder builder("trees", 0, TileId(zoom, 0, 0), transformer, 256.0f, 1.0f);
+        ModelStyle style;
+        style.model = model;
+        style.densityReduction = reduce;
+        auto processor = builder.createModelProcessor(style);
+        ModelStyle other = style;
+        other.model = std::make_shared<Model>();
+        auto otherProcessor = builder.createModelProcessor(other);
+        processor(1, 1, cglib::vec2<float>(0.5f, 0.5f), ModelInstance(), 0);
+        processor(1, 1, cglib::vec2<float>(0.5001f, 0.5001f), ModelInstance(), 1);
+        otherProcessor(1, 1, cglib::vec2<float>(0.5002f, 0.5f), ModelInstance(), 2);
+        processor(1, 1, cglib::vec2<float>(0.9f, 0.1f), ModelInstance(), 3);
+        std::size_t count = 0;
+        std::shared_ptr<TileLayer> layer = builder.buildTileLayer();
+        for (const std::shared_ptr<TileModelInstances>& models : layer->getModels()) {
+            count += models->getInstances().size();
+        }
+        return count;
+    };
+    TEST_CHECK(countPlaced(14, true) == 2, "points sharing a grid cell keep the first, whichever model rule placed it");
+    TEST_CHECK(countPlaced(14, false) == 4, "model-allow-density-reduction: false keeps every point");
+    TEST_CHECK(countPlaced(18, true) == 4, "no reduction from z18, as mapbox");
+}
+
 void testModelInstancePick() {
     // A box 2 m wide, 4 m long towards the model's north, 3 m tall; scaled 2x, turned to face east
     cglib::bbox3<double> bounds(cglib::vec3<double>(-1, 0, 0), cglib::vec3<double>(1, 4, 3));

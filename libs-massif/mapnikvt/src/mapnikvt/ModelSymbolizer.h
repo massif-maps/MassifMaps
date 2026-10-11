@@ -20,6 +20,7 @@ namespace massif::mvt {
             bindProperty("cast-shadows", &_castShadows);
             bindProperty("spin", &_spin);
             bindProperty("spin-axis", &_spinAxis);
+            bindProperty("allow-density-reduction", &_allowDensityReduction);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -40,6 +41,7 @@ namespace massif::mvt {
         BoolProperty _castShadows = BoolProperty(true);
         FloatProperty _spin = FloatProperty(0.0f);     // revolutions per minute
         StringProperty _spinAxis = StringProperty("y"); // the model's own axis: x, y (forward) or z (up)
+        BoolProperty _allowDensityReduction = BoolProperty(true);
     };
 }
 

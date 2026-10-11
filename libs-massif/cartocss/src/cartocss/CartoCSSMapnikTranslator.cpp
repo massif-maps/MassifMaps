@@ -927,6 +927,7 @@ namespace massif::css {
         { "model-cast-shadows", "cast-shadows" },
         { "model-spin", "spin" },
         { "model-spin-axis", "spin-axis" },
+        { "model-allow-density-reduction", "allow-density-reduction" },
         // NOTE: comp-op not supported for building symbolizer
 
         // Config symbolizers for external data sources (CompositeVectorTileLayer).

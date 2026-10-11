@@ -57,6 +57,7 @@ void testLabelYield();
 void testGLBParser();
 void testModelInstances();
 void testModelInstancePick();
+void testModelDensityReduction();
 
 int main() {
     testPlateBitmap();
@@ -110,6 +111,7 @@ int main() {
     testGLBParser();
     testModelInstances();
     testModelInstancePick();
+    testModelDensityReduction();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -794,10 +794,23 @@ namespace massif::vt {
             group->style = style;
             _modelGroups.push_back(group);
         }
-        return [group, this](long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
+        // mapbox's tree heuristic (model_bucket.ts): a lookup grid per tile, coarser at low zoom, none
+        // from z18. Keyed by the drawn tile's zoom, mapbox's table for their z16 model tiles.
+        int lookupDim = 0;
+        if (style.densityReduction) {
+            lookupDim = _tileId.zoom >= 18 ? 0 : _tileId.zoom == 17 ? 256 : _tileId.zoom == 16 ? 75 : 100;
+        }
+        std::shared_ptr<std::unordered_set<int>> occupancy = _modelOccupancy;
+        return [group, occupancy, lookupDim, this](long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
             // Half-open, so a point on a tile edge is placed by exactly one of the two tiles
             if (vertex(0) < 0 || vertex(0) >= 1 || vertex(1) < 0 || vertex(1) >= 1) {
                 return;
+            }
+            if (lookupDim > 0) {
+                int cell = lookupDim * static_cast<int>(vertex(1) * (lookupDim - 1)) + static_cast<int>(vertex(0) * (lookupDim - 1));
+                if (!occupancy->insert(cell).second) {
+                    return;
+                }
             }
             cglib::vec3<float> pos = _transformer->calculatePoint(vertex);
             instance.position = cglib::vec2<float>(pos(0), pos(1));

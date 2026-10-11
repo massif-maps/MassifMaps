@@ -51,6 +51,7 @@ still gets a different model, size and heading for each tree, stable across zoom
 | `model-cast-shadows` | cast shadows on the terrain and on buildings | `true` | no |
 | `model-spin` | spin in revolutions per minute about `model-spin-axis` | `0` | no |
 | `model-spin-axis` | `x`, `y` or `z`, the model's own axis through its origin | `y` | no |
+| `model-allow-density-reduction` | thin dense points to one per grid cell (below) | `true` | no |
 
 The generated [CartoCSS property reference](./cartocss-properties.md) lists them too.
 
@@ -69,6 +70,15 @@ A spinning part (a wind turbine's rotor) is its own model with its origin on the
 over the tower with `model-z-offset`. The map keeps redrawing while a spinning model is on screen;
 `Options.modelAnimationsEnabled = false` freezes them, for battery-bound or e-ink apps (in the demo
 app: `--es apiSet modelAnimationsEnabled=false`).
+
+## Density, fade and detail by zoom
+
+- **Density**: as mapbox does for its trees, each tile keeps one instance per cell of a grid shared
+  by every model rule of the layer — 100 cells a side up to z15, 75 at z16, 256 at z17, no thinning
+  from z18. `model-allow-density-reduction: false` keeps every point.
+- **Fade-in**: give `model-opacity` a zoom ramp, `linear([view::zoom], (15, 0), (16, 1))`.
+- **Detail by zoom**: pick a lighter file at lower zooms with `step([zoom], ...)` in `model-file`;
+  the choice is made per tile, at its zoom.
 
 ## Clicking and highlighting a model
 

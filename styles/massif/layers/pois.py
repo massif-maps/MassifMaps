@@ -636,7 +636,14 @@ def trees(v):
                 paint={'circle-color': MONO_INK if v.flags.get('mono') else TREE_DOT,
                        'circle-radius': zoom_ramp(16, 1.5, 18, 2.5),
                        'circle-stroke-color': HALO_DAY, 'circle-stroke-width': 1})
-    return [dot, sunk(poi_layer('poi-tree', 18, unnamed, v, text='', scale=TREE_SCALE)), named]
+    return [without_models(dot), without_models(sunk(poi_layer('poi-tree', 18, unnamed, v, text='', scale=TREE_SCALE))), named]
+
+
+def without_models(lay):
+    """SDK only: an unnamed tree is drawn as a model (models.mss) where the SDK draws them, not as an icon"""
+    meta = lay.setdefault('metadata', {})
+    meta['massif:filter'] = ['==', ['config', 'models_3d'], 0]
+    return lay
 
 
 # least important first, a layer each: also keeps any one priority off most %poi rules (the template's)

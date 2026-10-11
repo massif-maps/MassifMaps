@@ -99,8 +99,8 @@ VARIANTS = {v.name: v for v in [
             trails=True, relief=True),
     Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS, trails=True,
             relief=True),
-    Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite', 'dem', 'contours'), dark_ground=True),
-    Variant('eink', 'Massif E-ink', EINK, sources=('dem', 'contours'), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1, 'lighting': 0},
+    Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite', 'dem', 'contours'), params={'models_3d': 0}, dark_ground=True),
+    Variant('eink', 'Massif E-ink', EINK, sources=('dem', 'contours'), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1, 'lighting': 0, 'models_3d': 0},
             mono=True, trails=True),
 ]}
 

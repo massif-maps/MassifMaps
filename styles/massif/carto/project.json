@@ -770,6 +770,7 @@
     "lang": "en",
     "lighting": 1,
     "lowzoom_landcover": 0,
+    "models_3d": 1,
     "mtb_markings": 0,
     "park-icon-background-border-fill-eink": {
       "default": {

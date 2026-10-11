@@ -151,12 +151,13 @@ def tube(mesh, p0, p1, r0, r1, n, color, rng):
 def crown_ao(p, crown_center, crown_radii):
     """Darker deep inside and under the crown, as a baked occlusion term."""
     rel = (np.asarray(p) - crown_center) / crown_radii
-    return 0.6 + 0.3 * np.clip(np.linalg.norm(rel), 0, 1) + 0.12 * np.clip(rel[2], -1, 1)
+    return 0.8 + 0.16 * np.clip(np.linalg.norm(rel), 0, 1) + 0.08 * np.clip(rel[2], -1, 1)
 
 
 def leaf(mesh, rng, base, along, length, width, color, droop=0.24, cup=0.1, pitch=0.0, roll=0.0):
     """One leaf from `base` along the (level) direction `along`, bending down under its own weight
-    towards the tip and cupped at the edges; normals follow the bend. Two-sided, 16 triangles."""
+    towards the tip and cupped at the edges; normals follow the bend. Round from above: an ellipse
+    outline. Two-sided, 40 triangles."""
     flat = unit(np.array((along[0], along[1], 0.0)))
     side = np.cross(UP, flat)
     up = unit(UP + side * roll - flat * pitch)
@@ -165,18 +166,22 @@ def leaf(mesh, rng, base, along, length, width, color, droop=0.24, cup=0.1, pitc
     base = np.asarray(base, float)
 
     def point(t, side):
-        half = width * 0.5 * math.sin(math.pi * min(t, 0.98)) ** 0.7
+        half = width * 0.5 * math.sqrt(max(0.0, 1 - (2 * t - 1) ** 2))
         y = side * half
         z = -droop * length * t * t - cup * length * side * side * (half / (width * 0.5))
         normal = unit(up + u * (2 * droop * t) + v * (2 * cup * side))
         return base + u * (t * length) + v * y + up * z, normal
 
-    rows = [[point(0.0, 0)], [point(0.33, s) for s in (-1, 0, 1)], [point(0.66, s) for s in (-1, 0, 1)], [point(1.0, 0)]]
-    under = shade(color, 0.82)
+    ts = (0.12, 0.3, 0.5, 0.7, 0.88)
+    rows = [[point(0.0, 0)]] + [[point(t, s) for s in (-1, 0, 1)] for t in ts] + [[point(1.0, 0)]]
+    under = shade(color, 0.9)
     for face_color, sign in ((color, 1), (under, -1)):
         ids = [[mesh.vert(p + up * (0.01 * sign), face_color, n * sign) for p, n in row] for row in rows]
-        b0, (l1, m1, r1), (l2, m2, r2), t = ids[0][0], ids[1], ids[2], ids[3][0]
-        tris = [(b0, m1, l1), (b0, r1, m1), (l1, m1, m2), (l1, m2, l2), (m1, r1, r2), (m1, r2, m2), (l2, m2, t), (m2, r2, t)]
+        b0, t = ids[0][0], ids[-1][0]
+        (l, m, r), (lt, mt, rt) = ids[1], ids[-2]
+        tris = [(b0, m, l), (b0, r, m), (lt, mt, t), (mt, rt, t)]
+        for (l1, m1, r1), (l2, m2, r2) in zip(ids[1:-2], ids[2:-1]):
+            tris += [(l1, m1, m2), (l1, m2, l2), (m1, r1, r2), (m1, r2, m2)]
         for i, j, k in tris:
             if sign > 0:
                 mesh.itri(i, k, j)
@@ -185,8 +190,8 @@ def leaf(mesh, rng, base, along, length, width, color, droop=0.24, cup=0.1, pitc
 
 
 def clump(mesh, rng, center, radius, color):
-    """A small lumpy cluster of leaves, normals from its own faces so it shades softly. 20 triangles."""
-    verts, faces = icosphere(0)
+    """A small lumpy cluster of leaves, normals from its own faces so it shades softly. 80 triangles."""
+    verts, faces = icosphere(1)
     center = np.asarray(center, float)
     pts = [center + p * radius * rng.uniform(0.75, 1.2) * np.array((1, 1, 0.75)) for p in verts]
     normals = [np.zeros(3) for _ in pts]
@@ -199,7 +204,8 @@ def clump(mesh, rng, center, radius, color):
         mesh.itri(ids[a], ids[b], ids[c])
 
 
-BARK = (0.45, 0.39, 0.32)
+BARK = (0.52, 0.46, 0.39)
+SPREADING_GREEN = (0.60, 0.82, 0.59)
 UP = np.array((0, 0, 1.0))
 
 
@@ -249,7 +255,7 @@ def skeleton(rng, m, trunk_height, trunk_radius, limbs, depth, spread, rise, cro
 
 def leaf_color(rng, color):
     """Each leaf drifts between a yellow and a blue cast, lighter or darker."""
-    warm, cool = np.array((1.08, 1.04, 0.84)), np.array((0.9, 0.98, 1.1))
+    warm, cool = np.array((1.06, 1.03, 0.92)), np.array((0.92, 0.98, 1.08))
     return tuple(np.clip(np.array(color) * (warm + (cool - warm) * rng.random()) * rng.uniform(0.85, 1.12), 0, 1))
 
 
@@ -274,9 +280,9 @@ def spreading_tree(seed=11):
     tips, cc, radii = skeleton(rng, m, trunk_height=3.2, trunk_radius=0.3, limbs=3, depth=2, spread=0.85, rise=0.7,
                                crown_center=(0, 0, 6.2), crown_radii=(4.6, 4.6, 2.6))
     for tip, d in tips:
-        spray(m, rng, tip, d, (2, 4), 3.4, (0.38, 0.57, 0.28), cc, radii)
+        spray(m, rng, tip, d, (2, 4), 3.4, SPREADING_GREEN, cc, radii)
         if rng.random() < 0.4:
-            spray(m, rng, tip - d * rng.uniform(0.8, 1.5), d, (1, 1), 2.8, (0.38, 0.57, 0.28), cc, radii)
+            spray(m, rng, tip - d * rng.uniform(0.8, 1.5), d, (1, 1), 2.8, SPREADING_GREEN, cc, radii)
     return m
 
 
@@ -289,7 +295,7 @@ def layered_tree(seed=23):
     tube(m, (0, 0, 0), top * 0.45, 0.27, 0.19, 7, BARK, rng)
     tube(m, top * 0.45, top, 0.19, 0.07, 6, BARK, rng)
     cc, radii = np.array((0, 0, 6.0)), np.array((4.2, 4.2, 3.6))
-    color = (0.42, 0.60, 0.30)
+    color = (0.63, 0.84, 0.62)
     phase = rng.uniform(0, 2 * math.pi)
     for z, counts, length, size in ((3.8, (3, 4), 2.6, 3.4), (5.9, (3, 4), 2.0, 3.0), (7.7, (2, 3), 1.3, 2.6)):
         z += rng.uniform(-0.35, 0.35)
@@ -313,7 +319,7 @@ def clumped_tree(seed=37):
     m = Mesh()
     tips, cc, radii = skeleton(rng, m, trunk_height=2.9, trunk_radius=0.27, limbs=3, depth=2, spread=0.8, rise=0.9,
                                crown_center=(0, 0, 6.0), crown_radii=(4.4, 4.4, 2.8))
-    color = (0.44, 0.63, 0.32)
+    color = (0.66, 0.86, 0.64)
     for tip, d in tips:
         p = tip + UP * 0.5
         clump(m, rng, p, rng.uniform(1.8, 2.1), shade(color, crown_ao(p, cc, radii) * rng.uniform(0.92, 1.08)))

@@ -784,9 +784,10 @@ namespace massif::vt {
         if (styleIndex == _modelStyles.size()) {
             _modelStyles.push_back(style);
         }
-        // The disc inscribed in the crown's box: two crowns that touch may still cross at the corners
+        // 3/4 of the disc inscribed in the crown's box: neighbouring crowns may cross a little, a park
+        // reads fuller (mapbox lets them overlap freely)
         const cglib::bbox3<float>& bounds = style.model->bounds;
-        float crownRadius = bounds.empty() ? 0.0f : 0.5f * std::min(bounds.size()(0), bounds.size()(1));
+        float crownRadius = bounds.empty() ? 0.0f : 0.75f * 0.5f * std::min(bounds.size()(0), bounds.size()(1));
         return [styleIndex, crownRadius, this](long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
             cglib::vec3<float> pos = _transformer->calculatePoint(vertex);
             instance.position = cglib::vec2<float>(pos(0), pos(1));

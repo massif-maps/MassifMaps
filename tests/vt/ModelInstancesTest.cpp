@@ -84,7 +84,7 @@ void testModelOverlap() {
     TileId tileId(18, 134000, 93000);
     float unitsPerMetre = transformer->createTileVertexTransformer(tileId)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
     auto crown = std::make_shared<Model>();
-    crown->bounds = cglib::bbox3<float>(cglib::vec3<float>(-4, -3, 0), cglib::vec3<float>(4, 3, 10)); // a 3 m disc
+    crown->bounds = cglib::bbox3<float>(cglib::vec3<float>(-4, -3, 0), cglib::vec3<float>(4, 3, 10)); // a 2.25 m disc
     auto countPlaced = [&](bool allowOverlap, float scale) {
         TileLayerBuilder builder("trees", 0, tileId, transformer, 256.0f, 1.0f);
         ModelStyle style;
@@ -95,7 +95,7 @@ void testModelOverlap() {
         instance.scale = scale;
         auto east = [&](float metres) { return cglib::vec2<float>(0.5f + metres * unitsPerMetre, 0.5f); };
         processor(1, 1, east(0), instance, 0);
-        processor(1, 1, east(5), instance, 1);  // the two crowns cross: one stays
+        processor(1, 1, east(4), instance, 1);  // the two crowns cross: one stays
         processor(1, 1, east(20), instance, 2); // alone
         processor(2, 2, east(40), instance, 0); // a tower and its rotor: one point, two models
         processor(2, 2, east(40), instance, 0);
@@ -119,7 +119,7 @@ void testModelOverlapAcrossZooms() {
     float unitsPerMetre = transformer->createTileVertexTransformer(parent)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
     auto crown = std::make_shared<Model>();
     crown->bounds = cglib::bbox3<float>(cglib::vec3<float>(-4, -4, 0), cglib::vec3<float>(4, 4, 10));
-    std::vector<cglib::vec2<float>> points; // parent frame: a jittered grid 5 m apart, crowns 8 m
+    std::vector<cglib::vec2<float>> points; // parent frame: a jittered grid 5 m apart, crowns 6 m
     for (int i = 0; i < 400; i++) {
         float jx = static_cast<float>((i * 7919) % 100) / 100.0f, jy = static_cast<float>((i * 104729) % 100) / 100.0f;
         points.emplace_back((0.3f + (i % 20) * 5 * unitsPerMetre) + jx * 2 * unitsPerMetre, (0.3f + (i / 20) * 5 * unitsPerMetre) + jy * 2 * unitsPerMetre);
@@ -146,7 +146,7 @@ void testModelOverlapAcrossZooms() {
     bool apart = true;
     for (int a : all) {
         for (int b : all) {
-            apart = apart && (a == b || cglib::length(points[a] - points[b]) >= 8 * unitsPerMetre * 0.999f);
+            apart = apart && (a == b || cglib::length(points[a] - points[b]) >= 6 * unitsPerMetre * 0.999f);
         }
         if (points[a](0) >= 0.5f && points[a](1) < 0.5f) {
             fromParent.push_back(a);

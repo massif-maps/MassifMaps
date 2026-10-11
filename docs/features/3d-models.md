@@ -77,8 +77,9 @@ app: `--es apiSet modelAnimationsEnabled=false`).
 - **Density**: as mapbox does for its trees, each tile keeps one instance per cell of a grid shared
   by every model rule of the layer — 100 cells a side up to z14, 256 at z15, no thinning from z16
   (mapbox's table for a z14 source). `model-allow-density-reduction: false` keeps every point.
-- **Overlap**: as `marker-allow-overlap` does for icons, models do not cross. The crown is the disc
-  inscribed in the model's box, seen from above, times `model-scale`, in metres. Of two crossing
+- **Overlap**: as `marker-allow-overlap` does for icons, models do not cross. The crown is 3/4 of the
+  disc inscribed in the model's box, seen from above, times `model-scale`, in metres, so neighbours
+  may cross a little. Of two crossing
   crowns the one ranked higher stays; the rank is drawn from the point's position, so it is the same
   at every zoom, and zooming in keeps every tree where it was, only adding those the density grid had
   thinned. A crown can lose to a neighbour that itself lost, so a dense row keeps fewer trees than a

@@ -213,11 +213,12 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
   on white inside a thin mid-grey shore - two dark shores around a plain river read as a road.
   Rivers and streams are dashed grey lines on a pale bed (`waterway-mono-bed`, from z12), where a
   track's dashes run on nothing; intermittent ones dotted.
-- **Roads** are white with grey casings, their hierarchy carried by the casing's weight
-  (`casing-scale` 1.8) and, lightly, its grey: motorway and trunk 35 % (L* 38), primary 45 %, the
-  rest 50 %. Below z13 only motorways, trunks and primaries keep a casing; the small
-  roads are an uncased line in the casing's grey (`road-low`, 50 %) at the other variants' width, fading to white
-  over the zoom their casing grows in (`casing-from`). **Tracks, trails and via ferratas** are dark grey
+- **Roads** are white with light grey casings, their hierarchy carried by the casing's weight
+  (`casing-scale` 1.8) and, lightly, its grey: motorway and trunk 50 % (L* 53), primary 58 %, the
+  rest 65 %. Below z13 only motorways, trunks and primaries keep a casing; the small
+  roads are an uncased line in a light grey (`road-low` 66 %, `minor-low` 62 %) at the other variants' width, fading to white
+  over the zoom their casing grows in (`casing-from`). The low-zoom grey stays well under the
+  rivers (dashed, 40 %) and the rail (solid, 30 %), so the three read apart at z5-12. **Tracks, trails and via ferratas** are dark grey
   and white (the via ferrata's core white; trails and MTB lines 25 %, alpine trails 35 %, tracks 30 %,
   rail 30 %), tracks and trails 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood. No road, track, path or rail
@@ -228,7 +229,7 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
 - **Shields** are one white plate with a black ring, for every country. The US ones keep their
   shape in black and white (`shield-us-*-mono`): the interstate's crown with a solid black header
   band, the US highway's crown as a bare black outline.
-- **Buildings** are grey footprints to z15, then grey 3D blocks as in the other variants
+- **Buildings** are grey footprints (outline 62 %) to z15, then grey 3D blocks as in the other variants
   (`building_opacity` looking down, opaque once the camera leans in); footprints at every zoom with
   `buildings` 1. Their outline fades in over z15–16: a whole town's outlines at once turned the map dark.
 - **POIs** are a black glyph on a white disc with a black ring, the same for every category, a bare

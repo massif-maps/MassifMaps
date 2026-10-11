@@ -906,6 +906,16 @@
       "baked": false
     },
     {
+      "cartocss": "model-allow-overlap",
+      "mapnik": "allow-overlap",
+      "symbolizer": "model",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "model-cast-shadows",
       "mapnik": "cast-shadows",
       "symbolizer": "model",

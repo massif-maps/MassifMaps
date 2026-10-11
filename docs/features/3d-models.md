@@ -52,6 +52,7 @@ still gets a different model, size and heading for each tree, stable across zoom
 | `model-spin` | spin in revolutions per minute about `model-spin-axis` | `0` | no |
 | `model-spin-axis` | `x`, `y` or `z`, the model's own axis through its origin | `y` | no |
 | `model-allow-density-reduction` | thin dense points to one per grid cell (below) | `true` | no |
+| `model-allow-overlap` | draw a model even where its crown crosses one already placed (below) | `false` | no |
 
 The generated [CartoCSS property reference](./cartocss-properties.md) lists them too.
 
@@ -76,6 +77,11 @@ app: `--es apiSet modelAnimationsEnabled=false`).
 - **Density**: as mapbox does for its trees, each tile keeps one instance per cell of a grid shared
   by every model rule of the layer — 100 cells a side up to z14, 256 at z15, no thinning from z16
   (mapbox's table for a z14 source). `model-allow-density-reduction: false` keeps every point.
+- **Overlap**: as `marker-allow-overlap` does for icons, a model whose crown crosses one already
+  placed in the tile is left out. The crown is the disc inscribed in the model's box, seen from
+  above, times `model-scale`; it is measured in metres, so which trees stay does not change with the
+  zoom. The models of one point (a tower and its rotor) never collide with each other.
+  `model-allow-overlap: true` places every point.
 - **Fade-in**: give `model-opacity` a zoom ramp, `linear([view::zoom], (15, 0), (16, 1))`.
 - **Detail by zoom**: pick a lighter file at lower zooms with `step([zoom], ...)` in `model-file`;
   the choice is made per tile, at its zoom.

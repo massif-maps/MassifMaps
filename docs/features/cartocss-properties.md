@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-260 properties across 13 symbolizers.
+261 properties across 13 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 64 of 260.
+Live-capable properties: 64 of 261.
 
 ## `building`
 
@@ -154,6 +154,7 @@ Live-capable properties: 64 of 260.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `model-allow-density-reduction` | `allow-density-reduction` | bool | `true` |  |  |
+| `model-allow-overlap` | `allow-overlap` | bool | `false` |  |  |
 | `model-cast-shadows` | `cast-shadows` | bool | `true` |  |  |
 | `model-color` | `color` | color | `#ffffff` |  |  |
 | `model-color-mix` | `color-mix` | float | `0.0` |  |  |

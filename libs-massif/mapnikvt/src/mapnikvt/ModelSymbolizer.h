@@ -21,6 +21,7 @@ namespace massif::mvt {
             bindProperty("spin", &_spin);
             bindProperty("spin-axis", &_spinAxis);
             bindProperty("allow-density-reduction", &_allowDensityReduction);
+            bindProperty("allow-overlap", &_allowOverlap);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -42,6 +43,7 @@ namespace massif::mvt {
         FloatProperty _spin = FloatProperty(0.0f);     // revolutions per minute
         StringProperty _spinAxis = StringProperty("y"); // the model's own axis, map frame: x east, y north (glTF -z), z up
         BoolProperty _allowDensityReduction = BoolProperty(true);
+        BoolProperty _allowOverlap = BoolProperty(false);
     };
 }
 

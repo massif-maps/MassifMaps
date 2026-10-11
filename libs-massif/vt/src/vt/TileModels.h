@@ -5,10 +5,12 @@
 #include "Model.h"
 #include "Styles.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include <cglib/vec.h>
@@ -24,9 +26,10 @@ namespace massif::vt {
         float spinSpeed = 0.0f; // radians per second about spinAxis, through the model origin
         cglib::vec3<float> spinAxis = cglib::vec3<float>(0, 1, 0);
         bool densityReduction = true; // see TileLayerBuilder::createModelProcessor
+        bool allowOverlap = false;
 
         bool operator == (const ModelStyle& other) const {
-            return model == other.model && opacityFunc == other.opacityFunc && castShadows == other.castShadows && spinSpeed == other.spinSpeed && spinAxis == other.spinAxis && densityReduction == other.densityReduction;
+            return model == other.model && opacityFunc == other.opacityFunc && castShadows == other.castShadows && spinSpeed == other.spinSpeed && spinAxis == other.spinAxis && densityReduction == other.densityReduction && allowOverlap == other.allowOverlap;
         }
     };
 
@@ -63,6 +66,62 @@ namespace massif::vt {
         const std::vector<long long> _ids;
         const std::vector<long long> _featureIds;
         const std::vector<int> _geoPosIndexes;
+    };
+
+    // Crowns placed so far in one tile layer, as discs; a model rule without allow-overlap keeps a
+    // point only when its disc touches none. Discs of one point (a tower and its rotor) never collide.
+    class ModelFootprints final {
+    public:
+        bool overlaps(const cglib::vec2<float>& position, float radius, long long id, int geoPointIndex) const {
+            if (_cellSize <= 0) {
+                return false;
+            }
+            auto hits = [&](const Footprint& other) {
+                float reach = radius + other.radius;
+                return !(other.id == id && other.geoPointIndex == geoPointIndex) && cglib::length(other.position - position) < reach;
+            };
+            int range = static_cast<int>(std::ceil((radius + _maxRadius) / _cellSize));
+            if (range > 8) {
+                return std::any_of(_footprints.begin(), _footprints.end(), hits);
+            }
+            int cx = static_cast<int>(std::floor(position(0) / _cellSize)), cy = static_cast<int>(std::floor(position(1) / _cellSize));
+            for (int y = cy - range; y <= cy + range; y++) {
+                for (int x = cx - range; x <= cx + range; x++) {
+                    auto it = _cells.find(cellKey(x, y));
+                    if (it != _cells.end() && std::any_of(it->second.begin(), it->second.end(), [&](std::size_t index) { return hits(_footprints[index]); })) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        void add(const cglib::vec2<float>& position, float radius, long long id, int geoPointIndex) {
+            if (!(radius > 0)) {
+                return;
+            }
+            if (_cellSize <= 0) {
+                _cellSize = 2 * radius;
+            }
+            _maxRadius = std::max(_maxRadius, radius);
+            _cells[cellKey(static_cast<int>(std::floor(position(0) / _cellSize)), static_cast<int>(std::floor(position(1) / _cellSize)))].push_back(_footprints.size());
+            _footprints.push_back(Footprint { position, radius, id, geoPointIndex });
+        }
+
+    private:
+        struct Footprint {
+            cglib::vec2<float> position;
+            float radius;
+            long long id;
+            int geoPointIndex;
+        };
+
+        static long long cellKey(int x, int y) { return (static_cast<long long>(x) << 32) ^ static_cast<unsigned int>(y); }
+
+        float _cellSize = 0;
+        float _maxRadius = 0;
+        std::vector<Footprint> _footprints;
+        std::unordered_map<long long, std::vector<std::size_t>> _cells;
     };
 
     // The box a click is tested against: the model's bounds, or for a spinning model every box the

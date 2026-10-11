@@ -58,6 +58,7 @@ void testGLBParser();
 void testModelInstances();
 void testModelInstancePick();
 void testModelDensityReduction();
+void testModelOverlap();
 
 int main() {
     testPlateBitmap();
@@ -112,6 +113,7 @@ int main() {
     testModelInstances();
     testModelInstancePick();
     testModelDensityReduction();
+    testModelOverlap();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

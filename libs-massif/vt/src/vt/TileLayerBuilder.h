@@ -296,6 +296,7 @@ namespace massif::vt {
         std::vector<std::shared_ptr<ModelGroup>> _modelGroups;
         // Model instances thinned to one per cell, shared by every model rule of the layer.
         std::shared_ptr<std::unordered_set<int>> _modelOccupancy = std::make_shared<std::unordered_set<int>>();
+        std::shared_ptr<ModelFootprints> _modelFootprints = std::make_shared<ModelFootprints>();
     };
 }
 

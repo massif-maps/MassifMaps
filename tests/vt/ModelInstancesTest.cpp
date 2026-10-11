@@ -79,6 +79,39 @@ void testModelDensityReduction() {
     TEST_CHECK(countPlaced(16, true) == 4, "no thinning further in, as mapbox past canonical + 1");
 }
 
+void testModelOverlap() {
+    auto transformer = std::make_shared<DefaultTileTransformer>(1.0f);
+    TileId tileId(18, 134000, 93000);
+    float unitsPerMetre = transformer->createTileVertexTransformer(tileId)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
+    auto crown = std::make_shared<Model>();
+    crown->bounds = cglib::bbox3<float>(cglib::vec3<float>(-4, -3, 0), cglib::vec3<float>(4, 3, 10)); // a 3 m disc
+    auto countPlaced = [&](bool allowOverlap, float scale) {
+        TileLayerBuilder builder("trees", 0, tileId, transformer, 256.0f, 1.0f);
+        ModelStyle style;
+        style.model = crown;
+        style.allowOverlap = allowOverlap;
+        auto processor = builder.createModelProcessor(style);
+        ModelInstance instance;
+        instance.scale = scale;
+        auto east = [&](float metres) { return cglib::vec2<float>(0.5f + metres * unitsPerMetre, 0.5f); };
+        processor(1, 1, east(0), instance, 0);
+        processor(1, 1, east(5), instance, 1);  // crowns cross
+        processor(1, 1, east(8.5f), instance, 2); // touches neither
+        processor(1, 1, east(15), instance, 3);
+        processor(2, 2, east(15), instance, 0); // another feature at a point taken
+        processor(1, 1, east(15), instance, 3); // the same point again: a tower and its rotor
+        std::size_t count = 0;
+        std::shared_ptr<TileLayer> layer = builder.buildTileLayer();
+        for (const std::shared_ptr<TileModelInstances>& models : layer->getModels()) {
+            count += models->getInstances().size();
+        }
+        return count;
+    };
+    TEST_CHECK(countPlaced(false, 1.0f) == 4, "a crown crossing a placed one is dropped, unless it belongs to the same point");
+    TEST_CHECK(countPlaced(true, 1.0f) == 6, "model-allow-overlap: true keeps every point");
+    TEST_CHECK(countPlaced(false, 0.5f) == 5, "the disc follows the instance's scale");
+}
+
 void testModelInstancePick() {
     // A box 2 m wide, 4 m long towards the model's north, 3 m tall; scaled 2x, turned to face east
     cglib::bbox3<double> bounds(cglib::vec3<double>(-1, 0, 0), cglib::vec3<double>(1, 4, 3));

@@ -659,7 +659,8 @@ namespace massif::css {
         "saturate",
         "desaturate",
         "fadein",
-        "fadeout"
+        "fadeout",
+        "random"  // random(min, max[, seed]) - deterministic per feature, or per seed
     };
 
     const std::vector<std::string> CartoCSSMapnikTranslator::_symbolizerList = {

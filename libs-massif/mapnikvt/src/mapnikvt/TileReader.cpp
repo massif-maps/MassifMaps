@@ -205,7 +205,7 @@ namespace massif::mvt {
 
         auto gatherFields = [](const std::string& field, std::set<std::string>& fields, bool& explicitFeatureId) -> bool {
             if (ExpressionContext::isMapnikVariable(field)) {
-                explicitFeatureId = explicitFeatureId || field == "mapnik::feature_id";
+                explicitFeatureId = explicitFeatureId || field == "mapnik::feature_id" || field == "mapnik::seed";
                 return false;
             }
             else if (ExpressionContext::isViewStateVariable(field) || ExpressionContext::isStyleParameterVariable(field) || ExpressionContext::isZoomVariable(field) || ExpressionContext::isRenderVariable(field)) {

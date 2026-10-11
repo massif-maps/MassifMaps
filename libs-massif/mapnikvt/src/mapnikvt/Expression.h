@@ -182,7 +182,12 @@ namespace massif::mvt {
 
     class FunctionExpression final {
     public:
-        explicit FunctionExpression(std::string func, std::vector<Expression> args) : _func(std::move(func)), _args(std::move(args)) { }
+        explicit FunctionExpression(std::string func, std::vector<Expression> args) : _func(std::move(func)), _args(std::move(args)) {
+            // random(min, max) seeds from the feature, or from the instance where a symbolizer places many
+            if (_func == "random" && _args.size() == 2) {
+                _args.push_back(std::make_shared<VariableExpression>(std::string("mapnik::seed")));
+            }
+        }
 
         const std::string& getFunc() const { return _func; }
         const std::vector<Expression>& getExpressions() const { return _args; }
@@ -192,7 +197,8 @@ namespace massif::mvt {
 
         static Value applyFunc(const std::string& func, const std::vector<Value>& vals);
 
-    private:static vt::Color getColor(const Value& value);
+    private:
+        static vt::Color getColor(const Value& value);
         static float getFloat(const Value& value);
         static std::string getString(const Value& value);
         std::string _func;

@@ -1,4 +1,6 @@
 #include "Expression.h"
+
+#include <cstdint>
 #include "ExpressionUtils.h"
 #include "TransformUtils.h"
 #include "StringUtils.h"
@@ -426,6 +428,25 @@ namespace massif::mvt {
 
     }
     Value FunctionExpression::applyFunc(const std::string& func, const std::vector<Value>& vals) {
+        // mapbox's random: one mulberry32 draw from the seed, so a seed always gives the same value
+        if (func == "random" && vals.size() == 3) {
+            std::uint32_t seed = 0;
+            if (auto str = std::get_if<std::string>(&vals[2])) {
+                for (char c : *str) {
+                    seed = seed * 31 + static_cast<unsigned char>(c);
+                }
+            }
+            else {
+                long long id = ValueConverter<long long>::convert(vals[2]);
+                seed = static_cast<std::uint32_t>(id ^ (id >> 32));
+            }
+            std::uint32_t t = seed + 0x6D2B79F5u;
+            t = (t ^ (t >> 15)) * (t | 1u);
+            t ^= t + (t ^ (t >> 7)) * (t | 61u);
+            double r = static_cast<double>(t ^ (t >> 14)) / 4294967296.0;
+            double min = ValueConverter<double>::convert(vals[0]), max = ValueConverter<double>::convert(vals[1]);
+            return Value(min + r * (max - min));
+        }
         // Table lookups: a style parameter can hold an object or an array, so a style reads a
         // per-class value out of one the app owns instead of declaring a parameter per class.
         if (func == "get" && (vals.size() == 2 || vals.size() == 3)) {

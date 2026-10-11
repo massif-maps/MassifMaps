@@ -32,13 +32,16 @@ namespace massif::mvt {
             return Value();
         }
         else if (isMapnikVariable(name)) {
+            if (name == "mapnik::seed" && _instanceSeed) {
+                return Value(*_instanceSeed);
+            }
             if (!_featureData) { // evaluated outside a tile, e.g. LayerConfigResolver
                 return Value();
             }
             if (name == "mapnik::geometry_type") {
                 return Value(static_cast<long long>(_featureData->getGeometryType()));
             }
-            if (name == "mapnik::feature_id") {
+            if (name == "mapnik::feature_id" || name == "mapnik::seed") {
                 return Value(_featureData->getId());
             }
             return Value();

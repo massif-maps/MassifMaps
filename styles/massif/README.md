@@ -256,10 +256,19 @@ parameter test.
 ## 3D trees and wind turbines (SDK only)
 
 [`models/models.mss`](models/models.mss) places glTF models at the `poi` points of class `tree`
-(from z15, faded in by z16) and `wind_turbine` (from z13) while the `models_3d` parameter is 1, its
-default on streets, outdoor and topo; e-ink and hybrid set it to 0. Where the models draw, the
-unnamed tree icons and dots do not; a named tree keeps its icon and name. `build.py --convert` copies it after `style.mss` with the `.glb` files into
-`carto/models/`. MapLibre has no model layer, so the reference styles keep only the icons.
+(from z15, faded in by z16) and `wind_turbine` (from z13) while the `models_3d` parameter is 1. It
+is 0 by default on every variant: an app turns it on (`style.set('params.models_3d', '1')`), and the
+points only exist in tilesets that carry `poi` trees (Alpimaps' planetiler does, OpenFreeMap does
+not). Where the models draw, the
+unnamed tree icons and dots do not; a named tree keeps its icon and name. `build.py --convert` copies it after `style.mss`. MapLibre has no model layer, so the reference
+styles keep only the icons.
+
+**The `.glb` files are not in the package** (58 KB that most maps never draw). To use them, download
+the five files from [`styles/massif/models`](https://github.com/massif-maps/MassifMaps/tree/master/styles/massif/models)
+(`tree-spreading.glb`, `tree-layered.glb`, `tree-clumped.glb`, `wind-turbine-tower.glb`,
+`wind-turbine-rotor.glb`), put them in a `models/` folder at the root of the style package, beside
+`project.json`, and set `params.models_3d` to 1. The `3d-models` example in the gallery shows the
+same rules on an app's own points.
 
 - **Trees**: three models, `random()` picking one per tree with its own scale (0.8-1.2), heading and
   tint, seeded by the tree's position so each point of a packed MultiPoint differs and keeps it
@@ -352,8 +361,7 @@ Switches (0/1):
   lines, no `service`, dark and wide from z6).
 - `highlight_drinking_water` (0) — water points larger, placed over any other label, and from z12
   whatever `water_min_zoom` says.
-- `models_3d` (1, 0 on e-ink and hybrid) — 3D trees and wind turbines (SDK only, above); 0 draws
-  the tree icons and dots instead.
+- `models_3d` (0) — 3D trees and wind turbines (SDK only, above) in place of the tree icons and dots.
 - `label_occlusion` (1) — road names, POIs and natural labels hidden behind a 3D building (a POI is
   tested from the roof it stands under, [06-labels](../../docs/internals/rendering/06-labels.mdx#per-label-occlusion-by-3d-content));
   0 casts no ray at all.

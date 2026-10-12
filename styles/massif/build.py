@@ -99,8 +99,8 @@ VARIANTS = {v.name: v for v in [
             trails=True, relief=True),
     Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS, trails=True,
             relief=True),
-    Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite', 'dem', 'contours'), params={'models_3d': 0}, dark_ground=True),
-    Variant('eink', 'Massif E-ink', EINK, sources=('dem', 'contours'), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1, 'lighting': 0, 'models_3d': 0},
+    Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite', 'dem', 'contours'), dark_ground=True),
+    Variant('eink', 'Massif E-ink', EINK, sources=('dem', 'contours'), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1, 'lighting': 0},
             mono=True, trails=True),
 ]}
 
@@ -298,13 +298,10 @@ def convert(out='carto', extra=()):
 
 
 def add_models(out):
-    """SDK only: the 3D models (models/gen_models.py) and models.mss placing them, listed after the
-    converted rules so a child project restating `styles` can leave them out."""
+    """SDK only: models.mss placing the 3D models, listed after the converted rules so a child project
+    restating `styles` can leave them out. The .glb files are NOT packaged: an app that turns
+    models_3d on adds styles/massif/models/*.glb under models/ itself (README)."""
     src = os.path.join(HERE, 'models')
-    os.makedirs(os.path.join(HERE, out, 'models'), exist_ok=True)
-    for f in sorted(os.listdir(src)):
-        if f.endswith('.glb'):
-            shutil.copy(os.path.join(src, f), os.path.join(HERE, out, 'models', f))
     shutil.copy(os.path.join(src, 'models.mss'), os.path.join(HERE, out, 'models.mss'))
     path = os.path.join(HERE, out, 'project.json')
     project = json.load(open(path))

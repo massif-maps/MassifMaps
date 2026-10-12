@@ -93,7 +93,8 @@ is already straight once it leaves the bake and would show a fix that is not the
 `--es demo terrain|project|composite` is a legacy shorthand for `base`/`style`. Every knob read in
 `DemoConfig.applyIntentOverrides` is an intent extra, so most experiments need no rebuild:
 
-- camera: `lon lat zoom tilt rotation`, `fovY` (0 = the SDK default)
+- camera: `lon lat zoom tilt rotation`, `fovY` (0 = the SDK default); `zoomTo <zoom>,<seconds>` (CONFIG
+  broadcast only) animates the zoom, the scripted stand-in for a slow pinch
 - terrain: `drape drapeLines drapeResolution meshResolution exaggeration`, `viewDistance
   viewDistanceMeters`, `autoFlatten autoFlattenTilt autoFlattenMs`, `stitch`
 - composite overlays: `hs sat satZoom contour`; buildings: `bld3d`

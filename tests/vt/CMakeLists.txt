@@ -11,6 +11,7 @@ add_executable(vt_tests
   PlateBitmapTest.cpp
   PlateBoxTest.cpp
   LineLabelTest.cpp
+  LabelSpotTest.cpp
   CollisionPaddingTest.cpp
   LabelSplitBoxTest.cpp
   LabelAnchorAlignTest.cpp

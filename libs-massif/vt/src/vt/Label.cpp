@@ -429,6 +429,14 @@ namespace massif::vt {
 #endif
     }
 
+    bool Label::getPointAnchor(cglib::vec3<double>& position) const {
+        if (_tilePoints.empty() || !_tileLines.empty()) {
+            return false;
+        }
+        position = _tilePoints.front().position;
+        return true;
+    }
+
     bool Label::hasGeometryOverTile(const TileId& tileId) const {
         // Elevation and label tiles are different tile sets at different zooms: overlap, not equality.
         for (const TilePoint& tilePoint : _tilePoints) {

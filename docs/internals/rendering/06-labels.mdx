@@ -63,6 +63,16 @@ tiles. Labels with the same `globalId` from different tiles are merged (`mergeGe
 geometry copy per tile, identified by `(tileId, localId)`), and visibility, opacity and placement
 are carried over from the previous object via `snapPlacement`.
 
+**A point label whose id changed but whose anchor did not is carried over too** (`LabelSpot`, same
+layer, the 2^-28 cell below). The shield text is hashed into the id, and Massif draws most POIs
+icon-only below a label minzoom (`shield-name: ''`), so at the tile level a name appears the same POI
+came back under a new id: the old label faded out at once and the new one waited, hidden, for the
+next placement pass. A cycle costs 90-150 ms on the emulator and the duty-cycle gate below then waits
+10x that, so the POIs on screen blinked out for 1-1.5 s at every level of a slow zoom out — measured
+in a 2D run at Grenoble 5.72722/45.19172 z17.5 -> 15.3: labels drawn 85 -> 34 -> 17 at the z17 -> z16
+step, with 0-22 carried by id against 100-290 fresh. The icon keeps its state now; only the new text
+fades in, from the next pass.
+
 **Where `globalId` comes from.** The symbolizer builds it from the feature's id in the tile, xored
 with a hash of the symbolizer itself (`Symbolizer::combineId`), so one feature cut across several
 tiles yields one label. A tile whose features carry **no id** breaks that: `MBVTFeatureDecoder`

@@ -114,6 +114,11 @@ public final class DemoLive extends BroadcastReceiver {
         if (has(extras, GESTURE_KEYS)) {
             demo.applyLookRange();
         }
+        if (extras.containsKey("zoomTo")) {
+            // "<zoom>,<seconds>": an animated zoom, the closest a script gets to a slow pinch.
+            String[] parts = extras.getString("zoomTo").split(",");
+            demo.mapView.setZoom(Float.parseFloat(parts[0]), parts.length > 1 ? Float.parseFloat(parts[1]) : 1.0f);
+        }
         if (extras.containsKey("apiCreate")) {
             // The map's layer list, so a layer built from a spec can be put on the map.
             if (MassifApi.findObject("layers", "demo") == 0) {

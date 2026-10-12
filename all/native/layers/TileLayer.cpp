@@ -1173,15 +1173,17 @@ namespace massif {
                 if (foundSubstitute) {
                     calculateDrawData(visTile, prevFrameTile, preloadingTiles);
                 } else {
-                    if (getMaxUnderzoomLevel() > 0 && childrenCoverTile(tile, [&](const MapTile& child) { return tileExists(getTileId(child), preloadingCache); })) {
-                        foundSubstitute = findChildTiles(visTile, tile, 1, preloadingCache, preloadingTiles) > 0;
-                    }
+                    // maplibre-native's updateRenderables: the loaded children first, an ancestor only under what
+                    // they leave uncovered - the stand-ins always give one, and alone it hid what a zoom out had.
+                    int children = (getMaxUnderzoomLevel() > 0 ? findChildTiles(visTile, tile, 1, preloadingCache, preloadingTiles) : 0);
+                    foundSubstitute = (children == 4);
                     if (!foundSubstitute && tile.getZoom() > 0) {
                         foundSubstitute = findParentTile(visTile, tile, getMaxStandInLevel(), preloadingCache, preloadingTiles);
                     }
-                    if (!foundSubstitute) {
+                    if (!foundSubstitute && children == 0) {
                         foundSubstitute = findChildTiles(visTile, tile, getMaxUnderzoomLevel(), preloadingCache, preloadingTiles) > 0;
                     }
+                    foundSubstitute = foundSubstitute || children > 0;
                 }
                 if (foundSubstitute) {
                     break;

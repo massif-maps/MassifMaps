@@ -39,20 +39,6 @@ namespace massif {
         return standInTiles;
     }
 
-    /**
-     * maplibre-native's updateRenderables: a tile still loading is drawn from its four children when all of them are
-     * loaded, before any ancestor - a zoom out has them, and the stand-ins above always give a far coarser parent.
-     */
-    template <typename Exists>
-    inline bool childrenCoverTile(const MapTile& tile, Exists exists) {
-        for (int n = 0; n < 4; n++) {
-            if (!exists(tile.getChild(n))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
 }
 
 #endif

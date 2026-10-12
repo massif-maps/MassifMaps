@@ -858,22 +858,66 @@ namespace massif::vt {
         return count > 0 ? _buildingHeightScale * (static_cast<float>(count) + signature / count) : 0.0f;
     }
 
-    bool GLTileRenderer::hasSpinningShadowCasters(const std::vector<TileId>* coveredBy) const {
+    void GLTileRenderer::filterShadowCasterTiles(const std::vector<TileId>& tileIds, const std::vector<std::pair<double, double> >& tileHeights, const cglib::mat4x4<double>& lightViewProj, const cglib::bbox2<double>& clipBounds, std::vector<TileId>& casterTileIds) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
+        if (_transformer && _transformer->isSpherical()) {
+            casterTileIds = tileIds;
+            return;
+        }
+        // The column calculateShadowViewProj boxes a caster tile in, with its standing headroom
+        double standingHeadroom = 200.0 * _metersToInternal;
+        casterTileIds.clear();
+        for (std::size_t i = 0; i < tileIds.size(); i++) {
+            cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileIds[i], 1.0f);
+            cglib::bbox2<double> footprint = cglib::bbox2<double>::smallest();
+            for (int corner = 0; corner < 8; corner++) {
+                cglib::vec4<double> world = cglib::transform(cglib::vec4<double>(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0), tileMatrix);
+                world(2) = (corner & 4 ? tileHeights[i].second + standingHeadroom : tileHeights[i].first);
+                cglib::vec4<double> p = cglib::transform(world, lightViewProj);
+                footprint.add(cglib::vec2<double>(p(0) / p(3), p(1) / p(3)));
+            }
+            if (footprint.inside(clipBounds)) {
+                casterTileIds.push_back(tileIds[i]);
+            }
+        }
+    }
+
+    bool GLTileRenderer::spinningShadowCasterBounds(const std::vector<TileId>* coveredBy, const cglib::mat4x4<double>& lightViewProj, cglib::bbox2<double>& lightBounds) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        lightBounds = cglib::bbox2<double>::smallest();
         if (!_modelAnimationsEnabled || !_modelShadowsEnabled) {
             return false;
         }
         bool spinning = false;
-        forEachVisibleRenderLayer(coveredBy, true, [this, &spinning](const RenderTileLayer& renderLayer) {
-            if (spinning || renderLayer.layer->getModels().empty() || !extrusionCastsShadow(renderLayer)) {
+        forEachVisibleRenderLayer(coveredBy, true, [&](const RenderTileLayer& renderLayer) {
+            if (renderLayer.layer->getModels().empty() || !extrusionCastsShadow(renderLayer)) {
                 return;
             }
             for (const std::shared_ptr<TileModelInstances>& models : renderLayer.layer->getModels()) {
                 const ModelStyle& style = models->getStyle();
-                if (style.spinSpeed != 0.0f && style.castShadows && !models->getInstances().empty() && isModelTileInReach(renderLayer.targetTileId, modelCutoffMetres(style, true))) {
-                    spinning = true;
-                    return;
+                if (style.spinSpeed == 0.0f || !style.castShadows || !style.model || models->getInstances().empty() || !isModelTileInReach(renderLayer.targetTileId, modelCutoffMetres(style, true))) {
+                    continue;
+                }
+                spinning = true;
+                // The box its spin sweeps, turned to any heading: a caster's shadow-map texels are its own light-space footprint.
+                cglib::bbox3<double> box = modelPickBounds(style);
+                double reach = std::max({ std::abs(box.min(0)), std::abs(box.max(0)), std::abs(box.min(1)), std::abs(box.max(1)) }) * std::sqrt(2.0);
+                cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId);
+                double metres = modelMetresToTileUnits(renderLayer.sourceTileId) * tileMatrix(0, 0);
+                for (const ModelInstance& instance : models->getInstances()) {
+                    cglib::vec3<double> anchor = cglib::transform_point(cglib::vec3<double>(instance.position(0), instance.position(1), 0), tileMatrix);
+                    if (_terrainMode && _labelElevationProvider) {
+                        double height = _labelElevationProvider(_transformer->calculateMercatorPos(anchor), renderLayer.sourceTileId.zoom);
+                        anchor = _transformer->calculateElevatedPos(anchor, std::isfinite(height) ? height : 0.0);
+                    }
+                    double unit = metres * instance.scale;
+                    for (int corner = 0; corner < 8; corner++) {
+                        cglib::vec3<double> offset((corner & 1 ? reach : -reach) * unit, (corner & 2 ? reach : -reach) * unit, ((corner & 4 ? box.max(2) : box.min(2)) * instance.scale + instance.zOffset) * metres);
+                        cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(anchor(0) + offset(0), anchor(1) + offset(1), anchor(2) + offset(2), 1.0), lightViewProj);
+                        lightBounds.add(cglib::vec2<double>(p(0) / p(3), p(1) / p(3)));
+                    }
                 }
             }
         });

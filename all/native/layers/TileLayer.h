@@ -18,6 +18,7 @@
 
 #include <vt/TileId.h>
 
+#include <cglib/bbox.h>
 #include <cglib/vec.h>
 
 #include <atomic>
@@ -500,7 +501,8 @@ class ProjectionSurface;
         int blitDrapeTexture(unsigned int srcTexture, float dstOffsetX, float dstOffsetY, float dstScale, float uvOffsetX, float uvOffsetY, float uvScale);
         bool calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, const cglib::mat4x4<double>* nearerViewProj, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         float shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const;
-        bool hasSpinningShadowCasters(const std::vector<vt::TileId>* coveredBy) const;
+        void filterShadowCasterTiles(const std::vector<vt::TileId>& tileIds, const std::vector<std::pair<double, double> >& tileHeights, const cglib::mat4x4<double>& lightViewProj, const cglib::bbox2<double>& clipBounds, std::vector<vt::TileId>& casterTileIds) const;
+        bool spinningShadowCasterBounds(const std::vector<vt::TileId>* coveredBy, const cglib::mat4x4<double>& lightViewProj, cglib::bbox2<double>& lightBounds) const;
         int consumeShadowCastersMissingElevation();
         int renderShadowCasters(const std::vector<vt::TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
         void setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, 4>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs);

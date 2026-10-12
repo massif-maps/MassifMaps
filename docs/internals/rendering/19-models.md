@@ -82,14 +82,29 @@ VAO per program and mesh — see `CompiledGeometry` for why programs never share
 ## A spinning model's shadow
 
 The shadow map is re-rastered only when the camera, the caster set or a fade moves it, so a turning
-rotor's shadow stepped about twice a second while the camera stood still. A shadow page whose caster
-tiles hold a spinning model that casts (`hasSpinningShadowCasters`) is now re-rastered every frame,
-as mapbox re-renders its shadow map every frame. The page is redrawn whole (a depth map cannot erase
-the rotor's old shadow alone), so a still camera pays one page's caster pass per frame while a
-spinning turbine stands in it; with the near-page skip that is usually the near page only. Off with
-`modelAnimationsEnabled` or `modelShadowsEnabled` false. Emulator A/B (2026-10-12, the `3d-models`
-example, camera still at the turbines): the shadow crop changed in 3 of 7 capture pairs before, 7
-of 7 after; the frame cost is not measured on a device.
+rotor's shadow stepped about twice a second while the camera stood still. A page whose caster tiles
+hold a spinning model that casts is redrawn every frame (mapbox redraws its shadow map every frame),
+but only where the rotors cast: `spinningShadowCasterBounds` returns the light clip-space rectangle
+of every spinning caster's swept box (its shadow-map texels are its own light-space footprint), the
+page is cleared and drawn under a scissor on that rectangle (`narrowCascadeScissor`), and only the
+caster tiles whose light-space column crosses it are sent (`filterShadowCasterTiles`, the same column
+`calculateShadowViewProj` boxes a tile in). Off with `modelAnimationsEnabled` or `modelShadowsEnabled`
+false, or past `model-shadow-max-distance`.
+
+Crosscall HLTE556N, the `3d-models` example, camera still at the turbines (lon 5.7262, lat 45.1934,
+z17.6, tilt 40), 3 interleaved runs each:
+
+| Build | fps | shadow pass GPU / frame |
+|---|---|---|
+| no spin redraw | 20.8 | 8.8 ms |
+| whole page every frame (#409) | 15.9 | 56.6 ms |
+| scissor only | 17.6 | 50.7 ms |
+| scissor + tile filter | 18.6 | 25.4 ms |
+
+The scissor alone barely helps: the pass is geometry-bound, every caster tile's terrain grid and
+buildings. What stays is the tiles in the rotors' light column (200 m building headroom, a low sun).
+A separate small shadow texture for spinning casters alone would remove it, at the price of a second
+lookup in every receiver while one is in range. A pan costs what it did: it redraws the pages anyway.
 
 ## Distance cutoff
 

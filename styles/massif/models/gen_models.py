@@ -185,11 +185,32 @@ def leaf(mesh, rng, base, along, length, width, color, droop=0.24, cup=0.1, pitc
         mesh.itri(i, k, j)
 
 
+def blob(segments=8):
+    """A low sphere: poles plus two rings turned half a segment from each other, 4 x segments
+    triangles. From above it reads round at an eighth of icosphere(1)'s vertex count."""
+    verts = [np.array((0, 0, 1.0))]
+    for ring, (z, turn) in enumerate(((0.5, 0.0), (-0.5, 0.5))):
+        r = math.sqrt(1 - z * z)
+        for i in range(segments):
+            a = 2 * math.pi * (i + turn) / segments
+            verts.append(np.array((r * math.cos(a), r * math.sin(a), z)))
+    verts.append(np.array((0, 0, -1.0)))
+    top, bottom, upper, lower = 0, len(verts) - 1, 1, 1 + segments
+    faces = []
+    for i in range(segments):
+        j = (i + 1) % segments
+        faces.append((top, upper + i, upper + j))
+        faces.append((upper + i, lower + i, upper + j))
+        faces.append((upper + j, lower + i, lower + j))
+        faces.append((bottom, lower + j, lower + i))
+    return verts, faces
+
+
 def clump(mesh, rng, center, radius, color):
-    """A small lumpy cluster of leaves, normals from its own faces so it shades softly. 80 triangles."""
-    verts, faces = icosphere(1)
+    """A small lumpy cluster of leaves, normals from its own faces so it shades softly. 32 triangles."""
+    verts, faces = blob()
     center = np.asarray(center, float)
-    pts = [center + p * radius * rng.uniform(0.75, 1.2) * np.array((1, 1, 0.75)) for p in verts]
+    pts = [center + p * radius * rng.uniform(0.8, 1.15) * np.array((1, 1, 0.75)) for p in verts]
     normals = [np.zeros(3) for _ in pts]
     for a, b, c in faces:
         nf = np.cross(pts[b] - pts[a], pts[c] - pts[a])

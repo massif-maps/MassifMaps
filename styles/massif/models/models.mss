@@ -8,6 +8,8 @@
   model-color: #b4dcb4;
   model-color-mix: random(0, 0.3);
   model-opacity: linear([view::zoom], (15, 0), (16, 1));
+  model-max-distance: 1200;
+  model-shadow-max-distance: 500;
 }
 
 /* One draw for the tower, one for the rotor turning on its hub: random() draws the same heading for
@@ -15,11 +17,15 @@
 #poi[zoom >= 13][class = 'wind_turbine']['param::models_3d' = 1] {
   ::model_turbine_tower {
     model-file: url('models/wind-turbine-tower.glb');
+    model-max-distance: 5000;
+    model-shadow-max-distance: 1500;
     model-rotation: random(250, 290);
     model-opacity: linear([view::zoom], (13, 0), (14, 1));
   }
   ::model_turbine_rotor {
     model-file: url('models/wind-turbine-rotor.glb');
+    model-max-distance: 5000;
+    model-shadow-max-distance: 1500;
     model-rotation: random(250, 290);
     model-z-offset: 81.4;
     model-spin: 14;

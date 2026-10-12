@@ -44,6 +44,7 @@ namespace massif::vt {
         U_GROUNDDRAPE,
         U_SPANGROUNDTOLERANCE,
         U_SHADOWHEIGHTSCALE,
+        U_SHADOWTOPSCALE,
         U_EMISSIVE,
         U_COLORTABLE,
         U_WIDTHTABLE,
@@ -217,6 +218,7 @@ namespace massif::vt {
         { "uSpanGroundTolerance", U_SPANGROUNDTOLERANCE },
         { "uFloatingBase",     U_FLOATINGBASE },
         { "uShadowHeightScale", U_SHADOWHEIGHTSCALE },
+        { "uShadowTopScale",    U_SHADOWTOPSCALE },
         { "uColorTable",       U_COLORTABLE },
         { "uWidthTable",       U_WIDTHTABLE },
         { "uOffsetTable",      U_OFFSETTABLE },
@@ -936,9 +938,12 @@ namespace massif::vt {
                 // Unshadowed, but keep the back-face rule or a ring shows where the last cascade ends.
                 return mix(1.0, facing, uShadowParams.y);
             }
+        #ifndef SHADOW_RECEIVER_3D
+            // An extrusion's back face goes on: polygon3DVsh moved its lookup above the roof, for mapLit.
             if (facing <= 0.0) {
                 return mix(1.0, 0.0, uShadowParams.y);
             }
+        #endif
             // mapbox's capped slope-scaled bias; tan(acos(x)) written out, the direct form NaNs in mediump.
             mediump float ndlBias = clamp(ndl, 0.05, 1.0);
             mediump float slope = sqrt(1.0 - ndlBias * ndlBias) / ndlBias;
@@ -2285,6 +2290,8 @@ namespace massif::vt {
         #endif
         // Height the shadow map was baked at: the caster ignores building-height-view-scale.
         uniform float uShadowHeightScale;
+        // The same for packTopHeight's metres.
+        uniform float uShadowTopScale;
         uniform vec4 uColorTable[16];
         varying highp_opt vec2 vTilePos;
         varying lowp vec4 vColor;
@@ -2346,7 +2353,17 @@ namespace massif::vt {
         #endif
             pos = basePos + aVertexNormal * (aVertexHeight * uHeightScale);
             vec3 normal = normalize(mix(aVertexNormal, aVertexBinormal, sideVertex));
-            applyShadowPos(basePos + aVertexNormal * (aVertexHeight * uShadowHeightScale), normal);
+            vec3 shadowPos = basePos + aVertexNormal * (aVertexHeight * uShadowHeightScale);
+            vec3 shadowNormal = normal;
+        #if defined(TERRAIN_SHADOW) && !defined(SHADOW_MASK_IN)
+            // Turned from the sun, a face is its own building's shadow: read the map above the roof
+            // instead, where only another caster can darken its sky (08-lighting-sky-fog.md).
+            if (dot(normal, uShadowSunDir) < 0.0) {
+                shadowPos = basePos + aVertexNormal * ((exp2(aVertexAttribs[2] * (1.0 / 12.0)) - 1.0) * uShadowTopScale);
+                shadowNormal = normalize(normal + aVertexNormal);
+            }
+        #endif
+            applyShadowPos(shadowPos, shadowNormal);
             // The shadow offset is world-space; lighting from here is in view east/north/up.
             normal = lightingNormal(normal);
         #ifdef TERRAIN_SHADOW

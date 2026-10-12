@@ -1639,8 +1639,8 @@ namespace massif::vt {
             _heights.append(baseHeight, baseHeight, apexHeight, apexHeight);
             // A roof slope is neither wall nor flat top: 64 leans its normal half way between the
             // two, which is what a pitched surface catches of the sun.
-            const cglib::vec4<std::int8_t> eave(styleIndex, 64, 0, 127);
-            const cglib::vec4<std::int8_t> peak(styleIndex, 0, 0, 127);
+            const cglib::vec4<std::int8_t> eave(styleIndex, 64, _polygon3DTop, 127);
+            const cglib::vec4<std::int8_t> peak(styleIndex, 0, _polygon3DTop, 127);
             _attribs.append(eave, eave, peak, peak);
             _indices.append(i0 + 0, i0 + 1, i0 + 2);
             if (apex0 != apex1) {
@@ -1673,6 +1673,11 @@ namespace massif::vt {
         return static_cast<std::int8_t>(std::max(0, std::min(127, static_cast<int>(std::lround(t * 127.0f)))));
     }
 
+    std::int8_t TileLayerBuilder::packTopHeight(float height) {
+        float code = std::ceil(std::log2(1.0f + std::max(0.0f, height)) * 12.0f);
+        return static_cast<std::int8_t>(std::max(1, std::min(127, static_cast<int>(code))));
+    }
+
     std::size_t TileLayerBuilder::appendWallColumn(const cglib::vec2<float>& p, const cglib::vec2<float>& binormal, const std::vector<float>& rows, std::int8_t sideVertex, std::int8_t styleIndex) {
         std::size_t base = _coords.size();
         for (float h : rows) {
@@ -1680,7 +1685,7 @@ namespace massif::vt {
             _texCoords.append(_polygon3DCentroid);
             _binormals.append(binormal);
             _heights.append(h);
-            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, sideVertex, 0, packGradientT(h)));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, sideVertex, _polygon3DTop, packGradientT(h)));
         }
         return base;
     }
@@ -1853,6 +1858,7 @@ namespace massif::vt {
         // A shaped roof puts its eaves on the ORIGINAL footprint, so an inset top ring would leave
         // the two disagreeing along every edge. The roof is the cap in that case; the bevel is not.
         bool shapedRoof = style.roofShape != RoofShape::FLAT && style.roofHeight > 0.0f;
+        _polygon3DTop = packTopHeight(shapedRoof ? maxHeight + style.roofHeight : maxHeight);
         if (!shapedRoof && _polygon3DEdgeRadius > 0.0f && maxHeight - minHeight > 2.0f * _polygon3DEdgeRadius && !pointsList.empty() && !pointsList[0].empty()) {
             // The horizontal inset is TILE-LOCAL and the vertical drop is in the style's metres, so
             // the clamp the ring imposes has to come back through the same conversion or the bevel

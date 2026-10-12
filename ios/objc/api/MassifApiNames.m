@@ -449,6 +449,7 @@ MassifProperty const MassifPropertyTerrainNormalsRequired = @"terrainNormalsRequ
 MassifProperty const MassifPropertyTerrainOptions = @"terrainOptions";
 MassifProperty const MassifPropertyTerrainPaintEnabled = @"terrainPaintEnabled";
 MassifProperty const MassifPropertyTerrainPaintFullDetailEnabled = @"terrainPaintFullDetailEnabled";
+MassifProperty const MassifPropertyTerrainShadowCastingEnabled = @"terrainShadowCastingEnabled";
 MassifProperty const MassifPropertyText = @"text";
 MassifProperty const MassifPropertyTextColor = @"textColor";
 MassifProperty const MassifPropertyTextField = @"textField";

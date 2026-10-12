@@ -4318,6 +4318,15 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns whether the sun lights the 3D terrain surface."
+        },
+        {
+          "name": "terrainShadowCastingEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the terrain itself casts shadows."
         }
       ],
       "aliases": {},

@@ -424,6 +424,8 @@ public final class DemoConfig {
     // =============================================================================================
 
     public static boolean TERRAIN_LIGHTING = false;
+    /** Whether the relief casts shadows; buildings and models do either way. */
+    public static boolean TERRAIN_SHADOWS = true;
     /** When >= 0 the sun is placed from the date+hour below instead of azimuth/altitude. */
     public static float SUN_HOUR_UTC = -1f;
     /** The date the sky is drawn for. TODAY by default, which is what makes the sun, the moon, the
@@ -1359,6 +1361,7 @@ public final class DemoConfig {
 
         // sun / shadows
         TERRAIN_LIGHTING = DemoCfg.cfgBool("terrainLight", TERRAIN_LIGHTING);
+        TERRAIN_SHADOWS = DemoCfg.cfgBool("terrainShadows", TERRAIN_SHADOWS);
         SUN_HOUR_UTC = DemoCfg.cfgFloat("sunHour", SUN_HOUR_UTC);
         FREE_ROAM_MODE = DemoCfg.cfgStr("freeRoam", FREE_ROAM_MODE);
         if ("true".equals(FREE_ROAM_MODE)) {

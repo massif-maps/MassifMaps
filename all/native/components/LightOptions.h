@@ -197,6 +197,19 @@ namespace massif {
         void setTerrainLightingEnabled(bool enabled);
 
         /**
+         * Returns whether the terrain itself casts shadows.
+         * @return True if the relief casts shadows. The default is true.
+         */
+        bool isTerrainShadowCastingEnabled() const;
+        /**
+         * Sets whether the terrain itself casts shadows. Off, buildings and models still cast and the
+         * ground still receives, at a lower cost: for a flat or straight-down view, where the relief
+         * has no shadow to throw. A terrain with zero exaggeration never casts, whatever this says.
+         * @param enabled True to let the relief cast shadows.
+         */
+        void setTerrainShadowCastingEnabled(bool enabled);
+
+        /**
          * Returns the shadow strength.
          * @return The shadow strength. The default is 1 (MapBox's own shadow-intensity default).
          */
@@ -326,6 +339,7 @@ namespace massif {
         std::vector<LightStop> _dayCycleRisingLightStops;
         mutable std::mutex _dayCycleLightStopsMutex;
         std::atomic<bool> _terrainLightingEnabled;
+        std::atomic<bool> _terrainShadowCasting;
         std::atomic<float> _shadowStrength;
         std::atomic<int> _shadowMapSize;
         std::atomic<int> _shadowCascades;

@@ -50,6 +50,7 @@ light.setSunPositionFromTime(2026, 8, 14, 7, 30, 45.188, 5.719)   // UTC + lat/l
 | `ShadowMapSize` / `ShadowCascades` | `2048` / `2` | Cascaded shadow map, up to 4 cascades. Two is MapBox's own count and the slices are theirs. A third page is a nearer, sharper one, but it also makes each box smaller and the screen-space derivatives larger, which is what serrated a building's vertical edges. |
 | `ShadowBias` / `ShadowSoftness` / `ShadowDistance` | `1.0` / `1.0` / `0` | `ShadowBias` is a UNITLESS scale on MapBox's bias (a constant plus a capped slope term, in normalised light depth), so 1 is theirs unchanged. `ShadowDistance` 0 = derived from the view. |
 | `ShadowCasterMargin` | `3` | Ring of off-screen tiles that may still cast into the view. |
+| `TerrainShadowCastingEnabled` | `true` | Whether the relief casts shadows. Off, buildings and models still cast onto the ground, and the terrain's caster draws and the mountain-sized caster ring are skipped: for a flat or straight-down 3D view, where the relief has nothing to throw. A terrain with exaggeration 0 never casts. |
 
 :::note Cast shadows need the terrain
 Shadows are cast in the terrain drape pass and land on the terrain surface, so they need 3D terrain

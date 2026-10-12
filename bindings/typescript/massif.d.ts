@@ -3185,6 +3185,8 @@ export interface PropertyTypes {
     "sunOverridingStyle": boolean;
     /** Returns whether the sun lights the 3D terrain surface. */
     "terrainLightingEnabled": boolean;
+    /** Returns whether the terrain itself casts shadows. */
+    "terrainShadowCastingEnabled": boolean;
   };
   "massif::LightStop": {
     /** (read-only) Returns the ambient colour. */
@@ -4235,6 +4237,8 @@ export interface PropertyTypes {
     "light.sunOverridingStyle": boolean;
     /** Returns whether the sun lights the 3D terrain surface. */
     "light.terrainLightingEnabled": boolean;
+    /** Returns whether the terrain itself casts shadows. */
+    "light.terrainShadowCastingEnabled": boolean;
     /** Returns the light (sun) options. May be null. */
     "lightOptions": Handle<"massif::LightOptions">;
     /** Returns the ambient light color. */
@@ -4275,6 +4279,8 @@ export interface PropertyTypes {
     "lightOptions.sunOverridingStyle": boolean;
     /** Returns whether the sun lights the 3D terrain surface. */
     "lightOptions.terrainLightingEnabled": boolean;
+    /** Returns whether the terrain itself casts shadows. */
+    "lightOptions.terrainShadowCastingEnabled": boolean;
     /** Returns the long click duration in seconds. */
     "longClickDuration": number;
     /** Returns the color of the main light. */
@@ -7917,6 +7923,8 @@ export interface OptionsSpec_light {
   sunOverridingStyle?: boolean;
   /** Returns whether the sun lights the 3D terrain surface. */
   terrainLightingEnabled?: boolean;
+  /** Returns whether the terrain itself casts shadows. */
+  terrainShadowCastingEnabled?: boolean;
 }
 
 export interface OptionsSpec_sky {

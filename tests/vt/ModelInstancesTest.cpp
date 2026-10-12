@@ -180,3 +180,21 @@ void testModelInstancePick() {
     spinning.spinSpeed = 1.0f;
     TEST_CHECK(modelPickBounds(spinning).max(1) > 40, "a spinning model is picked by every box its spin sweeps");
 }
+
+void testModelCutoff() {
+    ModelStyle style;
+    TEST_CHECK(modelCutoffMetres(style, false) == 0.0f && modelCutoffMetres(style, true) == 0.0f, "no limit unless the rule sets one");
+    style.maxDistance = 1500.0f;
+    TEST_CHECK(modelCutoffMetres(style, false) == 1500.0f && modelCutoffMetres(style, true) == 1500.0f, "the shadow ends with the model");
+    style.shadowMaxDistance = 600.0f;
+    TEST_CHECK(modelCutoffMetres(style, true) == 600.0f && modelCutoffMetres(style, false) == 1500.0f, "a shorter shadow limit stops only the shadow");
+    style.shadowMaxDistance = 3000.0f;
+    TEST_CHECK(modelCutoffMetres(style, true) == 1500.0f, "a longer one cannot outlive the model");
+    style.maxDistance = 0.0f;
+    TEST_CHECK(modelCutoffMetres(style, true) == 3000.0f && modelCutoffMetres(style, false) == 0.0f, "a shadow limit alone leaves the model drawn");
+
+    cglib::vec3<double> p0(0, 0, 0), p1(10, 10, 0);
+    TEST_CHECK(modelTileGroundDistance(cglib::vec3<double>(5, 5, 300), p0, p1) == 0.0, "a camera over the tile is at no ground distance, whatever its height");
+    TEST_CHECK(std::abs(modelTileGroundDistance(cglib::vec3<double>(13, 14, 50), p1, p0) - 5.0) < 1e-9, "past a corner, the distance to that corner, corners in any order");
+    TEST_CHECK(modelTileGroundDistance(cglib::vec3<double>(-7, 4, 0), p0, p1) == 7.0, "beside an edge, the distance to the edge");
+}

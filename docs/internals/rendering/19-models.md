@@ -91,6 +91,17 @@ spinning turbine stands in it; with the near-page skip that is usually the near 
 example, camera still at the turbines): the shadow crop changed in 3 of 7 capture pairs before, 7
 of 7 after; the frame cost is not measured on a device.
 
+## Distance cutoff
+
+`model-max-distance` / `model-shadow-max-distance` (metres; `modelCutoffMetres` in `TileModels.h`, a
+shadow never past its model) cut on two levels. The CPU skips a target tile whose ground distance to
+the camera (`modelTileGroundDistance`, a lower bound for every anchor in it) is past the cutoff, in
+the draw, the caster pass, the pick and `hasSpinningShadowCasters`. `modelVsh` gets the camera in the
+source tile's vertex frame and the cutoff in vertex units (`uModelCutoff`) and scales the instance,
+its z offset included, to the anchor over the last 15%, staggered per point by a hash of its
+position: a tower and its rotor share it. Mapbox's `model-cutoff-fade-range` is camera-relative and
+off on terrain, so it was not ported; the shrink is its building cutoff's (`fill-extrusion-cutoff-fade-range`).
+
 ## Not done, not verified
 
 - Globe mode skips models (`renderTileModels` returns on a spherical transformer).

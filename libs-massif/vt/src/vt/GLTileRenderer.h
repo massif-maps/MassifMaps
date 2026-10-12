@@ -1098,6 +1098,7 @@ namespace massif::vt {
         std::optional<ModelHighlight> _modelHighlight;
         // Metres to vertex frame units at a tile's centre latitude, as DefaultVertexTransformer::calculateHeight.
         static double modelMetresToTileUnits(const TileId& tileId);
+        bool isModelTileInReach(const TileId& targetTileId, float cutoffMetres) const;
         void findTileModelIntersections(const RenderTileLayer& renderLayer, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const;
         bool _modelsAnimating = false; // a spinning model was drawn last frame
         double _modelTime = 0.0;       // seconds the spin has run

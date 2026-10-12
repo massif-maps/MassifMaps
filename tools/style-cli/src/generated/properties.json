@@ -956,6 +956,16 @@
       "baked": true
     },
     {
+      "cartocss": "model-max-distance",
+      "mapnik": "max-distance",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "model-opacity",
       "mapnik": "opacity",
       "symbolizer": "model",
@@ -982,6 +992,16 @@
       "kind": "float",
       "type": "FloatProperty",
       "default": "1.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-shadow-max-distance",
+      "mapnik": "shadow-max-distance",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
       "live": false,
       "baked": false
     },

@@ -122,6 +122,7 @@ namespace massif::vt {
         U_DRAPEMASKTEXTURE,
         U_DRAPEMASKUVTRANSFORM,
         U_MODELSPIN,
+        U_MODELCUTOFF,
         U_MODELTIME,
         U_MODELHIGHLIGHT,
         U_MODELHIGHLIGHTCOLOR,
@@ -303,6 +304,7 @@ namespace massif::vt {
         { "uDrapeMask",            U_DRAPEMASKTEXTURE },
         { "uDrapeMaskUVTransform", U_DRAPEMASKUVTRANSFORM },
         { "uModelSpin",            U_MODELSPIN },
+        { "uModelCutoff",          U_MODELCUTOFF },
         { "uModelTime",            U_MODELTIME },
         { "uModelHighlight",       U_MODELHIGHLIGHT },
         { "uModelHighlightColor",  U_MODELHIGHLIGHTCOLOR },
@@ -2517,6 +2519,7 @@ namespace massif::vt {
         uniform mat3 uTileMatrix;
         uniform float uHeightScale;        // metres -> vertex frame units at this tile's latitude
         uniform vec4 uModelSpin;           // model-space axis, radians per second
+        uniform vec4 uModelCutoff;         // camera in the vertex frame, cutoff distance (0: none)
         uniform float uModelTime;
         uniform float uModelHighlight;     // instance index, -1 for none
         uniform vec4 uModelHighlightColor;
@@ -2548,7 +2551,19 @@ namespace massif::vt {
             n = normalize(vec3(n.x * c + n.y * s, n.y * c - n.x * s, n.z));
 
             vec3 anchor = applyTerrain(vec3(aInstancePosition.xy, 0.0));
-            vec3 pos = anchor + vec3(p.xy, p.z + aInstanceTransform.z) * uHeightScale;
+            // Shrunk into the ground over the last 15%, staggered per point (a tower and its rotor share
+            // it) so they do not all go on one line, as mapbox's building cutoff
+            float reach = 1.0;
+            if (uModelCutoff.w > 0.0) {
+                float stagger = fract(sin(dot(aInstancePosition.xy, vec2(12.9898, 78.233))) * 43758.5453);
+                float limit = uModelCutoff.w * (1.0 - 0.15 * stagger);
+                reach = clamp((limit - distance(anchor, uModelCutoff.xyz)) / (0.15 * uModelCutoff.w), 0.0, 1.0);
+                if (reach <= 0.0) {
+                    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+                    return;
+                }
+            }
+            vec3 pos = anchor + vec3(p.xy, p.z + aInstanceTransform.z) * (uHeightScale * reach);
             applyShadowPos(pos, n);
             vec3 normal = lightingNormal(n);
         #ifdef TERRAIN_SHADOW

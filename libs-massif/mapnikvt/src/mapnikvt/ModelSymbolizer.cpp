@@ -1,6 +1,7 @@
 #include "ModelSymbolizer.h"
 #include "ExpressionUtils.h"
 
+#include <algorithm>
 #include <cmath>
 #include <map>
 
@@ -21,6 +22,8 @@ namespace massif::mvt {
         baseStyle.castShadows = _castShadows.getValue(exprContext);
         baseStyle.densityReduction = _allowDensityReduction.getValue(exprContext);
         baseStyle.allowOverlap = _allowOverlap.getValue(exprContext);
+        baseStyle.maxDistance = std::max(0.0f, _maxDistance.getValue(exprContext));
+        baseStyle.shadowMaxDistance = std::max(0.0f, _shadowMaxDistance.getValue(exprContext));
         baseStyle.spinSpeed = _spin.getValue(exprContext) * 3.14159265f / 30.0f;
         std::string spinAxis = _spinAxis.getValue(exprContext);
         baseStyle.spinAxis = spinAxis == "x" ? cglib::vec3<float>(1, 0, 0) : spinAxis == "z" ? cglib::vec3<float>(0, 0, 1) : cglib::vec3<float>(0, 1, 0);

@@ -483,6 +483,13 @@ Design points, each measured:
   box needed a 20% slop, which on the outer cascade is kilometres of ground. Cost of the pass on the
   emulator, panning at z13 tilt 30: 287 tile draws / 1.3 ms per pass → 120 / 0.6 ms with the exact
   cull → 70 / 0.5 ms with per-page refresh, and passes now redraw one page instead of three.
+- **A caster wholly inside a nearer page is not drawn into the farther one** (mapbox's
+  `isInsideFirstShadowMapFrustum`, `draw_model.ts`). Light-space xy is constant along the sun's ray,
+  so its shadow lands where a receiver reads the nearer page first (`shadowFactorSlopeParts`); the
+  test keeps `SHADOW_PAGE_EDGE_TEXELS` (10: the largest PCF radius + 1 + 1) from the page edge, where
+  a receiver already falls back. Crosscall, Grenoble park pan z18 tilt 50 with 3D trees, 3
+  interleaved runs: 14.5 → 15.8 fps, GPU shadow casting 23.4 → 15.8 ms; zoom z17 → z19 12.2 →
+  13.9 fps. A still frame at z17.5 tilt 55 is the same to the pixel outside the clock and one label.
 
 ### Where the shadow cost actually is
 

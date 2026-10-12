@@ -58,6 +58,9 @@ namespace massif::vt {
         static constexpr double SHADOW_CUTOUT_DISTANCE_FACTOR = 4.5;
         // Fraction of that reach the outer cascade starts fading at (mapbox's u_shadow_fade_range).
         static constexpr double SHADOW_FADE_START_FRACTION = 0.75;
+        // Texels a receiver keeps from a page's edge before reading the next page: the largest PCF
+        // radius (LightOptions softness, 8) plus one, plus one for safety.
+        static constexpr double SHADOW_PAGE_EDGE_TEXELS = 10.0;
 
         struct LightingShader {
             bool perVertex;
@@ -258,7 +261,7 @@ namespace massif::vt {
         void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, MAX_SHADOW_CASCADES>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
         // Light view-projection fitted to the tiles, one call per cascade; false if empty or no elevation.
         // minHeight/maxHeight bound the shadowed volume: a generous slab pixelates a low sun.
-        bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
+        bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, const cglib::mat4x4<double>* nearerViewProj, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         // Terrain shadow resolved into a half-resolution screen mask that surface draws sample.
         void setTerrainShadowMask(GLuint texture, float invScreenWidth, float invScreenHeight);
         // Draws the mask for the given tiles into the bound framebuffer. Returns the draw count.

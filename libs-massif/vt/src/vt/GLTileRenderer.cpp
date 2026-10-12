@@ -361,7 +361,7 @@ namespace massif::vt {
         resetProgramState();
     }
 
-    bool GLTileRenderer::calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
+    bool GLTileRenderer::calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, const cglib::mat4x4<double>* nearerViewProj, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (tileIds.empty()) {
@@ -567,6 +567,8 @@ namespace massif::vt {
         double n = centerDepth - halfSize - casterHeadroom;
         double f = centerDepth + halfSize + casterHeadroom;
         double marginX = (r - l) / std::max(1, mapSize), marginY = (t - b) / std::max(1, mapSize);
+        // The receiver leaves the nearer page this close to its edge (outsideShadowPage: PCF radius + 1)
+        double nearerMargin = 2.0 * SHADOW_PAGE_EDGE_TEXELS / std::max(1, mapSize);
         for (std::size_t casterIndex = 0; casterIndex < casterTileIds.size(); casterIndex++) {
             const TileId& tileId = casterTileIds[casterIndex];
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
@@ -579,8 +581,13 @@ namespace massif::vt {
             }
             double tileL = 0, tileR = 0, tileB = 0, tileT = 0, tileN = 0, tileF = 0;
             bool firstPoint = true;
+            bool insideNearer = (nearerViewProj != nullptr);
             auto addPoint = [&](const cglib::vec3<double>& world) {
                 cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(world(0), world(1), world(2), 1.0), lightView);
+                if (insideNearer) {
+                    cglib::vec4<double> q = cglib::transform(cglib::vec4<double>(world(0), world(1), world(2), 1.0), *nearerViewProj);
+                    insideNearer = std::abs(q(0)) <= 1.0 - nearerMargin && std::abs(q(1)) <= 1.0 - nearerMargin && std::abs(q(2)) <= 1.0;
+                }
                 if (firstPoint) {
                     tileL = tileR = p(0); tileB = tileT = p(1); tileN = tileF = -p(2);
                     firstPoint = false;
@@ -613,6 +620,11 @@ namespace massif::vt {
             // Light-space xy is constant along a ray, so a tile missing the box cannot cast into it.
             // This is also the cascade's caster draw list.
             if (tileR < l - marginX || tileL > r + marginX || tileT < b - marginY || tileB > t + marginY) {
+                continue;
+            }
+            // Wholly inside the nearer page: every receiver of its shadow reads that page (mapbox's
+            // isInsideFirstShadowMapFrustum), so drawing it here again is pure cost.
+            if (insideNearer) {
                 continue;
             }
             boxCasterTileIds.push_back(tileId);

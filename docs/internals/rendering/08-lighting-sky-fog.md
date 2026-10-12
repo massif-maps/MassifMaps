@@ -883,9 +883,37 @@ nobody can see.
 | the sun | the depth map **and** the back-face rule | a wall turned away is in its own shadow, and no depth comparison can decide that |
 | the sky (`skyShadow`) | the depth map **only** | standing in another building's shadow hides part of the sky; merely facing away from the sun does not |
 
-`mapLit` is 1 wherever the map was not consulted — back-facing, or outside every cascade — which is
-exactly what keeps the back-face trap above fixed. A receiver that wants to dim its ambient must use
-`mapLit` and never the return value.
+`mapLit` is 1 wherever the map was not consulted — outside every cascade, or a back face of anything
+but an extrusion — which is exactly what keeps the back-face trap above fixed. A receiver that wants
+to dim its ambient must use `mapLit` and never the return value.
+
+### A back wall inside another building's shadow reads the map at its roofline
+
+A wall turned from the sun cannot be looked up where it stands: its own building lies between it and
+the sun, so the map says "occluded" for every back face, everywhere. Skipping the lookup (as the
+ground still does) kept `mapLit` at 1, and that left a back wall inside ANOTHER building's shadow with
+its whole sky while the roofs and sun-facing walls beside it lost theirs. On screen: the walls facing
+away from the sun stayed beige inside a cast shadow, the brightest faces in it (Grenoble, Avenue
+Saint-Roch, `lon 5.73926 lat 45.1925 z19.5 tilt 50`, `appSun true sunHour 13 shadow 2`, a tower's
+shadow over a courtyard; reported as "sun-facing walls stay lit" — at 13 UTC the sun is SW, the bright
+walls faced east). Probe frames ruled out the map side first: every face in that shadow, sun-facing
+walls included, read `lit = 0`; only the back faces took the early return.
+
+`polygon3DVsh` therefore moves a back-facing vertex's shadow position to the **top of its building**,
+offset along `normalize(wall normal + up)`, where only another caster can shade it. Every wall and
+pitched-slope vertex carries that top in attribute byte 2 (`TileLayerBuilder::packTopHeight`: metres
+as `log2(1 + h)` twelfths, rounded up, ≤ 6% over), decoded with `uShadowTopScale` — the builder's
+`calculateHeight` at the tile centre, because heights reach the GPU in tile units, not metres. Under
+`SHADOW_RECEIVER_3D` the fragment stage no longer returns early on a back face: it takes that one tap
+for `mapLit` and still returns the back face's sun as fully shadowed. Cost: one single-tap lookup per
+back-face extrusion fragment, the one every sun-facing fragment already paid; no memory (the byte was
+always 0 on walls). A taller part of the same building does shade the lower part's back wall, which is
+correct.
+
+The straight mapbox port — sun term × `(1 − shadow-intensity · occlusion)`, ambient never shadowed —
+was tried and rejected at the same camera: at this light balance (ambient ~0.81 against a direct
+~0.14 linear on the walls) a building inside the shadow lost ~7% and the whole courtyard went beige.
+That is the arithmetic the sky split above exists for.
 
 Judged at `lon 2.33150 lat 48.87050 z18.2 tilt 55`, `--es shadow 0.5 --es sunAltitude 25`: roof and
 courtyard shadows now read at the same depth as the street. At `shadow 0.9` both go near-black —

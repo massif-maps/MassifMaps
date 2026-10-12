@@ -98,6 +98,9 @@ namespace massif::vt {
 
         std::shared_ptr<TileLayer> buildTileLayer() const;
 
+        // A building's top in metres as log2(1 + h) twelfths, rounded UP (polygon3DVsh decodes it).
+        static std::int8_t packTopHeight(float height);
+
     private:
         static constexpr unsigned int RESERVED_VERTICES = 4096;
         // At twice the tile's size: a tile is drawn up to one zoom level past its own.
@@ -221,6 +224,8 @@ namespace massif::vt {
         // The current extrusion's footprint centroid, carried by every one of its vertices. The
         // renderer resolves the ground there once, on the CPU (GLTileRenderer::resolveExtrusionBases).
         cglib::vec2<float> _polygon3DCentroid = cglib::vec2<float>(0, 0);
+        // ...and its top, packTopHeight: a face turned from the sun reads the shadow map there.
+        std::int8_t _polygon3DTop = 0;
         std::shared_ptr<const std::unordered_map<long long, std::vector<ExtrusionAnchor>>> _polygon3DAnchors;
         const cglib::vec2<float>* _polygon3DAnchor = nullptr; // the current footprint's entry, if it has one
         // How far any anchor of this layer lies from the tile, so packGeometry can fit the coord

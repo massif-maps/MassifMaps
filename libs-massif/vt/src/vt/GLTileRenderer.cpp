@@ -6845,6 +6845,11 @@ namespace massif::vt {
             glUniform1f(shaderProgram.uniforms[U_UVSCALE], 1.0f / vertexGeomLayoutParams.texCoordScale);
             glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], buildingHeightScale(blend, spanDeck) * heightUnits);
             glUniform1f(shaderProgram.uniforms[U_SHADOWHEIGHTSCALE], casterHeightScale(blend, spanDeck) * heightUnits);
+            if (shadowReceiver) {
+                // packTopHeight is in metres; the builder's calculateHeight, at the tile centre.
+                float localPerMeter = _transformer->createTileVertexTransformer(sourceTileId)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
+                glUniform1f(shaderProgram.uniforms[U_SHADOWTOPSCALE], casterHeightScale(blend, spanDeck) * localPerMeter * vertexGeomLayoutParams.coordScale);
+            }
             glUniform1f(shaderProgram.uniforms[U_FLOATINGBASE], spanDeck ? 1.0f : 0.0f);
             if (_pendingSpanDrape != 0) {
                 glActiveTexture(GL_TEXTURE4);

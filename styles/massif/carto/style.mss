@@ -3957,7 +3957,7 @@ Map {
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
 }
-#poi[zoom >= 16][zoom < 18][class = 'tree'][name = null]['param::variant' != 'hybrid']::poi_tree_dot {
+#poi[zoom >= 16][zoom < 18][class = 'tree'][name = null]['param::models_3d' = 0]['param::variant' != 'hybrid']::poi_tree_dot {
   marker-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : @poi_tree_dot_fill);
   marker-width: (2 * linear([view::zoom], (16, 1.5), (18, 2.5)));
   marker-allow-overlap: true;
@@ -3996,7 +3996,7 @@ Map {
   shield-text-radial-offset: (1 * (12 * [param::poi_label_scale]));
   shield-text-horizontal-alignment: 'auto';
 }
-#poi[zoom >= 18][class = 'tree'][name = null]['param::variant' != 'hybrid']::poi {
+#poi[zoom >= 18][class = 'tree'][name = null]['param::models_3d' = 0]['param::variant' != 'hybrid']::poi {
   shield-name: '';
   shield-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : (([param::poi_label_color] = 'neutral') ? linear([view::brightness], (0.25, @label_night), (0.3, @label)) : linear([view::brightness], (0.25, ((get([param::poi-fill-b25-subclass], [subclass])) ?? ((get([param::poi-fill-b25-shelter_type], [shelter_type])) ?? ((get([param::poi-fill-b25], [class])) ?? @poi_icon_fill)))), (0.3, ((get([param::poi-fill-subclass], [subclass])) ?? ((get([param::poi-fill-shelter_type], [shelter_type])) ?? ((get([param::poi-fill], [class])) ?? @poi_fill)))))));
   shield-halo-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @glacier_low)));

@@ -27,6 +27,8 @@ PARAMS = {
     'campsite_allow_overlap': {'default': 0, 'values': SWITCH},
     'polygons_border': {'default': 0, 'values': SWITCH},
     'lighting': {'default': 1, 'values': SWITCH},
+    # SDK only: 3D trees and wind turbines (models.mss) in place of the tree icons; 0 on e-ink and hybrid
+    'models_3d': {'default': 1, 'values': SWITCH},
     'sac_scale_labels': {'default': 0, 'values': SWITCH},
     # outdoor's trails (by difficulty, MTB, SAC grades) rather than streets' paths: 1 on outdoor, topo, e-ink
     'trails': {'default': 0, 'values': SWITCH},

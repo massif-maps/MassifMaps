@@ -440,6 +440,19 @@ namespace massif {
         void setModelAnimationsEnabled(bool enabled);
 
         /**
+         * Returns whether 3D models cast shadows.
+         * @return True when they do. The default is true.
+         */
+        bool isModelShadowsEnabled() const;
+        /**
+         * Sets whether 3D models (a CartoCSS model rule) cast shadows. Off, they still receive the
+         * buildings' and the terrain's shadows, and the shadow pass skips them: on a slow GPU, tree
+         * shadows can cost more than the trees themselves. A rule's model-cast-shadows still applies.
+         * @param enabled True to let models cast shadows.
+         */
+        void setModelShadowsEnabled(bool enabled);
+
+        /**
          * Returns how far outside the viewport labels are placed, in screen pixels.
          * @return The label padding, or a negative value while it follows the tilt.
          */
@@ -933,6 +946,7 @@ namespace massif {
         float _drawDistance;
         float _labelViewDistance;
         bool _modelAnimationsEnabled;
+        bool _modelShadowsEnabled;
         float _labelPadding;
 
         float _fovY;

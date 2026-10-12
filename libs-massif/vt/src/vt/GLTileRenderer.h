@@ -244,6 +244,7 @@ namespace massif::vt {
         void setBuildingEmissive(float emissive) { _buildingEmissive = emissive; }
         // Spinning models (model-spin) keep the map redrawing while one is drawn; off freezes them.
         void setModelAnimationsEnabled(bool enabled);
+        void setModelShadowsEnabled(bool enabled);
         // One model instance drawn in a highlight colour: by its source feature id and point index.
         struct ModelHighlight {
             long long featureId = 0;
@@ -1088,6 +1089,7 @@ namespace massif::vt {
         std::map<std::weak_ptr<const TileModelInstances>, CompiledModelInstances, std::owner_less<std::weak_ptr<const TileModelInstances>>> _compiledModelInstancesMap;
         std::shared_ptr<const Bitmap> _modelWhiteBitmap = std::make_shared<Bitmap>(1, 1, std::vector<std::uint32_t>(1, 0xffffffffu));
         bool _modelAnimationsEnabled = true;
+        bool _modelShadowsEnabled = true;
         std::optional<ModelHighlight> _modelHighlight;
         // Metres to vertex frame units at a tile's centre latitude, as DefaultVertexTransformer::calculateHeight.
         static double modelMetresToTileUnits(const TileId& tileId);

@@ -288,6 +288,7 @@ static const char* const kNames[] = {
     "minimumClusterDistance",
     "modelAnimationsEnabled",
     "modelAsset",
+    "modelShadowsEnabled",
     "name",
     "near",
     "nearestColor",

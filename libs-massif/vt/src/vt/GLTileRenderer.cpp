@@ -2161,6 +2161,11 @@ namespace massif::vt {
         _modelAnimationsEnabled = enabled;
     }
 
+    void GLTileRenderer::setModelShadowsEnabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelShadowsEnabled = enabled;
+    }
+
     void GLTileRenderer::setModelHighlight(const std::optional<ModelHighlight>& highlight) {
         std::lock_guard<std::mutex> lock(_mutex);
         _modelHighlight = highlight;
@@ -7043,7 +7048,7 @@ namespace massif::vt {
         const ModelStyle& style = models->getStyle();
         bool caster = (_shadowCasterViewProj != nullptr);
         // No globe yet: a sphere bends the tile frame the anchor is placed in (18-globe.md).
-        if (!style.model || models->getInstances().empty() || (_transformer && _transformer->isSpherical()) || (caster && !style.castShadows)) {
+        if (!style.model || models->getInstances().empty() || (_transformer && _transformer->isSpherical()) || (caster && (!style.castShadows || !_modelShadowsEnabled))) {
             return;
         }
         float styleOpacity = evaluateFloatFunc(style.opacityFunc);

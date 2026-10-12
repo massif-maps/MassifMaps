@@ -17,7 +17,7 @@ feature page, [3D models](../../features/3d-models.md).
 | decode | `mapnikvt/ModelSymbolizer.cpp` | one instance per point; properties reading `[mapnik::seed]` (`random()` without a seed) are evaluated per point with the seed set to the point's world position quantised to 2^-26 of the world |
 | build | `TileLayerBuilder::createModelProcessor`, `placeModels` | every point within `MODEL_REACH` (32 m) of the tile becomes a candidate (`isModelPointInReach` skips the rest before any expression is evaluated); a style whose symbolizers are all models reads the source tile UNCLIPPED (`Symbolizer::needsUnclippedFeatures`) so the candidates across the tile edge are there. `buildTileLayer` then keeps a candidate inside the half-open tile unless `ModelFootprints` finds a higher-ranked crown of another point crossing it (rank: splitmix64 of the point's world seed). The test is local, with no cascade, so every overzoomed tile decides the same; mapbox's density grid (`model_bucket.ts` `lookupDim`) thins after it. Instances are grouped by `ModelStyle` into `TileModelInstances` |
 | draw | `GLTileRenderer::renderTileModels` | one `glDrawElementsInstanced` per mesh, inside the 3D pass of `renderGeometry3D` |
-| shadow | `renderShadowCasters` | the same vertex shader with `shadowCasterFsh`, walked by `forEachVisibleRenderLayer` like the extrusions |
+| shadow | `renderShadowCasters` | the same vertex shader with `shadowCasterFsh`, walked by `forEachVisibleRenderLayer` like the extrusions; skipped for a rule with `model-cast-shadows: false` and for every model while `Options.modelShadowsEnabled` is off (a toggle redraws every shadow page, `_shadowMapModelShadows`) |
 
 ## The instance
 

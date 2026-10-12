@@ -572,6 +572,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMinimumClusterDistance;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyModelAnimationsEnabled;
 /** Returns the model asset of the object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyModelAsset;
+/** Returns whether 3D models cast shadows. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyModelShadowsEnabled;
 /** Returns the name included in the address. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyName;
 /** Returns the near plane distance. */

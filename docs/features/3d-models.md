@@ -72,6 +72,10 @@ over the tower with `model-z-offset`. The map keeps redrawing while a spinning m
 `Options.modelAnimationsEnabled = false` freezes them, for battery-bound or e-ink apps (in the demo
 app: `--es apiSet modelAnimationsEnabled=false`).
 
+`Options.modelShadowsEnabled = false` stops every model casting a shadow, whatever its rule says;
+models still receive the buildings' and the terrain's. On a low-end GPU the tree shadows cost more
+than the trees (`--es apiSet modelShadowsEnabled=false` in the demo).
+
 ## Density, fade and detail by zoom
 
 - **Density**: as mapbox does for its trees, each tile keeps one instance per cell of a grid shared

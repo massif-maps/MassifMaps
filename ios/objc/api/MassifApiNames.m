@@ -287,6 +287,7 @@ MassifProperty const MassifPropertyMinZoom = @"minZoom";
 MassifProperty const MassifPropertyMinimumClusterDistance = @"minimumClusterDistance";
 MassifProperty const MassifPropertyModelAnimationsEnabled = @"modelAnimationsEnabled";
 MassifProperty const MassifPropertyModelAsset = @"modelAsset";
+MassifProperty const MassifPropertyModelShadowsEnabled = @"modelShadowsEnabled";
 MassifProperty const MassifPropertyName = @"name";
 MassifProperty const MassifPropertyNear = @"near";
 MassifProperty const MassifPropertyNearestColor = @"nearestColor";

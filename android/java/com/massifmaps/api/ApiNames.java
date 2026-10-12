@@ -572,6 +572,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> MODEL_ANIMATIONS_ENABLED = MassifObject.key("modelAnimationsEnabled");
     /** Returns the model asset of the object. */
     public static final MassifObject.Key<MassifObject> MODEL_ASSET = MassifObject.key("modelAsset");
+    /** Returns whether 3D models cast shadows. */
+    public static final MassifObject.Key<Boolean> MODEL_SHADOWS_ENABLED = MassifObject.key("modelShadowsEnabled");
     /** Returns the name included in the address. */
     public static final MassifObject.Key<String> NAME = MassifObject.key("name");
     /** Returns the near plane distance. */

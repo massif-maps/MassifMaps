@@ -4301,6 +4301,8 @@ export interface PropertyTypes {
         'mainLightDirection': Position;
         /** Returns whether animated 3D models (a CartoCSS model-spin) move. */
         'modelAnimationsEnabled': boolean;
+        /** Returns whether 3D models cast shadows. */
+        'modelShadowsEnabled': boolean;
         /** Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre. */
         'orbitAroundPivot': boolean;
         /** Returns the map panning bounds constraints. Map bounds minimum and maximum points are in the base projection's coordinate system. */

@@ -6200,6 +6200,15 @@
           "doc": "Returns whether animated 3D models (a CartoCSS model-spin) move."
         },
         {
+          "name": "modelShadowsEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether 3D models cast shadows."
+        },
+        {
           "name": "orbitAroundPivot",
           "type": "BOOL",
           "readOnly": false,

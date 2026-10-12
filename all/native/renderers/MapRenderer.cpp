@@ -2528,9 +2528,11 @@ namespace massif {
                 if (boxesValid) {
                     // The caster pass costs as much as the screen draw: redraw only on a real change, per cascade.
                     std::array<float, TerrainShadowMap::MAX_CASCADES> fadeSignatures = { };
+                    std::array<bool, TerrainShadowMap::MAX_CASCADES> spinningCasters = { };
                     for (int cascade = 0; cascade < cascades; cascade++) {
                         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
                             fadeSignatures[cascade] = std::max(fadeSignatures[cascade], tileLayer->shadowCasterFadeSignature(&cascadeCasterTiles[cascade]));
+                            spinningCasters[cascade] = spinningCasters[cascade] || tileLayer->hasSpinningShadowCasters(&cascadeCasterTiles[cascade]);
                         }
                     }
                     // The atlas layout itself changed: every page has to be redrawn.
@@ -2554,6 +2556,7 @@ namespace massif {
                     bool refreshAny = false;
                     for (int cascade = 0; cascade < cascades; cascade++) {
                         refreshCascade[cascade] = refreshAll
+                            || spinningCasters[cascade]
                             || std::abs(fadeSignatures[cascade] - _shadowMapFadeSignatures[cascade]) > SHADOW_MAP_FADE_STEP
                             || !(_shadowMapViewProjs[cascade] == lightViewProjs[cascade])
                             || _shadowMapCasterTiles[cascade] != cascadeCasterTiles[cascade];

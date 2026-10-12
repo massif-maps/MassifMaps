@@ -79,14 +79,24 @@ VAO per program and mesh — see `CompiledGeometry` for why programs never share
 `weak_ptr` and swept in `endFrame` with the other compiled resources. Textures go through
 `buildCompiledBitmap`.
 
+## A spinning model's shadow
+
+The shadow map is re-rastered only when the camera, the caster set or a fade moves it, so a turning
+rotor's shadow stepped about twice a second while the camera stood still. A shadow page whose caster
+tiles hold a spinning model that casts (`hasSpinningShadowCasters`) is now re-rastered every frame,
+as mapbox re-renders its shadow map every frame. The page is redrawn whole (a depth map cannot erase
+the rotor's old shadow alone), so a still camera pays one page's caster pass per frame while a
+spinning turbine stands in it; with the near-page skip that is usually the near page only. Off with
+`modelAnimationsEnabled` or `modelShadowsEnabled` false. Emulator A/B (2026-10-12, the `3d-models`
+example, camera still at the turbines): the shadow crop changed in 3 of 7 capture pairs before, 7
+of 7 after; the frame cost is not measured on a device.
+
 ## Not done, not verified
 
 - Globe mode skips models (`renderTileModels` returns on a spherical transformer).
 - No transparency sort; `BLEND` materials blend in draw order.
 - The density grid assumes a z14 source (OpenMapTiles): the builder does not see the source tile's
   zoom, so a z16 source is thinned to 256 cells at z15 where mapbox would keep 100.
-- A spinning model's shadow follows the shadow map's own refresh, not every frame: the rotor's
-  shadow steps.
 - A highlight scans the instance list of every drawn tile for its feature id, linearly.
 - Verified: host tests (loader, hostile files, `random()`, instance building, the pick math), NDK
   syntax gate, `glslangValidator` on every program variant, and on the Android emulator (2026-10-11,

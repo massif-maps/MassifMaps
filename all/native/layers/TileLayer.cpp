@@ -1378,6 +1378,10 @@ namespace massif {
         return _tileRenderer->shadowCasterFadeSignature(coveredBy);
     }
 
+    bool TileLayer::hasSpinningShadowCasters(const std::vector<vt::TileId>* coveredBy) const {
+        return _tileRenderer->hasSpinningShadowCasters(coveredBy);
+    }
+
     int TileLayer::consumeShadowCastersMissingElevation() {
         return _tileRenderer->consumeShadowCastersMissingElevation();
     }

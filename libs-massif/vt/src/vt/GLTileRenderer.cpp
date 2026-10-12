@@ -858,6 +858,28 @@ namespace massif::vt {
         return count > 0 ? _buildingHeightScale * (static_cast<float>(count) + signature / count) : 0.0f;
     }
 
+    bool GLTileRenderer::hasSpinningShadowCasters(const std::vector<TileId>* coveredBy) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (!_modelAnimationsEnabled || !_modelShadowsEnabled) {
+            return false;
+        }
+        bool spinning = false;
+        forEachVisibleRenderLayer(coveredBy, true, [this, &spinning](const RenderTileLayer& renderLayer) {
+            if (spinning || renderLayer.layer->getModels().empty() || !extrusionCastsShadow(renderLayer)) {
+                return;
+            }
+            for (const std::shared_ptr<TileModelInstances>& models : renderLayer.layer->getModels()) {
+                const ModelStyle& style = models->getStyle();
+                if (style.spinSpeed != 0.0f && style.castShadows && !models->getInstances().empty()) {
+                    spinning = true;
+                    return;
+                }
+            }
+        });
+        return spinning;
+    }
+
     float GLTileRenderer::groundAOZoomFade(float zoom) {
         // A contact shadow is metres wide: at low zoom it is sub-pixel, all cost. Faded, not switched,
         // or a city's shadows pop in one frame.

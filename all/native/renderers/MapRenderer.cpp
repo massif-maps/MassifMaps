@@ -2529,10 +2529,16 @@ namespace massif {
                     // The caster pass costs as much as the screen draw: redraw only on a real change, per cascade.
                     std::array<float, TerrainShadowMap::MAX_CASCADES> fadeSignatures = { };
                     std::array<bool, TerrainShadowMap::MAX_CASCADES> spinningCasters = { };
+                    std::array<cglib::bbox2<double>, TerrainShadowMap::MAX_CASCADES> spinningBounds;
                     for (int cascade = 0; cascade < cascades; cascade++) {
+                        spinningBounds[cascade] = cglib::bbox2<double>::smallest();
                         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
                             fadeSignatures[cascade] = std::max(fadeSignatures[cascade], tileLayer->shadowCasterFadeSignature(&cascadeCasterTiles[cascade]));
-                            spinningCasters[cascade] = spinningCasters[cascade] || tileLayer->hasSpinningShadowCasters(&cascadeCasterTiles[cascade]);
+                            cglib::bbox2<double> layerBounds;
+                            if (tileLayer->spinningShadowCasterBounds(&cascadeCasterTiles[cascade], lightViewProjs[cascade], layerBounds)) {
+                                spinningCasters[cascade] = true;
+                                spinningBounds[cascade].add(layerBounds);
+                            }
                         }
                     }
                     // The atlas layout itself changed: every page has to be redrawn.
@@ -2552,14 +2558,17 @@ namespace massif {
                         refreshAll = true;
                     }
                     // Otherwise per page: each cascade snaps to its own lattice.
+                    // A page redrawn for its spinning models alone is redrawn only where they cast.
                     std::array<bool, TerrainShadowMap::MAX_CASCADES> refreshCascade = { };
+                    std::array<bool, TerrainShadowMap::MAX_CASCADES> spinOnly = { };
                     bool refreshAny = false;
                     for (int cascade = 0; cascade < cascades; cascade++) {
                         refreshCascade[cascade] = refreshAll
-                            || spinningCasters[cascade]
                             || std::abs(fadeSignatures[cascade] - _shadowMapFadeSignatures[cascade]) > SHADOW_MAP_FADE_STEP
                             || !(_shadowMapViewProjs[cascade] == lightViewProjs[cascade])
                             || _shadowMapCasterTiles[cascade] != cascadeCasterTiles[cascade];
+                        spinOnly[cascade] = !refreshCascade[cascade] && spinningCasters[cascade];
+                        refreshCascade[cascade] = refreshCascade[cascade] || spinOnly[cascade];
                         refreshAny = refreshAny || refreshCascade[cascade];
                     }
                     if (refreshAny) {
@@ -2571,21 +2580,31 @@ namespace massif {
                                     continue;
                                 }
                                 _terrainShadowMap->setCascadeViewport(cascade);
+                                std::vector<vt::TileId> drawnCasterTiles = cascadeCasterTiles[cascade];
+                                if (spinOnly[cascade]) {
+                                    _terrainShadowMap->narrowCascadeScissor(cascade, spinningBounds[cascade]);
+                                    std::vector<std::pair<double, double> > heights;
+                                    for (const vt::TileId& tileId : cascadeCasterTiles[cascade]) {
+                                        std::size_t i = std::find(casterTileIds.begin(), casterTileIds.end(), tileId) - casterTileIds.begin();
+                                        heights.push_back(i < casterHeights.size() ? casterHeights[i] : std::make_pair(minHeight, maxHeight));
+                                    }
+                                    tileLayers.front()->filterShadowCasterTiles(cascadeCasterTiles[cascade], heights, lightViewProjs[cascade], spinningBounds[cascade], drawnCasterTiles);
+                                }
                                 if (!refreshAll) {
                                     _terrainShadowMap->clearCascade();
                                 }
                                 // Every drape layer casts: extrusions may live in any layer (a composite's later style group).
                                 for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
                                     bool castGround = terrainCasts && (tileLayer == tileLayers.front());
-                                    int draws = tileLayer->renderShadowCasters(cascadeCasterTiles[cascade], lightViewProjs[cascade], castGround);
+                                    int draws = tileLayer->renderShadowCasters(drawnCasterTiles, lightViewProjs[cascade], castGround);
                                     // Ground casters are one draw per tile; the rest are extrusions.
-                                    shadowExtrusionDraws += draws - (castGround ? static_cast<int>(cascadeCasterTiles[cascade].size()) : 0);
+                                    shadowExtrusionDraws += draws - (castGround ? static_cast<int>(drawnCasterTiles.size()) : 0);
                                     shadowCastersNoElevation += tileLayer->consumeShadowCastersMissingElevation();
                                 }
                                 _shadowMapViewProjs[cascade] = lightViewProjs[cascade];
                                 _shadowMapCasterTiles[cascade] = cascadeCasterTiles[cascade];
                                 _shadowMapFadeSignatures[cascade] = fadeSignatures[cascade];
-                                shadowCasterDraws += terrainCasts ? static_cast<int>(cascadeCasterTiles[cascade].size()) : 0;
+                                shadowCasterDraws += terrainCasts ? static_cast<int>(drawnCasterTiles.size()) : 0;
                             }
                             _terrainShadowMap->endPass(prevFBO, viewState.getWidth(), viewState.getHeight());
                             FRAME_PROF_GPU_END();

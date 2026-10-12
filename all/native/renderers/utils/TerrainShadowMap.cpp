@@ -3,6 +3,7 @@
 #include "utils/Log.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace massif {
 
@@ -188,6 +189,19 @@ namespace massif {
         // one of them must not blank the ones being reused.
         glScissor(index * _size, 0, _size, _size);
         glEnable(GL_SCISSOR_TEST);
+    }
+
+    void TerrainShadowMap::narrowCascadeScissor(int cascade, const cglib::bbox2<double>& clipBounds) {
+        int index = std::min(_cascades - 1, std::max(0, cascade));
+        // Widened by a texel: the rasteriser covers a texel whose centre the footprint reaches.
+        auto texel = [this](double clip) {
+            return std::min(static_cast<double>(_size), std::max(0.0, (clip * 0.5 + 0.5) * _size));
+        };
+        int x0 = std::max(0, static_cast<int>(std::floor(texel(clipBounds.min(0)))) - 1);
+        int y0 = std::max(0, static_cast<int>(std::floor(texel(clipBounds.min(1)))) - 1);
+        int x1 = std::min(_size, static_cast<int>(std::ceil(texel(clipBounds.max(0)))) + 1);
+        int y1 = std::min(_size, static_cast<int>(std::ceil(texel(clipBounds.max(1)))) + 1);
+        glScissor(index * _size + x0, y0, std::max(0, x1 - x0), std::max(0, y1 - y0));
     }
 
     void TerrainShadowMap::clearCascade() {

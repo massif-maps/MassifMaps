@@ -597,11 +597,20 @@ namespace massif {
         return 0.0f;
     }
 
-    bool TileRenderer::hasSpinningShadowCasters(const std::vector<vt::TileId>* coveredBy) const {
+    void TileRenderer::filterShadowCasterTiles(const std::vector<vt::TileId>& tileIds, const std::vector<std::pair<double, double> >& tileHeights, const cglib::mat4x4<double>& lightViewProj, const cglib::bbox2<double>& clipBounds, std::vector<vt::TileId>& casterTileIds) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        casterTileIds = tileIds;
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->filterShadowCasterTiles(tileIds, tileHeights, lightViewProj, clipBounds, casterTileIds);
+        }
+    }
+
+    bool TileRenderer::spinningShadowCasterBounds(const std::vector<vt::TileId>* coveredBy, const cglib::mat4x4<double>& lightViewProj, cglib::bbox2<double>& lightBounds) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            return tileRenderer->hasSpinningShadowCasters(coveredBy);
+            return tileRenderer->spinningShadowCasterBounds(coveredBy, lightViewProj, lightBounds);
         }
         return false;
     }

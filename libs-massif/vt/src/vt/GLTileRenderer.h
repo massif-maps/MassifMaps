@@ -269,7 +269,10 @@ namespace massif::vt {
         // Sum of the casters' fade-in blends: how far the shadow map drifted from growing extrusions.
         float shadowCasterFadeSignature(const std::vector<TileId>* coveredBy) const;
         // A spinning model casts here: its shadow moves every frame though nothing else changed.
-        bool hasSpinningShadowCasters(const std::vector<TileId>* coveredBy) const;
+        // lightBounds: where in lightViewProj's clip space, the part of the page to redraw.
+        // The tiles whose light-space column reaches clipBounds: all a page redrawn there alone needs.
+        void filterShadowCasterTiles(const std::vector<TileId>& tileIds, const std::vector<std::pair<double, double> >& tileHeights, const cglib::mat4x4<double>& lightViewProj, const cglib::bbox2<double>& clipBounds, std::vector<TileId>& casterTileIds) const;
+        bool spinningShadowCasterBounds(const std::vector<TileId>* coveredBy, const cglib::mat4x4<double>& lightViewProj, cglib::bbox2<double>& lightBounds) const;
         // Draws this renderer's shadow casters for the given tiles into the bound framebuffer; returns the draws.
         int renderShadowCasters(const std::vector<TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
 

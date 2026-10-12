@@ -7,6 +7,8 @@
 #ifndef _MASSIF_TERRAINSHADOWMAP_H_
 #define _MASSIF_TERRAINSHADOWMAP_H_
 
+#include <cglib/bbox.h>
+
 namespace massif {
 
     /**
@@ -43,6 +45,10 @@ namespace massif {
          * Restricts drawing (and clearing) to one cascade's page. Must be called after beginPass.
          */
         void setCascadeViewport(int cascade);
+        /**
+         * Narrows the drawing (and clearing) to a part of the cascade's page, given in its light clip space.
+         */
+        void narrowCascadeScissor(int cascade, const cglib::bbox2<double>& clipBounds);
         /**
          * Clears the current cascade's page alone, for a pass that refreshes only some of them.
          */

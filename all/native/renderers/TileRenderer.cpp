@@ -597,6 +597,15 @@ namespace massif {
         return 0.0f;
     }
 
+    bool TileRenderer::hasSpinningShadowCasters(const std::vector<vt::TileId>* coveredBy) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            return tileRenderer->hasSpinningShadowCasters(coveredBy);
+        }
+        return false;
+    }
+
     int TileRenderer::consumeShadowCastersMissingElevation() {
         std::lock_guard<std::mutex> lock(_mutex);
 

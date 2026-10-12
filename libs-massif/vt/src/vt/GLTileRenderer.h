@@ -268,6 +268,8 @@ namespace massif::vt {
         int renderTerrainShadowMask(const std::vector<TileId>& tileIds);
         // Sum of the casters' fade-in blends: how far the shadow map drifted from growing extrusions.
         float shadowCasterFadeSignature(const std::vector<TileId>* coveredBy) const;
+        // A spinning model casts here: its shadow moves every frame though nothing else changed.
+        bool hasSpinningShadowCasters(const std::vector<TileId>* coveredBy) const;
         // Draws this renderer's shadow casters for the given tiles into the bound framebuffer; returns the draws.
         int renderShadowCasters(const std::vector<TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
 

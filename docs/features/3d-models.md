@@ -70,7 +70,8 @@ The generated [CartoCSS property reference](./cartocss-properties.md) lists them
 A spinning part (a wind turbine's rotor) is its own model with its origin on the spin axis, placed
 over the tower with `model-z-offset`. The map keeps redrawing while a spinning model is on screen;
 `Options.modelAnimationsEnabled = false` freezes them, for battery-bound or e-ink apps (in the demo
-app: `--es apiSet modelAnimationsEnabled=false`).
+app: `--es apiSet modelAnimationsEnabled=false`). A spinning model that casts a shadow redraws its
+part of the shadow map every frame, so its shadow turns with it.
 
 `Options.modelShadowsEnabled = false` stops every model casting a shadow, whatever its rule says;
 models still receive the buildings' and the terrain's. On a low-end GPU the tree shadows cost more

@@ -892,6 +892,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> TERRAIN_PAINT_ENABLED = MassifObject.key("terrainPaintEnabled");
     /** Returns whether the terrain paint shades from the elevation source's own maximum zoom. */
     public static final MassifObject.Key<Boolean> TERRAIN_PAINT_FULL_DETAIL_ENABLED = MassifObject.key("terrainPaintFullDetailEnabled");
+    /** Returns whether the terrain itself casts shadows. */
+    public static final MassifObject.Key<Boolean> TERRAIN_SHADOW_CASTING_ENABLED = MassifObject.key("terrainShadowCastingEnabled");
     /** Returns the text of this button. */
     public static final MassifObject.Key<String> TEXT = MassifObject.key("text");
     /** Returns the color of the text. */

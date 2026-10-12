@@ -1686,6 +1686,7 @@ public class DemoMap {
         lightOptions.setAmbientColor(new Color(DemoConfig.AMBIENT_COLOR_ARGB));
         lightOptions.setSunColor(new Color(DemoConfig.SUN_COLOR_ARGB));
         lightOptions.setTerrainLightingEnabled(DemoConfig.TERRAIN_LIGHTING);
+        lightOptions.setTerrainShadowCastingEnabled(DemoConfig.TERRAIN_SHADOWS);
         lightOptions.setShadowStrength(DemoConfig.SHADOW_STRENGTH);
         lightOptions.setShadowSoftness(DemoConfig.SHADOW_SOFTNESS);
         lightOptions.setShadowMapSize(DemoConfig.SHADOW_MAP_SIZE);

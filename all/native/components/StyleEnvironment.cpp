@@ -111,6 +111,7 @@ namespace {
             lighting.shadowMapSize = lightOptions->getShadowMapSize();
             lighting.shadowCascades = lightOptions->getShadowCascades();
             lighting.shadowCasterMargin = lightOptions->getShadowCasterMargin();
+            lighting.terrainShadowCasting = lightOptions->isTerrainShadowCastingEnabled();
         }
         // Rebuilt when the style overrides either angle, unless the app keeps its own sun:
         // a day cycle must move the sun on a style that states one.

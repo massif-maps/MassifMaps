@@ -452,6 +452,7 @@ static const char* const kNames[] = {
     "terrainOptions",
     "terrainPaintEnabled",
     "terrainPaintFullDetailEnabled",
+    "terrainShadowCastingEnabled",
     "text",
     "textColor",
     "textField",

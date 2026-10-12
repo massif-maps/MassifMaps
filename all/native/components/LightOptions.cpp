@@ -23,6 +23,7 @@ namespace massif {
         _dayCycleRisingLightStops(),
         _dayCycleLightStopsMutex(),
         _terrainLightingEnabled(false),
+        _terrainShadowCasting(true),
         // mapbox's `shadow-intensity` default. With the direct-share scaling in resolveLighting
         // this is their shadow exactly, so 1 is the physical depth rather than the maximum.
         _shadowStrength(1.0f),
@@ -202,6 +203,16 @@ namespace massif {
             _dayCycleRisingLightStops = stops;
         }
         notifyOptionChanged("DayCycleRisingLightStops");
+    }
+
+    bool LightOptions::isTerrainShadowCastingEnabled() const {
+        return _terrainShadowCasting.load();
+    }
+
+    void LightOptions::setTerrainShadowCastingEnabled(bool enabled) {
+        if (_terrainShadowCasting.exchange(enabled) != enabled) {
+            notifyOptionChanged("TerrainShadowCastingEnabled");
+        }
     }
 
     bool LightOptions::isTerrainLightingEnabled() const {

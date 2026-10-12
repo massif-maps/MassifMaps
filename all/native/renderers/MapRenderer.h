@@ -383,6 +383,7 @@ namespace massif {
         cglib::vec3<float> _shadowSunDir = cglib::vec3<float>(0, 0, 1);
         int _shadowMapSize = 0;
         int _shadowMapCascades = 0;
+        bool _shadowMapTerrainCasts = true;
         bool _shadowMapModelShadows = true;
         int _shadowMapAge = 0;
         // Per cascade: caster content signature when that page was last drawn.

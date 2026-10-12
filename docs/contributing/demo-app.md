@@ -110,7 +110,7 @@ is already straight once it leaves the bake and would show a fix that is not the
 - terrain: `drape drapeLines drapeResolution meshResolution exaggeration`, `viewDistance
   viewDistanceMeters`, `autoFlatten autoFlattenTilt autoFlattenMs`, `stitch`
 - composite overlays: `hs sat satZoom contour`; buildings: `bld3d`
-- light/shadow: `daycycle sunHour sunAzimuth sunAltitude shadow`
+- light/shadow: `daycycle sunHour sunAzimuth sunAltitude shadow terrainShadows` (shadows need `terrainLight true`)
 - labels: `textOcclusion`, `roadLabelOcclusion` (a re-decode)
 - `ui false` (hide the panel), `anim zoom|pan|rotate|zoomseq|approach`
 - `showFps true` (bench and `.ExampleActivity`): frames drawn per second and the GL-thread draw time,

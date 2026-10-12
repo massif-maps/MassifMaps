@@ -2346,6 +2346,8 @@ namespace massif {
                     _terrainShadowMap = std::make_unique<TerrainShadowMap>();
                 }
                 _terrainShadowMap->setSize(lighting.shadowMapSize, lighting.shadowCascades);
+                // A flat relief throws nothing, but its draws cost as much as a mountain's.
+                bool terrainCasts = lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f;
                 // At a low sun the box stretches by the height range / tan(altitude): keep the slab tight.
                 double minHeight = 0, maxHeight = 0;
                 // Per tile too, so a cascade fits its box to its own piece's relief.
@@ -2409,8 +2411,9 @@ namespace massif {
                     }
                     // Ring reach = shadow throw (relief / tan(altitude), 15-degree floor), at the coarsest zoom spanning it
                     // in casterMargin tiles. Relief is measured around the view, not the cover.
-                    double relief = std::max(0.0, maxHeight - minHeight);
-                    if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                    // Without the relief casting, only buildings throw: the one-tile ring is enough.
+                    double relief = terrainCasts ? std::max(0.0, maxHeight - minHeight) : 0.0;
+                    if (std::shared_ptr<ElevationManager> elevationManager = terrainCasts ? terrainOptions->getElevationManager() : nullptr) {
                         const vt::TileId& sample = coverTileIds[coverTileIds.size() / 2];
                         int coarseZoom = std::min(sample.zoom, SHADOW_RELIEF_ZOOM);
                         int shift = sample.zoom - coarseZoom;
@@ -2534,6 +2537,7 @@ namespace massif {
                     // The caster set itself changed: the pages still hold the models' shadows.
                     bool modelShadows = _options->isModelShadowsEnabled();
                     bool refreshAll = !_shadowMapValid
+                        || _shadowMapTerrainCasts != terrainCasts
                         || _shadowMapModelShadows != modelShadows
                         || _shadowMapSize != _terrainShadowMap->getSize()
                         || _shadowMapCascades != cascades;
@@ -2569,7 +2573,7 @@ namespace massif {
                                 }
                                 // Every drape layer casts: extrusions may live in any layer (a composite's later style group).
                                 for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
-                                    bool castGround = (tileLayer == tileLayers.front());
+                                    bool castGround = terrainCasts && (tileLayer == tileLayers.front());
                                     int draws = tileLayer->renderShadowCasters(cascadeCasterTiles[cascade], lightViewProjs[cascade], castGround);
                                     // Ground casters are one draw per tile; the rest are extrusions.
                                     shadowExtrusionDraws += draws - (castGround ? static_cast<int>(cascadeCasterTiles[cascade].size()) : 0);
@@ -2578,7 +2582,7 @@ namespace massif {
                                 _shadowMapViewProjs[cascade] = lightViewProjs[cascade];
                                 _shadowMapCasterTiles[cascade] = cascadeCasterTiles[cascade];
                                 _shadowMapFadeSignatures[cascade] = fadeSignatures[cascade];
-                                shadowCasterDraws += static_cast<int>(cascadeCasterTiles[cascade].size());
+                                shadowCasterDraws += terrainCasts ? static_cast<int>(cascadeCasterTiles[cascade].size()) : 0;
                             }
                             _terrainShadowMap->endPass(prevFBO, viewState.getWidth(), viewState.getHeight());
                             FRAME_PROF_GPU_END();
@@ -2586,6 +2590,7 @@ namespace massif {
                             _shadowMapValid = true;
                             _shadowMapSize = _terrainShadowMap->getSize();
                             _shadowMapCascades = cascades;
+                            _shadowMapTerrainCasts = terrainCasts;
                             _shadowMapModelShadows = modelShadows;
                             _shadowMapAge = 0;
                             shadowPasses++;

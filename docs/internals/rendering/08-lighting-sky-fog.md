@@ -389,6 +389,11 @@ Design points, each measured:
   moves the near page from 0.5 × to 1.5 × — 3 × coarser texels — and since
   `shadowSoftness` is counted in TEXELS the penumbra widens in metres with it. At z16.5 over the
   Louvre that washed the building shadows out and dropped the smallest of them entirely.
+- **The relief casts only when it can.** `LightOptions.TerrainShadowCastingEnabled` off, or a terrain
+  exaggeration of 0, drops the ground's caster draws (one per caster tile per cascade) and measures
+  the ring's throw with no relief, so it shrinks to one tile at the cover zoom: enough for a
+  building's shadow. Extrusions and models still cast, and the ground still receives. A change of
+  either refreshes every page (`_shadowMapTerrainCasts`), or the old relief shadow would stay drawn.
 - **Softness 0.5 texel by default** (2026-10-12; it was 1). mapbox takes ONE hardware `sampler2DShadow`
   compare, a 2x2 bilinear footprint and no kernel (`_prelude_shadow.fragment.glsl` `shadow_sample`);
   our ground's four taps at ±0.75 × softness spread ±1.75 texels at 1. At 0.5 a tree's shadow keeps

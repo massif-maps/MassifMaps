@@ -892,6 +892,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainOptions;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainPaintEnabled;
 /** Returns whether the terrain paint shades from the elevation source's own maximum zoom. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainPaintFullDetailEnabled;
+/** Returns whether the terrain itself casts shadows. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainShadowCastingEnabled;
 /** Returns the text of this button. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyText;
 /** Returns the color of the text. */

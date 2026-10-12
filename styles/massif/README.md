@@ -48,13 +48,20 @@ palette plus the modules it adds.
   roofs. A wall's foot takes gl-js's faux AO (the converter's `building-vertical-gradient` over 6 m).
   At night a block takes Standard's night tone (`hsl(0, 0%, 58%)`) with a tenth of it emitted, and
   the SDK lights it with Standard's moon; the ground AO fades in over z17-18.
-- **Blocks rise over z15-15.3 from 5 %, not from 0 as Standard's do.** The footprints stop at
-  z15 and the blocks start there, but zooming out the SDK keeps the z15 tiles until 0.15 of a level
-  below it (`TileLayer::TARGET_TILE_ZOOM_HYSTERESIS`), plus their decode, and skips a block scaled
-  to 0: every building vanished for ~1 s. A zoom-faded footprint under the blocks does not help in
-  3D, where the drape bakes it at a quantised zoom and holds it while the camera moves. Measured on
-  the emulator, Grenoble tilt 47, zoom-out 17.5 to 15.3 over 10 s: frames with no building
-  2D 19 / 3D 13 before, 0 / 0 after.
+- **Blocks rise over z15-15.3 as Standard's, across the SDK's tile switch.** The SDK changes tile
+  level 0.15 of a level past the integer zoom (`TileLayer::TARGET_TILE_ZOOM_HYSTERESIS`), plus the
+  decode, so a z15 tile is on screen below z15 and a z14 one above it. Two layers cover that:
+  - the z15 tiles keep an opaque footprint under the blocks, so a zoom out that keeps them below z15,
+    where the blocks are flat and not drawn, still shows the buildings. A zoom-faded one fails in 3D: the
+    drape bakes it at a quantised zoom and holds it while the camera moves;
+  - the blocks are decoded from the z14 tiles (SDK only, `massif:sdk-minzoom`), flat until z15, so a
+    zoom in grows them on the tiles it has instead of popping z15 ones in half grown.
+
+  Measured, Grenoble tilt 47, 3D: zoom-out 17.5 to 15.3 over 10 s on the emulator, frames with no
+  building 2D 19 / 3D 13 before, 0 / 0 after; on the Crosscall at z15.5 with shadows, a pan costs
+  +1.3-2.2 ms CPU a frame (25.8 to 25.0 fps), the same GPU time; a cold load
+  costs ~10 % more decode CPU and ~40 % more render-thread CPU.
+  Drawing the blocks there at a 5 % floor instead cost 26 to 18.7 fps.
 - **Water names**: rivers from z9 (`river_label_min_zoom`), a lake's name upright at the middle of
   its centreline from whatever zoom the tiles carry it, a word a line, as Alpimaps sets it; in a
   deep blue (`water-label`, 5.4:1 against the water fill on streets, outdoor and topo) on a

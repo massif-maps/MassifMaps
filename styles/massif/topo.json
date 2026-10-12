@@ -15051,6 +15051,35 @@
       }
     },
     {
+      "id": "building-under",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 15,
+      "maxzoom": 16,
+      "paint": {
+        "fill-color": "hsl(40, 43%, 93%)",
+        "fill-outline-color": "hsl(40, 25%, 85%)"
+      },
+      "metadata": {
+        "massif:minzoom-param": "building_min_zoom",
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "buildings"
+          ],
+          2
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      },
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
       "id": "building-3d",
       "type": "fill-extrusion",
       "source": "openmaptiles",
@@ -15116,7 +15145,7 @@
               "zoom"
             ],
             15,
-            0.05,
+            0,
             15.3,
             1
           ],
@@ -15152,7 +15181,8 @@
         "massif:layout": {
           "fill-extrusion-edge-radius": 0.4
         },
-        "massif:minzoom-param": "building_min_zoom"
+        "massif:minzoom-param": "building_min_zoom",
+        "massif:sdk-minzoom": 14
       }
     },
     {

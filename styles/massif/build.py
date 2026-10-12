@@ -222,6 +222,8 @@ def family_style():
             if len({json.dumps(t.get(key)) for t in trees.values()}) > 1:
                 raise ValueError('%s: %s differs between variants - give each its own layer' % (id, key))
         merged = by_variant(trees)
+        if 'massif:sdk-minzoom' in merged.get('metadata', {}):
+            merged['minzoom'] = merged['metadata'].pop('massif:sdk-minzoom')
         if len(present) < len(names):
             # pruned per tile at decode: a layer the selected variant does not draw costs nothing
             # only == and != : each converts to a bracketed test the decoder prunes per tile, where an

@@ -11,6 +11,7 @@
 #include "TileBitmap.h"
 #include "TileGeometry.h"
 #include "TileLabel.h"
+#include "TileModels.h"
 
 #include <memory>
 #include <optional>
@@ -21,7 +22,7 @@
 namespace massif::vt {
     class TileLayer final {
     public:
-        explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels, std::string drawOnceGroup = std::string()) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _drawOnceGroup(std::move(drawOnceGroup)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) {
+        explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels, std::string drawOnceGroup = std::string(), std::vector<std::shared_ptr<TileModelInstances>> models = std::vector<std::shared_ptr<TileModelInstances>>()) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _drawOnceGroup(std::move(drawOnceGroup)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)), _models(std::move(models)) {
             // Answered once here so the renderer's per-frame span pass can skip a layer - and, in a
             // style that uses no elevation-mode at all, every layer - without walking its geometry.
             // Same for the contact shadow: its search cannot stop early, so absence is the costly case.
@@ -54,10 +55,12 @@ namespace massif::vt {
         /** Whether any geometry here is an extrusion's contact shadow on the ground it stands on. */
         bool hasGroundAOGeometry() const { return _hasGroundAOGeometry; }
         const std::vector<std::shared_ptr<TileLabel>>& getLabels() const { return _labels; }
+        const std::vector<std::shared_ptr<TileModelInstances>>& getModels() const { return _models; }
 
         std::size_t getFeatureCount() const {
             std::size_t featureCount = std::accumulate(_geometries.begin(), _geometries.end(), static_cast<std::size_t>(0), [](std::size_t count, const std::shared_ptr<TileGeometry>& geometry) { return count + geometry->getFeatureCount(); });
             featureCount += _labels.size();
+            featureCount += std::accumulate(_models.begin(), _models.end(), static_cast<std::size_t>(0), [](std::size_t count, const std::shared_ptr<TileModelInstances>& models) { return count + models->getInstances().size(); });
             return featureCount;
         }
 
@@ -66,7 +69,8 @@ namespace massif::vt {
             std::size_t bitmapsSize = std::accumulate(_bitmaps.begin(), _bitmaps.end(), static_cast<std::size_t>(0), [](std::size_t size, const std::shared_ptr<TileBitmap>& bitmap) { return size + bitmap->getResidentSize(); });
             std::size_t geometriesSize = std::accumulate(_geometries.begin(), _geometries.end(), static_cast<std::size_t>(0), [](std::size_t size, const std::shared_ptr<TileGeometry>& geometry) { return size + geometry->getResidentSize(); });
             std::size_t labelsSize = std::accumulate(_labels.begin(), _labels.end(), static_cast<std::size_t>(0), [](std::size_t size, const std::shared_ptr<TileLabel>& label) { return size + label->getResidentSize(); });
-            return 16 + backgroundsSize + bitmapsSize + geometriesSize + labelsSize;
+            std::size_t modelsSize = std::accumulate(_models.begin(), _models.end(), static_cast<std::size_t>(0), [](std::size_t size, const std::shared_ptr<TileModelInstances>& models) { return size + models->getResidentSize(); });
+            return 16 + backgroundsSize + bitmapsSize + geometriesSize + labelsSize + modelsSize;
         }
 
     private:
@@ -81,6 +85,7 @@ namespace massif::vt {
         bool _hasSpanGeometry = false;
         bool _hasGroundAOGeometry = false;
         const std::vector<std::shared_ptr<TileLabel>> _labels;
+        const std::vector<std::shared_ptr<TileModelInstances>> _models;
     };
 }
 

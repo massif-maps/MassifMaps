@@ -26,6 +26,7 @@
       "campsite_allow_overlap",
       "polygons_border",
       "lighting",
+      "models_3d",
       "sac_scale_labels",
       "trails",
       "road_osm_low",
@@ -13048,7 +13049,7 @@
               "zoom"
             ],
             15,
-            0,
+            0.05,
             15.3,
             1
           ],
@@ -17506,6 +17507,16 @@
         ],
         "circle-stroke-color": "hsl(0, 0%, 100%)",
         "circle-stroke-width": 1
+      },
+      "metadata": {
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "models_3d"
+          ],
+          0
+        ]
       }
     },
     {
@@ -20412,7 +20423,15 @@
             1,
             0
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "models_3d"
+          ],
+          0
+        ]
       }
     },
     {
@@ -145772,6 +145791,13 @@
       ]
     },
     "lighting": {
+      "default": 1,
+      "values": [
+        0,
+        1
+      ]
+    },
+    "models_3d": {
       "default": 1,
       "values": [
         0,

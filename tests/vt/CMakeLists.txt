@@ -20,6 +20,7 @@ add_executable(vt_tests
   LabelPerspectiveTest.cpp
   ExtrusionCornerTest.cpp
   ExtrusionBevelTest.cpp
+  ExtrusionShadowTopTest.cpp
   ExtrusionGroundSkirtClipTest.cpp
   LineJoinTest.cpp
   LineEndArrowClipTest.cpp
@@ -54,6 +55,8 @@ add_executable(vt_tests
   NormalMapSlopeTest.cpp
   LabelYieldTest.cpp
   LabelGroupDistanceTest.cpp
+  GLBParserTest.cpp
+  ModelInstancesTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   # The yield and group distance tests run a placement pass.
@@ -70,6 +73,7 @@ add_executable(vt_tests
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/StrokeMap.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/BitmapManager.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/NormalMapBuilder.cpp"
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/GLBParser.cpp"
   ${TESS2_SOURCES}
   ${BIDI_SOURCES})
 
@@ -86,6 +90,8 @@ target_include_directories(vt_tests PRIVATE
   # stdext/unistring.h, reached from TextFormatter.cpp.
   "${SDK_BASE_DIR}/libs-external/utf8/source"
   # vt uses boost only for boost::math::constants::pi - see ../../BUILDING.md for the symlink.
-  "${SDK_BASE_DIR}/libs-external/boost")
+  "${SDK_BASE_DIR}/libs-external/boost"
+  # GLBParser.cpp reads the glTF JSON chunk with it.
+  "${SDK_BASE_DIR}/libs-external/rapidjson/include")
 
 add_test(NAME vt COMMAND vt_tests)

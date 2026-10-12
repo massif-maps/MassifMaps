@@ -18,7 +18,9 @@ def extrusion(color, night=None):
                      # with a tenth of it emitted at night only, so a block still stands off the dark street
                      'fill-extrusion-color': by_hour(night, color) if night else color,
                      'fill-extrusion-opacity': OPACITY,
-                     'fill-extrusion-vertical-scale': zoom_ramp(15, 0, 15.3, 1),
+                     # Standard's 0 at z15 left a gap on a zoom out: the SDK keeps z15 tiles, which carry no
+                     # footprint, a moment below z15, and skips a flat extrusion (style README, Buildings)
+                     'fill-extrusion-vertical-scale': zoom_ramp(15, 0.05, 15.3, 1),
                      'fill-extrusion-ambient-occlusion-intensity': 0.15,
                      # the converter moves the ground AO a level earlier (AO_GROUND_ZOOM_SHIFT): this
                      # fades it in over the SDK's z17-18, where 17-17.8 read as a switch

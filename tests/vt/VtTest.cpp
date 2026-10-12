@@ -12,6 +12,7 @@ void testLineLabel();
 void testExtrusionCorner();
 void testExtrusionRingOrientation();
 void testExtrusionBevel();
+void testExtrusionShadowTop();
 void testExtrusionGroundSkirtClip();
 void testLineJoinReach();
 void testLineEndArrowClip();
@@ -55,6 +56,12 @@ void testLabelTextOpacity();
 void testLabelRadialOffset();
 void testLabelEdgeOffset();
 void testLabelYield();
+void testGLBParser();
+void testModelInstances();
+void testModelInstancePick();
+void testModelDensityReduction();
+void testModelOverlap();
+void testModelOverlapAcrossZooms();
 
 int main() {
     testPlateBitmap();
@@ -63,6 +70,7 @@ int main() {
     testExtrusionCorner();
     testExtrusionRingOrientation();
     testExtrusionBevel();
+    testExtrusionShadowTop();
     testExtrusionGroundSkirtClip();
     testLineJoinReach();
     testLineEndArrowClip();
@@ -106,6 +114,12 @@ int main() {
     testLabelRadialOffset();
     testLabelEdgeOffset();
     testLabelYield();
+    testGLBParser();
+    testModelInstances();
+    testModelInstancePick();
+    testModelDensityReduction();
+    testModelOverlap();
+    testModelOverlapAcrossZooms();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

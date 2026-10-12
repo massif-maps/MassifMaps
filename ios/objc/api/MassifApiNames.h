@@ -568,8 +568,12 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMinVisibleZoom;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMinZoom;
 /** Returns the current minimum distance between clusters (in device-independent pixels). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMinimumClusterDistance;
+/** Returns whether animated 3D models (a CartoCSS model-spin) move. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyModelAnimationsEnabled;
 /** Returns the model asset of the object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyModelAsset;
+/** Returns whether 3D models cast shadows. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyModelShadowsEnabled;
 /** Returns the name included in the address. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyName;
 /** Returns the near plane distance. */
@@ -1061,6 +1065,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateAddresses;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateHorizon;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClear;
+FOUNDATION_EXPORT MassifMethod const MassifMethodClearModelHighlight;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearTileCaches;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCreateLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodDeleteLayer;
@@ -1102,6 +1107,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceZoomLevelB
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetFloatParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetModelHighlight;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetOffset;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetPosition;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSegments;

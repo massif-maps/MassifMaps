@@ -272,7 +272,7 @@ namespace massif {
 
         /**
          * Returns the shadow softness.
-         * @return The PCF radius in shadow-map texels. The default is 1.
+         * @return The PCF radius in shadow-map texels. The default is 0.5.
          */
         float getShadowSoftness() const;
         /**

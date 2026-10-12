@@ -449,8 +449,8 @@ public final class DemoConfig {
     public static int SUN_COLOR_ARGB = 0xFFFFFFFF;
     /** 1 = mapbox's own shadow depth; the SDK scales it by the sun's share of the light. */
     public static float SHADOW_STRENGTH = 1.0f;
-    public static float SHADOW_SOFTNESS = 1.0f;
-    public static int SHADOW_MAP_SIZE = 1024;
+    public static float SHADOW_SOFTNESS = 0.5f;
+    public static int SHADOW_MAP_SIZE = 2048;
     public static int SHADOW_CASCADES = 2;
     public static float SHADOW_BIAS = 1.0f;
     public static float SHADOW_NORMAL_OFFSET = 3.0f;   // shadow-map texels
@@ -842,6 +842,14 @@ public final class DemoConfig {
 
     public static boolean LAYER_BUGS = false;
 
+    /** 3D MODELS (CartoCSS model rules, issue #131): a grid of trees around the start camera and three
+     *  wind turbines, drawn from the GLBs in assets/style/models. A tap highlights the model hit. */
+    public static boolean LAYER_MODELS = false;
+
+    /** A local .pmtiles under the data root used INSTEAD of VECTOR_URL, e.g.
+     *  "rhones_alpes/rhone-alpes.pmtiles" - offline OpenMapTiles data with trees and wind turbines. */
+    public static String VECTOR_FILE = "";
+
     /** ::icon attachment: glyph = a real icon under the label, empty = text-name '' as reported,
      *  none = no ::icon attachment at all (the reported "works" control). */
     public static String BUG_ICON_MODE = "glyph";
@@ -1226,6 +1234,7 @@ public final class DemoConfig {
         LAYER_API_SOURCE = DemoCfg.cfgBool("apiSource", LAYER_API_SOURCE);
         API_LAYER_SPEC = DemoCfg.cfgStr("apiLayerSpec", API_LAYER_SPEC);
         LAYER_BUGS = DemoCfg.cfgBool("bugs", LAYER_BUGS);
+        LAYER_MODELS = DemoCfg.cfgBool("models", LAYER_MODELS);
 
         // style regression repros
         BUG_ICON_MODE = DemoCfg.cfgStr("bugIcon", BUG_ICON_MODE);
@@ -1267,6 +1276,7 @@ public final class DemoConfig {
 
         // sources
         VECTOR_URL = DemoCfg.cfgStr("vectorUrl", VECTOR_URL);
+        VECTOR_FILE = DemoCfg.cfgStr("vectorFile", VECTOR_FILE);
         VECTOR_MIN_ZOOM = DemoCfg.cfgInt("vectorMinZoom", VECTOR_MIN_ZOOM);
         VECTOR_MAX_ZOOM = DemoCfg.cfgInt("vectorMaxZoom", VECTOR_MAX_ZOOM);
         // Its own db per source, or the persistent cache answers a mapbox request with the

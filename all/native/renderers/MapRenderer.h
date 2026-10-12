@@ -384,6 +384,7 @@ namespace massif {
         int _shadowMapSize = 0;
         int _shadowMapCascades = 0;
         bool _shadowMapTerrainCasts = true;
+        bool _shadowMapModelShadows = true;
         int _shadowMapAge = 0;
         // Per cascade: caster content signature when that page was last drawn.
         std::array<float, 4> _shadowMapFadeSignatures = { };

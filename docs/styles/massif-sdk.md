@@ -59,6 +59,7 @@ The ones an app usually sets:
 | `sac_scale_labels` | 0 (1 on e-ink) | the T1..T6 grade along each trail |
 | `road_osm_low` | 0 | major roads drawn as OSM Carto draws them at low zoom |
 | `lighting` | 1 (0 on e-ink) | 0 draws every colour flat, lit by no hour |
+| `models_3d` | 1 (0 on e-ink, hybrid) | 3D trees and spinning wind turbines; 0 draws the tree icons instead |
 
 A colour-only change repaints without decoding a tile again:
 [live style parameters](../features/style-parameters.md).

@@ -60,6 +60,7 @@ namespace massif {
         void setTerrainDepthWriteMode(bool enabled);
         void setTerrainRenderOrder(int order);
         void setLayerBlendingSpeed(float speed);
+        void setModelHighlight(const std::optional<vt::GLTileRenderer::ModelHighlight>& highlight);
         // The layer's opacity for what its screen blend does not cover: the 3D pass and an external drape.
         void setLayerOpacity(float opacity);
         void setLabelBlendingSpeed(float speed);
@@ -133,7 +134,7 @@ namespace massif {
         int renderDrapedSurface(const vt::TileId& tileId, unsigned int drapeTexture, float uvOffsetX, float uvOffsetY, float uvScale);
         int renderDrapedSurfaceFill(const vt::TileId& tileId, const Color& color);
         int blitDrapeTexture(unsigned int srcTexture, float dstOffsetX, float dstOffsetY, float dstScale, float uvOffsetX, float uvOffsetY, float uvScale);
-        bool calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
+        bool calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, const cglib::mat4x4<double>* nearerViewProj, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         float shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const;
         int consumeShadowCastersMissingElevation();
         int renderShadowCasters(const std::vector<vt::TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
@@ -248,6 +249,7 @@ namespace massif {
         unsigned int _labelOcclusionDepthVersion = 0; // the terrain occlusion depth the labels were last placed against
         bool _interactionMode;
         float _layerBlendingSpeed;
+        std::optional<vt::GLTileRenderer::ModelHighlight> _modelHighlight;
         float _layerOpacity;
         float _labelBlendingSpeed;
         float _labelPerspectiveScaling;

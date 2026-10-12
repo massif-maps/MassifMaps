@@ -9,6 +9,7 @@
 
 #include "core/MapTile.h"
 #include "core/MapBounds.h"
+#include "graphics/Color.h"
 #include "components/CancelableTask.h"
 #include "components/DirectorPtr.h"
 #include "components/Task.h"
@@ -131,6 +132,20 @@ namespace massif {
          * @param speed The new relative speed value. Use zero or negative values to disable blending.
          */
         void setLayerBlendingSpeed(float speed);
+
+        /**
+         * Draws one 3D model instance (a CartoCSS model rule) in a highlight colour, for a selection.
+         * Takes what a click on it reported: VectorTileClickInfo's feature id and feature position index.
+         * Feature ids must tell the features of the layer apart for this to pick out one instance.
+         * @param featureId The id of the feature the model was placed for.
+         * @param featurePosIndex The index of the point in the feature, 0 for a single point.
+         * @param color The highlight colour; its alpha is how much of the model's own colour it replaces.
+         */
+        void setModelHighlight(long long featureId, int featurePosIndex, const Color& color);
+        /**
+         * Removes the highlight set by setModelHighlight.
+         */
+        void clearModelHighlight();
 
         /**
          * Returns the label blending speed, in full fades per second.

@@ -4287,6 +4287,10 @@ export interface PropertyTypes {
     "mainLightColor": number;
     /** Returns the direction of the main light. */
     "mainLightDirection": Position;
+    /** Returns whether animated 3D models (a CartoCSS model-spin) move. */
+    "modelAnimationsEnabled": boolean;
+    /** Returns whether 3D models cast shadows. */
+    "modelShadowsEnabled": boolean;
     /** Returns true if a tilt gesture orbits the ground under the pointer instead of the screen centre. */
     "orbitAroundPivot": boolean;
     /** Returns the map panning bounds constraints. Map bounds minimum and maximum points are in the base projection's coordinate system. */
@@ -8496,6 +8500,7 @@ export interface MethodTypes {
   "massif::CompositeVectorTileLayer": {
     addExternalDataSource: (name: string, dataSource: Handle, type: number) => void;
     addVectorDataSource: (name: string, dataSource: Handle) => void;
+    clearModelHighlight: () => void;
     clearTileCaches: (all: boolean) => void;
     getExternalChildLayer: (name: string) => Handle<"massif::Layer">;
     getExternalDataSourceNames: () => Json;
@@ -8503,6 +8508,7 @@ export interface MethodTypes {
     removeExternalDataSource: (name: string) => boolean;
     setExternalDataSourceMaxOverzoomLevel: (name: string, level: number) => void;
     setExternalDataSourceZoomLevelBias: (name: string, bias: number) => void;
+    setModelHighlight: (featureId: number, featurePosIndex: number, color: number) => void;
   };
   "massif::ContourTileDataSource": {
     getMetaDataElement: (key: string) => Json;
@@ -8974,8 +8980,10 @@ export interface MethodTypes {
   "massif::TorqueTileDecoder": {
   };
   "massif::TorqueTileLayer": {
+    clearModelHighlight: () => void;
     clearTileCaches: (all: boolean) => void;
     refresh: () => void;
+    setModelHighlight: (featureId: number, featurePosIndex: number, color: number) => void;
   };
   "massif::TouchHandlerListener": {
   };
@@ -9032,8 +9040,10 @@ export interface MethodTypes {
     getFeature: (index: number) => Handle<"massif::VectorTileFeature">;
   };
   "massif::VectorTileLayer": {
+    clearModelHighlight: () => void;
     clearTileCaches: (all: boolean) => void;
     refresh: () => void;
+    setModelHighlight: (featureId: number, featurePosIndex: number, color: number) => void;
   };
   "massif::VectorTileSearchService": {
     findFeatures: (request: Handle) => Handle<"massif::VectorTileFeatureCollection">;

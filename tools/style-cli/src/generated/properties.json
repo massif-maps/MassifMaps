@@ -6,6 +6,7 @@
     "line",
     "line-pattern",
     "marker",
+    "model",
     "point",
     "polygon",
     "polygon-pattern",
@@ -893,6 +894,126 @@
       "default": "0.0",
       "live": false,
       "baked": true
+    },
+    {
+      "cartocss": "model-allow-density-reduction",
+      "mapnik": "allow-density-reduction",
+      "symbolizer": "model",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "true",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-allow-overlap",
+      "mapnik": "allow-overlap",
+      "symbolizer": "model",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-cast-shadows",
+      "mapnik": "cast-shadows",
+      "symbolizer": "model",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "true",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-color",
+      "mapnik": "color",
+      "symbolizer": "model",
+      "kind": "color",
+      "type": "ColorProperty",
+      "default": "#ffffff",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-color-mix",
+      "mapnik": "color-mix",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-file",
+      "mapnik": "file",
+      "symbolizer": "model",
+      "kind": "string",
+      "type": "StringProperty",
+      "default": "",
+      "live": false,
+      "baked": true
+    },
+    {
+      "cartocss": "model-opacity",
+      "mapnik": "opacity",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "model-rotation",
+      "mapnik": "rotation",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-scale",
+      "mapnik": "scale",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "1.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-spin",
+      "mapnik": "spin",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-spin-axis",
+      "mapnik": "spin-axis",
+      "symbolizer": "model",
+      "kind": "string",
+      "type": "StringProperty",
+      "default": "y",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "model-z-offset",
+      "mapnik": "z-offset",
+      "symbolizer": "model",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
     },
     {
       "cartocss": "point-comp-op",

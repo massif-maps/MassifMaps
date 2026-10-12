@@ -12,6 +12,7 @@
 #include "vt/FontManager.h"
 #include "vt/StrokeMap.h"
 #include "vt/GlyphMap.h"
+#include "vt/ModelManager.h"
 #include "vt/TileGeometry.h"
 
 #include <memory>
@@ -56,12 +57,13 @@ namespace massif::mvt {
             vt::StyleStateRef _styleState;
         };
 
-        explicit SymbolizerContext(std::shared_ptr<vt::BitmapManager> bitmapManager, std::shared_ptr<vt::FontManager> fontManager, std::shared_ptr<vt::StrokeMap> strokeMap, std::shared_ptr<vt::GlyphMap> glyphMap, const Settings& settings) : _bitmapManager(std::move(bitmapManager)), _fontManager(std::move(fontManager)), _strokeMap(std::move(strokeMap)), _glyphMap(std::move(glyphMap)), _settings(settings) { }
+        explicit SymbolizerContext(std::shared_ptr<vt::BitmapManager> bitmapManager, std::shared_ptr<vt::FontManager> fontManager, std::shared_ptr<vt::StrokeMap> strokeMap, std::shared_ptr<vt::GlyphMap> glyphMap, const Settings& settings, std::shared_ptr<vt::ModelManager> modelManager = std::shared_ptr<vt::ModelManager>()) : _bitmapManager(std::move(bitmapManager)), _fontManager(std::move(fontManager)), _strokeMap(std::move(strokeMap)), _glyphMap(std::move(glyphMap)), _modelManager(std::move(modelManager)), _settings(settings) { }
 
         std::shared_ptr<vt::BitmapManager> getBitmapManager() const { return _bitmapManager; }
         std::shared_ptr<vt::FontManager> getFontManager() const { return _fontManager; }
         std::shared_ptr<vt::StrokeMap> getStrokeMap() const { return _strokeMap; }
         std::shared_ptr<vt::GlyphMap> getGlyphMap() const { return _glyphMap; }
+        std::shared_ptr<vt::ModelManager> getModelManager() const { return _modelManager; }
         const Settings& getSettings() const { return _settings; }
 
     private:
@@ -69,6 +71,7 @@ namespace massif::mvt {
         const std::shared_ptr<vt::FontManager> _fontManager;
         const std::shared_ptr<vt::StrokeMap> _strokeMap;
         const std::shared_ptr<vt::GlyphMap> _glyphMap;
+        const std::shared_ptr<vt::ModelManager> _modelManager;
         const Settings _settings;
     };
 }

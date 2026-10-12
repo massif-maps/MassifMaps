@@ -2506,7 +2506,7 @@ namespace massif {
                 std::array<std::vector<vt::TileId>, TerrainShadowMap::MAX_CASCADES> cascadeCasterTiles;
                 for (int cascade = 0; cascade < cascades; cascade++) {
                     double depthRangeMeters = 1.0, texelMeters = 0;
-                    if (tileLayers.front()->calculateShadowViewProj(coverTileIds, casterTileIds, casterHeights, shadowSunDir, tileHeights, minHeight, maxHeight, lighting.shadowDistance, cglib::length(viewState.getCameraPos() - viewState.getFocusPos()), _terrainShadowMap->getSize(), cascade, cascades, cascadeCasterTiles[cascade], depthRangeMeters, texelMeters, lightViewProjs[cascade])) {
+                    if (tileLayers.front()->calculateShadowViewProj(coverTileIds, casterTileIds, casterHeights, shadowSunDir, tileHeights, minHeight, maxHeight, lighting.shadowDistance, cglib::length(viewState.getCameraPos() - viewState.getFocusPos()), _terrainShadowMap->getSize(), cascade, cascades, cascade > 0 ? &lightViewProjs[0] : nullptr, cascadeCasterTiles[cascade], depthRangeMeters, texelMeters, lightViewProjs[cascade])) {
                         // The bias is metric, the shader wants a fraction of the normalised light
                         // depth, and each cascade's box spans its own - so divide per cascade.
                         shadowTexelMeters[cascade] = texelMeters;
@@ -2534,8 +2534,11 @@ namespace massif {
                         }
                     }
                     // The atlas layout itself changed: every page has to be redrawn.
+                    // The caster set itself changed: the pages still hold the models' shadows.
+                    bool modelShadows = _options->isModelShadowsEnabled();
                     bool refreshAll = !_shadowMapValid
                         || _shadowMapTerrainCasts != terrainCasts
+                        || _shadowMapModelShadows != modelShadows
                         || _shadowMapSize != _terrainShadowMap->getSize()
                         || _shadowMapCascades != cascades;
                     _shadowMapAge++;
@@ -2588,6 +2591,7 @@ namespace massif {
                             _shadowMapSize = _terrainShadowMap->getSize();
                             _shadowMapCascades = cascades;
                             _shadowMapTerrainCasts = terrainCasts;
+                            _shadowMapModelShadows = modelShadows;
                             _shadowMapAge = 0;
                             shadowPasses++;
                         } else {

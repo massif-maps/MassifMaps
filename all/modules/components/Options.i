@@ -104,6 +104,8 @@
 %attribute(massif::Options, float, DPI, getDPI, setDPI)
 %attribute(massif::Options, float, DrawDistance, getDrawDistance, setDrawDistance)
 %attribute(massif::Options, float, LabelViewDistance, getLabelViewDistance, setLabelViewDistance)
+%attribute(massif::Options, bool, ModelAnimationsEnabled, isModelAnimationsEnabled, setModelAnimationsEnabled)
+%attribute(massif::Options, bool, ModelShadowsEnabled, isModelShadowsEnabled, setModelShadowsEnabled)
 %attribute(massif::Options, float, LabelPadding, getLabelPadding, setLabelPadding)
 %std_exceptions(massif::Options::setBaseProjection)
 %std_exceptions(massif::Options::setTiltRange)

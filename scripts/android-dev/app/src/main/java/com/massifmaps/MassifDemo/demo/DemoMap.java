@@ -31,6 +31,7 @@ import com.massifmaps.datasources.MBTilesTileDataSource;
 import com.massifmaps.datasources.MultiTileDataSource;
 import com.massifmaps.datasources.OrderedTileDataSource;
 import com.massifmaps.datasources.PersistentCacheTileDataSource;
+import com.massifmaps.datasources.PMTilesTileDataSource;
 import com.massifmaps.datasources.TileDataSource;
 import com.massifmaps.geometry.FeatureCollection;
 import com.massifmaps.geometry.FeatureVector;
@@ -97,7 +98,7 @@ public class DemoMap {
 
     /** One switchable layer of the demo. */
     public enum Feature {
-        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, PEAKS
+        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, MODELS, PEAKS
     }
 
     /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -109,6 +110,7 @@ public class DemoMap {
         Feature.CONTOUR, Feature.CONTOUR_TILES, Feature.ROUTES, Feature.ROUTE_TEST, Feature.ROUTE_SELECT, Feature.MANEUVERS, Feature.ELEMENTS,
         Feature.SPANS,
         Feature.BUGS,
+        Feature.MODELS,
         // Last: the summit names go over everything the map draws.
         Feature.PEAKS
     };
@@ -261,6 +263,7 @@ public class DemoMap {
             case API_SOURCE: return DemoConfig.LAYER_API_SOURCE;
             case SPANS: return DemoConfig.LAYER_SPANS;
             case BUGS: return DemoConfig.LAYER_BUGS;
+            case MODELS: return DemoConfig.LAYER_MODELS;
             case PEAKS: return DemoConfig.LAYER_PEAKS;
             default: return false;
         }
@@ -283,6 +286,7 @@ public class DemoMap {
             case ELEMENTS: DemoConfig.LAYER_ELEMENTS = enabled; break;
             case API_SOURCE: DemoConfig.LAYER_API_SOURCE = enabled; break;
             case BUGS: DemoConfig.LAYER_BUGS = enabled; break;
+            case MODELS: DemoConfig.LAYER_MODELS = enabled; break;
             case PEAKS: DemoConfig.LAYER_PEAKS = enabled; break;
         }
         rebuildLayers();
@@ -352,6 +356,7 @@ public class DemoMap {
             case API_SOURCE: return createApiSourceLayer();
             case SPANS: return createSpansLayer();
             case BUGS: return createBugsLayer();
+            case MODELS: return createModelsLayer();
             case PEAKS: return createPeaksLayer();
             default: return null;
         }
@@ -397,6 +402,7 @@ public class DemoMap {
             baseLayer = new VectorTileLayer(vectorSource(), baseDecoder);
             baseLayer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
             baseLayer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
+            highlightModelsOnClick(baseLayer);
             return baseLayer;
         }
 
@@ -406,6 +412,7 @@ public class DemoMap {
         baseLayer = layer;
         layer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
         layer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
+        highlightModelsOnClick(layer);
         syncCompositeSources();
         if (DemoConfig.STYLE_SOURCE == DemoConfig.StyleSource.PROJECT && DemoConfig.PARAM_TOGGLE_INTERVAL_MS > 0) {
             startParamToggleLoop();
@@ -887,6 +894,60 @@ public class DemoMap {
         return layer;
     }
 
+    /** A tap on a tree or wind turbine of the style's model rules tints that one model; other taps pass. */
+    private static void highlightModelsOnClick(final VectorTileLayer layer) {
+        layer.setVectorTileEventListener(new VectorTileEventListener() {
+            @Override
+            public boolean onVectorTileClicked(VectorTileClickInfo info) {
+                String cls = info.getFeature().getProperties().getObjectElement("class").getString();
+                if (!"poi".equals(info.getFeatureLayerName()) || !("tree".equals(cls) || "wind_turbine".equals(cls))) {
+                    return false;
+                }
+                Log.i(TAG, "MODELPICK " + cls + " id " + info.getFeatureId() + " point " + info.getFeaturePosIndex());
+                layer.setModelHighlight(info.getFeatureId(), info.getFeaturePosIndex(), new Color(0xffff8800));
+                return true;
+            }
+        });
+    }
+
+    /** Trees in a jittered grid as ONE MultiPoint, as OpenMapTiles packs them, and three turbines. */
+    private Layer createModelsLayer() {
+        GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
+        StringBuilder trees = new StringBuilder();
+        java.util.Random random = new java.util.Random(131);
+        for (int i = 0; i < 24; i++) {
+            for (int j = 0; j < 24; j++) {
+                double lon = DemoConfig.START_LON - 0.0030 + i * 0.00025 + random.nextGaussian() * 0.00004;
+                double lat = DemoConfig.START_LAT - 0.0020 + j * 0.00018 + random.nextGaussian() * 0.00003;
+                trees.append(trees.length() > 0 ? "," : "").append('[').append(lon).append(',').append(lat).append(']');
+            }
+        }
+        StringBuilder turbines = new StringBuilder();
+        for (int i = 0; i < 3; i++) {
+            turbines.append(i > 0 ? "," : "").append("{\"type\":\"Feature\",\"id\":").append(100 + i)
+                    .append(",\"properties\":{},\"geometry\":{\"type\":\"Point\",\"coordinates\":[")
+                    .append(DemoConfig.START_LON + 0.006 + i * 0.004).append(',').append(DemoConfig.START_LAT + 0.004).append("]}}");
+        }
+        try {
+            source.setLayerGeoJSONString(source.createLayer("trees"), "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"id\":1,"
+                    + "\"properties\":{},\"geometry\":{\"type\":\"MultiPoint\",\"coordinates\":[" + trees + "]}}]}");
+            source.setLayerGeoJSONString(source.createLayer("turbines"), "{\"type\":\"FeatureCollection\",\"features\":[" + turbines + "]}");
+        } catch (IOException e) {
+            Log.w(TAG, "model geojson rejected: " + e.getMessage());
+            return null;
+        }
+        final VectorTileLayer layer = new VectorTileLayer(source, DemoStyles.createModelDecoder());
+        layer.setVectorTileEventListener(new VectorTileEventListener() {
+            @Override
+            public boolean onVectorTileClicked(VectorTileClickInfo info) {
+                Log.i(TAG, "MODELPICK " + info.getFeatureLayerName() + " id " + info.getFeatureId() + " point " + info.getFeaturePosIndex());
+                layer.setModelHighlight(info.getFeatureId(), info.getFeaturePosIndex(), new Color(0xffff8800));
+                return true;
+            }
+        });
+        return layer;
+    }
+
     private Layer createBugsLayer() {
         MBVectorTileDecoder decoder = DemoStyles.createBugDecoder();
         GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
@@ -1353,6 +1414,13 @@ public class DemoMap {
 
     /** Master vector tiles of the base map, persistently cached. */
     public TileDataSource vectorSource() {
+        if (cachedVector == null && !DemoConfig.VECTOR_FILE.isEmpty()) {
+            try {
+                cachedVector = new PMTilesTileDataSource(dataPath + "/" + DemoConfig.VECTOR_FILE);
+            } catch (IOException e) {
+                Log.w(TAG, "vectorFile not readable, using vectorUrl: " + e.getMessage());
+            }
+        }
         if (cachedVector == null) {
             HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.VECTOR_MIN_ZOOM, DemoConfig.VECTOR_MAX_ZOOM, DemoConfig.VECTOR_URL);
             source.setHTTPHeaders(userAgentHeaders());

@@ -34,7 +34,7 @@ namespace massif {
         // A SCALE on mapbox's bias triple, so 1 is theirs unchanged.
         _shadowBias(1.0f),
         _shadowNormalOffset(3.0f),
-        _shadowSoftness(1.0f),
+        _shadowSoftness(0.5f),
         _shadowDistance(0.0f), // 0 = the built-in 4.5, which is mapbox's
         _shadowCasterMargin(3),
         _onChangeListeners(),

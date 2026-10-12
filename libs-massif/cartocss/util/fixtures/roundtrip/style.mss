@@ -99,3 +99,18 @@ Map {
   shield-icon-background-width: 18;
   shield-icon-background-height: 18;
 }
+
+/* a model per point, random() seeded per point, a file picked by a step */
+#poi[class = 'tree']::model {
+  model-file: step(random(0, 3), (0, url('a.glb')), (1, url('b.glb')), (2, url('c.glb')));
+  model-scale: random(0.8, 1.2);
+  model-rotation: random(0, 360, [osm_id]);
+  model-z-offset: 2;
+  model-color: #6b8f3a;
+  model-color-mix: 0.2;
+  model-opacity: linear([view::zoom], (15, 0), (16, 1));
+  model-cast-shadows: false;
+  model-spin: 14;
+  model-spin-axis: z;
+  model-allow-density-reduction: false;
+}

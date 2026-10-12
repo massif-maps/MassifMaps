@@ -38,6 +38,9 @@ namespace massif::mvt {
         // Whether the layer needs the shared extrusion anchor pass - see buildExtrusionAnchors.
         virtual bool needsExtrusionAnchors() const { return false; }
 
+        // Whether the symbolizer reads the whole source tile, not just what the tile's clip keeps.
+        virtual bool needsUnclippedFeatures() const { return false; }
+
         // What a legend calls this symbolizer ("line", "text"...); empty for one that draws no feature.
         virtual std::string getTypeName() const { return std::string(); }
 

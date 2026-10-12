@@ -59,6 +59,7 @@ add_executable(style_tests
   MultiPointPartIndexTest.cpp
   FieldValuePrefilterTest.cpp
   NullishCoalescingTest.cpp
+  RandomExpressionTest.cpp
   RenderModeAlignmentTest.cpp
   ${STYLE_SOURCES})
 

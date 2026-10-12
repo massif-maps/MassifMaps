@@ -18,14 +18,15 @@ def extrusion(color, night=None):
                      # with a tenth of it emitted at night only, so a block still stands off the dark street
                      'fill-extrusion-color': by_hour(night, color) if night else color,
                      'fill-extrusion-opacity': OPACITY,
-                     # Standard's 0 at z15 left a gap on a zoom out: the SDK keeps z15 tiles, which carry no
-                     # footprint, a moment below z15, and skips a flat extrusion (style README, Buildings)
-                     'fill-extrusion-vertical-scale': zoom_ramp(15, 0.05, 15.3, 1),
+                     'fill-extrusion-vertical-scale': zoom_ramp(15, 0, 15.3, 1),
                      'fill-extrusion-ambient-occlusion-intensity': 0.15,
                      # the converter moves the ground AO a level earlier (AO_GROUND_ZOOM_SHIFT): this
                      # fades it in over the SDK's z17-18, where 17-17.8 read as a switch
                      'fill-extrusion-ambient-occlusion-ground-radius': zoom_ramp(18, 0, 19, 8)},
-                     'massif:layout': {'fill-extrusion-edge-radius': 0.4}, 'massif:minzoom-param': 'building_min_zoom'})
+                     'massif:layout': {'fill-extrusion-edge-radius': 0.4}, 'massif:minzoom-param': 'building_min_zoom',
+                     # the SDK decodes the blocks a level early (flat, so not drawn) and a zoom in finds them
+                     # loaded instead of popping them in half grown; MapLibre has no ramp, it keeps z15
+                     'massif:sdk-minzoom': 14})
 
 
 def flat(id, paint, v):
@@ -33,7 +34,11 @@ def flat(id, paint, v):
     return [layer(id, 'fill', 'building', minzoom=13, maxzoom=15, paint=paint,
                   metadata={'massif:minzoom-param': 'building_min_zoom'}),
             gate(layer(id + '-z15', 'fill', 'building', minzoom=15, paint=paint,
-                       metadata={'massif:minzoom-param': 'building_min_zoom'}), v, 'buildings', 1)]
+                       metadata={'massif:minzoom-param': 'building_min_zoom'}), v, 'buildings', 1),
+            # under the flat blocks while a zoom out keeps the z15 tiles below z15 (style README, Buildings);
+            # opaque, as the drape bakes a zoom-faded fill at a stale zoom
+            gate(layer(id + '-under', 'fill', 'building', minzoom=15, maxzoom=16, paint=paint,
+                       metadata={'massif:minzoom-param': 'building_min_zoom'}), v, 'buildings', 2)]
 
 
 def layers(v):

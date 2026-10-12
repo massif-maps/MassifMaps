@@ -157,7 +157,8 @@ def crown_ao(p, crown_center, crown_radii):
 def leaf(mesh, rng, base, along, length, width, color, droop=0.24, cup=0.1, pitch=0.0, roll=0.0):
     """One leaf from `base` along the (level) direction `along`, bending down under its own weight
     towards the tip and cupped at the edges; normals follow the bend. Round from above: an ellipse
-    outline. Two-sided, 40 triangles."""
+    outline. One-sided, 12 triangles: the renderer draws models unculled and lights a back face
+    from its flipped normal, so a second face would only double the cost."""
     flat = unit(np.array((along[0], along[1], 0.0)))
     side = np.cross(UP, flat)
     up = unit(UP + side * roll - flat * pitch)
@@ -172,21 +173,16 @@ def leaf(mesh, rng, base, along, length, width, color, droop=0.24, cup=0.1, pitc
         normal = unit(up + u * (2 * droop * t) + v * (2 * cup * side))
         return base + u * (t * length) + v * y + up * z, normal
 
-    ts = (0.12, 0.3, 0.5, 0.7, 0.88)
+    ts = (0.18, 0.5, 0.82)
     rows = [[point(0.0, 0)]] + [[point(t, s) for s in (-1, 0, 1)] for t in ts] + [[point(1.0, 0)]]
-    under = shade(color, 0.9)
-    for face_color, sign in ((color, 1), (under, -1)):
-        ids = [[mesh.vert(p + up * (0.01 * sign), face_color, n * sign) for p, n in row] for row in rows]
-        b0, t = ids[0][0], ids[-1][0]
-        (l, m, r), (lt, mt, rt) = ids[1], ids[-2]
-        tris = [(b0, m, l), (b0, r, m), (lt, mt, t), (mt, rt, t)]
-        for (l1, m1, r1), (l2, m2, r2) in zip(ids[1:-2], ids[2:-1]):
-            tris += [(l1, m1, m2), (l1, m2, l2), (m1, r1, r2), (m1, r2, m2)]
-        for i, j, k in tris:
-            if sign > 0:
-                mesh.itri(i, k, j)
-            else:
-                mesh.itri(i, j, k)
+    ids = [[mesh.vert(p, color, n) for p, n in row] for row in rows]
+    b0, t = ids[0][0], ids[-1][0]
+    (l, m, r), (lt, mt, rt) = ids[1], ids[-2]
+    tris = [(b0, m, l), (b0, r, m), (lt, mt, t), (mt, rt, t)]
+    for (l1, m1, r1), (l2, m2, r2) in zip(ids[1:-2], ids[2:-1]):
+        tris += [(l1, m1, m2), (l1, m2, l2), (m1, r1, r2), (m1, r2, m2)]
+    for i, j, k in tris:
+        mesh.itri(i, k, j)
 
 
 def clump(mesh, rng, center, radius, color):

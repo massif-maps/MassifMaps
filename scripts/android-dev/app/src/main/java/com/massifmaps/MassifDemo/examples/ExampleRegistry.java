@@ -16,6 +16,7 @@ public final class ExampleRegistry {
         com.massifmaps.MassifDemo.examples.styles.MassifVariantsExample.class,
         com.massifmaps.MassifDemo.examples.styles.StyleParametersExample.class,
         com.massifmaps.MassifDemo.examples.styles.DayCycleLightExample.class,
+        com.massifmaps.MassifDemo.examples.styles.ModelsExample.class,
         com.massifmaps.MassifDemo.examples.styles.LabelStylingExample.class,
         com.massifmaps.MassifDemo.examples.terrain.Terrain3DExample.class,
         com.massifmaps.MassifDemo.examples.terrain.Switch2D3DExample.class,

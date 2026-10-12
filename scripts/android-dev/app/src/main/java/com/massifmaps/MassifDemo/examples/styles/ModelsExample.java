@@ -18,7 +18,7 @@ import com.massifmaps.api.Spec;
     title = "Draw 3D models",
     description = "A CartoCSS `model` rule places a .glb at every point: trees with a random "
                 + "model, size, heading and tint each, and a wind turbine whose rotor spins. "
-                + "Massif draws its own trees with `params.models_3d`, on tiles that carry them.",
+                + "Massif's own trees take `params.models_3d` and their .glb files added to the style package.",
     section = Sections.STYLES,
     order = 25)
 public class ModelsExample extends MapExample {
@@ -80,8 +80,11 @@ public class ModelsExample extends MapExample {
     public void onStart(ExampleHost host) {
         final MassifMap map = host.map();
 
-        // models_3d draws Massif's own trees and turbines at the tiles' poi points of class tree and
-        // wind_turbine. OpenFreeMap's tiles carry neither, so here the points are the app's own.
+        // Massif's own trees and turbines: models_3d draws them at the tiles' poi points of class
+        // tree and wind_turbine. Their .glb files are NOT in the style package - download the five
+        // from https://github.com/massif-maps/MassifMaps/tree/master/styles/massif/models
+        // and put them in a models/ folder at the package root, beside project.json. OpenFreeMap's
+        // tiles carry no such points anyway, so the models below are drawn on the app's own.
         map.style("massif", Spec.of("mbvt")
             .set("project", Spec.of("project")
                 .set("assets", Spec.of("zip").set("data", Spec.of("url").set("url", "assets://styles/massif.zip")))

@@ -77,8 +77,11 @@ static NSString * const kStyle =
 - (void)startWithHost:(id<MSFExampleHost>)host {
     MSFMassifMap *map = host.map;
 
-    // models_3d draws Massif's own trees and turbines at the tiles' poi points of class tree and
-    // wind_turbine. OpenFreeMap's tiles carry neither, so here the points are the app's own.
+    // Massif's own trees and turbines: models_3d draws them at the tiles' poi points of class
+    // tree and wind_turbine. Their .glb files are NOT in the style package - download the five
+    // from https://github.com/massif-maps/MassifMaps/tree/master/styles/massif/models
+    // and put them in a models/ folder at the package root, beside project.json. OpenFreeMap's
+    // tiles carry no such points anyway, so the models below are drawn on the app's own.
     [map style:@"massif"
           spec:[[[MSFSpec of:@"mbvt"]
                   set:@"project" value:[[[MSFSpec of:@"project"]

@@ -10,7 +10,6 @@
         "eink": "eink"
       },
       "default": "hybrid"
-    },
-    "models_3d": 0
+    }
   }
 }

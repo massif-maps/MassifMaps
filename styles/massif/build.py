@@ -298,13 +298,10 @@ def convert(out='carto', extra=()):
 
 
 def add_models(out):
-    """SDK only: the 3D models (models/gen_models.py) and models.mss placing them, listed after the
-    converted rules so a child project restating `styles` can leave them out."""
+    """SDK only: models.mss placing the 3D models, listed after the converted rules so a child project
+    restating `styles` can leave them out. The .glb files are NOT packaged: an app that turns
+    models_3d on adds styles/massif/models/*.glb under models/ itself (README)."""
     src = os.path.join(HERE, 'models')
-    os.makedirs(os.path.join(HERE, out, 'models'), exist_ok=True)
-    for f in sorted(os.listdir(src)):
-        if f.endswith('.glb'):
-            shutil.copy(os.path.join(src, f), os.path.join(HERE, out, 'models', f))
     shutil.copy(os.path.join(src, 'models.mss'), os.path.join(HERE, out, 'models.mss'))
     path = os.path.join(HERE, out, 'project.json')
     project = json.load(open(path))

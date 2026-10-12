@@ -260,8 +260,15 @@ parameter test.
 is 0 by default on every variant: an app turns it on (`style.set('params.models_3d', '1')`), and the
 points only exist in tilesets that carry `poi` trees (Alpimaps' planetiler does, OpenFreeMap does
 not). Where the models draw, the
-unnamed tree icons and dots do not; a named tree keeps its icon and name. `build.py --convert` copies it after `style.mss` with the `.glb` files into
-`carto/models/`. MapLibre has no model layer, so the reference styles keep only the icons.
+unnamed tree icons and dots do not; a named tree keeps its icon and name. `build.py --convert` copies it after `style.mss`. MapLibre has no model layer, so the reference
+styles keep only the icons.
+
+**The `.glb` files are not in the package** (58 KB that most maps never draw). To use them, download
+the five files from [`styles/massif/models`](https://github.com/massif-maps/MassifMaps/tree/master/styles/massif/models)
+(`tree-spreading.glb`, `tree-layered.glb`, `tree-clumped.glb`, `wind-turbine-tower.glb`,
+`wind-turbine-rotor.glb`), put them in a `models/` folder at the root of the style package, beside
+`project.json`, and set `params.models_3d` to 1. The `3d-models` example in the gallery shows the
+same rules on an app's own points.
 
 - **Trees**: three models, `random()` picking one per tree with its own scale (0.8-1.2), heading and
   tint, seeded by the tree's position so each point of a packed MultiPoint differs and keeps it

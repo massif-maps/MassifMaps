@@ -59,7 +59,7 @@ The ones an app usually sets:
 | `sac_scale_labels` | 0 (1 on e-ink) | the T1..T6 grade along each trail |
 | `road_osm_low` | 0 | major roads drawn as OSM Carto draws them at low zoom |
 | `lighting` | 1 (0 on e-ink) | 0 draws every colour flat, lit by no hour |
-| `models_3d` | 0 | 1 draws 3D trees and spinning wind turbines in place of the tree icons, on tilesets that carry the points |
+| `models_3d` | 0 | 1 draws 3D trees and spinning wind turbines in place of the tree icons, on tilesets that carry the points; the `.glb` files are not packaged, add [them](https://github.com/massif-maps/MassifMaps/tree/master/styles/massif/models) under `models/` |
 
 A colour-only change repaints without decoding a tile again:
 [live style parameters](../features/style-parameters.md).

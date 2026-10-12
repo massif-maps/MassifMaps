@@ -68,6 +68,18 @@ retained `contour` layers at blend 1.0, with nothing active in it at all). `Rend
 separates the two: set by `initializeRenderTile`, cleared by `mergeExistingRenderTile`, which is
 exactly the ground that has no new tile yet.
 
+**A retained layer is inherited once per target, not once per copy.** `initializeRenderTile` hands
+a new render tile the retained layers of every existing render tile it intersects, and
+`mergeExistingRenderTile` splits a retained tile into four child copies that all carry the same
+layers. Inherited per copy, each rebuild multiplied them by four, and the cull worker rebuilds every
+frame while the camera moves - faster than the cross-fade can retire them. Measured on the web
+(3d-models example, browser pane, wheel zoom to z18.2 at tilt 32): the render layers of 60 render
+tiles went 855 → 1923 → 5007 → 17307 → 66471 → 263092 → 1 049 538 in seven rebuilds, almost all duplicates. The
+cull worker stalled the map for 2.4 s while the wasm heap went 396 MB → 2 GB, then `mi_new` failed
+and the module aborted (`RuntimeError: unreachable`). A native build has more heap to grow into; the
+same growth there is presumably the "map hangs at very high zoom in 3D" report, not measured. `insertRetainedLayer` (`vt/RenderTileBlend.h`) now keeps one entry per layer and
+target, at the higher blend; `tests/vt/RenderTileBlendTest.cpp` runs six rebuilds of it.
+
 **The culling box has to hold what stands on the tile, not just its ground.** `isTileVisible` tests
 `calculateTileBBox`, which is the tile's ground, and an extrusion stands out of it — so a building
 is still on screen well after the ground it stands on has left the frustum, and culling there takes

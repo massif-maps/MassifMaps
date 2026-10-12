@@ -2767,7 +2767,9 @@ namespace massif::vt {
 
                 existingRenderLayer.targetTileId = (existingRenderLayer.targetTileId.zoom > targetTileId.zoom ? existingRenderLayer.targetTileId : targetTileId);
                 existingRenderLayer.active = !existingRenderLayer.layer->getBitmaps().empty();
-                existingRenderLayers.insert({ layerIdx, std::move(existingRenderLayer) });
+                // The split copies of a retained tile carry the same layers: kept per copy, a rebuild
+                // per frame multiplied them by 4 each time until the heap ran out.
+                insertRetainedLayer(existingRenderLayers, layerIdx, std::move(existingRenderLayer));
             }
         }
 

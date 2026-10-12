@@ -62,6 +62,8 @@ by URL.
 | `model-spin-axis` | `x`, `y` or `z`, the model's own axis through its origin | `y` | no |
 | `model-allow-density-reduction` | thin dense points to one per grid cell (below) | `true` | no |
 | `model-allow-overlap` | draw a model even where its crown crosses one already placed (below) | `false` | no |
+| `model-max-distance` | metres from the camera past which the model is not drawn (below); `0` for no limit | `0` | no |
+| `model-shadow-max-distance` | the same for its shadow, never past `model-max-distance` | `0` | no |
 
 The generated [CartoCSS property reference](./cartocss-properties.md) lists them too.
 
@@ -85,6 +87,20 @@ part of the shadow map every frame, so its shadow turns with it.
 `Options.modelShadowsEnabled = false` stops every model casting a shadow, whatever its rule says;
 models still receive the buildings' and the terrain's. On a low-end GPU the tree shadows cost more
 than the trees (`--es apiSet modelShadowsEnabled=false` in the demo).
+
+## Distance
+
+A tilted view reaches far: trees a few pixels tall and shadows nobody sees still cost their draws.
+`model-max-distance` stops drawing a model that far from the camera, and `model-shadow-max-distance`
+stops its shadow sooner. Over the last 15% of the distance a model shrinks into the ground, each
+point at its own distance so they do not all go on one line (mapbox's building cutoff does the same);
+past it, its tiles are skipped whole, so the saving is real draw calls and shadow-pass work. A
+spinning model past its shadow distance no longer redraws the shadow map every frame. Taps ignore
+models past their distance.
+
+```css
+#trees { model-max-distance: 1500; model-shadow-max-distance: 600; }
+```
 
 ## Density, fade and detail by zoom
 

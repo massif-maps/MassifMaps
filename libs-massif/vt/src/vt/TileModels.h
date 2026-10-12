@@ -29,9 +29,11 @@ namespace massif::vt {
         cglib::vec3<float> spinAxis = cglib::vec3<float>(0, 1, 0);
         bool densityReduction = true; // see TileLayerBuilder::createModelProcessor
         bool allowOverlap = false;
+        float maxDistance = 0.0f;       // metres from the camera, 0 for no limit
+        float shadowMaxDistance = 0.0f; // the same, for the shadow it casts
 
         bool operator == (const ModelStyle& other) const {
-            return model == other.model && opacityFunc == other.opacityFunc && castShadows == other.castShadows && spinSpeed == other.spinSpeed && spinAxis == other.spinAxis && densityReduction == other.densityReduction && allowOverlap == other.allowOverlap;
+            return model == other.model && opacityFunc == other.opacityFunc && castShadows == other.castShadows && spinSpeed == other.spinSpeed && spinAxis == other.spinAxis && densityReduction == other.densityReduction && allowOverlap == other.allowOverlap && maxDistance == other.maxDistance && shadowMaxDistance == other.shadowMaxDistance;
         }
     };
 
@@ -69,6 +71,22 @@ namespace massif::vt {
         const std::vector<long long> _featureIds;
         const std::vector<int> _geoPosIndexes;
     };
+
+    // The distance a model is drawn to, or casts to: metres from the camera, 0 for none. A shadow
+    // never outlives its model.
+    inline float modelCutoffMetres(const ModelStyle& style, bool caster) {
+        if (caster && style.shadowMaxDistance > 0.0f) {
+            return style.maxDistance > 0.0f ? std::min(style.maxDistance, style.shadowMaxDistance) : style.shadowMaxDistance;
+        }
+        return style.maxDistance;
+    }
+
+    // The camera's ground distance to a tile's corners p0, p1: below every anchor's, so a tile in reach is never dropped.
+    inline double modelTileGroundDistance(const cglib::vec3<double>& camera, const cglib::vec3<double>& p0, const cglib::vec3<double>& p1) {
+        double dx = std::max({ std::min(p0(0), p1(0)) - camera(0), 0.0, camera(0) - std::max(p0(0), p1(0)) });
+        double dy = std::max({ std::min(p0(1), p1(1)) - camera(1), 0.0, camera(1) - std::max(p0(1), p1(1)) });
+        return std::sqrt(dx * dx + dy * dy);
+    }
 
     // Seed of a point: its world position, quantised to 2^-26 of the world (about 0.6 m at the
     // equator, finer than any tile's coordinate grid), so it survives re-cutting the tile.

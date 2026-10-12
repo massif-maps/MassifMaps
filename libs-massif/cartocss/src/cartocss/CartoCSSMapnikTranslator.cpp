@@ -929,6 +929,8 @@ namespace massif::css {
         { "model-spin-axis", "spin-axis" },
         { "model-allow-density-reduction", "allow-density-reduction" },
         { "model-allow-overlap", "allow-overlap" },
+        { "model-max-distance", "max-distance" },
+        { "model-shadow-max-distance", "shadow-max-distance" },
         // NOTE: comp-op not supported for building symbolizer
 
         // Config symbolizers for external data sources (CompositeVectorTileLayer).

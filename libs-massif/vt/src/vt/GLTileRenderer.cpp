@@ -871,7 +871,7 @@ namespace massif::vt {
             }
             for (const std::shared_ptr<TileModelInstances>& models : renderLayer.layer->getModels()) {
                 const ModelStyle& style = models->getStyle();
-                if (style.spinSpeed != 0.0f && style.castShadows && !models->getInstances().empty()) {
+                if (style.spinSpeed != 0.0f && style.castShadows && !models->getInstances().empty() && isModelTileInReach(renderLayer.targetTileId, modelCutoffMetres(style, true))) {
                     spinning = true;
                     return;
                 }
@@ -2193,6 +2193,16 @@ namespace massif::vt {
         return tileScale / (2.0 * PI_D * 6378137.0 * std::cos(latitude));
     }
 
+    bool GLTileRenderer::isModelTileInReach(const TileId& targetTileId, float cutoffMetres) const {
+        if (!(cutoffMetres > 0.0f)) {
+            return true;
+        }
+        cglib::mat4x4<double> tileMatrix = calculateTileMatrix(targetTileId);
+        cglib::vec3<double> p0 = cglib::transform_point(cglib::vec3<double>(0, 0, 0), tileMatrix);
+        cglib::vec3<double> p1 = cglib::transform_point(cglib::vec3<double>(1, 1, 0), tileMatrix);
+        return modelTileGroundDistance(_viewState.origin, p0, p1) <= cutoffMetres * modelMetresToTileUnits(targetTileId) * std::abs(tileMatrix(0, 0));
+    }
+
     void GLTileRenderer::setModelAnimationsEnabled(bool enabled) {
         std::lock_guard<std::mutex> lock(_mutex);
         _modelAnimationsEnabled = enabled;
@@ -2213,7 +2223,8 @@ namespace massif::vt {
         double metres = modelMetresToTileUnits(renderLayer.sourceTileId) * tileMatrix(0, 0);
         cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(renderLayer.targetTileId)) * calculateTileMatrix2D(renderLayer.sourceTileId);
         for (const std::shared_ptr<TileModelInstances>& models : renderLayer.layer->getModels()) {
-            if (!models->getStyle().model) {
+            float cutoffMetres = modelCutoffMetres(models->getStyle(), false);
+            if (!models->getStyle().model || !isModelTileInReach(renderLayer.targetTileId, cutoffMetres)) {
                 continue;
             }
             cglib::bbox3<double> bounds = modelPickBounds(models->getStyle());
@@ -2228,6 +2239,9 @@ namespace massif::vt {
                 if (_terrainMode && _labelElevationProvider) {
                     double height = _labelElevationProvider(_transformer->calculateMercatorPos(anchor), renderLayer.sourceTileId.zoom);
                     anchor = _transformer->calculateElevatedPos(anchor, std::isfinite(height) ? height : 0.0); // NaN: no DEM held there
+                }
+                if (cutoffMetres > 0.0f && cglib::length(anchor - _viewState.origin) > cutoffMetres * metres) {
+                    continue; // shrunk away in modelVsh
                 }
                 for (std::size_t rayIndex = 0; rayIndex < rays.size(); rayIndex++) {
                     double t = 0;
@@ -7135,6 +7149,10 @@ namespace massif::vt {
         if (!style.model || models->getInstances().empty() || (_transformer && _transformer->isSpherical()) || (caster && (!style.castShadows || !_modelShadowsEnabled))) {
             return;
         }
+        float cutoffMetres = modelCutoffMetres(style, caster);
+        if (!isModelTileInReach(targetTileId, cutoffMetres)) {
+            return;
+        }
         float styleOpacity = evaluateFloatFunc(style.opacityFunc);
         float alpha = blend * opacity * styleOpacity;
         if (caster ? styleOpacity < SHADOW_NO_CAST_OPACITY_CUTOFF : alpha <= 0.0f) {
@@ -7155,8 +7173,11 @@ namespace massif::vt {
 
         cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(sourceTileId));
         glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, tileMatrix.data());
-        glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], static_cast<float>(modelMetresToTileUnits(sourceTileId)));
+        double heightScale = modelMetresToTileUnits(sourceTileId);
+        glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], static_cast<float>(heightScale));
         glUniform4f(shaderProgram.uniforms[U_MODELSPIN], style.spinAxis(0), style.spinAxis(1), style.spinAxis(2), style.spinSpeed);
+        cglib::vec3<double> camera = cglib::transform_point(_viewState.origin, cglib::inverse(calculateTileMatrix(sourceTileId)));
+        glUniform4f(shaderProgram.uniforms[U_MODELCUTOFF], static_cast<float>(camera(0)), static_cast<float>(camera(1)), static_cast<float>(camera(2)), static_cast<float>(cutoffMetres * heightScale));
         // Wrapped to one turn of THIS spin on the CPU, in double: the angle stays continuous and the
         // float the shader multiplies stays small
         double turn = (style.spinSpeed != 0.0f ? 6.283185307179586 / std::abs(style.spinSpeed) : 1.0);

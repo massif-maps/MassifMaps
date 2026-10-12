@@ -37,6 +37,12 @@ the 3D terrain.
 still gets a different model, size and heading for each tree, stable across zoom levels. See
 [Per-feature randomness](./random-expression.md).
 
+The Massif styles carry these rules behind the `models_3d` parameter, off by default: set
+`params.models_3d` to 1 on a tileset whose `poi` layer has tree and wind turbine points. The
+[`3d-models` example](/examples#3d-models) (Android, iOS, NativeScript, web) turns it on and adds
+models of its own: a GeoJSON source of park trees and a spinning wind turbine, its `.glb` files read
+by URL.
+
 ## Properties
 
 | Property | Value | Default | Per point |

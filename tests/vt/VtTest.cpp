@@ -22,6 +22,7 @@ void testExtrusionFloorClip();
 void testLabelDistance();
 void testSpanGeometry();
 void testShadowCasterClip();
+void testFillTileClip();
 void testShadowBox();
 void testShaderFlags();
 void testExtrusionAnchor();
@@ -80,6 +81,7 @@ int main() {
     testLabelDistance();
     testSpanGeometry();
     testShadowCasterClip();
+    testFillTileClip();
     testShadowBox();
     testShaderFlags();
     testExtrusionAnchor();

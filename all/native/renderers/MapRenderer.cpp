@@ -48,6 +48,7 @@
 #include "terrain/ElevationManager.h"
 #include "terrain/TerrainSkirts.h"
 #include "terrain/PrefetchOrder.h"
+#include "terrain/TerrainTileTransformer.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
 #include "renderers/workers/BillboardPlacementWorker.h"
@@ -2795,7 +2796,11 @@ namespace massif {
         int viewZoomCap = static_cast<int>(std::ceil(viewState.getRenderZoom())) + 1;
         coverZoom = std::min(maxCollectedZoom, std::max(viewZoomCap, minTopZoom));
         // Split only where a finer collected tile sits inside, or leaves explode (04-terrain.md).
-        std::shared_ptr<vt::TileTransformer> tileTransformer = _options->getTileTransformer();
+        // The options' transformer is the flat base: its sea-level box drops the near ground of a high valley.
+        std::shared_ptr<const vt::TileTransformer> tileTransformer = _options->getTileTransformer();
+        if (tileTransformer && terrainOptions->getElevationManager()) {
+            tileTransformer = std::make_shared<TerrainTileTransformer>(tileTransformer, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), true, true, true);
+        }
         const cglib::frustum3<double>& frustum = viewState.getFrustum();
         auto inView = [&tileTransformer, &frustum](const vt::TileId& tileId) {
             return !tileTransformer || frustum.inside(tileTransformer->calculateTileBBox(tileId));

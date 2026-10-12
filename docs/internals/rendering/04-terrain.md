@@ -750,6 +750,35 @@ passes — which turned out not to run at all once a tile layer owns depth-write
 (`background=0 keepDepth=0 prepass=0 depthWriteAssigned=1`), and eliminating them is what pointed at
 vt's direct draw.
 
+### A tile no leaf covers draws live, and its fills clip to it
+
+`isTileDraped` is false for a render tile when no drape leaf covers it or sits inside it, and
+`renderGeometry2D` then draws that tile's fills and lines live, displaced on the terrain.
+
+**The cover dropped visible ground.** The frustum test that drops split-off children
+([above](#normalizing-the-cover-to-a-quadtree-partition)) took `Options::getTileTransformer()`,
+which is the flat base transformer, not the layers' `TerrainTileTransformer`: every box sat at sea
+level. In a valley the near ground at the bottom of the screen is hundreds of metres above that box,
+which then falls under the frustum, so those tiles were split off and dropped while still on
+screen. The test now wraps the base in a `TerrainTileTransformer`, whose box spans the DEM range.
+Leaves per frame did not move measurably (21-27 at the camera below).
+
+**And a live fill reached far past its tile.** `TileLayerBuilder` keeps a fill triangle whole once
+its bbox touches the tile (`_polygonClipBox.inside` is *intersects*), so an overzoomed z14 landuse
+triangle runs hundreds of metres beyond a z17 tile; terrain mode draws no tile stencil masks, and
+`lineFsh` discarded outside its tile but `polygonFsh` did not. The triangle's corners sample the
+elevation texture clamped at its edge, so its plane cuts through the relief, and wherever the
+ground dips below it the plane wins the drape's `GL_LEQUAL`.
+
+Together: Grenoble's Jardin de Ville, web gallery, camera z17 -> z18 -> z17 -> z17.3 at tilt 32 (web
+zoom numbers) - a wobbly blank the size of the parterre, 300 m north of the bottom-edge tile whose
+residential fill drew it (found by reading one screen pixel after every live draw). The drape
+textures under it were correct; terrain off, drape fills off, or removing any layer that changed the
+cover all "fixed" it, which is why it read as a bake bug. Either fix alone cleared it in 3 of 3 runs
+that reproduced it every time before. `polygonFsh` now clips to the target tile as `lineFsh` does,
+under `TERRAIN` (`tests/vt/FillTileClipTest.cpp` keeps the two clauses equal), for the tiles that
+still draw live: no DEM yet, or `DrapeFillsEnabled` off.
+
 ## Extrusions on a slope
 
 A building is a **prism, not a cloth**. Displacing every extrusion vertex by the terrain under it —

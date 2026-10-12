@@ -2127,8 +2127,8 @@ namespace massif::vt {
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         #endif
-        #ifdef DRAPE_MASK
-        // Position in the target tile, for the drape mask lookup.
+        #if defined(DRAPE_MASK) || defined(TERRAIN)
+        // Position in the target tile, for the drape mask lookup and the tile clip.
         varying mediump vec2 vTileUnit;
         #endif
         #if defined(SPAN) && defined(TERRAIN)
@@ -2146,7 +2146,9 @@ namespace massif::vt {
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
-        #ifdef DRAPE_MASK
+        #if defined(TERRAIN) && defined(TERRAIN_SPHERICAL)
+            vTileUnit = terrainSphereTileUnit(pos);
+        #elif defined(DRAPE_MASK) || defined(TERRAIN)
             vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
         #endif
         #if defined(SPAN) && defined(TERRAIN)
@@ -2192,14 +2194,25 @@ namespace massif::vt {
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         #endif
-        #ifdef DRAPE_MASK
+        #if defined(DRAPE_MASK) || defined(TERRAIN)
         varying mediump vec2 vTileUnit;
+        #endif
+        #ifdef TERRAIN
+        uniform highp vec2 uTileUnitScale;
         #endif
         #if defined(SPAN) && defined(TERRAIN)
         varying highp_opt float vSpanChord;
         #endif
 
         void main(void) {
+        #ifdef TERRAIN
+            // Triangles cross the tile edge, and terrain draws no tile masks: clip as lineFsh does.
+            if (uTileUnitScale != vec2(0.0)) {
+                if (vTileUnit.x < -0.0005 || vTileUnit.x > 1.0005 || vTileUnit.y < -0.0005 || vTileUnit.y > 1.0005) {
+                    discard;
+                }
+            }
+        #endif
         #if defined(SPAN) && defined(TERRAIN)
             // Past a portal the bed would hide the quay.
             if (vSpanChord < 0.0 || vSpanChord > 1.0) {

@@ -11,7 +11,7 @@ Map {
   building-ao-intensity: [param::building_ao] * (linear([view::zoom], (17, 0), (18, 0.15)));
   building-ao-ground-radius: linear([view::zoom], (17, 0), (18, 8));
   building-edge-radius: 0.4;
-  building-height-scale: linear([view::zoom], (15, 0), (15.3, 1));
+  building-height-scale: linear([view::zoom], (15, 0.05), (15.3, 1));
   building-ambient: 0.8;
   building-light-intensity: 0.2;
   ambient-color: @glacier_low;

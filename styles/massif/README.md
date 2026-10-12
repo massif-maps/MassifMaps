@@ -48,6 +48,13 @@ palette plus the modules it adds.
   roofs. A wall's foot takes gl-js's faux AO (the converter's `building-vertical-gradient` over 6 m).
   At night a block takes Standard's night tone (`hsl(0, 0%, 58%)`) with a tenth of it emitted, and
   the SDK lights it with Standard's moon; the ground AO fades in over z17-18.
+- **Blocks rise over z15-15.3 from 5 %, not from 0 as Standard's do.** The footprints stop at
+  z15 and the blocks start there, but zooming out the SDK keeps the z15 tiles until 0.15 of a level
+  below it (`TileLayer::TARGET_TILE_ZOOM_HYSTERESIS`), plus their decode, and skips a block scaled
+  to 0: every building vanished for ~1 s. A zoom-faded footprint under the blocks does not help in
+  3D, where the drape bakes it at a quantised zoom and holds it while the camera moves. Measured on
+  the emulator, Grenoble tilt 47, zoom-out 17.5 to 15.3 over 10 s: frames with no building
+  2D 19 / 3D 13 before, 0 / 0 after.
 - **Water names**: rivers from z9 (`river_label_min_zoom`), a lake's name upright at the middle of
   its centreline from whatever zoom the tiles carry it, a word a line, as Alpimaps sets it; in a
   deep blue (`water-label`, 5.4:1 against the water fill on streets, outdoor and topo) on a

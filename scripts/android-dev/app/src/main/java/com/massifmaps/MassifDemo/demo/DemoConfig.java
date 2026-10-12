@@ -447,8 +447,8 @@ public final class DemoConfig {
     public static int SUN_COLOR_ARGB = 0xFFFFFFFF;
     /** 1 = mapbox's own shadow depth; the SDK scales it by the sun's share of the light. */
     public static float SHADOW_STRENGTH = 1.0f;
-    public static float SHADOW_SOFTNESS = 1.0f;
-    public static int SHADOW_MAP_SIZE = 1024;
+    public static float SHADOW_SOFTNESS = 0.5f;
+    public static int SHADOW_MAP_SIZE = 2048;
     public static int SHADOW_CASCADES = 2;
     public static float SHADOW_BIAS = 1.0f;
     public static float SHADOW_NORMAL_OFFSET = 3.0f;   // shadow-map texels

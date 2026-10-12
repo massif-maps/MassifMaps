@@ -389,6 +389,11 @@ Design points, each measured:
   moves the near page from 0.5 × to 1.5 × — 3 × coarser texels — and since
   `shadowSoftness` is counted in TEXELS the penumbra widens in metres with it. At z16.5 over the
   Louvre that washed the building shadows out and dropped the smallest of them entirely.
+- **Softness 0.5 texel by default** (2026-10-12; it was 1). mapbox takes ONE hardware `sampler2DShadow`
+  compare, a 2x2 bilinear footprint and no kernel (`_prelude_shadow.fragment.glsl` `shadow_sample`);
+  our ground's four taps at ±0.75 × softness spread ±1.75 texels at 1. At 0.5 a tree's shadow keeps
+  its crown shape and holds still through a z18→z19.5 zoom on the emulator (Grenoble park, 2048
+  map); the slope hatch at Gavet (`shadow 5`) looked no worse than at 1. Not yet device-checked.
 - **Caster margin, bounded by the shadow THROW.** Casters are the cover plus a ring, because a
   mountain off screen still throws its shadow into the view. The ring's reach is
   `relief / tan(sun altitude)` — capped at about 3.7 x the relief by the 15-degree floor — and NOT a

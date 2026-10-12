@@ -2556,3 +2556,21 @@ visible set per vector layer, 6.6 MB of cache accounting (put-time `TileInfo::ge
 (10 MB cap per layer) for no change in the hold, so they are dropped as before.
 
 Not measured: Android, iOS, the Crosscall. The first rise is unchanged within run-to-run noise.
+
+## 44. 3D tree placement read the whole source tile (2026-10-11)
+
+Method: arm64 emulator (host load 7-9), Grenoble 5.7300/45.1880, demo `--es anim zoomseq` from z16
+tilt 50, Massif streets on the Rhône-Alpes pmtiles, 60 s per run; a temporary timer around
+`TileReader::readTile` and around the model styles' `processLayer`, ~130 tiles a run.
+
+| Placement | model decode, total | per tile |
+| --- | --- | --- |
+| clipped tile (trees swap on zoom) | 89 ms | 0.7 ms |
+| whole source tile, first-come overlap | 775 ms | 6.1 ms |
+| points within 32 m, local ranked overlap ([19-models](rendering/19-models.md)) | 101-111 ms | 0.8 ms |
+
+Those decode runs were on an emulator that had come up on SwiftShader (software GL, `gles_mode_selected:
+swangle` in its log; start it with `-gpu host`), so its frame times (5-17 fps) measured the CPU
+rasteriser and are void. On the host GPU the same sequence draws at 40-48 fps, 6-15 ms a frame, with
+models and shadows on, models off, or shadows off alike; the decode totals moved by under 10%.
+Not measured: a device.

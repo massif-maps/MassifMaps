@@ -15,6 +15,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 
 namespace massif::mvt {
     class FeatureData;
@@ -36,6 +37,10 @@ namespace massif::mvt {
         bool isRender3D() const { return _render3D; }
 
         void setFeatureData(std::shared_ptr<const FeatureData> featureData) { _featureData = std::move(featureData); }
+
+        // What [mapnik::seed], random()'s default seed, reads: one placed instance of a feature
+        // (a point of a MultiPoint) when set, else the feature id.
+        void setInstanceSeed(std::optional<long long> seed) { _instanceSeed = seed; }
         const std::shared_ptr<const FeatureData>& getFeatureData() const { return _featureData; }
 
         void setStyleParameterStore(std::shared_ptr<const StyleParameterStore> paramStore) { _styleParameterStore = std::move(paramStore); }
@@ -80,6 +85,7 @@ namespace massif::mvt {
         bool _render3D = false;
         float _scaleDenom = zoom2ScaleDenominator(0);
         std::shared_ptr<const FeatureData> _featureData;
+        std::optional<long long> _instanceSeed;
         std::shared_ptr<const StyleParameterStore> _styleParameterStore;
         bool _styleParamOverride = false;
         std::string _styleParamOverrideName;

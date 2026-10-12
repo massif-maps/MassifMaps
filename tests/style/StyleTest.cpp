@@ -30,6 +30,7 @@ void testCartoCSSTemplate();
 void testMultiPointPartIndex();
 void testFieldValuePrefilter();
 void testNullishCoalescing();
+void testRandomExpression();
 void testRenderModeAlignment();
 
 int main() {
@@ -57,6 +58,7 @@ int main() {
     testMultiPointPartIndex();
     testFieldValuePrefilter();
     testNullishCoalescing();
+    testRandomExpression();
     testRenderModeAlignment();
 
     std::printf("\n%d failure(s)\n", failures);

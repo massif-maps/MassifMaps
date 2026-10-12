@@ -23,6 +23,7 @@
 #include "TileBitmap.h"
 #include "TileSurface.h"
 #include "TileSurfaceBuilder.h"
+#include "TileModels.h"
 #include "ExtrusionOccluder.h"
 #include "GLExtensions.h"
 
@@ -241,6 +242,16 @@ namespace massif::vt {
         // The Map block's building-emissive, for extrusions whose rule sets none; kept so a draw can
         // restore u_emissive after a rule overrode it.
         void setBuildingEmissive(float emissive) { _buildingEmissive = emissive; }
+        // Spinning models (model-spin) keep the map redrawing while one is drawn; off freezes them.
+        void setModelAnimationsEnabled(bool enabled);
+        void setModelShadowsEnabled(bool enabled);
+        // One model instance drawn in a highlight colour: by its source feature id and point index.
+        struct ModelHighlight {
+            long long featureId = 0;
+            int geoPointIndex = 0;
+            Color color;
+        };
+        void setModelHighlight(const std::optional<ModelHighlight>& highlight);
         // The projection's metres-to-internal factor, so shadows do not need a DEM to be fitted.
         void setMetersToInternal(double metersToInternal) { _metersToInternal = metersToInternal; _spanResolver.setMetersToInternal(metersToInternal); }
         // The owner renders the casters from the light into its own framebuffer and hands the texture back here.
@@ -492,6 +503,10 @@ namespace massif::vt {
 
         // Frames between sweeps for expired owners: a sweep walks every cached entry to free a VBO sooner.
         static constexpr int RESOURCE_SWEEP_INTERVAL_FRAMES = 8;
+        // Model vertex: position, normal, uv (floats), colour (RGBA8). Instance: position + index,
+        // heading, scale, z offset, spin phase (floats), tint (RGBA8).
+        static constexpr GLsizei MODEL_VERTEX_SIZE = 36;
+        static constexpr GLsizei MODEL_INSTANCE_SIZE = 32;
         // Widest halo the encoded glyph field can describe, in screen pixels (the old GLYPH_RENDER_SPREAD).
         static constexpr float MAX_HALO_PIXELS = 4.7f;
         // An icon's padded field allows a wider halo; the encoding runs out at ~8 texels.
@@ -619,6 +634,8 @@ namespace massif::vt {
         // POLYGON3D geometries in draw order, optionally only over coveredBy and including the shadow caster
         // tiles past the view; the callback returns false to skip the rest of that layer.
         template <typename Func>
+        void forEachVisibleRenderLayer(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const;
+        template <typename Func>
         void forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const;
         // forEachVisibleExtrusion over this renderer and its peers, for what labels stand on and are hidden by.
         template <typename Func>
@@ -706,6 +723,7 @@ namespace massif::vt {
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
         void renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry);
+        void renderTileModels(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileModelInstances>& models);
         // Which optional blocks a geometry draw runs with. Decided once by renderTileGeometry and
         // handed to the uniform setup, so the program flags and the uniforms cannot disagree.
         struct GeometryDrawMode {
@@ -719,6 +737,8 @@ namespace massif::vt {
         // Everything a geometry draw needs that does not depend on its type: the MVP, the terrain
         // depth bias and elevation, the shadow cascades and the style translation.
         void setupGeometryCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry, const GeometryDrawMode& mode);
+        // The same for vertices in coordScale vertex units, which is all of it a model draw shares.
+        void setupTileCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, float coordScale, const std::optional<cglib::vec2<float>>& translate, bool extrusion, const GeometryDrawMode& mode);
         // The vertex attribute layout of one compiled geometry. Bound as a VAO where the geometry
         // has one, attribute by attribute otherwise - which is also what the unbind undoes.
         static GLuint findGeometryVAO(const CompiledGeometry& compiledGeometry, GLuint program);
@@ -1050,6 +1070,32 @@ namespace massif::vt {
         std::map<std::weak_ptr<const TileSurface>, CompiledSurface, std::owner_less<std::weak_ptr<const TileSurface>>> _compiledTileSurfaceMap;
         std::map<int, CompiledLabelBatch> _compiledLabelBatches;
         int _labelBatchCounter = 0;
+
+        struct CompiledModelMesh {
+            GLuint vertexVBO = 0;
+            GLuint indicesVBO = 0;
+            GLsizei indexCount = 0;
+        };
+        struct CompiledModelInstances {
+            GLuint instanceVBO = 0;
+            // Per (program, mesh): programs need not share attribute locations (see CompiledGeometry).
+            std::map<std::pair<GLuint, std::size_t>, GLuint> vaos;
+        };
+        const std::vector<CompiledModelMesh>& buildCompiledModel(const std::shared_ptr<const Model>& model);
+        CompiledModelInstances& buildCompiledModelInstances(const std::shared_ptr<TileModelInstances>& models);
+        void deleteCompiledModel(std::vector<CompiledModelMesh>& meshes);
+        void deleteCompiledModelInstances(CompiledModelInstances& instances);
+        std::map<std::weak_ptr<const Model>, std::vector<CompiledModelMesh>, std::owner_less<std::weak_ptr<const Model>>> _compiledModelMap;
+        std::map<std::weak_ptr<const TileModelInstances>, CompiledModelInstances, std::owner_less<std::weak_ptr<const TileModelInstances>>> _compiledModelInstancesMap;
+        std::shared_ptr<const Bitmap> _modelWhiteBitmap = std::make_shared<Bitmap>(1, 1, std::vector<std::uint32_t>(1, 0xffffffffu));
+        bool _modelAnimationsEnabled = true;
+        bool _modelShadowsEnabled = true;
+        std::optional<ModelHighlight> _modelHighlight;
+        // Metres to vertex frame units at a tile's centre latitude, as DefaultVertexTransformer::calculateHeight.
+        static double modelMetresToTileUnits(const TileId& tileId);
+        void findTileModelIntersections(const RenderTileLayer& renderLayer, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const;
+        bool _modelsAnimating = false; // a spinning model was drawn last frame
+        double _modelTime = 0.0;       // seconds the spin has run
 
         VertexArray<cglib::vec3<float>> _labelVertices;
         VertexArray<cglib::vec3<float>> _labelOffsets;

@@ -60,6 +60,7 @@ namespace massif {
         void setTerrainDepthWriteMode(bool enabled);
         void setTerrainRenderOrder(int order);
         void setLayerBlendingSpeed(float speed);
+        void setModelHighlight(const std::optional<vt::GLTileRenderer::ModelHighlight>& highlight);
         // The layer's opacity for what its screen blend does not cover: the 3D pass and an external drape.
         void setLayerOpacity(float opacity);
         void setLabelBlendingSpeed(float speed);
@@ -248,6 +249,7 @@ namespace massif {
         unsigned int _labelOcclusionDepthVersion = 0; // the terrain occlusion depth the labels were last placed against
         bool _interactionMode;
         float _layerBlendingSpeed;
+        std::optional<vt::GLTileRenderer::ModelHighlight> _modelHighlight;
         float _layerOpacity;
         float _labelBlendingSpeed;
         float _labelPerspectiveScaling;

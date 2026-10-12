@@ -649,7 +649,7 @@ namespace massif::vt {
     }
 
     template <typename Func>
-    void GLTileRenderer::forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const {
+    void GLTileRenderer::forEachVisibleRenderLayer(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const {
         if (!_visibleRenderTiles) {
             return;
         }
@@ -672,20 +672,25 @@ namespace massif::vt {
                 }
             }
             for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
-                const RenderTileLayer& renderLayer = it->second;
-                if (!renderLayer.layer) {
-                    continue;
-                }
-                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
-                        continue;
-                    }
-                    if (!func(renderLayer, geometry)) {
-                        break;
-                    }
+                if (it->second.layer) {
+                    func(it->second);
                 }
             }
         }
+    }
+
+    template <typename Func>
+    void GLTileRenderer::forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const {
+        forEachVisibleRenderLayer(coveredBy, offscreen, [&func](const RenderTileLayer& renderLayer) {
+            for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
+                    continue;
+                }
+                if (!func(renderLayer, geometry)) {
+                    break;
+                }
+            }
+        });
     }
 
     template <typename Func>
@@ -805,6 +810,15 @@ namespace massif::vt {
             renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
             draws++;
             return true;
+        });
+        forEachVisibleRenderLayer(&tileIds, true, [this, &draws](const RenderTileLayer& renderLayer) {
+            if (renderLayer.layer->getModels().empty() || !extrusionCastsShadow(renderLayer)) {
+                return;
+            }
+            for (const std::shared_ptr<TileModelInstances>& models : renderLayer.layer->getModels()) {
+                renderTileModels(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, models);
+                draws++;
+            }
         });
         _shadowCasterSun = false;
         _shadowCasterViewProj = nullptr;
@@ -1433,6 +1447,8 @@ namespace massif::vt {
         _compiledTileBitmapMap.clear();
         _compiledTileSurfaceMap.clear();
         _compiledTileGeometryMap.clear();
+        _compiledModelMap.clear();
+        _compiledModelInstancesMap.clear();
         _compiledLabelBatches.clear();
         _overlayBuffer2D = FrameBuffer();
         _overlayBuffer3D = FrameBuffer();
@@ -1523,6 +1539,16 @@ namespace massif::vt {
             deleteCompiledGeometry(it->second.geometry);
         }
         _compiledTileGeometryMap.clear();
+
+        for (auto it = _compiledModelInstancesMap.begin(); it != _compiledModelInstancesMap.end(); it++) {
+            deleteCompiledModelInstances(it->second);
+        }
+        _compiledModelInstancesMap.clear();
+
+        for (auto it = _compiledModelMap.begin(); it != _compiledModelMap.end(); it++) {
+            deleteCompiledModel(it->second);
+        }
+        _compiledModelMap.clear();
 
         for (auto it = _compiledLabelBatches.begin(); it != _compiledLabelBatches.end(); it++) {
             deleteCompiledLabelBatch(it->second);
@@ -1628,6 +1654,12 @@ namespace massif::vt {
         VT_STAT_SPLIT(prepLabelBlendNs, prepClock);
         
         _labelBatchCounter = 0;
+
+        if (_modelAnimationsEnabled) {
+            _modelTime += dt;
+        }
+        refresh = _modelsAnimating || refresh;
+        _modelsAnimating = false;
 
         return refresh;
     }
@@ -1926,6 +1958,24 @@ namespace massif::vt {
             }
         }
 
+        for (auto it = _compiledModelInstancesMap.begin(); it != _compiledModelInstancesMap.end();) {
+            if (it->first.expired()) {
+                deleteCompiledModelInstances(it->second);
+                it = _compiledModelInstancesMap.erase(it);
+            } else {
+                it++;
+            }
+        }
+
+        for (auto it = _compiledModelMap.begin(); it != _compiledModelMap.end();) {
+            if (it->first.expired()) {
+                deleteCompiledModel(it->second);
+                it = _compiledModelMap.erase(it);
+            } else {
+                it++;
+            }
+        }
+
         // Unused label batches are kept: they are unlikely to be big and can be reused.
         VT_STAT_SPLIT(endFrameNs, statClock);
         return false;
@@ -2088,6 +2138,9 @@ namespace massif::vt {
                         }
                     }
                 }
+                if (geom3D && !renderLayer.layer->getModels().empty() && !_transformer->isSpherical()) {
+                    findTileModelIntersections(renderLayer, rays, results3D);
+                }
             }
         }
 
@@ -2099,6 +2152,59 @@ namespace massif::vt {
         return results.size() > initialResultCount;
     }
     
+    double GLTileRenderer::modelMetresToTileUnits(const TileId& tileId) {
+        constexpr double PI_D = 3.14159265358979323846;
+        double tileScale = static_cast<double>(1 << tileId.zoom);
+        double latitude = 0.5 * PI_D - 2.0 * std::atan(std::exp(2.0 * PI_D * ((tileId.y + 0.5) / tileScale - 0.5)));
+        return tileScale / (2.0 * PI_D * 6378137.0 * std::cos(latitude));
+    }
+
+    void GLTileRenderer::setModelAnimationsEnabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelAnimationsEnabled = enabled;
+    }
+
+    void GLTileRenderer::setModelShadowsEnabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelShadowsEnabled = enabled;
+    }
+
+    void GLTileRenderer::setModelHighlight(const std::optional<ModelHighlight>& highlight) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelHighlight = highlight;
+    }
+
+    void GLTileRenderer::findTileModelIntersections(const RenderTileLayer& renderLayer, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const {
+        cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId);
+        double metres = modelMetresToTileUnits(renderLayer.sourceTileId) * tileMatrix(0, 0);
+        cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(renderLayer.targetTileId)) * calculateTileMatrix2D(renderLayer.sourceTileId);
+        for (const std::shared_ptr<TileModelInstances>& models : renderLayer.layer->getModels()) {
+            if (!models->getStyle().model) {
+                continue;
+            }
+            cglib::bbox3<double> bounds = modelPickBounds(models->getStyle());
+            const std::vector<ModelInstance>& instances = models->getInstances();
+            for (std::size_t i = 0; i < instances.size(); i++) {
+                // The target tile that draws the anchor answers for it, as in modelVsh
+                cglib::vec2<double> clipPos = cglib::transform_point(cglib::vec2<double>(instances[i].position(0), 1.0 - instances[i].position(1)), clipTransform);
+                if (clipPos(0) < 0 || clipPos(1) < 0 || clipPos(0) >= 1 || clipPos(1) >= 1) {
+                    continue;
+                }
+                cglib::vec3<double> anchor = cglib::transform_point(cglib::vec3<double>(instances[i].position(0), instances[i].position(1), 0), tileMatrix);
+                if (_terrainMode && _labelElevationProvider) {
+                    double height = _labelElevationProvider(_transformer->calculateMercatorPos(anchor), renderLayer.sourceTileId.zoom);
+                    anchor = _transformer->calculateElevatedPos(anchor, std::isfinite(height) ? height : 0.0); // NaN: no DEM held there
+                }
+                for (std::size_t rayIndex = 0; rayIndex < rays.size(); rayIndex++) {
+                    double t = 0;
+                    if (intersectModelInstance(bounds, instances[i], anchor, metres, rays[rayIndex], t)) {
+                        results.emplace_back(renderLayer.sourceTileId, renderLayer.layer->getLayerIndex(), models->getIds()[i], models->getGeoPosIndexes()[i], rayIndex, t);
+                    }
+                }
+            }
+        }
+    }
+
     bool GLTileRenderer::findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, float buffer, bool labels2D, bool labels3D, std::vector<GeometryIntersectionInfo>& results) const {
 
         std::lock_guard<std::mutex> lock(_mutex);
@@ -3559,7 +3665,7 @@ namespace massif::vt {
             for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
                 const std::shared_ptr<const TileLayer>& layer = it->second.layer;
 
-                bool contains3DGeometry = false;
+                bool contains3DGeometry = !layer->getModels().empty();
                 for (const std::shared_ptr<TileGeometry>& geometry : layer->getGeometries()) {
                     contains3DGeometry = (geometry->getType() == TileGeometry::Type::POLYGON3D || geometry->getType() == TileGeometry::Type::POLYGON3DGROUND) || contains3DGeometry;
                 }
@@ -3623,6 +3729,11 @@ namespace massif::vt {
                         }
                         // NOTE: geometry comp op is not supported for 3D polygons. Blending is disabled, setGLBlendState not needed
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, pass.geometryOpacity, renderLayer->tileSize, geometry);
+                    }
+                }
+                if (!depthOnly) {
+                    for (const std::shared_ptr<TileModelInstances>& models : renderLayer->layer->getModels()) {
+                        renderTileModels(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, pass.geometryOpacity, models);
                     }
                 }
                 _terrainDrawLayerOffset = 0.0f;
@@ -3697,7 +3808,7 @@ namespace massif::vt {
         state.terrainOccluders = _terrainMode && static_cast<bool>(_terrainTextureProvider) &&
             std::any_of(renderLayers.begin(), renderLayers.end(), [](const RenderTileLayer* renderLayer) {
                 const std::vector<std::shared_ptr<TileGeometry>>& geometries = renderLayer->layer->getGeometries();
-                return std::any_of(geometries.begin(), geometries.end(), [](const std::shared_ptr<TileGeometry>& geometry) {
+                return !renderLayer->layer->getModels().empty() || std::any_of(geometries.begin(), geometries.end(), [](const std::shared_ptr<TileGeometry>& geometry) {
                     return geometry->getType() == TileGeometry::Type::POLYGON3D;
                 });
             });
@@ -6983,38 +7094,236 @@ namespace massif::vt {
         checkGLError();
     }
 
-    void GLTileRenderer::setupGeometryCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry, const GeometryDrawMode& mode) {
-        const TileGeometry::StyleParameters& styleParams = geometry->getStyleParameters();
-        const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
+    void GLTileRenderer::renderTileModels(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileModelInstances>& models) {
+        const ModelStyle& style = models->getStyle();
+        bool caster = (_shadowCasterViewProj != nullptr);
+        // No globe yet: a sphere bends the tile frame the anchor is placed in (18-globe.md).
+        if (!style.model || models->getInstances().empty() || (_transformer && _transformer->isSpherical()) || (caster && (!style.castShadows || !_modelShadowsEnabled))) {
+            return;
+        }
+        float styleOpacity = evaluateFloatFunc(style.opacityFunc);
+        float alpha = blend * opacity * styleOpacity;
+        if (caster ? styleOpacity < SHADOW_NO_CAST_OPACITY_CUTOFF : alpha <= 0.0f) {
+            return;
+        }
 
+        bool terrainVTF = _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        bool shadowReceiver = terrainVTF && !caster && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
+        unsigned int terrainFlag = terrainVTF ? TERRAIN_VTF_FLAG | (caster ? 0 : TERRAIN_FLAG) : 0;
+        const ShaderProgram& shaderProgram = caster
+            ? buildShaderProgram("modelshadow", modelVsh, modelShadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag)
+            : buildShaderProgram("model", modelVsh, modelFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, terrainFlag | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG | SHADOW_RECEIVER_3D_FLAG : 0) | fogFlag());
+        useProgram(shaderProgram);
+        if (!caster) {
+            setupFogUniforms(shaderProgram);
+        }
+        setupTileCommonUniforms(shaderProgram, sourceTileId, targetTileId, 1.0f, std::nullopt, true, GeometryDrawMode { false, false, terrainVTF, shadowReceiver, false, terrainFlag });
+
+        cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(sourceTileId));
+        glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, tileMatrix.data());
+        glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], static_cast<float>(modelMetresToTileUnits(sourceTileId)));
+        glUniform4f(shaderProgram.uniforms[U_MODELSPIN], style.spinAxis(0), style.spinAxis(1), style.spinAxis(2), style.spinSpeed);
+        // Wrapped to one turn of THIS spin on the CPU, in double: the angle stays continuous and the
+        // float the shader multiplies stays small
+        double turn = (style.spinSpeed != 0.0f ? 6.283185307179586 / std::abs(style.spinSpeed) : 1.0);
+        glUniform1f(shaderProgram.uniforms[U_MODELTIME], static_cast<float>(std::fmod(_modelTime, turn)));
+        float highlightIndex = -1.0f;
+        if (_modelHighlight && !caster) {
+            const std::vector<long long>& featureIds = models->getFeatureIds();
+            const std::vector<int>& geoPosIndexes = models->getGeoPosIndexes();
+            for (std::size_t i = 0; i < featureIds.size(); i++) {
+                if (featureIds[i] == _modelHighlight->featureId && geoPosIndexes[i] == _modelHighlight->geoPointIndex) {
+                    highlightIndex = static_cast<float>(i);
+                    break;
+                }
+            }
+            std::array<float, 4> rgba = _modelHighlight->color.rgba();
+            glUniform4fv(shaderProgram.uniforms[U_MODELHIGHLIGHTCOLOR], 1, rgba.data());
+        }
+        glUniform1f(shaderProgram.uniforms[U_MODELHIGHLIGHT], highlightIndex);
+        glUniform1f(shaderProgram.uniforms[U_OPACITY], alpha);
+        if (!caster && _lightingShader3D) {
+            _lightingShader3D->setupFunc(shaderProgram.program, _viewState);
+            glUniform1f(shaderProgram.uniforms[U_EMISSIVE], 0.0f); // lit by the scene, as mapbox's model-emissive-strength 0
+        }
+        if (!caster && style.spinSpeed != 0.0f && _modelAnimationsEnabled) {
+            _modelsAnimating = true;
+        }
+
+        const std::vector<CompiledModelMesh>& meshes = buildCompiledModel(style.model);
+        CompiledModelInstances& instances = buildCompiledModelInstances(models);
+        // Leaves are single quads seen from both sides, so nothing is culled here. A translucent model
+        // blends even in the overlay, where blending is off and it would replace the wall behind it.
+        GLboolean cullFace = glIsEnabled(GL_CULL_FACE);
+        glDisable(GL_CULL_FACE);
+        GLboolean blending = glIsEnabled(GL_BLEND);
+        if (!caster && alpha < 1.0f && !blending) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        }
+        for (std::size_t i = 0; i < meshes.size(); i++) {
+            const ModelMesh& mesh = style.model->meshes[i];
+            const ModelMaterial* material = (mesh.material >= 0 ? &style.model->materials[mesh.material] : nullptr);
+            // The caster needs them too: a MASK leaf casts its cut-out, not its quad.
+            std::array<float, 4> baseColor = material ? material->baseColor.rgba() : Color(1, 1, 1, 1).rgba();
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, baseColor.data());
+            // glTF alpha modes in one number: < 0 OPAQUE, [0, 1] MASK at that cutoff, > 1 BLEND
+            glUniform1f(shaderProgram.uniforms[U_ALPHACUTOFF], !material ? -1.0f : material->blend ? 2.0f : material->alphaCutoff);
+            std::shared_ptr<const Bitmap> texture = (material && material->baseColorTexture ? material->baseColorTexture : _modelWhiteBitmap);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, buildCompiledBitmap(texture, true).texture);
+            glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
+
+            GLuint& vao = instances.vaos[std::make_pair(shaderProgram.program, i)];
+            if (vao == 0) {
+                glGenVertexArrays(1, &vao);
+                if (vao == 0) {
+                    continue; // the divisors below would stay on VAO 0 and reach every later draw
+                }
+                glBindVertexArray(vao);
+                glBindBuffer(GL_ARRAY_BUFFER, meshes[i].vertexVBO);
+                enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, MODEL_VERTEX_SIZE, bufferGLOffset(0));
+                enableVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_FLOAT, GL_FALSE, MODEL_VERTEX_SIZE, bufferGLOffset(12));
+                enableVertexAttrib(shaderProgram.attribs[A_VERTEXUV], 2, GL_FLOAT, GL_FALSE, MODEL_VERTEX_SIZE, bufferGLOffset(24));
+                enableVertexAttrib(shaderProgram.attribs[A_VERTEXCOLOR], 4, GL_UNSIGNED_BYTE, GL_TRUE, MODEL_VERTEX_SIZE, bufferGLOffset(32));
+                glBindBuffer(GL_ARRAY_BUFFER, instances.instanceVBO);
+                enableVertexAttrib(shaderProgram.attribs[A_INSTANCEPOSITION], 3, GL_FLOAT, GL_FALSE, MODEL_INSTANCE_SIZE, bufferGLOffset(0));
+                enableVertexAttrib(shaderProgram.attribs[A_INSTANCETRANSFORM], 4, GL_FLOAT, GL_FALSE, MODEL_INSTANCE_SIZE, bufferGLOffset(12));
+                enableVertexAttrib(shaderProgram.attribs[A_INSTANCECOLOR], 4, GL_UNSIGNED_BYTE, GL_TRUE, MODEL_INSTANCE_SIZE, bufferGLOffset(28));
+                for (int attrib : { A_INSTANCEPOSITION, A_INSTANCETRANSFORM, A_INSTANCECOLOR }) {
+                    if (shaderProgram.attribs[attrib] >= 0) {
+                        glVertexAttribDivisor(static_cast<GLuint>(shaderProgram.attribs[attrib]), 1);
+                    }
+                }
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshes[i].indicesVBO);
+            } else {
+                glBindVertexArray(vao);
+            }
+            glDrawElementsInstanced(GL_TRIANGLES, meshes[i].indexCount, GL_UNSIGNED_INT, 0, static_cast<GLsizei>(models->getInstances().size()));
+            VT_STAT_INC(geometryDraws);
+            glBindVertexArray(0);
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        if (cullFace) {
+            glEnable(GL_CULL_FACE);
+        }
+        if (!caster && alpha < 1.0f && !blending) {
+            glDisable(GL_BLEND);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+        checkGLError();
+    }
+
+    const std::vector<GLTileRenderer::CompiledModelMesh>& GLTileRenderer::buildCompiledModel(const std::shared_ptr<const Model>& model) {
+        auto it = _compiledModelMap.find(model);
+        if (it != _compiledModelMap.end()) {
+            return it->second;
+        }
+        std::vector<CompiledModelMesh> meshes;
+        for (const ModelMesh& mesh : model->meshes) {
+            std::vector<std::uint8_t> vertices(mesh.positions.size() * MODEL_VERTEX_SIZE);
+            for (std::size_t i = 0; i < mesh.positions.size(); i++) {
+                std::uint8_t* v = vertices.data() + i * MODEL_VERTEX_SIZE;
+                cglib::vec2<float> uv = (i < mesh.texCoords.size() ? mesh.texCoords[i] : cglib::vec2<float>(0, 0));
+                std::uint32_t color = (i < mesh.colors.size() ? mesh.colors[i] : 0xffffffffu);
+                std::memcpy(v, mesh.positions[i].data(), 12);
+                std::memcpy(v + 12, mesh.normals[i].data(), 12);
+                std::memcpy(v + 24, uv.data(), 8);
+                std::memcpy(v + 32, &color, 4);
+            }
+            CompiledModelMesh compiled;
+            glGenBuffers(1, &compiled.vertexVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, compiled.vertexVBO);
+            glBufferData(GL_ARRAY_BUFFER, vertices.size(), vertices.data(), GL_STATIC_DRAW);
+            glGenBuffers(1, &compiled.indicesVBO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiled.indicesVBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(std::uint32_t), mesh.indices.data(), GL_STATIC_DRAW);
+            compiled.indexCount = static_cast<GLsizei>(mesh.indices.size());
+            meshes.push_back(compiled);
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        return _compiledModelMap.emplace(model, std::move(meshes)).first->second;
+    }
+
+    GLTileRenderer::CompiledModelInstances& GLTileRenderer::buildCompiledModelInstances(const std::shared_ptr<TileModelInstances>& models) {
+        auto it = _compiledModelInstancesMap.find(models);
+        if (it != _compiledModelInstancesMap.end()) {
+            return it->second;
+        }
+        const std::vector<ModelInstance>& instances = models->getInstances();
+        std::vector<std::uint8_t> data(instances.size() * MODEL_INSTANCE_SIZE);
+        for (std::size_t i = 0; i < instances.size(); i++) {
+            const ModelInstance& instance = instances[i];
+            float floats[7] = { instance.position(0), instance.position(1), static_cast<float>(i), instance.rotation, instance.scale, instance.zOffset, instance.spinPhase };
+            std::array<float, 4> rgba = instance.color.rgba();
+            std::uint8_t tint[4];
+            for (int c = 0; c < 4; c++) {
+                float value = (c < 3 ? rgba[c] : instance.colorMix);
+                tint[c] = static_cast<std::uint8_t>(std::lround(std::min(1.0f, std::max(0.0f, value)) * 255.0f));
+            }
+            std::memcpy(data.data() + i * MODEL_INSTANCE_SIZE, floats, 28);
+            std::memcpy(data.data() + i * MODEL_INSTANCE_SIZE + 28, tint, 4);
+        }
+        CompiledModelInstances compiled;
+        glGenBuffers(1, &compiled.instanceVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, compiled.instanceVBO);
+        glBufferData(GL_ARRAY_BUFFER, data.size(), data.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        return _compiledModelInstancesMap.emplace(models, std::move(compiled)).first->second;
+    }
+
+    void GLTileRenderer::deleteCompiledModel(std::vector<CompiledModelMesh>& meshes) {
+        for (CompiledModelMesh& mesh : meshes) {
+            glDeleteBuffers(1, &mesh.vertexVBO);
+            glDeleteBuffers(1, &mesh.indicesVBO);
+        }
+        meshes.clear();
+    }
+
+    void GLTileRenderer::deleteCompiledModelInstances(CompiledModelInstances& instances) {
+        for (auto& [key, vao] : instances.vaos) {
+            glDeleteVertexArrays(1, &vao);
+        }
+        instances.vaos.clear();
+        glDeleteBuffers(1, &instances.instanceVBO);
+        instances.instanceVBO = 0;
+    }
+
+    void GLTileRenderer::setupGeometryCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry, const GeometryDrawMode& mode) {
+        const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
+        setupTileCommonUniforms(shaderProgram, sourceTileId, targetTileId, 1.0f / vertexGeomLayoutParams.coordScale, geometry->getStyleParameters().translate, geometry->getType() == TileGeometry::Type::POLYGON3D, mode);
+    }
+
+    void GLTileRenderer::setupTileCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, float coordScale, const std::optional<cglib::vec2<float>>& translate, bool extrusion, const GeometryDrawMode& mode) {
         cglib::mat4x4<float> mvpMatrix;
         if (_shadowCasterViewProj) {
-            mvpMatrix = cglib::mat4x4<float>::convert((*_shadowCasterViewProj) * calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
+            mvpMatrix = cglib::mat4x4<float>::convert((*_shadowCasterViewProj) * calculateTileMatrix(sourceTileId, coordScale));
         } else if (mode.flatDrape) {
             // coords / coordScale = tile-local [0,1], which the override maps to clip. On a sphere the
             // shader supplies the tile unit (drapeBakeClip), so the override is the whole matrix.
-            cglib::mat4x4<float> local = cglib::scale4_matrix(cglib::vec3<float>(1.0f / vertexGeomLayoutParams.coordScale, 1.0f / vertexGeomLayoutParams.coordScale, 1.0f));
+            cglib::mat4x4<float> local = cglib::scale4_matrix(cglib::vec3<float>(coordScale, coordScale, 1.0f));
             mvpMatrix = mode.sphericalDrape ? *_drapeMVPOverride : (*_drapeMVPOverride) * local;
         } else {
-            mvpMatrix = calculateTileMVPMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
+            mvpMatrix = calculateTileMVPMatrix(sourceTileId, coordScale);
         }
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
-        if (mode.terrainFlag != 0 && geometry->getType() != TileGeometry::Type::POLYGON3D) {
+        if (mode.terrainFlag != 0 && !extrusion) {
             glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], mode.terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
-        } else if (mode.terrainVTF && !_shadowCasterViewProj && geometry->getType() == TileGeometry::Type::POLYGON3D) {
+        } else if (mode.terrainVTF && !_shadowCasterViewProj && extrusion) {
             // Only VTF has a surface to clear; the caster renders from the light, never biased to the camera.
             glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
         }
         if (mode.terrainVTF || mode.sphericalDrape) {
             // Elevation from the TARGET tile (the ground under the content), vertex frame from the
             // SOURCE tile; swapped, content sat on another DEM level and slid during a pan.
-            setupTerrainUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
+            setupTerrainUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, coordScale));
         } else {
             // A globe curves vertices without terrain, and the tile clip must follow (18-globe.md).
-            setupSphericalUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
+            setupSphericalUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, coordScale));
         }
         if (mode.shadowReceiver) {
-            cglib::mat4x4<double> shadowFrame = calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
+            cglib::mat4x4<double> shadowFrame = calculateTileMatrix(sourceTileId, coordScale);
             std::array<cglib::mat4x4<float>, MAX_SHADOW_CASCADES> shadowMatrices;
             for (int i = 0; i < _terrainShadowCascades; i++) {
                 shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * shadowFrame);
@@ -7042,13 +7351,12 @@ namespace massif::vt {
         if (mode.shadowReceiver || mode.terrainLit) {
             // Undraped 2D content takes N.L from the TERRAIN (terrainNdl in commonFsh), so shadow and
             // sun need the slope scale and sun direction. Undeclared uniforms are -1, a no-op.
-            setupTerrainLightingUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
+            setupTerrainLightingUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, coordScale));
         }
 
-        if (styleParams.translate) {
+        if (translate) {
             float zoomScale = std::pow(2.0f, sourceTileId.zoom - _viewState.zoom);
-            cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
-            cglib::mat4x4<float> transformMatrix = _transformer->calculateTileTransform(sourceTileId, translate, 1.0f / vertexGeomLayoutParams.coordScale);
+            cglib::mat4x4<float> transformMatrix = _transformer->calculateTileTransform(sourceTileId, (*translate) * zoomScale, coordScale);
             glUniformMatrix4fv(shaderProgram.uniforms[U_TRANSFORMMATRIX], 1, GL_FALSE, transformMatrix.data());
         }
     }

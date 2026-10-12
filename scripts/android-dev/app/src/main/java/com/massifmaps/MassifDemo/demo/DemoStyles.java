@@ -960,6 +960,26 @@ public final class DemoStyles {
                 : new MBVectorTileDecoder(new CartoCSSStyleSet(css));
     }
 
+    /** The model rules of the Massif styles (styles/massif/models/models.mss) on the demo's own points. */
+    public static MBVectorTileDecoder createModelDecoder() {
+        String css = "#trees {\n"
+                + "  model-file: step(random(0, 3), (0, url('models/tree-spreading.glb')), (1, url('models/tree-layered.glb')), (2, url('models/tree-clumped.glb')));\n"
+                + "  model-scale: random(0.8, 1.2);\n"
+                + "  model-rotation: random(0, 360);\n"
+                + "  model-color: #6b8f3a;\n"
+                + "  model-color-mix: random(0, 0.25);\n"
+                + "}\n"
+                + "#turbines {\n"
+                + "  ::tower { model-file: url('models/wind-turbine-tower.glb'); model-rotation: random(250, 290); }\n"
+                + "  ::rotor { model-file: url('models/wind-turbine-rotor.glb'); model-rotation: random(250, 290);"
+                + " model-z-offset: 81.4; model-spin: 14; model-spin-axis: y; }\n"
+                + "}\n";
+        AssetPackage pack = openAppAssets();
+        return pack != null
+                ? new MBVectorTileDecoder(new CartoCSSStyleSet(css, pack))
+                : new MBVectorTileDecoder(new CartoCSSStyleSet(css));
+    }
+
     public static MBVectorTileDecoder createBugDecoder() {
         String css = bugStyle();
         Log.i(TAG, "bug repro style:\n" + css);

@@ -772,7 +772,85 @@ namespace massif::vt {
         packGeometry(geometryList);
         packGroundSkirt(geometryList);
 
-        return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList, _drawOnceGroup);
+        std::vector<std::shared_ptr<TileModelInstances>> models = placeModels();
+        return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList, _drawOnceGroup, std::move(models));
+    }
+
+    TileLayerBuilder::ModelProcessor TileLayerBuilder::createModelProcessor(const ModelStyle& style) {
+        if (!style.model) {
+            return ModelProcessor();
+        }
+        std::size_t styleIndex = std::find(_modelStyles.begin(), _modelStyles.end(), style) - _modelStyles.begin();
+        if (styleIndex == _modelStyles.size()) {
+            _modelStyles.push_back(style);
+        }
+        // 3/4 of the disc inscribed in the crown's box: neighbouring crowns may cross a little, a park
+        // reads fuller (mapbox lets them overlap freely)
+        const cglib::bbox3<float>& bounds = style.model->bounds;
+        float crownRadius = bounds.empty() ? 0.0f : 0.75f * 0.5f * std::min(bounds.size()(0), bounds.size()(1));
+        return [styleIndex, crownRadius, this](long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex) {
+            cglib::vec3<float> pos = _transformer->calculatePoint(vertex);
+            instance.position = cglib::vec2<float>(pos(0), pos(1));
+            float radius = _transformer->calculateHeight(vertex, crownRadius * instance.scale);
+            // splitmix64: the rank must not follow the random() values drawn from the same seed
+            std::uint64_t priority = static_cast<std::uint64_t>(modelPointSeed(_tileId, vertex)) + 0x9e3779b97f4a7c15ULL;
+            priority = (priority ^ (priority >> 30)) * 0xbf58476d1ce4e5b9ULL;
+            priority = (priority ^ (priority >> 27)) * 0x94d049bb133111ebULL;
+            priority ^= priority >> 31;
+            _modelCandidates.push_back(ModelCandidate { styleIndex, instance, id, featureId, geoPointIndex, vertex, radius, priority });
+        };
+    }
+
+    bool TileLayerBuilder::isModelPointInReach(const Vertex& vertex) const {
+        float reach = _transformer->calculateHeight(vertex, MODEL_REACH);
+        return vertex(0) >= -reach && vertex(0) < 1 + reach && vertex(1) >= -reach && vertex(1) < 1 + reach;
+    }
+
+    std::vector<std::shared_ptr<TileModelInstances>> TileLayerBuilder::placeModels() const {
+        ModelFootprints footprints;
+        for (const ModelCandidate& candidate : _modelCandidates) {
+            footprints.add(ModelFootprints::Footprint { candidate.instance.position, candidate.radius, candidate.id, candidate.geoPointIndex, candidate.priority });
+        }
+        // mapbox's tree heuristic (model_bucket.ts lookupDim) for a z14 source, which the builder cannot
+        // see: 100 cells a side to z14, 256 at the first overzoom, none past it. Shared by every rule.
+        int lookupDim = _tileId.zoom > 15 ? 0 : _tileId.zoom == 15 ? 256 : 100;
+        std::unordered_set<int> occupancy;
+        struct Placed {
+            std::vector<ModelInstance> instances;
+            std::vector<long long> ids;
+            std::vector<long long> featureIds;
+            std::vector<int> geoPosIndexes;
+        };
+        std::vector<Placed> placed(_modelStyles.size());
+        for (const ModelCandidate& candidate : _modelCandidates) {
+            const Vertex& vertex = candidate.vertex;
+            // Half-open, so a point on a tile edge is placed by exactly one of the two tiles
+            if (vertex(0) < 0 || vertex(0) >= 1 || vertex(1) < 0 || vertex(1) >= 1) {
+                continue;
+            }
+            const ModelStyle& style = _modelStyles[candidate.styleIndex];
+            if (!style.allowOverlap && footprints.outranked(ModelFootprints::Footprint { candidate.instance.position, candidate.radius, candidate.id, candidate.geoPointIndex, candidate.priority })) {
+                continue;
+            }
+            if (style.densityReduction && lookupDim > 0) {
+                int cell = lookupDim * static_cast<int>(vertex(1) * (lookupDim - 1)) + static_cast<int>(vertex(0) * (lookupDim - 1));
+                if (!occupancy.insert(cell).second) {
+                    continue;
+                }
+            }
+            Placed& target = placed[candidate.styleIndex];
+            target.instances.push_back(candidate.instance);
+            target.ids.push_back(candidate.id);
+            target.featureIds.push_back(candidate.featureId);
+            target.geoPosIndexes.push_back(candidate.geoPointIndex);
+        }
+        std::vector<std::shared_ptr<TileModelInstances>> models;
+        for (std::size_t i = 0; i < placed.size(); i++) {
+            if (!placed[i].instances.empty()) {
+                models.push_back(std::make_shared<TileModelInstances>(_modelStyles[i], std::move(placed[i].instances), std::move(placed[i].ids), std::move(placed[i].featureIds), std::move(placed[i].geoPosIndexes)));
+            }
+        }
+        return models;
     }
 
     void TileLayerBuilder::packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {

@@ -12,6 +12,7 @@
 #include "TileGeometry.h"
 #include "TileLabel.h"
 #include "TileLayer.h"
+#include "TileModels.h"
 #include "TileTransformer.h"
 #include "Styles.h"
 #include "ExtrusionAnchors.h"
@@ -56,6 +57,9 @@ namespace massif::vt {
         using Polygon3DProcessor = std::function<void(long long id, const VerticesList& verticesList, float minHeight, float maxHeight)>;
         using PointLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
         using TextLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
+        // An instance's position is filled in from the vertex; one outside the tile is dropped, as the
+        // neighbour that owns it places it.
+        using ModelProcessor = std::function<void(long long id, long long featureId, const Vertex& vertex, ModelInstance instance, int geoPointIndex)>;
 
         explicit TileLayerBuilder(std::string layerName, int layerIdx, const TileId& tileId, const std::shared_ptr<const TileTransformer>& transformer, float tileSize, float geomScale);
 
@@ -95,6 +99,10 @@ namespace massif::vt {
         Polygon3DProcessor createPolygon3DProcessor(const Polygon3DStyle& style);
         PointLabelProcessor createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
         TextLabelProcessor createTextLabelProcessor(const TextLabelStyle& style, const TextFormatter& formatter);
+        ModelProcessor createModelProcessor(const ModelStyle& style);
+        // Whether a model point can bear on this tile's placement: the overlap rule reads the
+        // neighbours within MODEL_REACH of the tile, so the rest need not be evaluated at all.
+        bool isModelPointInReach(const Vertex& vertex) const;
 
         std::shared_ptr<TileLayer> buildTileLayer() const;
 
@@ -103,6 +111,8 @@ namespace massif::vt {
 
     private:
         static constexpr unsigned int RESERVED_VERTICES = 4096;
+        // Metres: twice the widest crown radius whose placement stays the same across zooms
+        static constexpr float MODEL_REACH = 32.0f;
         // At twice the tile's size: a tile is drawn up to one zoom level past its own.
         static constexpr float EDGE_CORNER_MIN_PIXELS = 1.0f;
 
@@ -285,6 +295,23 @@ namespace massif::vt {
         std::vector<std::shared_ptr<TileBitmap>> _bitmapList;
         std::vector<std::shared_ptr<TileGeometry>> _geometryList;
         std::vector<std::shared_ptr<TileLabel>> _labelList;
+
+        // Every model point in reach, placed together in buildTileLayer: the overlap rule needs a
+        // point's neighbours on both sides before it can keep or drop it.
+        struct ModelCandidate {
+            std::size_t styleIndex;
+            ModelInstance instance;
+            long long id;
+            long long featureId;
+            int geoPointIndex;
+            Vertex vertex;
+            float radius;
+            std::uint64_t priority;
+        };
+        std::vector<ModelStyle> _modelStyles;
+        std::vector<ModelCandidate> _modelCandidates;
+
+        std::vector<std::shared_ptr<TileModelInstances>> placeModels() const;
     };
 }
 

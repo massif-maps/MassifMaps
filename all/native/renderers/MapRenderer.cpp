@@ -2531,7 +2531,10 @@ namespace massif {
                         }
                     }
                     // The atlas layout itself changed: every page has to be redrawn.
+                    // The caster set itself changed: the pages still hold the models' shadows.
+                    bool modelShadows = _options->isModelShadowsEnabled();
                     bool refreshAll = !_shadowMapValid
+                        || _shadowMapModelShadows != modelShadows
                         || _shadowMapSize != _terrainShadowMap->getSize()
                         || _shadowMapCascades != cascades;
                     _shadowMapAge++;
@@ -2583,6 +2586,7 @@ namespace massif {
                             _shadowMapValid = true;
                             _shadowMapSize = _terrainShadowMap->getSize();
                             _shadowMapCascades = cascades;
+                            _shadowMapModelShadows = modelShadows;
                             _shadowMapAge = 0;
                             shadowPasses++;
                         } else {

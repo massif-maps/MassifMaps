@@ -6,6 +6,7 @@
 #include "PolygonSymbolizer.h"
 #include "PolygonPatternSymbolizer.h"
 #include "BuildingSymbolizer.h"
+#include "ModelSymbolizer.h"
 #include "MarkersSymbolizer.h"
 #include "TextSymbolizer.h"
 #include "ShieldSymbolizer.h"
@@ -62,6 +63,9 @@ namespace massif::mvt {
         }
         else if (type == "BuildingSymbolizer") {
             symbolizer = std::make_shared<BuildingSymbolizer>(_logger);
+        }
+        else if (type == "ModelSymbolizer") {
+            symbolizer = std::make_shared<ModelSymbolizer>(_logger);
         }
         else if (type == "MarkersSymbolizer") {
             symbolizer = std::make_shared<MarkersSymbolizer>(_logger);

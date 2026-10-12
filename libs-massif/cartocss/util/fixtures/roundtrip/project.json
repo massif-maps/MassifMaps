@@ -1,6 +1,6 @@
 {
   "styles": ["style.mss"],
-  "layers": ["transportation", "satellite", "contour", "hillshade", "landcover"],
+  "layers": ["transportation", "satellite", "contour", "hillshade", "landcover", "poi"],
   "styleparameters": {
     "selected_id": { "default": "", "selects": true },
     "relief": { "default": true },

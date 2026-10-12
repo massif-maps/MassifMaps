@@ -84,7 +84,7 @@ namespace massif::mvt {
         }
 
         auto addTileLayer = [&tileLayers](std::shared_ptr<vt::TileLayer> tileLayer) {
-            if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !tileLayer->getCompOp())) {
+            if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && tileLayer->getModels().empty() && !tileLayer->getCompOp())) {
                 tileLayers.push_back(std::move(tileLayer));
             }
         };
@@ -205,7 +205,7 @@ namespace massif::mvt {
 
         auto gatherFields = [](const std::string& field, std::set<std::string>& fields, bool& explicitFeatureId) -> bool {
             if (ExpressionContext::isMapnikVariable(field)) {
-                explicitFeatureId = explicitFeatureId || field == "mapnik::feature_id";
+                explicitFeatureId = explicitFeatureId || field == "mapnik::feature_id" || field == "mapnik::seed";
                 return false;
             }
             else if (ExpressionContext::isViewStateVariable(field) || ExpressionContext::isStyleParameterVariable(field) || ExpressionContext::isZoomVariable(field) || ExpressionContext::isRenderVariable(field)) {
@@ -290,8 +290,17 @@ namespace massif::mvt {
         std::unordered_map<std::shared_ptr<const FeatureData>, std::vector<std::shared_ptr<const Symbolizer>>> featureDataSymbolizerMap;
         std::unordered_map<std::shared_ptr<const Symbolizer>, std::unordered_map<std::shared_ptr<const FeatureData>, std::shared_ptr<Symbolizer::FeatureProcessor>>> symbolizerFeatureDataProcessorMap;
 
-        // Create feature iterator based on the required fields
-        if (auto featureIt = createFeatureIterator(layer, styleFieldsPtr)) {
+        bool unclipped = true;
+        for (const std::shared_ptr<const Rule>& rule : rules) {
+            for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
+                unclipped = unclipped && symbolizer->needsUnclippedFeatures();
+            }
+        }
+        std::shared_ptr<FeatureDecoder::FeatureIterator> featureIt = unclipped ? createUnclippedFeatureIterator(layer, styleFieldsPtr) : nullptr;
+        if (!featureIt) {
+            featureIt = createFeatureIterator(layer, styleFieldsPtr);
+        }
+        if (featureIt) {
             for (; featureIt->valid(); featureIt->advance()) {
                 // Find symbolizers for the feature data. Cache rule evaluation for each feature data object.
                 std::shared_ptr<const FeatureData> filterFeatureData = featureIt->getFeatureData(explicitFilterFeatureId, filterFieldsPtr);

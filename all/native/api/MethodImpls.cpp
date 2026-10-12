@@ -19,6 +19,7 @@
 #include "celestial/CelestialImage.h"
 #include "celestial/CelestialLabel.h"
 #include "celestial/CelestialObject.h"
+#include "graphics/Color.h"
 #include "layers/CelestialLayer.h"
 #include "terrain/ElevationManager.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
@@ -30,6 +31,7 @@
 #include "layers/HillshadeRasterTileLayer.h"
 #include "layers/Layer.h"
 #include "layers/TileLayer.h"
+#include "layers/VectorTileLayer.h"
 #include "renderers/PostProcessEffect.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "vectortiles/VectorTileDecoder.h"
@@ -401,6 +403,21 @@ namespace massif { namespace api {
                 return RESULT_BAD_HANDLE;
             }
             result = PropertyValue::ofBool(static_cast<CelestialLayer*>(obj)->remove(object));
+            return RESULT_OK;
+        }
+
+        /** setModelHighlight(featureId, featurePosIndex, argb) / clearModelHighlight() on a vector tile layer. */
+        Result setModelHighlight(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long featureId = 0, featurePosIndex = 0, argb = 0;
+            if (!args.getLong(0, featureId) || !args.getLong(1, featurePosIndex) || !args.getLong(2, argb)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<VectorTileLayer*>(obj)->setModelHighlight(featureId, static_cast<int>(featurePosIndex), Color(static_cast<int>(argb)));
+            return RESULT_OK;
+        }
+
+        Result clearModelHighlight(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<VectorTileLayer*>(obj)->clearModelHighlight();
             return RESULT_OK;
         }
 
@@ -836,6 +853,8 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialLayer", "add", &addCelestialObject);
         registerMethod("massif::CelestialLayer", "remove", &removeCelestialObject);
         registerMethod("massif::CelestialLayer", "clear", &clearCelestialObjects);
+        registerMethod("massif::VectorTileLayer", "setModelHighlight", &setModelHighlight);
+        registerMethod("massif::VectorTileLayer", "clearModelHighlight", &clearModelHighlight);
         registerMethod("massif::CelestialObject", "setDirection", &setCelestialDirection);
         registerMethod("massif::CelestialObject", "setPosition", &setCelestialPosition);
         registerMethod("massif::CelestialArc", "setDirections", &setArcDirections);

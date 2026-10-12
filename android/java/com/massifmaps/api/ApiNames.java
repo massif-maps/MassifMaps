@@ -568,8 +568,12 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> MIN_ZOOM = MassifObject.key("minZoom");
     /** Returns the current minimum distance between clusters (in device-independent pixels). */
     public static final MassifObject.Key<Double> MINIMUM_CLUSTER_DISTANCE = MassifObject.key("minimumClusterDistance");
+    /** Returns whether animated 3D models (a CartoCSS model-spin) move. */
+    public static final MassifObject.Key<Boolean> MODEL_ANIMATIONS_ENABLED = MassifObject.key("modelAnimationsEnabled");
     /** Returns the model asset of the object. */
     public static final MassifObject.Key<MassifObject> MODEL_ASSET = MassifObject.key("modelAsset");
+    /** Returns whether 3D models cast shadows. */
+    public static final MassifObject.Key<Boolean> MODEL_SHADOWS_ENABLED = MassifObject.key("modelShadowsEnabled");
     /** Returns the name included in the address. */
     public static final MassifObject.Key<String> NAME = MassifObject.key("name");
     /** Returns the near plane distance. */
@@ -1058,6 +1062,7 @@ public final class ApiNames {
     public static final String METHOD_CALCULATE_HORIZON = "calculateHorizon";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
     public static final String METHOD_CLEAR = "clear";
+    public static final String METHOD_CLEAR_MODEL_HIGHLIGHT = "clearModelHighlight";
     public static final String METHOD_CLEAR_TILE_CACHES = "clearTileCaches";
     public static final String METHOD_CREATE_LAYER = "createLayer";
     public static final String METHOD_DELETE_LAYER = "deleteLayer";
@@ -1099,6 +1104,7 @@ public final class ApiNames {
     public static final String METHOD_SET_FLOAT_PARAMETER = "setFloatParameter";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
+    public static final String METHOD_SET_MODEL_HIGHLIGHT = "setModelHighlight";
     public static final String METHOD_SET_OFFSET = "setOffset";
     public static final String METHOD_SET_POSITION = "setPosition";
     public static final String METHOD_SET_SEGMENTS = "setSegments";

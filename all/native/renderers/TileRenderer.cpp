@@ -153,6 +153,11 @@ namespace massif {
         _layerBlendingSpeed = speed;
     }
 
+    void TileRenderer::setModelHighlight(const std::optional<vt::GLTileRenderer::ModelHighlight>& highlight) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _modelHighlight = highlight;
+    }
+
     void TileRenderer::setLayerOpacity(float opacity) {
         std::lock_guard<std::mutex> lock(_mutex);
         _layerOpacity = opacity;
@@ -876,6 +881,8 @@ namespace massif {
         vtViewState.deviceResolution = static_cast<float>(viewState.getHeight());
         if (auto options = _options.lock()) {
             vtViewState.labelViewDistance = options->getLabelViewDistance();
+            tileRenderer->setModelAnimationsEnabled(options->isModelAnimationsEnabled());
+            tileRenderer->setModelShadowsEnabled(options->isModelShadowsEnabled());
         }
         tileRenderer->setViewState(vtViewState);
         // Device pixels per unscaled-DPI unit, so the antialias ramp is one pixel wide (lineFsh).
@@ -884,6 +891,7 @@ namespace massif {
         tileRenderer->setRasterFilterMode(_rasterFilterMode);
         tileRenderer->setLayerBlendingSpeed(_layerBlendingSpeed);
         tileRenderer->setLabelBlendingSpeed(_labelBlendingSpeed);
+        tileRenderer->setModelHighlight(_modelHighlight);
         // Pushing the filter resets the label maps' skip guard, so only a new filter or renderer gets it.
         if (_rendererLayerFilterTarget.lock() != tileRenderer) {
             tileRenderer->setRendererLayerFilter(_rendererLayerFilter);

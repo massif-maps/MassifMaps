@@ -69,6 +69,18 @@ Standalone layers (`map` = the base map, `satLayer`, `hillshade`, `hypso`, `cont
 `--es style dir|zip|inline|project`. `dir` reads the style from a FOLDER via `DirAssetPackage`
 (`/sdcard/alpimaps_mbtiles/osm`), falling back to `osm.zip` then to inline CartoCSS.
 
+`models` is the 3D MODELS layer (`DemoMap.createModelsLayer`): a jittered grid of trees as ONE
+MultiPoint around the start position and three spinning wind turbines 500 m north-east of it, drawn
+from `assets/style/models/*.glb` by the Massif model rules; a tap tints the model hit
+(`setModelHighlight`). The base map does the same for the Massif style's `poi` trees and turbines.
+`--es vectorFile rhones_alpes/rhone-alpes.pmtiles` reads the base map from a `.pmtiles` under the data
+root instead of `vectorUrl` - offline OpenMapTiles data with every mapped tree:
+
+```sh
+--es base plain --es style assetzip --es styleAssetZip massif --es vectorFile rhones_alpes/rhone-alpes.pmtiles \
+--es lon 5.7305 --es lat 45.1855 --es zoom 17.8 --es tilt 60
+```
+
 `bugs` is the STYLE REGRESSION repro layer (`DemoStyles.bugStyle`, `DemoMap.createBugsLayer`):
 synthetic GeoJSON on the start camera, one feature per reported symptom, each with its A/B knob —
 `bugLabelSize`, `bugBackOpacity`, `bugLineColor`, `bugLineBorder` (pair with `--es bugBackOpacity -1`),

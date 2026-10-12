@@ -25,6 +25,9 @@ namespace massif {
         virtual ~VTBitmapLoader();
     
         virtual std::shared_ptr<const vt::Bitmap> load(const std::string& url, float& resolution) const;
+
+        // PNG/JPEG/WebP to a bottom-up RGBA bitmap, as vt stores them; null if it does not decode.
+        static std::shared_ptr<const vt::Bitmap> DecodeBitmap(const unsigned char* data, std::size_t size);
     
     private:
         std::shared_ptr<const vt::Bitmap> loadSVG(const std::vector<unsigned char>& fileData, float& resolution) const;

@@ -19,7 +19,10 @@ namespace massif::vt {
         A_VERTEXCHORD,
                 A_VERTEXCOLOR,
         A_VERTEXATTRIBS,
-        A_VERTEXOFFSET
+        A_VERTEXOFFSET,
+        A_INSTANCEPOSITION,
+        A_INSTANCETRANSFORM,
+        A_INSTANCECOLOR
     };
 
     enum : int {
@@ -117,7 +120,12 @@ namespace massif::vt {
         U_PAINTPARAMS,
         U_GROUNDCOLOR,
         U_DRAPEMASKTEXTURE,
-        U_DRAPEMASKUVTRANSFORM
+        U_DRAPEMASKUVTRANSFORM,
+        U_MODELSPIN,
+        U_MODELTIME,
+        U_MODELHIGHLIGHT,
+        U_MODELHIGHLIGHTCOLOR,
+        U_ALPHACUTOFF
     };
 
     enum : unsigned int {
@@ -192,7 +200,10 @@ namespace massif::vt {
         { "aVertexChord",    A_VERTEXCHORD },
         { "aVertexColor",    A_VERTEXCOLOR },
         { "aVertexAttribs",  A_VERTEXATTRIBS },
-        { "aVertexOffset",   A_VERTEXOFFSET }
+        { "aVertexOffset",   A_VERTEXOFFSET },
+        { "aInstancePosition",  A_INSTANCEPOSITION },
+        { "aInstanceTransform", A_INSTANCETRANSFORM },
+        { "aInstanceColor",     A_INSTANCECOLOR }
     };
 
     static const std::map<std::string, int> uniformMap = {
@@ -290,7 +301,12 @@ namespace massif::vt {
         { "uPaintParams",       U_PAINTPARAMS },
         { "uGroundColor",       U_GROUNDCOLOR },
         { "uDrapeMask",            U_DRAPEMASKTEXTURE },
-        { "uDrapeMaskUVTransform", U_DRAPEMASKUVTRANSFORM }
+        { "uDrapeMaskUVTransform", U_DRAPEMASKUVTRANSFORM },
+        { "uModelSpin",            U_MODELSPIN },
+        { "uModelTime",            U_MODELTIME },
+        { "uModelHighlight",       U_MODELHIGHLIGHT },
+        { "uModelHighlightColor",  U_MODELHIGHLIGHTCOLOR },
+        { "uAlphaCutoff",          U_ALPHACUTOFF }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -2482,6 +2498,146 @@ namespace massif::vt {
             surfaceColor = vec4(surfaceColor.rgb * (1.0 - draped.a * vSpanRoof) + drapeColor * vSpanRoof, surfaceColor.a);
         #endif
             glFragColor = applyFog(surfaceColor);
+        #ifndef LIGHTING_FSH
+            glFragColor.rgb *= shadow;
+        #endif
+        }
+    )GLSL";
+    // One glTF model mesh drawn once per instance (TileModelInstances). Model space is metres, Z up;
+    // the instance anchor is draped like any other vertex and the model stands on it, unbent.
+    static const std::string modelVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
+        attribute vec3 aVertexNormal;
+        attribute vec2 aVertexUV;
+        attribute vec4 aVertexColor;
+        attribute vec3 aInstancePosition;  // vertex frame xy (tile units, y up), instance index
+        attribute vec4 aInstanceTransform; // heading (radians, clockwise), scale, z offset (metres), spin phase
+        attribute vec4 aInstanceColor;     // tint rgb, tint amount
+        uniform mat4 uMVPMatrix;
+        uniform mat3 uTileMatrix;
+        uniform float uHeightScale;        // metres -> vertex frame units at this tile's latitude
+        uniform vec4 uModelSpin;           // model-space axis, radians per second
+        uniform float uModelTime;
+        uniform float uModelHighlight;     // instance index, -1 for none
+        uniform vec4 uModelHighlightColor;
+        varying lowp vec4 vColor;
+        varying lowp vec4 vTint;
+        varying mediump vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
+        #ifdef TERRAIN_SHADOW
+        varying mediump vec3 vShadowNormal;
+        #endif
+
+        vec3 rotateAbout(vec3 v, vec3 k, float a) {
+            float c = cos(a), s = sin(a);
+            return v * c + cross(k, v) * s + k * (dot(k, v) * (1.0 - c));
+        }
+
+        void main(void) {
+            vec3 p = aVertexPosition;
+            vec3 n = aVertexNormal;
+            if (uModelSpin.w != 0.0) {
+                float spin = uModelTime * uModelSpin.w + aInstanceTransform.w;
+                p = rotateAbout(p, uModelSpin.xyz, spin);
+                n = rotateAbout(n, uModelSpin.xyz, spin);
+            }
+            float c = cos(aInstanceTransform.x), s = sin(aInstanceTransform.x);
+            p = vec3(p.x * c + p.y * s, p.y * c - p.x * s, p.z) * aInstanceTransform.y;
+            n = normalize(vec3(n.x * c + n.y * s, n.y * c - n.x * s, n.z));
+
+            vec3 anchor = applyTerrain(vec3(aInstancePosition.xy, 0.0));
+            vec3 pos = anchor + vec3(p.xy, p.z + aInstanceTransform.z) * uHeightScale;
+            applyShadowPos(pos, n);
+            vec3 normal = lightingNormal(n);
+        #ifdef TERRAIN_SHADOW
+            vShadowNormal = normal;
+        #endif
+            vTint = aInstanceColor;
+            if (abs(aInstancePosition.z - uModelHighlight) < 0.5) {
+                vTint = vec4(uModelHighlightColor.rgb, max(aInstanceColor.a, uModelHighlightColor.a));
+            }
+            vUV = aVertexUV;
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting3D(aVertexColor, normal, 1.0, 1.0, 1.0, 1.0);
+        #else
+            vColor = aVertexColor;
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = normal;
+        #endif
+            // An overzoomed source tile is drawn once per target tile: only the one holding the anchor places it.
+            vec2 tilePos = (uTileMatrix * vec3(aInstancePosition.x, 1.0 - aInstancePosition.y, 1.0)).xy;
+            if (tilePos.x < 0.0 || tilePos.x >= 1.0 || tilePos.y < 0.0 || tilePos.y >= 1.0) {
+                gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+                return;
+            }
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos, 1.0));
+        }
+    )GLSL";
+
+    // The model's caster: a MASK texture discards as the drawn model does, so a leaf casts its cut-out.
+    static const std::string modelShadowCasterFsh = R"GLSL(
+        uniform sampler2D uTexture;
+        uniform lowp vec4 uColor;
+        uniform mediump float uAlphaCutoff;
+        varying lowp vec4 vColor;
+        varying mediump vec2 vUV;
+
+        void main(void) {
+            if (uAlphaCutoff >= 0.0 && uAlphaCutoff <= 1.0 && (uColor * texture2D(uTexture, vUV) * vColor).a < uAlphaCutoff) {
+                discard;
+            }
+            highp float depth = gl_FragCoord.z;
+            highp vec3 enc = vec3(1.0, 255.0, 65025.0) * depth;
+            enc = fract(enc);
+            enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
+            glFragColor = vec4(enc, 1.0);
+        }
+    )GLSL";
+
+    static const std::string modelFsh = R"GLSL(
+        uniform sampler2D uTexture;
+        uniform lowp vec4 uColor;      // the material's base colour
+        uniform lowp float uOpacity;
+        uniform mediump float uAlphaCutoff;
+        varying lowp vec4 vColor;
+        varying lowp vec4 vTint;
+        varying mediump vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
+        #ifdef TERRAIN_SHADOW
+        varying mediump vec3 vShadowNormal;
+        #endif
+
+        void main(void) {
+            lowp vec4 color = uColor * texture2D(uTexture, vUV);
+        #ifndef LIGHTING_VSH
+            color *= vColor;
+        #endif
+            if (uAlphaCutoff <= 1.0) {
+                if (color.a < uAlphaCutoff) {
+                    discard;
+                }
+                color.a = 1.0; // OPAQUE ignores alpha, MASK is solid where it passes
+            }
+            color.rgb = mix(color.rgb, vTint.rgb, vTint.a);
+            color = vec4(color.rgb * color.a, color.a) * uOpacity;
+        #ifdef LIGHTING_VSH
+            color.rgb *= vColor.rgb;
+        #endif
+            mediump float shadow = 1.0;
+            mediump float skyShadow = 1.0;
+        #ifdef TERRAIN_SHADOW
+            shadow = shadowFactorSlopeParts(max(0.0, dot(normalize(vShadowNormal), uSunDir)), skyShadow);
+        #endif
+        #ifdef LIGHTING_FSH
+            mediump vec3 normal = normalize(vNormal);
+            color = applyLighting3D(color, gl_FrontFacing ? normal : -normal, 1.0, 1.0, shadow, skyShadow);
+        #endif
+            glFragColor = applyFog(color);
         #ifndef LIGHTING_FSH
             glFragColor.rgb *= shadow;
         #endif

@@ -748,9 +748,21 @@ namespace massif {
         bool isActive() const;
 
         /**
+         * Returns whether tiles are decoded for terrain even while the terrain is disabled.
+         * @return True if setEnabled never re-decodes the tiles. The default is false.
+         */
+        bool isAlwaysDecode() const;
+        /**
+         * Sets whether tiles are decoded for terrain, and the elevation data warmed, while the terrain is
+         * disabled. Costs the terrain tile set and the elevation fetches in 2D, saves the re-decode on setEnabled.
+         * @param alwaysDecode The new state.
+         */
+        void setAlwaysDecode(bool alwaysDecode);
+
+        /**
          * Returns whether tiles are being decoded for 3D terrain - subdivided, so that displacing
          * them follows the ground. Only ever changed while the map is flat, where both densities
-         * draw the same picture. In RENDER mode this is isEnabled(). Internal method.
+         * draw the same picture. In RENDER mode this is isEnabled(), or isAlwaysDecode(). Internal method.
          * @return True if tiles carry the terrain subdivision.
          */
         bool isDecodeActive() const;
@@ -818,6 +830,7 @@ namespace massif {
         std::atomic<bool> _flattened;
         std::atomic<TerrainFlattenMode::TerrainFlattenMode> _flattenMode;
         std::atomic<bool> _decodeActive;
+        std::atomic<bool> _alwaysDecode;
         // Whether the renderer's 2D/3D switch has taken over; until then setFlattened is the whole state.
         std::atomic<bool> _flattenSwitchStarted;
         std::atomic<bool> _flattenManual;

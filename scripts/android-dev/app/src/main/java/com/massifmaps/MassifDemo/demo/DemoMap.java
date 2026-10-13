@@ -1592,6 +1592,7 @@ public class DemoMap {
             terrainOptions = new TerrainOptions(demSource());
             mapView.getOptions().setTerrainOptions(terrainOptions);
         }
+        terrainOptions.setAlwaysDecode(DemoConfig.TERRAIN_ALWAYS_DECODE);
         terrainOptions.setEnabled(DemoConfig.TERRAIN_ENABLED);
         terrainOptions.setExaggeration(DemoConfig.TERRAIN_EXAGGERATION);
         terrainOptions.setAutoFlattenParallax(DemoConfig.AUTO_FLATTEN_PARALLAX);
@@ -1600,6 +1601,9 @@ public class DemoMap {
         terrainOptions.setFlattenMode(DemoConfig.TERRAIN_FULL_SWITCH
             ? TerrainFlattenMode.TERRAIN_FLATTEN_MODE_FULL
             : TerrainFlattenMode.TERRAIN_FLATTEN_MODE_RENDER);
+        if (!DemoConfig.TERRAIN_FLATTENED.isEmpty()) {
+            terrainOptions.setFlattened(Boolean.parseBoolean(DemoConfig.TERRAIN_FLATTENED));
+        }
         terrainOptions.setMeshResolution(DemoConfig.TERRAIN_MESH_RESOLUTION);
         terrainOptions.setCameraClearance(DemoConfig.TERRAIN_CAMERA_CLEARANCE);
         terrainOptions.setDrapeFillsEnabled(DemoConfig.TERRAIN_DRAPE_FILLS);

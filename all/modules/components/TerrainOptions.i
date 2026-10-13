@@ -32,6 +32,8 @@
 !method(massif::TerrainOptions, calculateHorizon, arg(pos, pos), arg(eyeHeight, float), arg(azimuths, json), arg(maxDistance, float), returns(doubles))
 
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)
+// Decode tiles for terrain, and warm the elevation data, while disabled too: setEnabled then never re-decodes.
+%attribute(massif::TerrainOptions, bool, AlwaysDecode, isAlwaysDecode, setAlwaysDecode)
 // The 2D/3D switch. Flattened is the state, written by the app or by the auto-flatten rule;
 // FlattenMode is how far it goes - RENDER stops the terrain passes only, FULL decodes and culls as
 // a plain 2D map too, for a re-decode paid while the map is already flat.

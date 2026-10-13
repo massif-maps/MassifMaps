@@ -8446,6 +8446,15 @@
       "base": null,
       "properties": [
         {
+          "name": "alwaysDecode",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether tiles are decoded for terrain even while the terrain is disabled."
+        },
+        {
           "name": "autoFlattenDuration",
           "type": "FLOAT",
           "readOnly": false,

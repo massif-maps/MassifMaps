@@ -144,6 +144,7 @@ resamples through metres instead of copying texels, so the seam is continuous.
 | `BackgroundBitmapEnabled` | `false` | Drape `Options.getBackgroundBitmap()` over the terrain (world-anchored, repeats). |
 | `ViewDistanceFactor` / `ViewDistance` | `1.0` / `0` | Where the ground ends; `ViewDistance` is a **minimum** in metres and only extends the factor rule. Pair it with fog ([FogOptions](/docs/features/sky-sun-shadows)). |
 | `AutoFlattenParallax` / `AutoFlattenTilt` | `2` / `88` | Render flat once 3D stops earning its cost — see below. `0` disables each half. |
+| `AlwaysDecode` | `false` | Decode tiles for terrain, and warm the elevation data, while terrain is disabled too, so `setEnabled(true)` re-decodes nothing. Costs the elevation fetches and about 2% frame time in 2D ([measured](../internals/rendering/04-terrain.md)). |
 | `AutoFlattenDuration` / `Flattened` | `0.3` / `false` | Length of the flattening animation (seconds), and the 2D/3D state — set it to switch by hand, read it to know what auto-flattening chose. |
 | `MaxTileZoomCoarsening` | `3` | How much coarser far tiles may get. |
 | `BillboardOcclusionEnabled` / `…Tolerance` | `true` / `0.05` | Hide markers and popups behind a ridge. |

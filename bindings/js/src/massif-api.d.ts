@@ -2005,6 +2005,8 @@ export interface PropertyTypes {
         'simplifyTolerance': number;
         /** Returns the terrain options whose elevation manager the label stubs read. */
         'terrainOptions': Handle;
+        /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
+        'terrainOptions.alwaysDecode': boolean;
         /** Returns how long the terrain takes to sink flat. */
         'terrainOptions.autoFlattenDuration': number;
         /** Returns the screen parallax below which the terrain renders flat. */
@@ -4394,6 +4396,8 @@ export interface PropertyTypes {
         'skyOptions.type': 'SKY_TYPE_GRADIENT' | 'SKY_TYPE_ATMOSPHERE' | number;
         /** Returns the terrain options. May be null if no terrain is configured. */
         'terrain': Handle;
+        /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
+        'terrain.alwaysDecode': boolean;
         /** Returns how long the terrain takes to sink flat. */
         'terrain.autoFlattenDuration': number;
         /** Returns the screen parallax below which the terrain renders flat. */
@@ -4486,6 +4490,8 @@ export interface PropertyTypes {
         'terrain.viewDistanceMax': number;
         /** Returns the terrain options. May be null if no terrain is configured. */
         'terrainOptions': Handle;
+        /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
+        'terrainOptions.alwaysDecode': boolean;
         /** Returns how long the terrain takes to sink flat. */
         'terrainOptions.autoFlattenDuration': number;
         /** Returns the screen parallax below which the terrain renders flat. */
@@ -5781,6 +5787,8 @@ export interface PropertyTypes {
         'color': number;
     };
     'massif::TerrainOptions': {
+        /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
+        'alwaysDecode': boolean;
         /** Returns how long the terrain takes to sink flat. */
         'autoFlattenDuration': number;
         /** Returns the screen parallax below which the terrain renders flat. */
@@ -10746,6 +10754,8 @@ export interface OptionsSpec_sky {
 
 export interface OptionsSpec_terrain {
     type: 'terrain';
+    /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
+    alwaysDecode?: boolean;
     /** Returns how long the terrain takes to sink flat. */
     autoFlattenDuration?: number;
     /** Returns the screen parallax below which the terrain renders flat. */

@@ -40,6 +40,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> ADDRESS = MassifObject.key("address");
     /** Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
     public static final MassifObject.Key<Double> ALTITUDE = MassifObject.key("altitude");
+    /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
+    public static final MassifObject.Key<Boolean> ALWAYS_DECODE = MassifObject.key("alwaysDecode");
     /** Returns the ambient light color. */
     public static final MassifObject.Key<Integer> AMBIENT_COLOR = MassifObject.key("ambientColor");
     /** Returns the ambient light intensity. */

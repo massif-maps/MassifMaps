@@ -21,6 +21,7 @@
 #include "projections/EPSG3857.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/ShadowCasterRing.h"
+#include "terrain/FlattenSwitch.h"
 #include "terrain/TerrainTileTransformer.h"
 #include "ui/UTFGridClickInfo.h"
 #include "utils/Const.h"
@@ -1553,7 +1554,7 @@ namespace massif {
             // Elevation lookups while decoding are non-blocking: warm the grid so heights are right on the first build.
             if (auto options = layer->getOptions()) {
                 if (auto terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled() && _tile.getZoom() >= terrainOptions->getMinZoom() && !isCanceled()) {
+                    if (FlattenSwitch::warmsElevation(terrainOptions->isEnabled(), terrainOptions->isAlwaysDecode()) && _tile.getZoom() >= terrainOptions->getMinZoom() && !isCanceled()) {
                         terrainOptions->getElevationManager()->getTileGrid(_tile, ElevationManager::LoadMode::ALLOW_LOAD);
                     }
                 }

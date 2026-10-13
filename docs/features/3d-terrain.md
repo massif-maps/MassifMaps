@@ -153,6 +153,8 @@ resamples through metres instead of copying texels, so the seam is continuous.
 
 ## Rendering flat when 3D buys nothing
 
+All the ways a map can be flat, and what each costs, are in [2D, 3D and everything between](/docs/features/terrain-2d-3d-states).
+
 Zoomed far out, the displacement is smaller than a pixel; straight down, it shows nothing. Both
 still pay for the drape pass, the terrain draw and the elevation fetches, so the map handles it
 itself — **on by default**, at 2 px and 88°. Change or disable either half:

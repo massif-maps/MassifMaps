@@ -628,6 +628,9 @@ Everything below rests on that split — the icon stays on the feature, only the
   `MIN_PLACEMENT_INTERVAL` too, and the terrain-occlusion verdict comes from the elevation ray alone
   while `FlattenRatio > 0`: the depth snapshot lags the ramp and disagrees with the ray on the same
   label (`TileRenderer::updateLabelOcclusionTest`). Labels blinked through every switch before this.
+  The exaggeration is compared in `TileRenderer::prepareFrame`, before `startFrame` anchors: compared
+  in `onDrawFrame`, the frame a ramp starts or stalls on drew every label a step behind the ground the
+  camera already stood on — a 76 px drop and return on one 75 ms frame, in the roof probe below.
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran
@@ -1684,7 +1687,20 @@ every loaded roof at full growth (`refreshRoofSurfaces`); when that set or the b
 moves, the z-elevated labels are re-anchored on the render thread with `roofAt` over their terrain
 height, and flagged absolute so `labelVsh` keeps the roof height. Not in the cull thread's bulk
 anchoring: a roof reads extrusion bases the render thread resolves. A flat map anchors these labels
-too, and nothing else. A building growing in carries its label at the full height from the start. Such a label, once on
+too, and nothing else. A building growing in carries its label at the full height from the start.
+
+**The roof is measured on this frame's bases.** A base carries the exaggeration, and it is resolved
+when its building is drawn — after `startFrame` has anchored the roof labels. Through a 2D/3D ramp
+a roof label therefore stood on the ground of this step and on the roof of the last one; a step
+(~0.4 internal units at Grenoble) is taller than a house (~0.27), so `max(ground, roof)` flipped
+between a lagging roof and the bare ground every frame, and the label leapt to the real roof when
+the ramp stopped. Measured with a per-frame probe on the Mac Catalyst app (Grenoble, tilt-triggered
+switch): roof POIs moved ±10-25 px a frame at a constant tilt while ground labels held still, and
+their height over the ground read 0, .36, .26, .27, .33, .27, .05, .27, .22, then .71 at rest.
+`refreshRoofSurfaces` now resolves the on-screen bases of this renderer and its peers first, when
+it has a z-elevated label; the draw then finds them current.
+
+Such a label, once on
 its roof, is tested over the box it is **drawn** in (`Label::calculateEnvelope`, the four taps at
 half its extent, none below the roof plane) rather than over a square at its anchor. Tested at the
 anchor, it lost most of them at street tilt: measured on the emulator at Grenoble z19.2 tilt 23, the

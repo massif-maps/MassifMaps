@@ -316,6 +316,13 @@ namespace massif {
         if (activeTerrainOptions) {
             if (std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager()) {
                 invalidateExtrusionBasesOnElevation(*tileRenderer, elevationManager->getVersion());
+                // Before startFrame anchors the labels: found in onDrawFrame, the frame a ramp starts or
+                // stalls on drew every label a step behind the ground, which the camera already rode.
+                float exaggeration = elevationManager->getExaggeration();
+                if (exaggeration != _elevationExaggeration) {
+                    _elevationExaggeration = exaggeration;
+                    tileRenderer->invalidateLabelElevation();
+                }
             }
         }
     }

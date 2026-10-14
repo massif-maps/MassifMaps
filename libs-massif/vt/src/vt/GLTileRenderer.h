@@ -938,6 +938,7 @@ namespace massif::vt {
         std::vector<std::weak_ptr<const GLTileRenderer>> _extrusionPeers;
         std::size_t _roofSignature = 0;
         // Dirties the z-elevated labels when the roofs moved; false when nothing changed.
+        static bool isRoofGeometry(const TileGeometry& geometry);
         bool refreshRoofSurfaces();
         // Under the lock only: a roof reads the extrusion bases the render thread resolves.
         std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> anchorFunc) const;
@@ -1019,6 +1020,8 @@ namespace massif::vt {
         std::atomic<bool> _snapLabelTransition = false; // commit the next placement without a fade
         std::size_t _labelCullCursor = 0; // how far the current placement cycle got through _labels
         std::atomic<bool> _labelsReanchored { false }; // see consumeLabelsReanchored
+        bool _hasZElevatedLabels = false; // a label of the set stands on a roof (refreshRoofSurfaces)
+        unsigned int _roofBasesVersion = 0; // the base versions refreshRoofSurfaces last resolved roofs at
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
         // The label tile set the maps were last built from; prepareLabelMaps depends on nothing else.

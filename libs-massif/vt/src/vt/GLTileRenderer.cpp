@@ -1678,6 +1678,7 @@ namespace massif::vt {
             _visiblePassLabels[pass].reset();
         }
         _labels.clear();
+        _hasZElevatedLabels = false;
         _layerLabelMap.clear();
         _labelMapGeneration++; // invalidates a prepare running off the mutex
     }
@@ -3255,6 +3256,7 @@ namespace massif::vt {
             });
         }
 
+        _hasZElevatedLabels = std::any_of(labels.begin(), labels.end(), [](const std::shared_ptr<Label>& label) { return label->isZElevated(); });
         _labels = std::move(labels);
         _passLabels = std::move(passLabels);
         VT_STAT_SPLIT(labelListNs, labelMapClock);
@@ -5902,6 +5904,11 @@ namespace massif::vt {
         return visible * 0.25f;
     }
 
+    // What a z-elevated label can stand on: a deck stands on its chord, and a translated layer is drawn elsewhere.
+    bool GLTileRenderer::isRoofGeometry(const TileGeometry& geometry) {
+        return geometry.getOccluder() && geometry.getSpanRecords().empty() && !geometry.getStyleParameters().translate;
+    }
+
     bool GLTileRenderer::refreshRoofSurfaces() {
         std::vector<RoofSurface> roofs;
         if (_transformer->isSpherical()) {
@@ -5910,11 +5917,36 @@ namespace massif::vt {
             _roofSignature = 0;
             return moved;
         }
+        // Bases carry the exaggeration but are resolved when drawn, after this: a roof label stood on the
+        // previous 2D/3D ramp step's roof, under the ground of this one, and dropped to it between steps.
+        unsigned int baseVersions = _extrusionBaseVersion.load(std::memory_order_relaxed);
+        for (const std::weak_ptr<const GLTileRenderer>& weakPeer : _extrusionPeers) {
+            if (std::shared_ptr<const GLTileRenderer> peer = weakPeer.lock()) {
+                baseVersions = baseVersions * 31 + peer->_extrusionBaseVersion.load(std::memory_order_relaxed);
+            }
+        }
+        if (_hasZElevatedLabels && baseVersions != _roofBasesVersion) {
+            _roofBasesVersion = baseVersions;
+            auto resolveBases = [](const GLTileRenderer& owner) {
+                owner.forEachVisibleExtrusion(nullptr, false, [&owner](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+                    if (isRoofGeometry(*geometry)) {
+                        owner.resolveExtrusionBases(renderLayer.sourceTileId, renderLayer.targetTileId, geometry);
+                    }
+                    return true;
+                });
+            };
+            resolveBases(*this);
+            for (const std::weak_ptr<const GLTileRenderer>& weakPeer : _extrusionPeers) {
+                if (std::shared_ptr<const GLTileRenderer> peer = weakPeer.lock()) {
+                    resolveBases(*peer);
+                }
+            }
+        }
         float growth = buildingHeightScale(1.0f);
         std::size_t signature = std::hash<float>()(growth) ^ (static_cast<std::size_t>(_extrusionBaseVersion.load(std::memory_order_relaxed)) << 1) ^ (_extrusionElevationProvider ? 1 : 0);
         // Off-screen tiles too: the set then moves as tiles load, not with every pan.
         forEachLabelExtrusion(true, [&](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
-            if (!geometry->getOccluder() || !geometry->getSpanRecords().empty() || geometry->getStyleParameters().translate) {
+            if (!isRoofGeometry(*geometry)) {
                 return true;
             }
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId, 1.0f);

@@ -4597,8 +4597,20 @@ namespace massif::vt {
         if (!geometry->getSpanRecords().empty()) {
             return _spanResolver.resolve(sourceTileId, geometry, _extrusionBaseVersion.load(std::memory_order_relaxed));
         }
-        if (params.baseOffset < 0 || params.texCoordOffset < 0 || !_extrusionElevationProvider) {
-            return true; // not an extrusion, or no elevation at all - the ground is the base
+        if (params.baseOffset < 0 || params.texCoordOffset < 0) {
+            return true; // not an extrusion
+        }
+        if (!_extrusionElevationProvider) {
+            // No elevation at all, the ground is the base: a base resolved while there was one goes back to it.
+            if (geometry->isBaseResolved()) {
+                for (const TileGeometry::BaseRun& run : geometry->getBaseRuns()) {
+                    for (std::uint32_t k = run.begin; k < run.end; k++) {
+                        geometry->setVertexBase(k, TileGeometry::UNRESOLVED_BASE);
+                    }
+                }
+                geometry->setBaseResolved(false);
+            }
+            return true;
         }
         unsigned int version = _extrusionBaseVersion.load(std::memory_order_relaxed);
         VT_STAT_INC(extrusionResolveCalls);

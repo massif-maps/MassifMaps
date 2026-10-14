@@ -276,10 +276,10 @@ namespace massif {
     }
     
     /**
-     * State renderDrapedSurface needs, pushed from prepareFrame too: the shared ground draws before
-     * onDrawFrame, and the first 3D frame had no ground. Caller must hold _mutex.
+     * Terrain state pushed from prepareFrame, before startFrame and the shared ground draw it: the drape's
+     * texture provider, and what labels and roofs are anchored with. Caller must hold _mutex.
      */
-    void TileRenderer::pushTerrainDrapeState(const ViewState& viewState) {
+    void TileRenderer::pushTerrainState(const ViewState& viewState) {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>());
         if (!tileRenderer) {
             return;
@@ -313,22 +313,23 @@ namespace massif {
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTerrainRegularGrid(terrainMode && (bool) terrainTextureProvider,
                                             activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
-        if (activeTerrainOptions) {
-            if (std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager()) {
-                invalidateExtrusionBasesOnElevation(*tileRenderer, elevationManager->getVersion());
-                // Before startFrame anchors the labels: found in onDrawFrame, the frame a ramp starts or
-                // stalls on drew every label a step behind the ground, which the camera already rode.
-                float exaggeration = elevationManager->getExaggeration();
-                if (exaggeration != _elevationExaggeration) {
-                    _elevationExaggeration = exaggeration;
-                    tileRenderer->invalidateLabelElevation();
-                }
-                // And the heights they and the roofs under them stand on: set only in onDrawFrame, the first
-                // frame of a rise drew every CPU-anchored label still flat, roof POIs on roofs left flat.
-                pushLabelElevationProvider(*tileRenderer, viewState, activeTerrainOptions);
-                pushExtrusionElevationProvider(*tileRenderer, activeTerrainOptions);
-            }
+        std::shared_ptr<ElevationManager> elevationManager = (activeTerrainOptions ? activeTerrainOptions->getElevationManager() : std::shared_ptr<ElevationManager>());
+        if (!elevationManager) {
+            // Flat is exaggeration 0: an instant switch back to 3D restores the old value, and must still re-anchor.
+            _elevationExaggeration = 0.0f;
+            return;
         }
+        invalidateExtrusionBasesOnElevation(*tileRenderer, elevationManager->getVersion());
+        // Every CPU height carries the exaggeration, and startFrame anchors next: compared in onDrawFrame, the
+        // frame a ramp starts or stalls on drew every label a step behind the ground the camera already rode.
+        float exaggeration = elevationManager->getExaggeration();
+        if (exaggeration != _elevationExaggeration) {
+            _elevationExaggeration = exaggeration;
+            tileRenderer->invalidateLabelElevation();
+        }
+        // Set only in onDrawFrame, the first frame of a rise anchored labels, and the roofs under roof POIs, flat.
+        pushLabelElevationProvider(*tileRenderer, viewState, activeTerrainOptions);
+        pushExtrusionElevationProvider(*tileRenderer, activeTerrainOptions);
     }
 
     // Bases carry the exaggeration. The shadow casters resolve them before onDrawFrame, so a bump there
@@ -351,6 +352,17 @@ namespace massif {
             firstPerson = options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
         }
         int firstPersonZoom = elevationManager->getDetailZoomLimit();
+        // Pushed from prepareFrame and onDrawFrame: rebuilt only when something it captures changed.
+        LabelProviderKey key { elevationManager.get(), labelTextureCache.get(), labelZoom, firstPerson, firstPersonZoom };
+        if (key == _labelProviderKey) {
+            return;
+        }
+        // The first frame after a cache reset sampled without it: those heights are not the drawn ground's.
+        bool cacheChanged = (key.textureCache != _labelProviderKey.textureCache && _labelProviderKey.manager);
+        _labelProviderKey = key;
+        if (cacheChanged) {
+            tileRenderer.invalidateLabelElevation();
+        }
         tileRenderer.setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos, int tileZoom) {
             double height = 0;
             // Bounded ancestor walk, or POIs hang off a coarse ancestor. First person reads only what is held,
@@ -464,7 +476,7 @@ namespace massif {
             }
         }
         tileRenderer->setExtrusionPeers(std::move(peerRenderers));
-        pushTerrainDrapeState(viewState);
+        pushTerrainState(viewState);
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
             // Re-anchored labels were placed at their old height; a still camera asks for no new pass.
@@ -1026,12 +1038,6 @@ namespace massif {
                                 tileRenderer->invalidateLabelElevation(contentTileIds);
                             }
                         }
-                        // Every CPU height carries the exaggeration: a 2D/3D ramp step invalidates the whole screen.
-                        float exaggeration = elevationManager->getExaggeration();
-                        if (exaggeration != _elevationExaggeration) {
-                            _elevationExaggeration = exaggeration;
-                            tileRenderer->invalidateLabelElevation();
-                        }
                         unsigned int elevationVersion = elevationManager->getVersion();
                         if (elevationVersion != _elevationVersion) {
                             auto now = std::chrono::steady_clock::now();
@@ -1045,7 +1051,7 @@ namespace massif {
 
                             std::vector<MapTile> changedTiles;
                             if (scaleOnly) {
-                                _elevationVersion = elevationVersion; // labels already invalidated above
+                                _elevationVersion = elevationVersion; // labels invalidated by pushTerrainState
                             } else if (_elevationVersion != 0 && elevationManager->getChangedTiles(_elevationVersion, changedTiles)) {
                                 _elevationVersion = elevationVersion;
                                 std::vector<vt::TileId> changedTileIds;
@@ -1073,10 +1079,6 @@ namespace massif {
                     }
                 }
             }
-        }
-        if (!terrainMode) {
-            // Flat is exaggeration 0: an instant switch back to 3D restores the old value, and must still re-anchor.
-            _elevationExaggeration = 0.0f;
         }
         // GPU draping needs vertex texture fetch; without it CPU displacement with polygon offsets stays.
         vt::GLTileRenderer::TerrainTextureProvider terrainTextureProvider;
@@ -1128,6 +1130,7 @@ namespace massif {
                 tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
             }
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&, int)>());
+            _labelProviderKey = LabelProviderKey();
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());

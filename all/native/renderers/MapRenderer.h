@@ -402,6 +402,7 @@ namespace massif {
         int _eyeGroundZoom = -1;
         std::atomic<bool> _touchGestureActive { false };
         bool _terrainFocusFrozen = false;
+        float _pinFlattenRatio = 1.0f; // the FlattenRatio the focus pin last saw
         std::vector<vt::TileId> _skirtCover;
         std::shared_ptr<ElevationTextureCache> _skirtCache;
         unsigned int _skirtDrawnVersion = 0;

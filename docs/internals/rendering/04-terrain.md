@@ -1439,8 +1439,10 @@ Grenoble (212 m) the camera hung tens of metres above the roofs, the drape a lev
 view.
 
 **Not during a 2D/3D ramp.** The hold is for a focus that moves over the ground; a ramp rescales the
-ground under a still one (`FlattenRatio` strictly between 0 and 1), so the pin keeps following it under
-a finger too. Held, a switch started by tilting (auto-flatten) rose the relief into a camera left at
+ground under a still one, so the pin keeps following it under a finger too, while `FlattenRatio` is
+strictly between 0 and 1 and on the frame it lands on either end. That last step is no detail on a
+slow phone: the Crosscall draws a 0.3 s ramp in 3-4 frames, and its final step (0.11 to 0) was a tenth
+of the relief, held until the finger lifted. Held, a switch started by tilting (auto-flatten) rose the relief into a camera left at
 the flat map's height — on Android, where the tilt is a two-finger gesture; the 3D button and a
 desktop's trackpad tilt raise no gesture and never showed it.
 

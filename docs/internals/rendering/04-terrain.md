@@ -1438,6 +1438,12 @@ sea level 4 shells above) left the zoom measured to sea level over high ground: 
 Grenoble (212 m) the camera hung tens of metres above the roofs, the drape a level short of the
 view.
 
+**Not during a 2D/3D ramp.** The hold is for a focus that moves over the ground; a ramp rescales the
+ground under a still one (`FlattenRatio` strictly between 0 and 1), so the pin keeps following it under
+a finger too. Held, a switch started by tilting (auto-flatten) rose the relief into a camera left at
+the flat map's height — on Android, where the tilt is a two-finger gesture; the 3D button and a
+desktop's trackpad tilt raise no gesture and never showed it.
+
 **Both work on the globe too.** They read a camera or focus position through
 `ProjectionSurface::calculateMapPos`, so a sphere's 3D point becomes the internal x/y an elevation
 lookup wants and the height above the surface; `ViewState::setFocusHeight` puts the focus back

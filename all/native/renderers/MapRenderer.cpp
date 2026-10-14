@@ -1474,7 +1474,11 @@ namespace massif {
                         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, clearanceFraction) - orbitHeight;
                         _eyeGroundZoom = -1;
                         _eyeGroundOffset = 0;
-                        bool gesture = _touchGestureActive.load() || _kineticEventHandler.isPanning() || _kineticEventHandler.isZooming() || _kineticEventHandler.isRotating();
+                        // A 2D/3D ramp rescales the ground under the focus rather than moving it: frozen under the
+                        // finger whose tilt started the switch, the relief rose into the camera.
+                        float flattenRatio = focusTerrainOptions->getFlattenRatio();
+                        bool ramping = flattenRatio > 0.0f && flattenRatio < 1.0f;
+                        bool gesture = !ramping && (_touchGestureActive.load() || _kineticEventHandler.isPanning() || _kineticEventHandler.isZooming() || _kineticEventHandler.isRotating());
                         if (gesture) {
                             _terrainFocusFrozen = true;
                             _viewState.setFocusHeight(std::max(focusMapPos.getZ(), shellFocusZ + lift));

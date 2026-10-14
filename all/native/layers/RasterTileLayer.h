@@ -117,6 +117,8 @@ namespace massif {
 
         virtual vt::RasterFilterMode getRasterFilterMode() const;
 
+        virtual bool usesDistanceTileZoom() const { return true; }
+
         virtual std::shared_ptr<vt::Tile> createVectorTile(const MapTile& subTile, const MapTile& tile, const std::shared_ptr<TileData>& tileData, const std::shared_ptr<Bitmap>& bitmap, const std::shared_ptr<vt::TileTransformer>& tileTransformer) const;
 
         virtual void calculateDrawData(const MapTile& visTile, const MapTile& closestTile, bool preloadingTile);

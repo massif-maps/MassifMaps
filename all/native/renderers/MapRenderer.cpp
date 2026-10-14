@@ -2858,6 +2858,10 @@ namespace massif {
         // Capped at what the camera shows: blending-out tiles from before a zoom out would drag it finer.
         // The render zoom, which tiles are picked at: the app's number is a level short with ZoomOffset 1 (web).
         int viewZoomCap = static_cast<int>(std::ceil(viewState.getRenderZoom())) + 1;
+        // A free roam camera's zoom is a distance to its focus: the layers' own finest tile is the bound.
+        if (_options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF) {
+            viewZoomCap = dataMaxZoom;
+        }
         coverZoom = std::min(maxCollectedZoom, std::max(viewZoomCap, minTopZoom));
         // Split only where a finer collected tile sits inside, or leaves explode (04-terrain.md).
         // The options' transformer is the flat base: its sea-level box drops the near ground of a high valley.
@@ -3744,8 +3748,10 @@ namespace massif {
                             blankTiles.push_back(request);       // shows a flat fill: a hole
                         }
                     }
-                    // Nearest the focus first within each class, in tile lengths of each tile's own zoom.
-                    cglib::vec3<double> bakeFocus = viewState.getFocusPos();
+                    // Nearest the focus first within each class, in tile lengths of each tile's own zoom; a free roam
+                    // camera's focus is the far horizon, so it is the eye instead or the near ground bakes last.
+                    bool freeRoamDrape = _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF;
+                    cglib::vec3<double> bakeFocus = (freeRoamDrape ? viewState.getCameraPos() : viewState.getFocusPos());
                     auto focusDistance = [focusX = bakeFocus(0) / Const::WORLD_SIZE, focusY = bakeFocus(1) / Const::WORLD_SIZE](const vt::TileId& tileId) {
                         double extent = static_cast<double>(1 << tileId.zoom);
                         double dx = (tileId.x + 0.5) / extent - 0.5 - focusX;
@@ -3872,7 +3878,8 @@ namespace massif {
                     // Settled: adopt this zoom for the drape. The fingerprint above reads this, so
                     // the tiles go stale on the frame the gesture ends and are re-baked from there.
                     if (!bakeCameraMoving) {
-                        std::size_t zoomTerm = DrapeTuning::bakeZoomTerm(viewState.getZoom(), DRAPE_REBAKE_ZOOM_THRESHOLD);
+                        // Free roam: looking up or down moves the zoom through levels, and a ground re-bake per level.
+                        std::size_t zoomTerm = DrapeTuning::bakeZoomTerm(freeRoamDrape ? 0.0f : viewState.getZoom(), DRAPE_REBAKE_ZOOM_THRESHOLD);
                         if (zoomTerm != _drapeBakeZoomTerm) {
                             _drapeBakeZoomTerm = zoomTerm;
                             requestRedraw(); // nothing else asks for the frame the re-bake happens in
@@ -4065,6 +4072,15 @@ namespace massif {
                         // A standing 'partial' backlog means the bake never catches up with the layers.
                         Log::Infof("MapRenderer: RTT drape cover - split level %d (collected up to %d, camera zoom %.2f), leaves %d",
                             drapeZoom, maxCollectedZoom, viewState.getZoom(), static_cast<int>(drapeTiles.size()));
+                        std::map<int, int> leafZooms;
+                        for (auto it2 = drapeTiles.begin(); it2 != drapeTiles.end(); it2++) {
+                            leafZooms[it2->first.zoom]++;
+                        }
+                        std::string leafZoomText;
+                        for (const auto& leafZoom : leafZooms) {
+                            leafZoomText += " z" + std::to_string(leafZoom.first) + ":" + std::to_string(leafZoom.second);
+                        }
+                        Log::Infof("MapRenderer: RTT drape leaves by zoom%s; cache cap %d entries, resolution %d", leafZoomText.c_str(), static_cast<int>(TerrainDrapeCache::getEntryCap()), resolution);
                         Log::Infof("MapRenderer: RTT drape seeded %d tiles from cache this frame", seededTiles);
                         Log::Infof("MapRenderer: RTT drape queues - blank %d, stand-in %d, partial %d, stale %d, tiles without elevation %d of %d",
                             static_cast<int>(blankTiles.size()), static_cast<int>(standInTiles.size()),

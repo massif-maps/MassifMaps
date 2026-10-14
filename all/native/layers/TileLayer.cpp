@@ -3,6 +3,7 @@
 #include "layers/TileStandIns.h"
 #include "layers/NearPlaneCover.h"
 #include "layers/TileLODRule.h"
+#include "layers/DistanceTileLOD.h"
 #include "layers/TileStyleZoom.h"
 #include "core/BinaryData.h"
 #include "components/Exceptions.h"
@@ -17,6 +18,7 @@
 #include "renderers/components/RayIntersectedElement.h"
 #include "renderers/MapRenderer.h"
 #include "renderers/TileRenderer.h"
+#include "renderers/utils/TerrainDrapeCache.h"
 #include "projections/Projection.h"
 #include "projections/EPSG3857.h"
 #include "terrain/ElevationManager.h"
@@ -36,8 +38,11 @@
 #include <vt/RenderStats.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <map>
 #include <set>
+#include <string>
 
 namespace massif {
 
@@ -399,10 +404,12 @@ namespace massif {
             float viewDistanceFactor = 0.0f;
             float lodFactor = 0.0f;
             int coarsening = 0;
+            bool freeRoam = false;
             // The decode state, not the render one: the 2D/3D switch waits for the tile set it prepares.
             bool terrainActive = false;
             if (auto options = getOptions()) {
                 lodFactor = options->getTileLODFactor();
+                freeRoam = options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF;
                 if (auto terrainOptions = options->getTerrainOptions()) {
                     viewDistanceFactor = terrainOptions->getViewDistanceFactor();
                     coarsening = terrainOptions->getMaxTileZoomCoarsening();
@@ -410,11 +417,12 @@ namespace massif {
                 }
             }
             float zoomLevelBias = getZoomLevelBias();
-            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _terrainActive != terrainActive || _cullZoomLevelBias != zoomLevelBias) {
+            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _cullFreeRoam != freeRoam || _terrainActive != terrainActive || _cullZoomLevelBias != zoomLevelBias) {
                 _cullZoomLevelBias = zoomLevelBias;
                 _terrainViewDistanceFactor = viewDistanceFactor;
                 _tileLODFactor = lodFactor;
                 _terrainCoarsening = coarsening;
+                _cullFreeRoam = freeRoam;
                 _terrainActive = terrainActive;
                 _tileCullState.reset(); // re-cull with the new rule, tiles themselves stay valid
             }
@@ -430,9 +438,21 @@ namespace massif {
             }
         }
 
+        // The LOD projects every tile at its own ground: a still camera whose DEM lands later keeps the cut it made without.
+        unsigned int elevationVersion = 0;
+        if (_distanceLod) {
+            if (auto options = getOptions()) {
+                if (auto terrainOptions = options->getTerrainOptions()) {
+                    if (auto elevationManager = terrainOptions->getElevationManager()) {
+                        elevationVersion = elevationManager->getDataVersion();
+                    }
+                }
+            }
+        }
         // An empty set is recalculated too, or an early cull leaves the layer blank until the user pans; it is cheap.
-        bool recalculateTiles = (!_tileCullState || _visibleTiles.empty() || _targetTileZoomHeld || _frameNr != _lastFrameNr || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
+        bool recalculateTiles = (!_tileCullState || _visibleTiles.empty() || _targetTileZoomHeld || _frameNr != _lastFrameNr || _cullElevationVersion != elevationVersion || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
         if (recalculateTiles) {
+            _cullElevationVersion = elevationVersion;
             VT_STAT_INC(tileRecalculations);
             calculateVisibleTiles(cullState);
 
@@ -459,7 +479,7 @@ namespace massif {
             bool cached = tileExists(tileId, true) || tileExists(tileId, false);
             bool valid = tileValid(tileId, true) || tileValid(tileId, false);
             if ((!cached || !valid) && !prefetchTile(tileId, true)) {
-                fetchTileList.push_back({ standInTile, true, PARENT_PRIORITY_OFFSET });
+                fetchTileList.push_back({ standInTile, true, _distanceLod ? STAND_IN_FIRST_PRIORITY_OFFSET : PARENT_PRIORITY_OFFSET });
             }
         }
 
@@ -751,6 +771,7 @@ namespace massif {
         _terrainMaxTileZoom = 1000;
         _terrainMinTileZoom = 0;
         _terrainOverzoomTargets = false;
+        _distanceLod = false;
         if (auto options = getOptions()) {
             if (auto terrainOptions = options->getTerrainOptions()) {
                 if (terrainOptions->isDecodeActive()) {
@@ -762,10 +783,14 @@ namespace massif {
                     if (terrainOptions->getMaxTileZoomOffset() < 100) {
                         _terrainMaxTileZoom = cameraTileZoom + terrainOptions->getMaxTileZoomOffset();
                     }
-                    _terrainMinTileZoom = cameraTileZoom - terrainOptions->getMaxTileZoomCoarsening();
+                    // A free roam camera's zoom is the distance to a focus it looks along: it picks no tile (02-tiles.md).
+                    _distanceLod = usesDistanceTileZoom() && options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF && options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR;
+                    if (!_distanceLod) {
+                        _terrainMinTileZoom = cameraTileZoom - terrainOptions->getMaxTileZoomCoarsening();
+                    }
                     // Cap at the DEM's detail limit so far tiles stop refining with the camera zoom.
                     // Planar only: on the globe the zoom carries 2*cos(lat) and the cap flattens the relief.
-                    if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+                    if (!_distanceLod && options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                         if (auto elevationManager = terrainOptions->getElevationManager()) {
                             _terrainMinTileZoom = std::min(_terrainMinTileZoom, elevationManager->getDetailZoomLimit());
                         }
@@ -793,6 +818,7 @@ namespace massif {
                 _targetTileZoom = targetTileZoom;
                 onTargetTileZoomChanged();
             }
+            _distanceZoomCap = std::min(maxTargetZoom, _terrainMaxTileZoom);
         }
 
         // Tangram's view distance, which the style may extend with an absolute one in metres.
@@ -855,8 +881,10 @@ namespace massif {
             const ViewState& viewState = cullState->getViewState();
             // TileDrawSize alone: the zoom offset here would fetch a level coarser (docs/maintenance/web-build.md).
             double tileSizePixels = options->getTileDrawSize() * viewState.getDPI() / Const::UNSCALED_DPI;
-            // TileLODFactor 1 is their rule verbatim, larger keeps tiles coarser.
-            double maxEdge = 2.0 * tileSizePixels * std::max(0.0f, options->getTileLODFactor());
+            // TileLODFactor 1 is their rule verbatim, larger keeps tiles coarser. Without the area test a free roam cut
+            // would refine to the data's zoom everywhere, so it falls back to the verbatim rule.
+            double lodFactor = std::max(0.0f, options->getTileLODFactor());
+            double maxEdge = 2.0 * tileSizePixels * (_distanceLod && lodFactor == 0 ? 1.0 : lodFactor);
             // Tangram: maxArea * exp2(2*zoomBias).
             _lodMaxTileArea = maxEdge * maxEdge * std::pow(4.0, -getZoomLevelBias());
 
@@ -866,9 +894,13 @@ namespace massif {
             TileLODRule lodRule = calculateTileLODRule(options->getTileLODMaxZoomLevelsOnScreen(), options->getTileLODTileCountRatio(),
                                                        viewState.getFOVY(), std::max(0.0, pitch) * Const::DEG_TO_RAD);
             _lodCosThetaExponent = lodRule.cosThetaExponent;
-            _lodMaxTileArea *= std::pow(4.0, lodRule.uniformLevelDrop);
+            // The pitch drop would coarsen every tile by where the camera looks; a free roam cut is budgeted below.
+            _lodMaxTileArea *= std::pow(4.0, _distanceLod ? 0.0 : lodRule.uniformLevelDrop);
         }
 
+        _lodFocalPixels = cullState->getViewState().getProjectionMat()(1, 1) * cullState->getViewState().getHalfHeight();
+        _distanceNodes.clear();
+        _distanceTiles.clear();
         calculateVisibleTilesRecursive(cullState, MapTile(0, 0, 0, _frameNr), _dataSource->getDataExtent());
         if (auto options = getOptions()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR && options->isSeamlessPanning()) {
@@ -878,6 +910,9 @@ namespace massif {
                 }
             }
         }
+        if (_distanceLod) {
+            selectDistanceTiles(cullState);
+        }
 
         extendTilesToNearPlane(cullState->getViewState(), _dataSource->getDataExtent());
 
@@ -885,6 +920,37 @@ namespace massif {
         sortTiles(_labelTiles, cullState->getViewState(), true);
         sortTiles(_preloadingTiles, cullState->getViewState(), true);
         calculateShadowCasterTiles();
+    }
+
+    void TileLayer::selectDistanceTiles(const std::shared_ptr<CullState>& cullState) {
+        std::size_t budget = DistanceTileLOD::DEFAULT_BUDGET;
+        if (auto options = getOptions()) {
+            if (auto terrainOptions = options->getTerrainOptions()) {
+                budget = DistanceTileLOD::budget(terrainOptions->getDrapeResolution(), terrainOptions->getDrapeCacheSize(), TerrainDrapeCache::getEntryCap());
+            }
+        }
+        double scale = DistanceTileLOD::fitScale(_distanceNodes, budget);
+        std::vector<MapTile>* buckets[] = { &_visibleTiles, &_labelTiles, &_preloadingTiles };
+        std::map<int, int> zoomCounts;
+        for (std::size_t i = 0; i < _distanceNodes.size(); i++) {
+            if (DistanceTileLOD::isLeaf(_distanceNodes[i], scale)) {
+                buckets[_distanceNodes[i].bucket]->push_back(_distanceTiles[i]);
+                zoomCounts[_distanceNodes[i].bucket == 0 ? _distanceTiles[i].getZoom() : -1]++;
+            }
+        }
+        long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (nowMs - _distanceLogTime >= 3000) {
+            _distanceLogTime = nowMs;
+            std::string zooms;
+            for (const auto& zoomCount : zoomCounts) {
+                if (zoomCount.first >= 0) {
+                    zooms += " z" + std::to_string(zoomCount.first) + ":" + std::to_string(zoomCount.second);
+                }
+            }
+            Log::Infof("TileLayer: free roam cut - %d visible tiles of %d, %d label, %d preloading; edge scale %.2f (%.1f levels coarser than the rule), %d nodes; zooms%s",
+                       static_cast<int>(_visibleTiles.size()), static_cast<int>(budget), static_cast<int>(_labelTiles.size()), static_cast<int>(_preloadingTiles.size()),
+                       scale, std::log2(scale), static_cast<int>(_distanceNodes.size()), zooms.c_str());
+        }
     }
 
     void TileLayer::extendTilesToNearPlane(const ViewState& viewState, const MapBounds& dataExtent) {
@@ -961,7 +1027,7 @@ namespace massif {
         }
     }
 
-    void TileLayer::calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& tile, const MapBounds& dataExtent) {
+    void TileLayer::calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& tile, const MapBounds& dataExtent, double parentCritical) {
         const ViewState& viewState = cullState->getViewState();
         const cglib::frustum3<double>& visibleFrustum = viewState.getFrustum();
         
@@ -996,6 +1062,30 @@ namespace massif {
             }
         }
         bool inVisibleFrustum = visibleFrustum.inside(tileBounds);
+
+        if (_distanceLod) {
+            // Recorded whole: the budget picks the cut from the finished tree (selectDistanceTiles).
+            double critical = 0;
+            if (getMinZoom() > tile.getZoom()) {
+                critical = std::numeric_limits<double>::infinity();
+            } else if (tile.getZoom() < _distanceZoomCap && _distanceNodes.size() < DistanceTileLOD::MAX_NODES) {
+                const cglib::vec3<double>& eyePos = viewState.getCameraPos();
+                cglib::vec3<double> nearestPoint = eyePos;
+                for (int i = 0; i < 3; i++) {
+                    nearestPoint(i) = std::max(tileBounds.min(i), std::min(tileBounds.max(i), eyePos(i)));
+                }
+                critical = DistanceTileLOD::criticalScale(tileBounds.max(0) - tileBounds.min(0), cglib::length(nearestPoint - eyePos), _lodFocalPixels, std::sqrt(_lodMaxTileArea));
+            }
+            int bucket = (inVisibleFrustum ? 0 : (viewState.getLabelFrustum().inside(tileBounds) ? 1 : 2));
+            _distanceNodes.push_back({ critical, parentCritical, bucket });
+            _distanceTiles.push_back(tile);
+            if (critical > 1.0) {
+                for (int n = 0; n < 4; n++) {
+                    calculateVisibleTilesRecursive(cullState, tile.getChild(n), dataExtent, critical);
+                }
+            }
+            return;
+        }
 
         // Tangram's rule (View::getTileScreenArea): the projected area of the tile; one crossing the camera plane subdivides.
         const cglib::mat4x4<double>& mvpMat = viewState.getModelviewProjectionMat();
@@ -1654,6 +1744,7 @@ namespace massif {
     // Negative: the preview parent is dispatched after the wanted tiles, which a generating source would otherwise redo.
     const int TileLayer::PARENT_PRIORITY_OFFSET = -1;
     const int TileLayer::PRELOADING_PRIORITY_OFFSET = -2;
+    const int TileLayer::STAND_IN_FIRST_PRIORITY_OFFSET = 1;
     const int TileLayer::STAND_IN_ZOOM_DELTA = 4;
     const int TileLayer::SPAN_REFERENCE_ZOOM_DROP = 3;
     const int TileLayer::SPAN_REFERENCE_MIN_ZOOM = 14;

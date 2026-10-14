@@ -297,6 +297,8 @@ add_executable(api_tests
   LabelPlacementFollowUpTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.
   TileLODRuleTest.cpp
+  # Same: DistanceTileLOD.h is the free roam raster cut's tile budget and nothing else.
+  DistanceTileLODTest.cpp
   # The globe's surface against the planar one - the conventions terrain-on-globe rests on.
   # Needs the two projection surface sources added above.
   SphericalSurfaceTest.cpp

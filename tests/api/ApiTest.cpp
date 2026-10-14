@@ -106,6 +106,7 @@ void testTileCacheStash();
 void testKineticStep();
 void testLabelPlacementFollowUp();
 void testTileLODRule();
+void testDistanceTileLOD();
 void testSphericalSurface();
 void testGlobeElevationScale();
 void testSkyFrame();
@@ -512,6 +513,7 @@ int main() {
     testKineticStep();
     testLabelPlacementFollowUp();
     testTileLODRule();
+    testDistanceTileLOD();
     testSphericalSurface();
     testGlobeElevationScale();
     testSkyFrame();

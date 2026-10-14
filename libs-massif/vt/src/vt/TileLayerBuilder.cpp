@@ -1756,6 +1756,14 @@ namespace massif::vt {
         return static_cast<std::int8_t>(std::max(1, std::min(127, static_cast<int>(code))));
     }
 
+    float TileLayerBuilder::unpackTopHeight(std::int8_t top) {
+        return std::exp2(top / 12.0f) - 1.0f;
+    }
+
+    std::int8_t TileLayerBuilder::liftTopHeight(std::int8_t top, float dropMeters) {
+        return dropMeters > 0.0f ? packTopHeight(unpackTopHeight(top) + dropMeters) : top;
+    }
+
     std::size_t TileLayerBuilder::appendWallColumn(const cglib::vec2<float>& p, const cglib::vec2<float>& binormal, const std::vector<float>& rows, std::int8_t sideVertex, std::int8_t styleIndex) {
         std::size_t base = _coords.size();
         for (float h : rows) {

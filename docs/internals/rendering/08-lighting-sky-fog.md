@@ -979,6 +979,21 @@ back-face extrusion fragment, the one every sun-facing fragment already paid; no
 always 0 on walls). A taller part of the same building does shade the lower part's back wall, which is
 correct.
 
+**On a slope the foot needs a taller top than the roof vertices.** The top is the building's height above
+its level base, packed at tile build time before any DEM exists, and `polygon3DVsh` adds it to the vertex's
+own base: the level `aVertexBase` for every vertex above the foot, but the per-vertex ground for the foot.
+Where the ground under a foot is `drop` below the base, the foot's lookup landed `drop` under the roof,
+inside the building, so the map read "occluded" there; interpolated up the wall it crossed the roofline
+part way, a jagged dark band on the lower back wall plus a dark patch on the ground below, growing with
+the slope across the footprint (flat ground has `drop = 0` and never showed it). `aVertexBase` of a foot
+cannot carry the fix: `resolveExtrusionBases` gives it the lowest ground for the label occluder.
+Instead the resolver rewrites the foot vertices' attribute byte 2 to `liftTopHeight(top, drop)`, `drop` =
+base minus the footprint's lowest ground in metres (the same `metersToZ` the base floor uses), so every
+vertex of a wall looks up at `base + top`. A foot standing higher than the lowest ground looks up a little
+above the roof, never under it. The lift is for the lookup only: the drawn height, the label occluder and
+the caster never read that byte. A re-resolve lifts from the unlifted top again (read off the run's first
+vertex above the foot), and losing the elevation provider restores it.
+
 The straight mapbox port — sun term × `(1 − shadow-intensity · occlusion)`, ambient never shadowed —
 was tried and rejected at the same camera: at this light balance (ambient ~0.81 against a direct
 ~0.14 linear on the walls) a building inside the shadow lost ~7% and the whole courtyard went beige.

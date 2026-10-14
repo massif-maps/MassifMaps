@@ -108,6 +108,10 @@ namespace massif::vt {
 
         // A building's top in metres as log2(1 + h) twelfths, rounded UP (polygon3DVsh decodes it).
         static std::int8_t packTopHeight(float height);
+        static float unpackTopHeight(std::int8_t top);
+        // The top a wall FOOT vertex carries so its lookup lands at the roof when the ground under it is
+        // dropMeters below the level base (08-lighting-sky-fog.md).
+        static std::int8_t liftTopHeight(std::int8_t top, float dropMeters);
 
     private:
         static constexpr unsigned int RESERVED_VERTICES = 4096;

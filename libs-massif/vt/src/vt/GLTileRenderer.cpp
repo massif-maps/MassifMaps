@@ -16,6 +16,7 @@
 #include "LabelSpot.h"
 #include "RenderStats.h"
 #include "ShadowBox.h"
+#include "TileLayerBuilder.h"
 
 #include <array>
 #include <cassert>
@@ -4598,6 +4599,33 @@ namespace massif::vt {
         if (params.baseOffset < 0 || params.texCoordOffset < 0) {
             return true; // not an extrusion
         }
+        // A foot vertex's shadow lookup is its building's top lifted by how far its ground is under the level
+        // base, so it lands at the roof on a slope too (08-lighting-sky-fog.md). The unlifted top is read off the
+        // run's first vertex above the foot, and a re-resolve starts from it again.
+        auto setRunFootTop = [&](const TileGeometry::BaseRun& run, float dropMeters) {
+            const VertexArray<std::uint8_t>& data = geometry->getVertexGeometry();
+            if (params.attribsOffset < 0 || params.heightOffset < 0 || data.empty()) {
+                return;
+            }
+            auto heightAt = [&](std::uint32_t vertex) {
+                std::int16_t height = 0;
+                std::memcpy(&height, data.data() + vertex * params.vertexSize + params.heightOffset, sizeof(height));
+                return height;
+            };
+            std::uint32_t above = run.begin;
+            while (above < run.end && heightAt(above) <= 0) {
+                above++;
+            }
+            if (above == run.end) {
+                return;
+            }
+            std::int8_t foot = TileLayerBuilder::liftTopHeight(static_cast<std::int8_t>(data[above * params.vertexSize + params.attribsOffset + 2]), dropMeters);
+            for (std::uint32_t k = run.begin; k < run.end; k++) {
+                if (heightAt(k) <= 0) {
+                    geometry->setVertexTop(k, foot);
+                }
+            }
+        };
         if (!_extrusionElevationProvider) {
             // No elevation at all, the ground is the base: a base resolved while there was one goes back to it.
             if (geometry->isBaseResolved()) {
@@ -4605,6 +4633,7 @@ namespace massif::vt {
                     for (std::uint32_t k = run.begin; k < run.end; k++) {
                         geometry->setVertexBase(k, TileGeometry::UNRESOLVED_BASE);
                     }
+                    setRunFootTop(run, 0.0f);
                 }
                 geometry->setBaseResolved(false);
             }
@@ -4647,6 +4676,7 @@ namespace massif::vt {
 
         std::vector<double> anchorBases(anchors.size(), 0.0);
         std::vector<double> anchorFeet(anchors.size(), 0.0);
+        std::vector<double> anchorFootDrops(anchors.size(), 0.0);
         for (std::size_t a = 0; a < anchors.size(); a++) {
             const TileGeometry::BaseAnchor& anchor = anchors[a];
             // The SMOOTHED field, so a building's pieces agree without seeing each other. An undecoded
@@ -4677,6 +4707,7 @@ namespace massif::vt {
                     double maxHeightZ = anchor.maxHeightUnits / static_cast<double>(params.heightScale) / tileUnitsPerMeter * metersToZ;
                     base = std::max(base, maxGround + 2.0 * metersToZ - maxHeightZ);
                     anchorFeet[a] = std::min(base, minGround);
+                    anchorFootDrops[a] = (base - anchorFeet[a]) / metersToZ;
                 }
                 else {
                     anchorFeet[a] = base;
@@ -4699,6 +4730,7 @@ namespace massif::vt {
                 }
                 geometry->setVertexBase(k, height > 0 ? base : foot);
             }
+            setRunFootTop(run, static_cast<float>(anchorFootDrops[run.anchorIndex]));
         }
         geometry->setBaseResolved(true);
         geometry->setBaseElevationVersion(version);

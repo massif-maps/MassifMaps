@@ -671,6 +671,7 @@ class ProjectionSurface;
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with
         bool _terrainActive = false; // last TerrainOptions active state a cull ran with
+        float _cullZoomLevelBias = 0.0f; // last zoom level bias a cull ran with
         // Its own mutex: the render thread reads this every frame while the switch waits, and
         // _mutex is held for a whole cull.
         mutable std::mutex _terrainDecodeMutex;

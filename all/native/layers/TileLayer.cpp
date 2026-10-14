@@ -409,7 +409,9 @@ namespace massif {
                     terrainActive = terrainOptions->isDecodeActive();
                 }
             }
-            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _terrainActive != terrainActive) {
+            float zoomLevelBias = getZoomLevelBias();
+            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _terrainActive != terrainActive || _cullZoomLevelBias != zoomLevelBias) {
+                _cullZoomLevelBias = zoomLevelBias;
                 _terrainViewDistanceFactor = viewDistanceFactor;
                 _tileLODFactor = lodFactor;
                 _terrainCoarsening = coarsening;

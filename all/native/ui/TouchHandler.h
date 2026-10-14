@@ -195,6 +195,8 @@ namespace massif {
         MapPos _dualPointerPivotPos; // the ground under the fingers' midpoint when two went down
 
         ScreenPos _prevScreenPos1;
+        // where the double tap landed: a one-finger zoom pivots about it under PIVOT_MODE_TOUCHPOINT
+        ScreenPos _zoomAnchorScreenPos;
         ScreenPos _prevScreenPos2;
     
         cglib::vec2<float> _swipe1;

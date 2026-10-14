@@ -313,6 +313,20 @@ namespace massif {
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTerrainRegularGrid(terrainMode && (bool) terrainTextureProvider,
                                             activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
+        if (activeTerrainOptions) {
+            if (std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager()) {
+                invalidateExtrusionBasesOnElevation(*tileRenderer, elevationManager->getVersion());
+            }
+        }
+    }
+
+    // Bases carry the exaggeration. The shadow casters resolve them before onDrawFrame, so a bump there
+    // left the shadow map one step behind and, once the drag stopped, nothing refreshed it.
+    void TileRenderer::invalidateExtrusionBasesOnElevation(vt::GLTileRenderer& tileRenderer, unsigned int elevationVersion) {
+        if (elevationVersion != _extrusionBasesElevationVersion) {
+            _extrusionBasesElevationVersion = elevationVersion;
+            tileRenderer.invalidateExtrusionBases();
+        }
     }
 
     bool TileRenderer::prepareFrame(float deltaSeconds, const ViewState& viewState) {
@@ -957,8 +971,8 @@ namespace massif {
                             bool scaleOnly = (_elevationDataVersion != 0 && elevationDataVersion == _elevationDataVersion);
                             _elevationDataVersion = elevationDataVersion;
 
-                            // Bases carry the exaggeration too; not narrowed, an unmoved base uploads nothing.
-                            tileRenderer->invalidateExtrusionBases();
+                            // Not narrowed, an unmoved base uploads nothing; a no-op when prepareFrame already ran.
+                            invalidateExtrusionBasesOnElevation(*tileRenderer, elevationVersion);
 
                             std::vector<MapTile> changedTiles;
                             if (scaleOnly) {

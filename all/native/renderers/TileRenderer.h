@@ -318,6 +318,8 @@ namespace massif {
         bool _terrainPaintFullDetail = true; // shade from the DEM's own max zoom, not the mesh's level
         bool prepareFrameUnsafe(float deltaSeconds, const ViewState& viewState); // caller holds _mutex
         void pushTerrainDrapeState(); // caller holds _mutex
+        void invalidateExtrusionBasesOnElevation(vt::GLTileRenderer& tileRenderer, unsigned int elevationVersion); // caller holds _mutex
+        unsigned int _extrusionBasesElevationVersion = 0;
 
         bool _framePrepared = false;   // prepareFrame already ran this frame
         bool _framePrepareResult = false;

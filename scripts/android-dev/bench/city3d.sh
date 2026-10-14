@@ -12,6 +12,7 @@
 # At ambient 0.35 / sunIntensity 1.0 it arrives as 0.62. Check the 'shadows ACTIVE (strength ...)'
 # line before believing a shadow measurement.
 # $1 = label, rest = extra extras (e.g. --es shadow 0 --es meshResolution 64).
+. "$(dirname "$0")/base.sh"
 ANDROID_SERIAL="${ANDROID_SERIAL:?set it to the device serial}"; export ANDROID_SERIAL
 LABEL="$1"; shift
 SETTLE=${SETTLE:-30}
@@ -19,7 +20,7 @@ SPIN=${SPIN:-8}
 adb shell am force-stop com.massifmaps.MassifDemo >/dev/null 2>&1
 adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
 adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false \
-  --es base composite --es hs true --es contour true \
+  $BENCH_BASE --es hs true --es contour true \
   --es terrain true --es drape true --es bld3d true --es terrainLight true \
   --es appSun true --es sunAzimuth 315 --es sunAltitude 35 \
   --es ambient 0.35 --es sunIntensity 1.0 \

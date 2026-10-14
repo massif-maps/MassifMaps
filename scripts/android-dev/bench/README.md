@@ -15,6 +15,7 @@ what every script here did until 2026-09-20.
 
 | script | what it does |
 |--------|--------------|
+| `base.sh` | sourced by `city2d.sh`, `city2dsf.sh`, `city3d.sh`: the Massif style over `rhones_alpes/rhone-alpes.pmtiles`, extruded buildings. `BENCH_BASE="--es base composite --es style assets"` brings the old osm CartoCSS one back |
 | `ab.sh <label> [extras]` | one run at the demo camera, panning east; prints tagged `PROF` lines |
 | `ab2.sh <apk> <label> [extras]` | same at the mountain camera |
 | `north.sh <label> [extras]` | pans NORTH into the mountains, full stack - the slow case |

@@ -631,6 +631,9 @@ Everything below rests on that split — the icon stays on the feature, only the
   The exaggeration is compared in `TileRenderer::prepareFrame`, before `startFrame` anchors: compared
   in `onDrawFrame`, the frame a ramp starts or stalls on drew every label a step behind the ground the
   camera already stood on — a 76 px drop and return on one 75 ms frame, in the roof probe below.
+  The label elevation provider is pushed there too: installed only in `onDrawFrame`, the first frame
+  of a rise had none at `startFrame`, so every CPU-anchored label — the roof POIs — stayed flat for a
+  frame over a ground already rising (8-10 px down and back, measured on the same probe).
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran

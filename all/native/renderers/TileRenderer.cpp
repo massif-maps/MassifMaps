@@ -279,7 +279,7 @@ namespace massif {
      * State renderDrapedSurface needs, pushed from prepareFrame too: the shared ground draws before
      * onDrawFrame, and the first 3D frame had no ground. Caller must hold _mutex.
      */
-    void TileRenderer::pushTerrainDrapeState() {
+    void TileRenderer::pushTerrainDrapeState(const ViewState& viewState) {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>());
         if (!tileRenderer) {
             return;
@@ -323,6 +323,9 @@ namespace massif {
                     _elevationExaggeration = exaggeration;
                     tileRenderer->invalidateLabelElevation();
                 }
+                // And the heights they are anchored with: set only in onDrawFrame, the first frame of a rise drew
+                // every CPU-anchored label (roof POIs) still flat over a ground already rising.
+                pushLabelElevationProvider(*tileRenderer, viewState, activeTerrainOptions);
             }
         }
     }
@@ -334,6 +337,41 @@ namespace massif {
             _extrusionBasesElevationVersion = elevationVersion;
             tileRenderer.invalidateExtrusionBases();
         }
+    }
+
+    void TileRenderer::pushLabelElevationProvider(vt::GLTileRenderer& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) {
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        // smooth=false reads the grid the texture entry retains. NaN, not 0, when there is no data,
+        // or the label is anchored under the terrain and marked clean for good.
+        std::shared_ptr<ElevationTextureCache> labelTextureCache = _elevationTextureCache;
+        int labelZoom = static_cast<int>(viewState.getZoom());
+        bool firstPerson = false;
+        if (auto options = _options.lock()) {
+            firstPerson = options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
+        }
+        int firstPersonZoom = elevationManager->getDetailZoomLimit();
+        tileRenderer.setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos, int tileZoom) {
+            double height = 0;
+            // Bounded ancestor walk, or POIs hang off a coarse ancestor. First person reads only what is held,
+            // at the finest zoom: its cut ignores the camera zoom, and per-label prefetch evicted the DEM.
+            if (labelTextureCache && !firstPerson) {
+                // Never finer than the label's tile: a far or stand-in tile's labels fetched camera-zoom DEM over its whole area.
+                if (labelTextureCache->getDrawnDisplayHeight(pos(0), pos(1), labelZoom, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, height)
+                    || labelTextureCache->getDisplayHeight(pos(0), pos(1), std::min(labelZoom, tileZoom), false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
+                    return height;
+                }
+            } else {
+                if (labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), firstPersonZoom, false, height, firstPersonZoom, false)) {
+                    return height;
+                }
+                if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
+                    return height;
+                }
+            }
+            return std::numeric_limits<double>::quiet_NaN();
+        });
+        // Label anchors are internal units, span chords vt-normalized.
+        tileRenderer.setLabelPositionScale(1.0 / Const::WORLD_SIZE);
     }
 
     bool TileRenderer::prepareFrame(float deltaSeconds, const ViewState& viewState) {
@@ -402,7 +440,7 @@ namespace massif {
             }
         }
         tileRenderer->setExtrusionPeers(std::move(peerRenderers));
-        pushTerrainDrapeState();
+        pushTerrainDrapeState(viewState);
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
             // Re-anchored labels were placed at their old height; a still camera asks for no new pass.
@@ -1051,37 +1089,7 @@ namespace massif {
         tileRenderer->setTerrainTextureProvider(terrainTextureProvider);
         if (terrainMode && activeTerrainOptions) {
             std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
-            // smooth=false reads the grid the texture entry retains. NaN, not 0, when there is no data,
-            // or the label is anchored under the terrain and marked clean for good.
-            std::shared_ptr<ElevationTextureCache> labelTextureCache = _elevationTextureCache;
-            int labelZoom = static_cast<int>(viewState.getZoom());
-            bool firstPerson = false;
-            if (auto options = _options.lock()) {
-                firstPerson = options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
-            }
-            int firstPersonZoom = elevationManager->getDetailZoomLimit();
-            tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos, int tileZoom) {
-                double height = 0;
-                // Bounded ancestor walk, or POIs hang off a coarse ancestor. First person reads only what is held,
-                // at the finest zoom: its cut ignores the camera zoom, and per-label prefetch evicted the DEM.
-                if (labelTextureCache && !firstPerson) {
-                    // Never finer than the label's tile: a far or stand-in tile's labels fetched camera-zoom DEM over its whole area.
-                    if (labelTextureCache->getDrawnDisplayHeight(pos(0), pos(1), labelZoom, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, height)
-                        || labelTextureCache->getDisplayHeight(pos(0), pos(1), std::min(labelZoom, tileZoom), false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
-                        return height;
-                    }
-                } else {
-                    if (labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), firstPersonZoom, false, height, firstPersonZoom, false)) {
-                        return height;
-                    }
-                    if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
-                        return height;
-                    }
-                }
-                return std::numeric_limits<double>::quiet_NaN();
-            });
-            // Label anchors are internal units, span chords vt-normalized.
-            tileRenderer->setLabelPositionScale(1.0 / Const::WORLD_SIZE);
+            pushLabelElevationProvider(*tileRenderer, viewState, activeTerrainOptions);
 #if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
             {
                 // debug.massif.labelanchor 0: anchor labels in the frame, the pre-2026-09 path.

@@ -144,6 +144,23 @@ namespace massif {
         _zAxis = cglib::vec3<float>::convert(cglib::unit(_projectionSurface->calculateVector(internalPos, MapVec(0, 0, 1))));
     }
 
+    bool BillboardDrawData::getInternalPos(MapPos& internalPos) const {
+        internalPos = _internalPos;
+        return _hasInternalPos;
+    }
+
+    void BillboardDrawData::setTerrainPos(const cglib::vec3<double>& pos) {
+        _pos = pos + cglib::vec3<double>(_layerOffset, 0, 0);
+    }
+
+    unsigned int BillboardDrawData::getTerrainAnchorGeneration() const {
+        return _terrainAnchorGeneration;
+    }
+
+    void BillboardDrawData::setTerrainAnchorGeneration(unsigned int generation) {
+        _terrainAnchorGeneration = generation;
+    }
+
     const cglib::vec3<float>& BillboardDrawData::getXAxis() const {
         return _xAxis;
     }
@@ -220,6 +237,7 @@ namespace massif {
     
     void BillboardDrawData::offsetHorizontally(double offset) {
         _pos(0) += offset;
+        _layerOffset += offset;
         setIsOffset(true);
     }
     
@@ -259,6 +277,10 @@ namespace massif {
         _transition(0.0f),
         _placementPriority(style.getPlacementPriority()),
         _pos(0, 0, 0),
+        _internalPos(),
+        _hasInternalPos(false),
+        _layerOffset(0),
+        _terrainAnchorGeneration(0),
         _xAxis(1, 0, 0),
         _yAxis(0, 1, 0),
         _zAxis(0, 0, 1),
@@ -272,6 +294,8 @@ namespace massif {
     {
         if (billboard.getGeometry()) {
             MapPos internalPos = projection.toInternal(billboard.getGeometry()->getCenterPos());
+            _internalPos = internalPos;
+            _hasInternalPos = true;
             _pos = projectionSurface->calculatePosition(internalPos);
             _xAxis = cglib::vec3<float>::convert(cglib::unit(projectionSurface->calculateVector(internalPos, MapVec(1, 0, 0))));
             _yAxis = cglib::vec3<float>::convert(cglib::unit(projectionSurface->calculateVector(internalPos, MapVec(0, 1, 0))));

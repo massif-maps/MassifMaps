@@ -35,6 +35,8 @@ namespace massif {
         virtual MapPos calculateMapPos(const cglib::vec3<double>& pos) const;
         virtual MapVec calculateMapVec(const cglib::vec3<double>& pos, const cglib::vec3<double>& vec) const;
         virtual cglib::vec3<double> calculatePosition(const MapPos& mapPos) const;
+        // calculatePosition on a ground height the caller resolved: the drawn surface's, see BillboardRenderer.
+        cglib::vec3<double> calculatePositionAt(const MapPos& mapPos, double terrainZ) const;
         virtual cglib::vec3<double> calculateNormal(const MapPos& mapPos) const;
         virtual cglib::vec3<double> calculateVector(const MapPos& mapPos, const MapVec& mapVec) const;
         virtual double calculateDistance(const cglib::vec3<double> pos0, const cglib::vec3<double>& pos1) const;

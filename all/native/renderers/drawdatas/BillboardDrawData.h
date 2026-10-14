@@ -7,6 +7,7 @@
 #ifndef _MASSIF_BILLBOARDDRAWDATA_H_
 #define _MASSIF_BILLBOARDDRAWDATA_H_
 
+#include "core/MapPos.h"
 #include "styles/BillboardStyle.h"
 #include "renderers/drawdatas/VectorElementDrawData.h"
 
@@ -75,6 +76,13 @@ namespace massif {
     
         const cglib::vec3<double>& getPos() const;
         void setPos(const cglib::vec3<double>& pos); // Used for setting label position, when it's attached to another billboards
+
+        // Where the element stands, internal map coordinates, before any terrain height; false without a geometry.
+        bool getInternalPos(MapPos& internalPos) const;
+        // The position alone, on the ground BillboardRenderer resolved: the axes stay the element's.
+        void setTerrainPos(const cglib::vec3<double>& pos);
+        unsigned int getTerrainAnchorGeneration() const;
+        void setTerrainAnchorGeneration(unsigned int generation);
 
         const cglib::vec3<float>& getXAxis() const;
         const cglib::vec3<float>& getYAxis() const;
@@ -153,6 +161,10 @@ namespace massif {
         int _placementPriority;
     
         cglib::vec3<double> _pos;
+        MapPos _internalPos;
+        bool _hasInternalPos;
+        double _layerOffset; // offsetHorizontally's sum, which a re-anchored position keeps
+        unsigned int _terrainAnchorGeneration;
         cglib::vec3<float> _xAxis;
         cglib::vec3<float> _yAxis;
         cglib::vec3<float> _zAxis;

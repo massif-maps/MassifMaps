@@ -160,23 +160,18 @@ reproduce what Standard *renders*, not what it states.
 Set it and everything downstream follows — the 2D grade, the sun and ambient the buildings and the
 terrain are lit with, and `view::brightness`. There is no second theme to keep in step.
 
-## Cast shadows need a terrain
+## Cast shadows
 
-`shadowStrength` alone is not enough. Cast shadows are drawn from the **drape pass** and land on the
-**terrain surface**: with no terrain there is no surface to receive them, and nothing casts at all
-however high the strength goes. The renderer says so if you read its log:
+`shadowStrength` alone is not enough: `terrainLightingEnabled` must be on too, because the shadow
+multiply lives in the same block that lights the ground. The renderer says what it decided in its log:
 
 ```
 MapRenderer: shadows off (strength 1.00, requested map 2048 x 2 cascades, terrain lighting 1, cover tiles 0)
 MapRenderer: shadows ACTIVE (strength 1.00, requested map 2048 x 2 cascades, terrain lighting 1, cover tiles 1)
 ```
 
-A flat city still wants one — it is there for the light, not the relief:
-
-```java
-map.terrain(Spec.of("terrain").set("source", dem))
-   .apply(Spec.object().set("exaggeration", 1).set("cameraClearance", 40));
-```
+Buildings and models cast on 3D terrain, on a plain 2D map and on the globe alike. A map with no
+terrain needs nothing else; a 3D one casts from the drape pass onto the terrain surface.
 
 `terrainLightingEnabled` must also be on, because the shadow multiply lives in the same block that
 lights the ground. A style that says `colors-prelit` is **not** lit twice by this: that flag states
@@ -188,6 +183,7 @@ the 2D colours already carry the light, so turning terrain lighting on only lets
   ramp in the style, as above; a bare emissive cannot do it.
 - **One curve drives everything.** There is no separate curve for buildings. What a style can vary
   independently is `building-ambient`, `building-light-intensity` and `building-emissive-strength`.
-- **No building shadows without a terrain.** Only the terrain surface samples the shadow map.
+- **A label in a shadow is dimmed.** On a map with no terrain the ground's shadow is multiplied into
+  the frame before the 3D pass, and 2D labels are already drawn by then.
 - **A translucent extrusion has no path** — see
   [the rendering notes](../internals/rendering/08-lighting-sky-fog.md).

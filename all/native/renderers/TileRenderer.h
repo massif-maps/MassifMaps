@@ -298,6 +298,7 @@ namespace massif {
         bool _buildingLightingMapLibre = false;
         float _buildingHeightScale = 1.0f;
         float _buildingHeightViewScale = 1.0f;
+        bool _shadowFollowsBuildingHeight = false;
         bool _buildingGrowOnAppear = false;
         bool _buildingFadeOnAppear = true;
         std::atomic<float> _textOcclusionOpacity{1.0f};

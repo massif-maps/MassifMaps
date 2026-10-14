@@ -788,6 +788,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowCasterMargin;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowColor;
 /** Returns the shadow distance. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowDistance;
+/** Returns whether building shadows shrink with the buildings as the camera lies over. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowFollowsBuildingHeight;
 /** Returns the shadow map resolution. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowMapSize;
 /** Returns the shadow normal offset. */
@@ -884,7 +886,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyTag;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTargetProjection;
 /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainDepthRequired;
-/** Returns whether the sun lights the 3D terrain surface. */
+/** Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainLightingEnabled;
 /** Returns true if the effect wants the terrain surface normal in the depth pre-pass. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainNormalsRequired;

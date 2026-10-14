@@ -1277,7 +1277,7 @@ Two mechanics that make the switch invisible:
   the mutex.
 - **Shadows stand down for the ramp.** A cascade is only re-cast when its light box or its caster
   list changes, and neither does while the ratio moves — but the ground *receiving* the shadow is
-  displaced every frame, so the map wears the shadow of a terrain it no longer has. `applyTerrainShadows`
+  displaced every frame, so the map wears the shadow of a terrain it no longer has. `applyShadows`
   drops the pass while `FlattenRatio > 0` rather than re-casting each frame, which would be a full
   caster pass on the frames least able to afford one. The `!shadowsWanted` path already invalidates
   the atlas, so coming back out of the ramp re-casts every page.
@@ -1314,9 +1314,10 @@ Device speed drifts between runs (27 vs 38 fps on the same arm), so only compare
 - **Always-decode is free in 2D here.** B equals A on tiles, geometry and frame time, because the default
   drape config decodes with source density and the transformer subdivides nothing. The cost of 3D is the
   larger tile set and the drape, not the transformer.
-- **Building shadows only run while `isActive()`**: arms C and D log `shadows ACTIVE`, A and B never do. A
-  flat map decoded for terrain therefore has no building or model shadows at tilt 90, and exaggeration 0 is
-  the way to keep them (D, +5 ms a frame against A here).
+- **Building shadows used to run only while `isActive()`**: arms C and D logged `shadows ACTIVE`, A and B
+  never did, so a flat map decoded for terrain had none at tilt 90. A map with no terrain now casts too
+  (see [Shadows without a terrain](./08-lighting-sky-fog.md#shadows-without-a-terrain)), at 2.6 to 3.4 ms a
+  frame instead of the 5 to 15 ms of 3D at zero relief.
 - **Rising into 3D, live, at tilt 50:** `setEnabled(true)` re-decodes 31 tiles, the last one landing 5.4-5.6 s
   after the call, with the draped 3D frame drawn from 0.25 s on (the flat-decoded tiles in between are what
   the demo's 2.5 s wait hides). Lowering `Flattened` in `RENDER` mode re-decodes none of them: 8-10

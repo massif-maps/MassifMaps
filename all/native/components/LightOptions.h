@@ -185,16 +185,29 @@ namespace massif {
         void setDayCycleRisingLightStops(const std::vector<LightStop>& stops);
 
         /**
-         * Returns whether the sun lights the 3D terrain surface.
+         * Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all.
          * @return True if terrain surface lighting is enabled. The default is false.
          */
         bool isTerrainLightingEnabled() const;
         /**
-         * Sets whether the sun lights the 3D terrain surface: a live hillshade following the sun.
-         * Requires 3D terrain with draping enabled (TerrainOptions.setDrapeFillsEnabled).
+         * Sets whether the sun lights the 3D terrain surface: a live hillshade following the sun. It also
+         * switches shadows on, with 3D terrain (needs draping) or on a map with none.
          * @param enabled True to light the terrain surface with the sun.
          */
         void setTerrainLightingEnabled(bool enabled);
+
+        /**
+         * Returns whether building shadows shrink with the buildings as the camera lies over.
+         * @return True if the shadows follow the style's building-height-view-scale. The default is false.
+         */
+        bool isShadowFollowsBuildingHeight() const;
+        /**
+         * Sets whether building shadows shrink with the buildings between tilt 80 and 90, as the style's
+         * building-height-view-scale lays them down. Off, the shadows keep the full height the buildings
+         * have, which reads true from straight above.
+         * @param enabled True to let the shadows follow the drawn height.
+         */
+        void setShadowFollowsBuildingHeight(bool enabled);
 
         /**
          * Returns whether the terrain itself casts shadows.
@@ -340,6 +353,7 @@ namespace massif {
         mutable std::mutex _dayCycleLightStopsMutex;
         std::atomic<bool> _terrainLightingEnabled;
         std::atomic<bool> _terrainShadowCasting;
+        std::atomic<bool> _shadowFollowsBuildingHeight;
         std::atomic<float> _shadowStrength;
         std::atomic<int> _shadowMapSize;
         std::atomic<int> _shadowCascades;

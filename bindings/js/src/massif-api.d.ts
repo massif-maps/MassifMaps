@@ -3185,6 +3185,8 @@ export interface PropertyTypes {
         'shadowCasterMargin': number;
         /** Returns the shadow distance. */
         'shadowDistance': number;
+        /** Returns whether building shadows shrink with the buildings as the camera lies over. */
+        'shadowFollowsBuildingHeight': boolean;
         /** Returns the shadow map resolution. */
         'shadowMapSize': number;
         /** Returns the shadow normal offset. */
@@ -3203,7 +3205,7 @@ export interface PropertyTypes {
         'sunIntensity': number;
         /** Returns whether this sun overrides the one a style states. */
         'sunOverridingStyle': boolean;
-        /** Returns whether the sun lights the 3D terrain surface. */
+        /** Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all. */
         'terrainLightingEnabled': boolean;
         /** Returns whether the terrain itself casts shadows. */
         'terrainShadowCastingEnabled': boolean;
@@ -4237,6 +4239,8 @@ export interface PropertyTypes {
         'light.shadowCasterMargin': number;
         /** Returns the shadow distance. */
         'light.shadowDistance': number;
+        /** Returns whether building shadows shrink with the buildings as the camera lies over. */
+        'light.shadowFollowsBuildingHeight': boolean;
         /** Returns the shadow map resolution. */
         'light.shadowMapSize': number;
         /** Returns the shadow normal offset. */
@@ -4255,7 +4259,7 @@ export interface PropertyTypes {
         'light.sunIntensity': number;
         /** Returns whether this sun overrides the one a style states. */
         'light.sunOverridingStyle': boolean;
-        /** Returns whether the sun lights the 3D terrain surface. */
+        /** Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all. */
         'light.terrainLightingEnabled': boolean;
         /** Returns whether the terrain itself casts shadows. */
         'light.terrainShadowCastingEnabled': boolean;
@@ -4279,6 +4283,8 @@ export interface PropertyTypes {
         'lightOptions.shadowCasterMargin': number;
         /** Returns the shadow distance. */
         'lightOptions.shadowDistance': number;
+        /** Returns whether building shadows shrink with the buildings as the camera lies over. */
+        'lightOptions.shadowFollowsBuildingHeight': boolean;
         /** Returns the shadow map resolution. */
         'lightOptions.shadowMapSize': number;
         /** Returns the shadow normal offset. */
@@ -4297,7 +4303,7 @@ export interface PropertyTypes {
         'lightOptions.sunIntensity': number;
         /** Returns whether this sun overrides the one a style states. */
         'lightOptions.sunOverridingStyle': boolean;
-        /** Returns whether the sun lights the 3D terrain surface. */
+        /** Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all. */
         'lightOptions.terrainLightingEnabled': boolean;
         /** Returns whether the terrain itself casts shadows. */
         'lightOptions.terrainShadowCastingEnabled': boolean;
@@ -10698,6 +10704,8 @@ export interface OptionsSpec_light {
     shadowCasterMargin?: number;
     /** Returns the shadow distance. */
     shadowDistance?: number;
+    /** Returns whether building shadows shrink with the buildings as the camera lies over. */
+    shadowFollowsBuildingHeight?: boolean;
     /** Returns the shadow map resolution. */
     shadowMapSize?: number;
     /** Returns the shadow normal offset. */
@@ -10716,7 +10724,7 @@ export interface OptionsSpec_light {
     sunIntensity?: number;
     /** Returns whether this sun overrides the one a style states. */
     sunOverridingStyle?: boolean;
-    /** Returns whether the sun lights the 3D terrain surface. */
+    /** Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all. */
     terrainLightingEnabled?: boolean;
     /** Returns whether the terrain itself casts shadows. */
     terrainShadowCastingEnabled?: boolean;

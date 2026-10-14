@@ -35,20 +35,20 @@ terrain. That re-decode is what every cost below is about.
 
 | State | You set | Looks | Tiles | Building shadows | Cost against *Terrain off* |
 |---|---|---|---|---|---|
-| **Terrain off** | `Enabled false` (or no `TerrainOptions`) | 2D | plain | no | the baseline |
-| **Flat, ready** | `Enabled true`, `Flattened true`, `RENDER` | 2D | for terrain | no | none measured: same tiles, bytes and frame time |
-| **Flat, plain** | `Enabled true`, `Flattened true`, `FULL` | 2D | plain | no | not measured; the tiles are the baseline's by design |
-| **3D** | `Enabled true`, `Flattened false` | terrain, drape | for terrain | yes | 27 to 47% more tiles, up to 35% more bytes, frame time +30 to +37% |
-| **3D, zero relief** | as 3D, `Exaggeration 0` | flat ground, drawn as 3D | for terrain | yes | about +5 ms a frame at tilt 90 (+17%) |
-| **Terrain off, ready** | `Enabled false`, `AlwaysDecode true` | 2D | for terrain | no | about +2% frame time, plus the elevation fetches |
+| **Terrain off** | `Enabled false` (or no `TerrainOptions`) | 2D | plain | with the light on | the baseline |
+| **Flat, ready** | `Enabled true`, `Flattened true`, `RENDER` | 2D | for terrain | with the light on | none measured: same tiles, bytes and frame time |
+| **Flat, plain** | `Enabled true`, `Flattened true`, `FULL` | 2D | plain | with the light on | not measured; the tiles are the baseline's by design |
+| **3D** | `Enabled true`, `Flattened false` | terrain, drape | for terrain | with the light on | 27 to 47% more tiles, up to 35% more bytes, frame time +30 to +37% |
+| **3D, zero relief** | as 3D, `Exaggeration 0` | flat ground, drawn as 3D | for terrain | with the light on | about +5 ms a frame at tilt 90 (+17%) |
+| **Terrain off, ready** | `Enabled false`, `AlwaysDecode true` | 2D | for terrain | with the light on | about +2% frame time, plus the elevation fetches |
 
 A few things the table hides:
 
-- **Shadows need the terrain pass.** Terrain shadows and building shadows are drawn by the 3D
-  pipeline, so every flat state loses them, and so does the animation between flat and 3D. If you
-  need building shadows on a map that looks flat, use *3D, zero relief*.
+- **Shadows follow the light, not the terrain.** Buildings and models cast and receive shadows in every
+  state once `TerrainLightingEnabled` is on and `ShadowStrength` is above 0, flat or 3D, with no terrain
+  attached or with one. Flat states pay about 3 ms a frame for them; *3D, zero relief* pays 5 to 15 ms.
 - **Auto-flatten writes `Flattened`.** At tilt 88° and above the SDK flattens by itself, so with the
-  default `RENDER` you land in *Flat, ready* and the shadows go with it. Set
+  default `RENDER` you land in *Flat, ready*, and the shadows stay. Set
   `AutoFlattenTilt` to `0` to keep 3D at any tilt.
 - **`AlwaysDecode` does not touch `FULL`.** In `FULL` a flat map is plain by definition; the option
   only covers a disabled terrain.
@@ -78,7 +78,8 @@ A few things the table hides:
   `AlwaysDecode`. Without it the first `Enabled` turns 3D on over tiles that are not ready for it.
   It is the only state that pays in 2D for something you may never use, so leave it off if the toggle
   is rare.
-- **Buildings, models and their shadows on a map that looks flat**: *3D, zero relief*.
+- **Buildings, models and their shadows on a map that looks flat**: any flat state, with the light on.
+  *3D, zero relief* gets there through the full terrain pipeline and costs more.
 - **Straight-down maps with no shadows wanted**: leave auto-flatten on.
 
 ## Code
@@ -98,8 +99,14 @@ terrain.setFlattenMode(TerrainFlattenMode.TERRAIN_FLATTEN_MODE_FULL);
 terrain.setAlwaysDecode(true);
 terrain.setEnabled(false);                     // later: setEnabled(true)
 
-// 3D at zero relief: flat ground, shadows kept.
+// 3D at zero relief: flat ground, drawn by the full terrain pipeline.
 terrain.setExaggeration(0f);
+
+// Building and model shadows, in any state: the sun and the strength, with or without terrain.
+LightOptions light = new LightOptions();
+light.setTerrainLightingEnabled(true);
+light.setShadowStrength(1f);
+mapView.getOptions().setLightOptions(light);
 ```
 
 ```js

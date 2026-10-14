@@ -788,6 +788,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Integer> SHADOW_COLOR = MassifObject.key("shadowColor");
     /** Returns the shadow distance. */
     public static final MassifObject.Key<Double> SHADOW_DISTANCE = MassifObject.key("shadowDistance");
+    /** Returns whether building shadows shrink with the buildings as the camera lies over. */
+    public static final MassifObject.Key<Boolean> SHADOW_FOLLOWS_BUILDING_HEIGHT = MassifObject.key("shadowFollowsBuildingHeight");
     /** Returns the shadow map resolution. */
     public static final MassifObject.Key<Long> SHADOW_MAP_SIZE = MassifObject.key("shadowMapSize");
     /** Returns the shadow normal offset. */
@@ -884,7 +886,7 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> TARGET_PROJECTION = MassifObject.key("targetProjection");
     /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
     public static final MassifObject.Key<Boolean> TERRAIN_DEPTH_REQUIRED = MassifObject.key("terrainDepthRequired");
-    /** Returns whether the sun lights the 3D terrain surface. */
+    /** Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all. */
     public static final MassifObject.Key<Boolean> TERRAIN_LIGHTING_ENABLED = MassifObject.key("terrainLightingEnabled");
     /** Returns true if the effect wants the terrain surface normal in the depth pre-pass. */
     public static final MassifObject.Key<Boolean> TERRAIN_NORMALS_REQUIRED = MassifObject.key("terrainNormalsRequired");

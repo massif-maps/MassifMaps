@@ -400,7 +400,7 @@ namespace massif {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
             // Re-anchored labels were placed at their old height; a still camera asks for no new pass.
             if (tileRenderer->consumeLabelsReanchored()) {
-                _labelPlacementOwed = true;
+                _labelReanchorOwed = true;
             }
         }
         catch (const std::exception& ex) {
@@ -1326,6 +1326,13 @@ namespace massif {
         return owed;
     }
 
+    bool TileRenderer::consumeLabelReanchorOwed() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        bool owed = _labelReanchorOwed;
+        _labelReanchorOwed = false;
+        return owed;
+    }
+
     void TileRenderer::snapLabelTransition() {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         {
@@ -1701,7 +1708,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 // Relative tolerance: the default absorbs anchor-vs-terrain mismatch; more labels partly hidden features.
                 float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
                 // Outside the read-back viewport, the elevation ray answers.
-                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest, elevationManager](const cglib::vec3<double>& pos) {
+                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest, elevationManager, terrainOptions](const cglib::vec3<double>& pos) {
+                    // One verdict source for the whole ramp: the depth snapshot lags it, and a label the two disagree on blinks.
+                    if (terrainOptions->getFlattenRatio() > 0.0f) {
+                        return rayTest(pos);
+                    }
                     auto mapRenderer = mapRendererWeak.lock();
                     if (!mapRenderer) {
                         return false;

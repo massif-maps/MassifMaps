@@ -600,6 +600,13 @@ Everything below rests on that split — the icon stays on the feature, only the
   zooming in makes room nothing notices. The pass is **postponed** rather than queued
   (`VTLabelPlacementWorker::postpone`), so a zoom gesture places once when it settles instead of
   re-deciding at every step — placing mid-gesture is what made labels fade in and straight back out.
+- **The 2D/3D ramp re-anchors every label every frame, and asks for one pass once it stops.** Each ramp
+  step changes the exaggeration, so the labels are re-anchored to the new ground; that no longer
+  schedules a pass per step (`TileRenderer::consumeLabelReanchorOwed`, then
+  `MapRenderer::vtLabelsPostponed`, ¼ s of quiet). A camera flight's continuation pass honours
+  `MIN_PLACEMENT_INTERVAL` too, and the terrain-occlusion verdict comes from the elevation ray alone
+  while `FlattenRatio > 0`: the depth snapshot lags the ramp and disagrees with the ray on the same
+  label (`TileRenderer::updateLabelOcclusionTest`). Labels blinked through every switch before this.
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran

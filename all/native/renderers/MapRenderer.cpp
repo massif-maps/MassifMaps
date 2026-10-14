@@ -1515,6 +1515,17 @@ namespace massif {
                             if (landed) {
                                 requestRedraw();
                             } else if (pinnedZ != focusMapPos.getZ()) {
+#if MASSIF_VT_RENDER_STATS
+                                // A step of the pin during the ramp is a jump of the picture; the grid zoom says whether a finer DEM caused it.
+                                float ramp = focusTerrainOptions->getFlattenRatio();
+                                if (ramp > 0.0f && ramp < 1.0f && std::abs(pinnedZ - focusMapPos.getZ()) > orbitHeight * 0.01) {
+                                    double pinProbe = 0;
+                                    int pinGridZoom = -1;
+                                    elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), pinProbe, pinGridZoom);
+                                    Log::Infof("MapRenderer: ramp focus pin ratio %.3f - step %.3f%% of the orbit (terrain %.3f, shell %.3f, lift %.3f, grid z%d)",
+                                        ramp, 100.0 * (pinnedZ - focusMapPos.getZ()) / orbitHeight, terrainZ, shellFocusZ, lift, pinGridZoom);
+                                }
+#endif
                                 // A finer DEM tile moves the ground under a still camera: without a frame for it, the
                                 // picture stays at the old height.
                                 _viewState.setFocusHeight(pinnedZ);
@@ -2229,6 +2240,10 @@ namespace massif {
         _vtLabelPlacementWorker->init(layer, delay ? VT_LABEL_PLACEMENT_TASK_DELAY : 0);
     }
     
+    void MapRenderer::vtLabelsPostponed(const std::shared_ptr<Layer>& layer) {
+        _vtLabelPlacementWorker->postpone(layer, LABEL_PLACEMENT_REANCHOR_DELAY);
+    }
+
     void MapRenderer::layerChanged(const std::shared_ptr<Layer>& layer, bool delay) {
         // Before the surface exists, onSurfaceChanged starts the cull worker instead.
         if (_surfaceCreated) {
@@ -4463,6 +4478,7 @@ namespace massif {
     // A quarter zoom level is ~20% more room under the labels; the delay places once per gesture.
     const float MapRenderer::LABEL_PLACEMENT_ZOOM_THRESHOLD = 0.25f;
     const int MapRenderer::LABEL_PLACEMENT_ZOOM_DELAY = 250;
+    const int MapRenderer::LABEL_PLACEMENT_REANCHOR_DELAY = 250;
 
     const float MapRenderer::DRAPE_REBAKE_ZOOM_THRESHOLD = 0.25f;
 

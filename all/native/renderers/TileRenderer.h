@@ -195,6 +195,8 @@ namespace massif {
          * placement, and a still camera never asks again. The owning layer requests a pass.
          */
         bool consumeLabelPlacementOwed();
+        /** True once per re-anchor of the labels to new ground: debounced by the owner, as the ramp re-anchors every frame. */
+        bool consumeLabelReanchorOwed();
 
     private:
         struct LabelOcclusionState;
@@ -249,6 +251,7 @@ namespace massif {
         // Written and read by peers on the render thread only, so no lock: peers never take each other's _mutex.
         std::weak_ptr<const vt::GLTileRenderer> _frameTileRenderer;
         bool _labelPlacementOwed = false; // see consumeLabelPlacementOwed
+        bool _labelReanchorOwed = false; // see consumeLabelReanchorOwed
         unsigned int _labelOcclusionDepthVersion = 0; // the terrain occlusion depth the labels were last placed against
         bool _interactionMode;
         float _layerBlendingSpeed;

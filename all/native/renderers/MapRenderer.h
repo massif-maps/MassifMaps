@@ -228,6 +228,7 @@ namespace massif {
     
         void billboardsChanged();
         void vtLabelsChanged(const std::shared_ptr<Layer>& layer, bool delay);
+        void vtLabelsPostponed(const std::shared_ptr<Layer>& layer);
         void layerChanged(const std::shared_ptr<Layer>& layer, bool delay);
         void viewChanged(bool delay, MapMoveReason::MapMoveReason reason);
     
@@ -313,6 +314,7 @@ namespace massif {
         // Zoom drift before a drape tile is re-baked, so zoom-dependent style widths follow the camera.
         static const float DRAPE_REBAKE_ZOOM_THRESHOLD;
         static const int LABEL_PLACEMENT_ZOOM_DELAY;
+        static const int LABEL_PLACEMENT_REANCHOR_DELAY; // ms of quiet before labels moved to new ground are placed again
 
         static const int ELEVATION_REFRESH_DELAY; // milliseconds between vector layer refreshes caused by elevation data changes
         static const float EYE_GROUND_SETTLE_TIME; // seconds for the first person eye to glide onto a refined ground

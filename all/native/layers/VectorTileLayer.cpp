@@ -633,6 +633,10 @@ namespace massif {
             if (_tileRenderer->consumeLabelPlacementOwed()) {
                 mapRenderer->vtLabelsChanged(shared_from_this(), false);
             }
+            // Postponed on every frame that moves the ground: one pass once it stops, not one per ramp step.
+            if (_tileRenderer->consumeLabelReanchorOwed()) {
+                mapRenderer->vtLabelsPostponed(shared_from_this());
+            }
 
             return refresh;
         }

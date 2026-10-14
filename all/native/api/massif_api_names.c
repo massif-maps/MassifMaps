@@ -18,6 +18,7 @@ static const char* const kNames[] = {
     "action",
     "address",
     "altitude",
+    "alwaysDecode",
     "ambientColor",
     "ambientIntensity",
     "ambientLightColor",

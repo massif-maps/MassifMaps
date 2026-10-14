@@ -17,6 +17,7 @@ MassifProperty const MassifPropertyAccuracy = @"accuracy";
 MassifProperty const MassifPropertyAction = @"action";
 MassifProperty const MassifPropertyAddress = @"address";
 MassifProperty const MassifPropertyAltitude = @"altitude";
+MassifProperty const MassifPropertyAlwaysDecode = @"alwaysDecode";
 MassifProperty const MassifPropertyAmbientColor = @"ambientColor";
 MassifProperty const MassifPropertyAmbientIntensity = @"ambientIntensity";
 MassifProperty const MassifPropertyAmbientLightColor = @"ambientLightColor";

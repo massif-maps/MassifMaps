@@ -268,6 +268,17 @@ namespace {
         TEST_CHECK(!FlattenSwitch::isWaitingForTiles(state, in), "and the hold is over");
     }
 
+    void testAlwaysDecodeOutlivesTheDisable() {
+        TEST_CHECK(FlattenSwitch::decodeActive(true, false, true), "enabled terrain decodes for 3D");
+        TEST_CHECK(!FlattenSwitch::decodeActive(false, false, true), "disabled terrain decodes plain, so setEnabled re-decodes");
+        TEST_CHECK(FlattenSwitch::decodeActive(false, true, true), "AlwaysDecode keeps the decode across setEnabled(false)");
+        TEST_CHECK(!FlattenSwitch::decodeActive(true, true, false), "a FULL-mode flat map still decodes plain");
+        TEST_CHECK(!FlattenSwitch::decodeActive(false, true, false), "and AlwaysDecode does not override that");
+        TEST_CHECK(FlattenSwitch::warmsElevation(false, true) && FlattenSwitch::warmsElevation(true, false),
+                   "the DEM is warmed for either reason");
+        TEST_CHECK(!FlattenSwitch::warmsElevation(false, false), "and not when the terrain is simply off");
+    }
+
 }
 
 void testFlattenSwitch() {
@@ -282,4 +293,5 @@ void testFlattenSwitch() {
     testManualRatio();
     testManualRiseDoesNotFlapTheDecode();
     testManualRiseIsStillGatedOnTiles();
+    testAlwaysDecodeOutlivesTheDisable();
 }

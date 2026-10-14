@@ -44,6 +44,15 @@ namespace massif {
             float warmTimeout = 0.0f; // give up waiting for the tiles after this; 0 waits forever
         };
 
+        // Terrain decode survives a disabled terrain only when the app asked for it, so setEnabled never re-decodes.
+        static bool decodeActive(bool enabled, bool alwaysDecode, bool decode3D) {
+            return (enabled || alwaysDecode) && decode3D;
+        }
+
+        static bool warmsElevation(bool enabled, bool alwaysDecode) {
+            return enabled || alwaysDecode;
+        }
+
         static State step(const State& state, const Input& input) {
             State next = state;
             float delta = std::max(0.0f, input.deltaSeconds);

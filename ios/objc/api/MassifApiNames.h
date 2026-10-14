@@ -40,6 +40,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAction;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAddress;
 /** Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAltitude;
+/** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAlwaysDecode;
 /** Returns the ambient light color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAmbientColor;
 /** Returns the ambient light intensity. */

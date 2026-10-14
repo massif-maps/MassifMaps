@@ -1,4 +1,5 @@
 #include "TerrainOptions.h"
+#include "terrain/FlattenSwitch.h"
 #include "components/Exceptions.h"
 #include "datasources/TileDataSource.h"
 #include "terrain/CameraClearance.h"
@@ -24,6 +25,7 @@ namespace massif {
         _flattened(false),
         _flattenMode(TerrainFlattenMode::TERRAIN_FLATTEN_MODE_RENDER),
         _decodeActive(true),
+        _alwaysDecode(false),
         _flattenSwitchStarted(false),
         _flattenManual(false),
         _flattenManualRatio(0.0f),
@@ -150,8 +152,18 @@ namespace massif {
         }
     }
 
+    bool TerrainOptions::isAlwaysDecode() const {
+        return _alwaysDecode.load();
+    }
+
+    void TerrainOptions::setAlwaysDecode(bool alwaysDecode) {
+        if (_alwaysDecode.exchange(alwaysDecode) != alwaysDecode) {
+            notifyOptionChanged("AlwaysDecode");
+        }
+    }
+
     bool TerrainOptions::isDecodeActive() const {
-        return _enabled.load() && _decodeActive.load();
+        return FlattenSwitch::decodeActive(_enabled.load(), _alwaysDecode.load(), _decodeActive.load());
     }
 
     void TerrainOptions::setDecodeActive(bool active) {

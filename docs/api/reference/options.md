@@ -132,6 +132,7 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | `elevationCacheSize` | integer | read/write | Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. |
 | `elevationPrefetchEnabled` | boolean | read/write | Returns whether elevation tile prefetching is enabled. |
 | `enabled` | boolean | read/write | Returns the enabled state of the terrain. |
+| `alwaysDecode` | boolean | read/write | Returns whether tiles are decoded for terrain even while the terrain is disabled. |
 | `exaggeration` | number | read/write | Returns the terrain height exaggeration factor. |
 | `flattenMode` | [enum](enums.md#enum-terrainflattenmode) | read/write | Returns how far a flattened terrain goes back towards a plain 2D map. |
 | `flattenRatio` | number | read/write | Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). |

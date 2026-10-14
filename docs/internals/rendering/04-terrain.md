@@ -1124,7 +1124,7 @@ Three pieces of state, and which question each answers:
 |---|---|---|
 | `isEnabled()` | is terrain configured at all | the app; gates the other two |
 | `isActive()` (`FlattenRatio < 1`) | is 3D being **rendered** | every renderer, the touch handler, the sky, the hillshade paint |
-| `isDecodeActive()` | are tiles being **prepared** for 3D | `TileLayer::loadData`'s cache compare, `resetTileTransformer`, `calculateVisibleTiles` |
+| `isDecodeActive()` | are tiles being **prepared** for 3D (`isEnabled()` or `AlwaysDecode`, and not a flat `FULL` map) | `TileLayer::loadData`'s cache compare, `resetTileTransformer`, `calculateVisibleTiles` |
 
 The one fact everything rests on, and it is asymmetric:
 
@@ -1292,12 +1292,50 @@ Two consequences worth knowing:
   on the flip — the alternative is the hillshade vanishing, so it is the right trade, not an
   oversight.
 
-**Not measured:** what `FULL` actually buys in 2D frame time against `RENDER`, and how long the
-`WARMING` wait really is on a device. Both need the `-PprofileRender` bench of
-[10-performance.md](10-performance.md) at a mountain camera and a city one. See
-[#177](https://github.com/massif-maps/MassifMaps/issues/177), which asked the opposite question —
-always decode for terrain so `setEnabled` never invalidates — and which this answers the other way,
-without its permanent cost.
+**Measured 2026-10-13, Crosscall HLTE556N, Massif style over `rhones_alpes/rhone-alpes.pmtiles`, extruded
+buildings, pan north, three interleaved runs per arm** ([#177](https://github.com/massif-maps/MassifMaps/issues/177)
+asked whether to decode for terrain whenever a `TerrainOptions` is attached). A = terrain off,
+B = terrain on and `Flattened` (what always-decode would be in 2D), C = 3D, D = 3D at exaggeration 0.
+Device speed drifts between runs (27 vs 38 fps on the same arm), so only compare within a run.
+
+| camera | arm | tiles decoded | indices / tile | KB / tile | frame ms (3 runs) |
+|---|---|---|---|---|---|
+| Grenoble z16.2, tilt 26, 2D | A | 189 | 52.7k | 434 | 31.5 / 21.2 / 21.4 |
+| | B | 190 | 49.4k | 407 | 31.9 / 21.3 / 21.2 |
+| | C | 240 | 60k | 490 | 41.7 / 27.7 / 27.5 |
+| Chamonix z14.2, tilt 40 | A | 49 | 28.2k | 216 | 22.8 / 14.1 / 14.2 |
+| | B | 49 | 28.2k | 216 | 22.3 / 14.2 / 14.4 |
+| | C | 72 | 23.9k | 184 | 29.8 / 18.4 / 17.7 |
+| Grenoble z16.3, tilt 90 | A | 66 | 52k | 565 | 30.9 / 30.7 / 30.8 |
+| | B | 67 | 48.9k | 537 | 31.1 / 30.9 / 30.9 |
+| | C | 89 | 49.5k | 562 | 42.4 / 41.8 / 42.5 |
+| | D | 85 | 47k | 536 | 37.5 / 36.0 / 35.4 |
+
+- **Always-decode is free in 2D here.** B equals A on tiles, geometry and frame time, because the default
+  drape config decodes with source density and the transformer subdivides nothing. The cost of 3D is the
+  larger tile set and the drape, not the transformer.
+- **Building shadows only run while `isActive()`**: arms C and D log `shadows ACTIVE`, A and B never do. A
+  flat map decoded for terrain therefore has no building or model shadows at tilt 90, and exaggeration 0 is
+  the way to keep them (D, +5 ms a frame against A here).
+- **Rising into 3D, live, at tilt 50:** `setEnabled(true)` re-decodes 31 tiles, the last one landing 5.4-5.6 s
+  after the call, with the draped 3D frame drawn from 0.25 s on (the flat-decoded tiles in between are what
+  the demo's 2.5 s wait hides). Lowering `Flattened` in `RENDER` mode re-decodes none of them: 8-10
+  tiles decode, all of them new to the wider 3D set, done by 2.0-2.1 s.
+- **Drape quality at z19.5 and z21, tilt 30 and 10, one frame each:** road casings are as crisp draped (D) as
+  undraped (A); D's thin casing lines are marginally softer (strong-edge pixels 0.19% against 0.27%).
+- The decode probe, the DEM being read `CACHED_ONLY` at decode, and the camera clearance clamp mean a
+  per-tile decode time is only comparable between arms of the same run.
+
+- **`AlwaysDecode`** (off by default) keeps `isDecodeActive()` true while the terrain is disabled, and warms
+  the DEM at decode, so `setEnabled(true)` clears no tile cache. Same live rise at tilt 50, three runs each:
+  31 re-decodes with the last at 5.4-5.7 s without it, 9-12 with it (new tiles of the wider 3D set, all
+  already terrain-decoded) with the last at 2.2-2.4 s. Its price in 2D, disabled terrain, Grenoble tilt 26,
+  three interleaved runs: frame 32.3 -> 33.1 ms (+2%), the CPU `layers` section 10.6 -> 12.8 ms.
+
+Still **not** measured: what `FULL` buys in 2D frame time against `RENDER`, and how long the `WARMING`
+wait takes on a device. See [#177](https://github.com/massif-maps/MassifMaps/issues/177), which asked the
+opposite question - always decode for terrain so `setEnabled` never invalidates - and which this answers
+the other way, without its permanent cost.
 
 ## The camera against the terrain
 

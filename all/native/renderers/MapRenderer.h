@@ -259,6 +259,8 @@ namespace massif {
         void updateTerrainSkirts(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& cover, const std::shared_ptr<TerrainOptions>& terrainOptions);
         // Only the drape pass holds the first rise; any other frame must not inherit it.
         void releaseTerrainRiseHold();
+        // While a rise waits for its tiles: loads and uploads the ground the ramp will show; true while any is owed.
+        bool warmElevationTextures(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
 
         // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
         double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);
@@ -407,6 +409,7 @@ namespace massif {
         std::shared_ptr<ElevationTextureCache> _skirtCache;
         unsigned int _skirtDrawnVersion = 0;
         std::map<vt::TileId, cglib::vec4<float> > _skirtDrops;
+        bool _elevationWarmPending = true; // the rise's ground is not all on the GPU yet; true until a warm pass says otherwise
         bool _terrainRisen = false; // the drape scene has been displaced since nothing was
         std::chrono::steady_clock::time_point _terrainRiseHoldStart;
         double _eyeGroundZ = 0;

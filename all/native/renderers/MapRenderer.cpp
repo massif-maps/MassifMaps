@@ -941,6 +941,34 @@ namespace massif {
         }
     }
 
+    bool MapRenderer::warmElevationTextures(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) {
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        if (!elevationManager) {
+            return false;
+        }
+        std::shared_ptr<ElevationTextureCache> cache = getElevationTextureCache(elevationManager);
+        if (!cache) {
+            return false;
+        }
+        if (!_terrainRenderer) {
+            _terrainRenderer = std::make_unique<TerrainRenderer>();
+            _terrainRenderer->setTileTransformer(_options->getTileTransformer());
+        }
+        elevationManager->setPrefetchFocus(viewState.getFocusPos()(0), viewState.getFocusPos()(1));
+        cache->setBorderMetres(terrainOptions->getNormalSampleDistance());
+        cache->beginFrame();
+        std::vector<vt::TileId> tileIds = collectTerrainCoverTileIds(viewState, terrainOptions);
+        bool pending = cache->warm(tileIds);
+#if MASSIF_VT_RENDER_STATS
+        static int lastPending = -1;
+        if (static_cast<int>(pending) != lastPending) {
+            lastPending = pending ? 1 : 0;
+            Log::Infof("MapRenderer: rise warm - %d ground tiles, elevation %s", static_cast<int>(tileIds.size()), pending ? "owed" : "on the GPU");
+        }
+#endif
+        return pending;
+    }
+
     void MapRenderer::updateTerrainSkirts(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& cover, const std::shared_ptr<TerrainOptions>& terrainOptions) {
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         std::shared_ptr<ElevationTextureCache> cache = (elevationManager ? getElevationTextureCache(elevationManager) : std::shared_ptr<ElevationTextureCache>());
@@ -2159,6 +2187,8 @@ namespace massif {
                     tilesOwed = owed < 0 || tilesOwed < 0 ? -1 : tilesOwed + owed;
                 }
             }
+            // The ground the ramp shows must be on the GPU: a tile whose relief lands mid-ramp pops up.
+            input.tilesReady = input.tilesReady && !_elevationWarmPending;
             requestRedraw(); // nothing else asks for the frame the wait ends on
         }
 
@@ -2173,7 +2203,11 @@ namespace massif {
         }
         _flattenSwitchState = next;
         reportFlattenSwitchTiming(next, input, tilesOwed, deltaSeconds);
-        terrainOptions->setSwitching(FlattenSwitch::isWaitingForTiles(next, input));
+        bool waitingForTiles = FlattenSwitch::isWaitingForTiles(next, input);
+        terrainOptions->setSwitching(waitingForTiles);
+        if (!waitingForTiles) {
+            _elevationWarmPending = true; // unknown until the next wait's first warm pass
+        }
         if (next.phase == FlattenSwitch::Phase::RAMPING) {
             // The ramp's first frame has no delta yet, and nothing else asks for the next one.
             requestRedraw();
@@ -3044,6 +3078,11 @@ namespace massif {
             }
         }
         if (!terrainMode) {
+            if (auto warmOptions = _options->getTerrainOptions()) {
+                if (warmOptions->isEnabled() && warmOptions->isSwitching()) {
+                    _elevationWarmPending = warmElevationTextures(viewState, warmOptions);
+                }
+            }
             for (const std::shared_ptr<Layer>& layer : layers) {
                 if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
                     tileLayer->setTerrainDepthWriteMode(false);

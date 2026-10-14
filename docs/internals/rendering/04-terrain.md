@@ -1156,6 +1156,18 @@ shows no half-built terrain. It ends on `TileLayer::isTerrainDecodeSettled()` fo
 or on `MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT` (2.5 s — late 3D beats a map pinned flat by one
 tile that never loads). Going the other way there is nothing to wait for, so it ramps at once.
 
+#### The gate also waits for the ground's relief
+
+`WARMING` renders flat, so nothing drew the elevation textures: the cache was empty at the first ramp
+frame and a tile rose only when its texture was encoded and uploaded (8 per frame at most), a tile
+at a time, while the CPU heights that extrusion bases, label anchors and shadow casters read come
+from the same cache. That was a jump on the ground, buildings and labels a few frames into every rise.
+`MapRenderer::warmElevationTextures` now loads and uploads the terrain cut's grids and textures
+(`ElevationTextureCache::warm`) while the rise waits, and the gate does not open until each tile's own
+grid is on the GPU (a tile with no data and none coming is not waited for; the 2.5 s timeout still
+bounds it). The cut is the flat camera's: ground a tilt brings in during the flight still arrives late.
+Log: `MapRenderer: rise warm - N ground tiles, elevation owed / on the GPU` (stats builds).
+
 #### The gate is the swap's own tiles, not the tile traffic
 
 `isTerrainDecodeSettled()` used to mean "no cull is running and no visible tile is fetching", and a

@@ -1135,6 +1135,8 @@ namespace massif::vt {
         // Going flat withdraws the provider after the ramp's last anchoring, above 0: nothing would
         // anchor the labels again, so drop them to the flat ground here.
         if (had && !_labelElevationProvider) {
+            // Else the roofs still stand on the last ramp step's bases, and roof POIs hang over the flat map for a frame.
+            refreshRoofSurfaces();
             std::shared_ptr<const TileTransformer> transformer = _transformer;
             std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> flat = [transformer](const cglib::vec3<double>& pos, int) { return transformer->calculateElevatedPos(pos, 0.0); };
             std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> flatRoof = roofAnchorFunc(flat);

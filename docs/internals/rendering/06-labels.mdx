@@ -636,7 +636,10 @@ Everything below rests on that split — the icon stays on the feature, only the
   frame over a ground already rising (8-10 px down and back, measured on the same probe). So is the
   extrusion elevation provider, withdrawn while flat: without it the first frame measured the roofs
   on the flat map, and a roof POI stood barely over the risen ground — its height over the ground read
-  0.52, then 0.07 on that frame, then 0.59 (8-16 px down and back).
+  0.52, then 0.07 on that frame, then 0.59 (8-16 px down and back). The fall back to 2D had the
+  mirror fault: the labels were dropped flat on roofs still standing on the last ramp step's bases,
+  so roof POIs hung ~3% of the relief over the flat map for a frame (1-7 px near the centre). The
+  extrusion provider is now withdrawn first and the roofs re-measured flat before the drop.
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran

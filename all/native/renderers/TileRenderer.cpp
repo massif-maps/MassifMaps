@@ -1122,11 +1122,12 @@ namespace massif {
 #endif
             pushExtrusionElevationProvider(*tileRenderer, activeTerrainOptions);
         } else {
-            tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&, int)>());
+            // Bases first: dropping the labels flat re-measures the roofs, which must stand on the flat map too.
             if (_extrusionProviderKey.first || _extrusionProviderKey.second) {
                 _extrusionProviderKey = { nullptr, nullptr };
                 tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
             }
+            tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&, int)>());
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());

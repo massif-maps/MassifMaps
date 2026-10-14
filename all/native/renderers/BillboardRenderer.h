@@ -99,11 +99,11 @@ namespace massif {
         std::weak_ptr<VectorLayer> _layer;
         std::weak_ptr<Options> _options;
 
-        // What the billboards were last stood on: the drawn ground moves with the camera, an upload, a ramp step.
+        // What the billboards were last stood on: the drawn ground moves with an upload, a ramp step, the zoom.
         std::weak_ptr<ElevationTextureCache> _anchorCache;
         unsigned int _anchorDrawnVersion = 0;
         float _anchorExaggeration = -1.0f;
-        cglib::mat4x4<double> _anchorMVP = cglib::mat4x4<double>::zero();
+        int _anchorZoom = -1;
         unsigned int _anchorGeneration = 1; // a draw data built at 0 is anchored on its first frame
     
         std::vector<std::shared_ptr<Billboard> > _elements;

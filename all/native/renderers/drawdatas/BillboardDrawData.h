@@ -12,6 +12,7 @@
 #include "renderers/drawdatas/VectorElementDrawData.h"
 
 #include <atomic>
+#include <mutex>
 #include <memory>
 #include <array>
 
@@ -74,13 +75,16 @@ namespace massif {
         float getTransition() const;
         void setTransition(float transition);
     
-        const cglib::vec3<double>& getPos() const;
+        // A copy: the GL thread re-anchors it while the placement worker reads it.
+        cglib::vec3<double> getPos() const;
         void setPos(const cglib::vec3<double>& pos); // Used for setting label position, when it's attached to another billboards
 
         // Where the element stands, internal map coordinates, before any terrain height; false without a geometry.
         bool getInternalPos(MapPos& internalPos) const;
         // The position alone, on the ground BillboardRenderer resolved: the axes stay the element's.
         void setTerrainPos(const cglib::vec3<double>& pos);
+        // Back to the height it was built with, when the drawn ground has none here.
+        void resetTerrainPos();
         unsigned int getTerrainAnchorGeneration() const;
         void setTerrainAnchorGeneration(unsigned int generation);
 
@@ -161,7 +165,9 @@ namespace massif {
         int _placementPriority;
     
         cglib::vec3<double> _pos;
+        mutable std::mutex _posMutex;
         MapPos _internalPos;
+        cglib::vec3<double> _builtPos; // _pos as built, before any layer offset
         bool _hasInternalPos;
         double _layerOffset; // offsetHorizontally's sum, which a re-anchored position keeps
         unsigned int _terrainAnchorGeneration;

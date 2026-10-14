@@ -137,16 +137,17 @@ namespace massif {
         if (!elevationTextureCache) {
             return;
         }
+        // Not on every camera move: tile labels re-anchor on the same events, and markers must agree with them.
+        int zoom = static_cast<int>(viewState.getZoom());
         if (_anchorCache.lock() != elevationTextureCache || _anchorDrawnVersion != elevationTextureCache->getDrawnVersion() ||
-            _anchorExaggeration != elevationManager->getExaggeration() || _anchorMVP != viewState.getModelviewProjectionMat()) {
+            _anchorExaggeration != elevationManager->getExaggeration() || _anchorZoom != zoom) {
             _anchorCache = elevationTextureCache;
             _anchorDrawnVersion = elevationTextureCache->getDrawnVersion();
             _anchorExaggeration = elevationManager->getExaggeration();
-            _anchorMVP = viewState.getModelviewProjectionMat();
+            _anchorZoom = zoom;
             _anchorGeneration++;
         }
 
-        int zoom = static_cast<int>(viewState.getZoom());
         for (const std::shared_ptr<Billboard>& element : _elements) {
             std::shared_ptr<BillboardDrawData> drawData = element->getDrawData();
             if (!drawData || drawData->getTerrainAnchorGeneration() == _anchorGeneration) {
@@ -159,11 +160,14 @@ namespace massif {
             if (!terrainSurface || std::dynamic_pointer_cast<NMLModelDrawData>(drawData) || drawData->getBaseBillboard().lock() || !drawData->getInternalPos(internalPos)) {
                 continue;
             }
-            // Off the drawn ground, the baked height stands: no fetch for a marker nobody sees.
+            // Off the drawn ground, the height it was built with stands: no fetch for a marker nobody sees.
             double height = 0;
-            if (elevationTextureCache->getDrawnDisplayHeight(internalPos.getX(), internalPos.getY(), zoom, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, height) ||
-                elevationTextureCache->getDisplayHeight(internalPos.getX(), internalPos.getY(), zoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, false)) {
-                drawData->setTerrainPos(terrainSurface->calculatePositionAt(internalPos, height));
+            double wrappedX = internalPos.getX() - Const::WORLD_SIZE * std::floor(internalPos.getX() / Const::WORLD_SIZE + 0.5); // the cache's world copy
+            if (elevationTextureCache->getDrawnDisplayHeight(wrappedX, internalPos.getY(), zoom, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, height) ||
+                elevationTextureCache->getDisplayHeight(wrappedX, internalPos.getY(), zoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, false)) {
+                drawData->setTerrainPos(terrainSurface->calculatePositionOnGround(internalPos, height));
+            } else {
+                drawData->resetTerrainPos(); // not a height from another exaggeration or zoom
             }
         }
     }

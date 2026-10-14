@@ -34,10 +34,10 @@ namespace massif {
         // MapRenderer rebuilds the draw data when the elevation version changes. The small lift
         // keeps densely sampled draped geometry clear of the terrain depth in concave areas.
         double terrainZ = _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY());
-        return calculatePositionAt(mapPos, terrainZ);
+        return calculatePositionOnGround(mapPos, terrainZ);
     }
 
-    cglib::vec3<double> TerrainProjectionSurface::calculatePositionAt(const MapPos& mapPos, double terrainZ) const {
+    cglib::vec3<double> TerrainProjectionSurface::calculatePositionOnGround(const MapPos& mapPos, double terrainZ) const {
         return _base->calculatePosition(MapPos(mapPos.getX(), mapPos.getY(), mapPos.getZ() + terrainZ + _heightLift));
     }
 

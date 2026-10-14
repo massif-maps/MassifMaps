@@ -1375,7 +1375,7 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   That sample reads `ElevationTextureCache`, whose entries the GL thread inserts and evicts every
   frame, and the cache had no lock: a data race on the cull thread (as for the building and span
   bases read the same way). Its height queries now take `_cacheMutex` around every entry lookup; the
-  GL thread, the only writer, takes it only to write, so a frame's texture lookups stay lock-free.
+  GL thread, the only writer, takes it only around its writes (a texture lookup's LRU stamp included).
   A label that has already been anchored and is neither placed nor on screen then **defers** its
   re-anchor (`Label::isElevationDirty`): it keeps the heights it has, at worst one LOD step out,
   and reports itself dirty again the moment the culler gives it a placement. A label that has never

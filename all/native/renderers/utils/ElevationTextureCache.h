@@ -202,7 +202,7 @@ namespace massif {
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
         // The height queries run off the GL thread too (label anchoring on the cull thread, building and
-        // span bases): they lock this. The GL thread is the only writer, so it locks only to write.
+        // span bases): they lock this. The GL thread is the only writer, so it locks only to write what they read.
         mutable std::mutex _cacheMutex;
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         unsigned int _drawnVersion = 0;

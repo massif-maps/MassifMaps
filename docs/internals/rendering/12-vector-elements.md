@@ -81,11 +81,11 @@ when nothing is cached), so a marker - the user location, a selection - stepped 
 floated off or sank into the visible ground each time. `BillboardRenderer::anchorOnDrawnTerrain`
 now re-resolves every marker's height on the GL thread from what the frame draws, as tile labels
 do (`ElevationTextureCache::getDrawnDisplayHeight`, then the texture cache's own grid without a
-fetch), whenever the drawn version, the exaggeration or the camera changes. Off the drawn ground
-the baked height stands. NML models (placed by their frame matrix) and labels attached to another
-billboard (placed from it) are left alone. Lines and polygons still take the baked height. The
-placement worker reads the position on its own thread unsynchronised, as it already did for
-attached labels' `setPos`.
+fetch), whenever the drawn version, the exaggeration or the integer zoom changes - the events tile
+labels re-anchor on, so the two agree. Off the drawn ground the baked height stands. NML models
+(placed by their frame matrix) and labels attached to another billboard (placed from it) are left
+alone. Lines and polygons still take the baked height. The placement worker reads the position on
+its own thread, so `BillboardDrawData::getPos` returns a copy taken under `_posMutex`.
 
 If a vector line disappears into the terrain or shows through it, read
 [05-depth-model.md](05-depth-model.md) before touching any constant here.

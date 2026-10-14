@@ -25,7 +25,7 @@ The style wins wherever it has an opinion; the rest stays with the options. The 
 a property wins, values are re-read every frame, so they may depend on the zoom.
 
 Consumers: `TileRenderer` (→ vt uniforms), `BackgroundRenderer`, `SkyRenderer`, and
-`MapRenderer::applyTerrainShadows`.
+`MapRenderer::applyShadows`.
 
 ## The sun on the ground
 
@@ -275,7 +275,7 @@ one unit towards the camera, so exactly one surface blends per pixel. See
 
 ## Cast shadows
 
-`MapRenderer::applyTerrainShadows` + `TerrainShadowMap` (all/native/renderers/utils/).
+`MapRenderer::applyShadows` + `TerrainShadowMap` (all/native/renderers/utils/).
 
 The caster pass draws **exactly the terrain surfaces that are about to be drawn on screen**, from the
 sun, into a packed-depth texture; the surface shader then looks itself up in it. Casters and
@@ -456,7 +456,7 @@ Design points, each measured:
   metres, the shallower one wins the depth test, and the receiver — which uses the fine level — ends
   up in the shadow of *its own ground*. On screen: blocky, roughly axis-aligned dark patches that do
   not follow the sun azimuth, appearing from about tilt 60 (SDK convention, 90 = top down) and growing
-  as the view flattens, because a flatter view mixes more zooms. `MapRenderer::applyTerrainShadows`
+  as the view flattens, because a flatter view mixes more zooms. `MapRenderer::applyShadows`
   therefore **subdivides** an overlapping ring candidate against what is already taken, finest zoom
   first, instead of dropping it — dropping would leave the ground outside the finer tiles with no
   caster. Measured (emulator, Grenoble z13 tilt 30, sun 30°/135°, 3 × 1024): 47.6% of the flat valley
@@ -811,6 +811,58 @@ Two things that are ours, not mapbox's:
 Known gap: no camera has yet been found where the offset *earns* its artifact — at
 `shadowBias 0` the same views are already acne-free with the offset at 0. It is on by default
 because it is mapbox's default; the case for it is a lower depth bias, which has not been retuned.
+
+### Do the shadows lie down with the buildings?
+
+Not by default. `building-height-view-scale` (the camera lying over, tilt 80 to 90) scales the buildings
+that are DRAWN, and the sun caster skips it: `GLTileRenderer::buildingHeightScale` returns the caster's
+height when `_shadowCasterSun`, which carries the zoom ramp and nothing else, and the receivers look their
+own depth up at the same `casterHeightScale`. Straight down the walls vanish and the shadows keep their
+length, which is what the sun would do.
+
+`LightOptions.ShadowFollowsBuildingHeight` (off) folds the view scale into `casterHeightScale`, so the
+shadow map is cast at the drawn height and receivers read it back at that height. The map is recast as the
+scale moves: `shadowCasterFadeSignature` carries it. The AO contact shadow is a separate thing: a style
+that wants it to follow the height says so in `building-ao-intensity` (above).
+
+### Shadows without a terrain
+
+The same pass runs on a map with no active terrain (`MapRenderer::applyFlatShadows`, from the flat
+branch of `drawLayers`), on the planar map and on the globe. What it changes against the terrain case:
+
+| | with a terrain | without |
+|---|---|---|
+| cover | the terrain renderer's tiles | the layers' visible render tiles, as a partition (`ShadowCasterRing::finest`) |
+| heights | the DEM's min and max per tile | a sliver at 0, or the fit falls back to a slab from -1000 m to 9000 m |
+| ground caster | the terrain surface | none: the ground is flat |
+| ground receiver | the surface shader, from the mask or per fragment | the mask only, multiplied into the frame before the 3D pass (`multiplyScreenMask`, as the ground AO does) |
+| buildings, models | `shadowReceiver` needs the elevation texture | extrusions and models receive without it |
+
+`applyShadows` takes a null `TerrainOptions` for this: each terrain read (`switching`, `terrainCasts`, the
+two elevation loops) is guarded and nothing else was copied. The shadow-map fit already handled both a
+flat map and the sphere (`calculateShadowViewProj`, 18-globe.md).
+
+In the shaders `TERRAIN` means "fetch the elevation", not "terrain mode", so the lookup compiles with
+`TERRAIN_SHADOW` alone: `uSunDir` is declared for that case, and `backgroundFsh` writes the shadow factor
+into the mask when `SHADOW_MASK_OUT` is set without `TERRAIN`. The flat ground's slope term is 1.
+
+**Limits.**
+- The ground's shadow is multiplied in before the 3D pass, after the layers' 2D labels, so a label in a
+  shadow is dimmed with the ground under it. A per-layer multiply between a layer's geometry and its labels
+  would double-darken a stack of layers.
+- The ground does not receive a shadow per fragment, so a 2D polygon, line or point does not sample the
+  shadow map itself.
+- 3D models are not drawn on the globe (`renderTileModels`), so none casts or receives there.
+
+**Cost**, Crosscall, Grenoble, Massif over rhone-alpes.pmtiles, shadow 1.0, two runs per arm, frame ms:
+
+| camera | no shadows | flat shadows | 3D at zero relief, shadows |
+|---|---|---|---|
+| z17, tilt 45 | 32.1 | 35.5 (+3.4) | 46.9 (+14.8) |
+| z16.3, tilt 90 | 31.0 | 33.6 (+2.6) | 35.9 (+4.9) |
+
+The GPU timer's `shadowCast` reads 100 to 300 ms on the flat map against 15 in 3D. It is the first section
+of the frame, so it takes the wait for the previous present; the frame time and fps do not show it.
 
 ## Buildings
 
@@ -1374,7 +1426,7 @@ from view distance, so the vertex stage applies one matrix and interpolates one 
 cascade count — not yet done.
 
 **Current state: cast shadows are switched OFF on the shared ground** — the undraped cover path;
-the drape path casts them. `MapRenderer` calls `applyTerrainShadows(..., castShadows = false, ...)`
+the drape path casts them. `MapRenderer` calls `applyShadows(..., castShadows = false, ...)`
 there: the light, the boxes and the caster pass are all wired, but with it on the road overlay wears
 a fine speckle of **shadow acne** the drape path does not have. To work on it, flip that argument to
 true and diff against the drape path.

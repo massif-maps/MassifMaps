@@ -187,7 +187,7 @@ namespace massif::vt {
          * scale: mapbox's fill-extrusion-vertical-scale. growOnAppear raises walls with the tile fade-in.
          * fadeOnAppear (off by default) fades their colour, which shows the full-strength shadow through them.
          */
-        void setBuildingHeight(float scale, float viewScale, bool growOnAppear, bool fadeOnAppear);
+        void setBuildingHeight(float scale, float viewScale, bool growOnAppear, bool fadeOnAppear, bool shadowFollowsViewScale);
         // 0 below the minimum zoom, ramping to 1 one level above it.
         static float groundAOZoomFade(float zoom);
         // Whether the contact shadows would draw anything at all this frame (intensity and zoom).
@@ -869,23 +869,28 @@ namespace massif::vt {
         TerrainLighting _terrainLighting;
         // Below this zoom a contact shadow is a sub-pixel rim; groundAOZoomFade ramps it over one level.
         static constexpr float GROUND_AO_MIN_ZOOM = 16.0f;
-        // Style scale x fade-in when growing on appear. The sun caster skips the view scale but keeps the
-        // style's (no building, no shadow); a span deck takes neither.
+        // Style scale x fade-in when growing on appear. The sun caster skips the view scale unless the app asks the
+        // shadows to follow it, but keeps the style's (no building, no shadow); a span deck takes neither.
         float buildingHeightScale(float blend, bool span = false) const {
             if (span) {
                 return 1.0f;
             }
-            return _shadowCasterSun ? casterHeightScale(blend) : casterHeightScale(blend) * _buildingHeightViewScale;
+            if (_shadowCasterSun) {
+                return casterHeightScale(blend);
+            }
+            return _buildingHeightScale * (_buildingGrowOnAppear && !_shadowCasterViewProj ? blend : 1.0f) * _buildingHeightViewScale;
         }
         // The height the shadow MAP holds, which is what a receiver must look its own depth up at.
         float casterHeightScale(float blend, bool span = false) const {
             if (span) {
                 return 1.0f;
             }
-            return _buildingHeightScale * (_buildingGrowOnAppear && !_shadowCasterViewProj ? blend : 1.0f);
+            float scale = _buildingHeightScale * (_buildingGrowOnAppear && !_shadowCasterViewProj ? blend : 1.0f);
+            return _shadowFollowsViewScale ? scale * _buildingHeightViewScale : scale;
         }
 
         float _buildingHeightScale = 1.0f;
+        bool _shadowFollowsViewScale = false;
         float _buildingHeightViewScale = 1.0f;
         bool _shadowCasterSun = false; // set only while the sun's shadow map is being baked
         bool _buildingGrowOnAppear = false;

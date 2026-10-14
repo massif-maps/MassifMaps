@@ -11,7 +11,7 @@
  *
  * NOT covered here: the quadtree subdivision that brings the resolution back where the cover is
  * finer, and the caster set's own MAX_SHADOW_CASTER_TILES ceiling. Both live in
- * MapRenderer::applyTerrainShadows and need the renderer. Nor the visual consequence - a distant
+ * MapRenderer::applyShadows and need the renderer. Nor the visual consequence - a distant
  * shadow cast from a coarser DEM level - which is a device check.
  */
 
@@ -132,6 +132,17 @@ namespace {
         TEST_CHECK(edge.empty(), "nothing is added past the pole row");
     }
 
+    void testTheFinestTilesPartitionAMixedCover() {
+        // A z15 stand-in over its four z16 children and one unrelated z15 tile.
+        std::vector<ShadowCasterRing::Tile> mixed = { { 15, 10, 10 }, { 16, 20, 20 }, { 16, 21, 20 }, { 16, 20, 21 }, { 16, 21, 21 }, { 15, 11, 10 } };
+        std::vector<ShadowCasterRing::Tile> partition = ShadowCasterRing::finest(mixed);
+        TEST_CHECK(partition.size() == 5, "the stand-in goes, its children and the unrelated tile stay");
+        TEST_CHECK(!contains(partition, 15, 10, 10) && contains(partition, 15, 11, 10) && contains(partition, 16, 21, 21),
+                   "a tile is dropped for a finer one inside it only");
+        TEST_CHECK(ShadowCasterRing::finest({ { 12, 5, 5 } }).size() == 1, "a lone tile is its own partition");
+        TEST_CHECK(ShadowCasterRing::finest({ { 14, 3, 3 }, { 14, 3, 3 } }).size() == 2, "equal tiles do not cover each other");
+    }
+
 }
 
 void testShadowCasterRing() {
@@ -144,4 +155,5 @@ void testShadowCasterRing() {
     testSunwardTilesLieOnTheSunsSide();
     testSunwardTilesNeverOverlapTheView();
     testSunwardTilesStartAtTheMinZoom();
+    testTheFinestTilesPartitionAMixedCover();
 }

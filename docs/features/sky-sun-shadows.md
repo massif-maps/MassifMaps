@@ -49,13 +49,17 @@ light.setSunPositionFromTime(2026, 8, 14, 7, 30, 45.188, 5.719)   // UTC + lat/l
 | `ShadowStrength` | `1.0` | `0` = no shadows. Not the depth drawn: it is multiplied by the sun's share of the scene light (MapBox's `calculateGroundShadowFactor`), so `1` is their shadow exactly and shadows fade to nothing as the sun sets. Values above `1` exaggerate. |
 | `ShadowMapSize` / `ShadowCascades` | `2048` / `2` | Cascaded shadow map, up to 4 cascades. Two is MapBox's own count and the slices are theirs. A third page is a nearer, sharper one, but it also makes each box smaller and the screen-space derivatives larger, which is what serrated a building's vertical edges. |
 | `ShadowBias` / `ShadowSoftness` / `ShadowDistance` | `1.0` / `0.5` / `0` | `ShadowBias` is a UNITLESS scale on MapBox's bias (a constant plus a capped slope term, in normalised light depth), so 1 is theirs unchanged. `ShadowDistance` 0 = derived from the view. |
+| `ShadowFollowsBuildingHeight` | `false` | Building shadows keep the full height the buildings have, even while a style lays them down between tilt 80 and 90 (`building-height-view-scale`), which reads true from straight above. On, they shrink with the drawn buildings. The zoom ramp (`building-height-scale`) always moves them. |
 | `ShadowCasterMargin` | `3` | Ring of off-screen tiles that may still cast into the view. |
 | `TerrainShadowCastingEnabled` | `true` | Whether the relief casts shadows. Off, buildings and models still cast onto the ground, and the terrain's caster draws and the mountain-sized caster ring are skipped: for a flat or straight-down 3D view, where the relief has nothing to throw. A terrain with exaggeration 0 never casts. |
 
-:::note Cast shadows need the terrain
-Shadows are cast in the terrain drape pass and land on the terrain surface, so they need 3D terrain
-with `TerrainLightingEnabled` on as well as a `ShadowStrength` above 0 — see
-[Cast shadows need a terrain](/docs/features/day-cycle-light#cast-shadows-need-a-terrain).
+:::note Shadows with and without terrain
+Buildings and 3D models cast shadows, and receive them, on a plain 2D map as well as on 3D terrain, and
+on the globe. It takes `TerrainLightingEnabled` and a `ShadowStrength` above 0, nothing else: no
+`TerrainOptions` is needed. On a flat map the ground takes the shadow as one screen-space mask, the
+buildings and models sample the shadow map themselves, and a 2D label standing in a shadow is dimmed with
+the ground under it. 3D models are not drawn on the globe yet, so none casts there. How each state of the
+map treats shadows is in [2D, 3D and everything between](/docs/features/terrain-2d-3d-states).
 :::
 
 ### With the surface API

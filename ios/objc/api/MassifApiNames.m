@@ -399,6 +399,7 @@ MassifProperty const MassifPropertyShadowCascades = @"shadowCascades";
 MassifProperty const MassifPropertyShadowCasterMargin = @"shadowCasterMargin";
 MassifProperty const MassifPropertyShadowColor = @"shadowColor";
 MassifProperty const MassifPropertyShadowDistance = @"shadowDistance";
+MassifProperty const MassifPropertyShadowFollowsBuildingHeight = @"shadowFollowsBuildingHeight";
 MassifProperty const MassifPropertyShadowMapSize = @"shadowMapSize";
 MassifProperty const MassifPropertyShadowNormalOffset = @"shadowNormalOffset";
 MassifProperty const MassifPropertyShadowSoftness = @"shadowSoftness";

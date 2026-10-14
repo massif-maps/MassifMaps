@@ -726,8 +726,9 @@ namespace massif::vt {
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
+        // A flat map has no ground to cast: buildings and models cast onto it.
         if (!(_terrainMode && _terrainTextureProvider)) {
-            return 0;
+            castGround = false;
         }
         int draws = 0;
         // One program and one VBO for every tile's ground: on a translated GL (emulator, ANGLE) the
@@ -855,7 +856,7 @@ namespace massif::vt {
         });
         // The mean, or tiles fading together move it faster; times the height scale (a style can ramp
         // it), plus the count (extrusions usually arrive at blend 1).
-        return count > 0 ? _buildingHeightScale * (static_cast<float>(count) + signature / count) : 0.0f;
+        return count > 0 ? _buildingHeightScale * (_shadowFollowsViewScale ? _buildingHeightViewScale : 1.0f) * (static_cast<float>(count) + signature / count) : 0.0f;
     }
 
     void GLTileRenderer::filterShadowCasterTiles(const std::vector<TileId>& tileIds, const std::vector<std::pair<double, double> >& tileHeights, const cglib::mat4x4<double>& lightViewProj, const cglib::bbox2<double>& clipBounds, std::vector<TileId>& casterTileIds) const {
@@ -938,13 +939,14 @@ namespace massif::vt {
         refreshGroundAOBakeable();
     }
 
-    void GLTileRenderer::setBuildingHeight(float scale, float viewScale, bool growOnAppear, bool fadeOnAppear) {
+    void GLTileRenderer::setBuildingHeight(float scale, float viewScale, bool growOnAppear, bool fadeOnAppear, bool shadowFollowsViewScale) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _buildingHeightScale = scale;
         _buildingHeightViewScale = viewScale;
         _buildingGrowOnAppear = growOnAppear;
         _buildingFadeOnAppear = fadeOnAppear;
+        _shadowFollowsViewScale = shadowFollowsViewScale;
     }
 
     bool GLTileRenderer::isGroundAOActive() const {
@@ -2591,10 +2593,6 @@ namespace massif::vt {
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        // The fill path serves the grid and a globe's per-tile surfaces alike: require terrain only.
-        if (!(_terrainMode && _terrainTextureProvider)) {
-            return 0;
-        }
         if (_terrainShadowTexture == 0 || _terrainShadowStrength <= 0.0f || !_terrainLighting.enabled) {
             return 0;
         }
@@ -4921,7 +4919,9 @@ namespace massif::vt {
             // The shared ground is the lit terrain surface, like the drape; the colour-masked depth
             // pre-passes ask for the plain fill, where lighting is pure cost.
             bool litSurface = lit && terrainFlag != 0 && _terrainLighting.enabled;
-            bool shadowedSurface = litSurface && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
+            // A flat ground is unlit: its mask pass reads the shadow alone.
+            bool flatMask = _terrainShadowMaskPass && terrainFlag == 0;
+            bool shadowedSurface = (litSurface || flatMask) && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
             unsigned int lightFlags = (litSurface ? TERRAIN_LIGHT_FLAG : 0) | (shadowedSurface ? surfaceShadowFlags() : 0);
             const ShaderProgram& shaderProgram = buildShaderProgram("tilesurfacefill", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag | lightFlags | fogFlag());
             useProgram(shaderProgram);
@@ -6858,7 +6858,8 @@ namespace massif::vt {
         bool sphericalDrape = flatDrape && _transformer && _transformer->isSpherical(); // positions itself in the tile, in the shader
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider && !flatDrape;
         // All tile content in the 3D scene receives shadows, lines and points too (only fills drape).
-        bool shadowReceiver = terrainVTF && !_shadowCasterViewProj && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
+        bool flatReceiver = !_terrainMode && !flatDrape && geometry->getType() == TileGeometry::Type::POLYGON3D;
+        bool shadowReceiver = (terrainVTF || flatReceiver) && !_shadowCasterViewProj && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
         // ...and takes the sun: this is the only pass lighting undraped content. Extrusions light by
         // their own model.
         bool terrainLit = terrainVTF && !_shadowCasterViewProj && _terrainLighting.enabled && geometry->getType() != TileGeometry::Type::POLYGON3D;
@@ -7218,7 +7219,7 @@ namespace massif::vt {
         }
 
         bool terrainVTF = _terrainMode && static_cast<bool>(_terrainTextureProvider);
-        bool shadowReceiver = terrainVTF && !caster && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
+        bool shadowReceiver = (terrainVTF || !_terrainMode) && !caster && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
         unsigned int terrainFlag = terrainVTF ? TERRAIN_VTF_FLAG | (caster ? 0 : TERRAIN_FLAG) : 0;
         const ShaderProgram& shaderProgram = caster
             ? buildShaderProgram("modelshadow", modelVsh, modelShadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag)

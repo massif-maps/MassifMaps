@@ -4230,6 +4230,15 @@
           "doc": "Returns the shadow distance."
         },
         {
+          "name": "shadowFollowsBuildingHeight",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether building shadows shrink with the buildings as the camera lies over."
+        },
+        {
           "name": "shadowMapSize",
           "type": "INT",
           "readOnly": false,
@@ -4317,7 +4326,7 @@
           "static": false,
           "position": false,
           "cppType": "bool",
-          "doc": "Returns whether the sun lights the 3D terrain surface."
+          "doc": "Returns whether the sun lights the 3D terrain surface, and whether shadows are drawn at all."
         },
         {
           "name": "terrainShadowCastingEnabled",

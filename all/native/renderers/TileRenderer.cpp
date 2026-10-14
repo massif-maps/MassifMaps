@@ -342,6 +342,7 @@ namespace massif {
             _backgroundEmissive = lighting.backgroundEmissive;
             _buildingHeightScale = lighting.buildingHeightScale;
         _buildingHeightViewScale = lighting.buildingHeightViewScale;
+        _shadowFollowsBuildingHeight = lighting.shadowFollowsBuildingHeight;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
             _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             // The owner reads this before the layer passes, to decide on the occluder buffer.
@@ -369,7 +370,7 @@ namespace massif {
         tileRenderer->setRadiance(_resolvedRadiance);
         tileRenderer->setBackgroundEmissive(_backgroundEmissive);
         tileRenderer->setLayerOpacity(_layerOpacity);
-        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear, _shadowFollowsBuildingHeight);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
         _frameTileRenderer = tileRenderer;
         std::vector<std::weak_ptr<const vt::GLTileRenderer>> peerRenderers;
@@ -1147,6 +1148,7 @@ namespace massif {
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
             _buildingHeightScale = lighting.buildingHeightScale;
         _buildingHeightViewScale = lighting.buildingHeightViewScale;
+        _shadowFollowsBuildingHeight = lighting.shadowFollowsBuildingHeight;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
             _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             _resolvedSunDir = lighting.sunDir;
@@ -1171,7 +1173,9 @@ namespace massif {
             _resolvedRadiance = lighting.radiance;
             _resolvedBrightness = lighting.brightness;
             // The shared ground pass is lit too, or it and its shadow stay unlit.
-            if ((drapeFills || _terrainGroundActive) && lighting.terrainLightingEnabled) {
+            // A flat map's shadow casters and receivers read the sun from here too, but 2D content stays unlit.
+            bool flatShadows = !terrainMode && lighting.shadowStrength > 0.0f;
+            if ((drapeFills || _terrainGroundActive || flatShadows) && lighting.terrainLightingEnabled) {
                 terrainLighting = buildTerrainLighting(lighting);
             }
 
@@ -1191,7 +1195,7 @@ namespace massif {
         }
         tileRenderer->setTerrainLighting(terrainLighting);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
-        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear, _shadowFollowsBuildingHeight);
         tileRenderer->setTerrainDepthWrite(terrainMode && _terrainDepthWriteMode);
         if (auto options = _options.lock()) {
             tileRenderer->setDebugTileBorders(options->isDebugTileBorders());

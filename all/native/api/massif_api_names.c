@@ -400,6 +400,7 @@ static const char* const kNames[] = {
     "shadowCasterMargin",
     "shadowColor",
     "shadowDistance",
+    "shadowFollowsBuildingHeight",
     "shadowMapSize",
     "shadowNormalOffset",
     "shadowSoftness",

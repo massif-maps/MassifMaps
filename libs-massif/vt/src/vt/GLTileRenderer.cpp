@@ -3117,7 +3117,8 @@ namespace massif::vt {
             GlobalIdLabelMap& oldLabelMap = oldLayerLabelIt->second;
             for (auto oldLabelIt = oldLabelMap.begin(); oldLabelIt != oldLabelMap.end(); ) {
                 const std::shared_ptr<Label>& oldLabel = oldLabelIt->second;
-                if (oldLabel->getOpacity() <= 0) {
+                // Shown but not yet faded in (a pass just placed it): its rebuild would start hidden until the next pass.
+                if (oldLabel->getOpacity() <= 0 && !(oldLabel->isVisible() && oldLabel->isActive())) {
                     oldLabelIt = oldLabelMap.erase(oldLabelIt);
                 }
                 else {

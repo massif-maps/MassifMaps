@@ -63,6 +63,12 @@ tiles. Labels with the same `globalId` from different tiles are merged (`mergeGe
 geometry copy per tile, identified by `(tileId, localId)`), and visibility, opacity and placement
 are carried over from the previous object via `snapPlacement`.
 
+The previous objects are released first, all those faded out to opacity 0 — **except one shown and
+not yet faded in**. A pass that has just placed a label leaves it visible at opacity 0 until the next
+frame, and a tile arriving in between released it: its rebuild started hidden and waited for the
+next pass, 300 ms or more (below), with every tile of a zoom out reopening that window. It is kept
+for one more rebuild, inactive, so the next one still finds it.
+
 **A point label whose id changed but whose anchor did not is carried over too** (`LabelSpot`, same
 layer, the 2^-28 cell below). The shield text is hashed into the id, and Massif draws most POIs
 icon-only below a label minzoom (`shield-name: ''`), so at the tile level a name appears the same POI

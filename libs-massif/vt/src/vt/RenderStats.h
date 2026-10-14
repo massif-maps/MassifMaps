@@ -325,6 +325,10 @@ namespace massif::vt {
         static inline std::atomic<long long> cullerCollided{0};
         // Hidden by 3D content during placement, so it reserved no grid slot.
         static inline std::atomic<long long> cullerOccluded{0};
+        // Terrain verdicts the culler could not judge (height unknown or stale), so the last one stood.
+        static inline std::atomic<long long> cullerOcclusionKept{0};
+        // Terrain verdicts that changed on the GL thread: each is a label starting to fade in or out.
+        static inline std::atomic<long long> labelOcclusionFlips{0};
     };
 }
 

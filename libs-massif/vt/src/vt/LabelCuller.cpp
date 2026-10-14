@@ -223,6 +223,7 @@ namespace massif::vt {
 
             if (label->updatePlacement(_viewState)) {
                 label->setOpacity(0);
+                label->setTerrainOccluded(false); // a verdict for the old spot
             }
             // A first-time label has no centre until updatePlacement; at distance 0 it would outrank nearer ones.
             if (measurable && !measured && !measureDistance()) {
@@ -234,9 +235,14 @@ namespace massif::vt {
             }
             // Hidden by the terrain: take no collision slot (see setOcclusionTest). After updatePlacement
             // because most considered labels are off-screen and the test is not cheap.
-            if (label->isValid() && _occlusionTest && label->isElevationAnchored() && !label->isElevationStale()) {
+            if (label->isValid() && _occlusionTest) {
                 cglib::vec3<double> anchor(0, 0, 0);
-                if (label->calculateCenter(anchor) && _occlusionTest(anchor)) {
+                if (label->isElevationAnchored() && !label->isElevationStale() && label->calculateCenter(anchor)) {
+                    label->setTerrainOccluded(_occlusionTest(anchor));
+                } else {
+                    VT_STAT_INC(cullerOcclusionKept);
+                }
+                if (label->isTerrainOccluded()) {
                     VT_STAT_INC(cullerOccluded);
                     label->setVisible(false);
                     continue;

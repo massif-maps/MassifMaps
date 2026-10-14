@@ -1166,6 +1166,17 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   (`Label::isElevationStale`) — the same rule as an un-anchored one, since its height is a previous
   step's.
 
+  **Not judging is not "in the clear": the last verdict stands** (`Label::isTerrainOccluded`). Both
+  the culler and `updateLabel` used to treat an unjudgeable label as unoccluded, so every elevation
+  arrival, ramp step or tile rebuild that left a hidden label un-anchored or stale for a moment faded
+  it in, and the culler let it take the slot of the label beside it; once its height landed it was
+  hidden again and the neighbour came back. Both blinked without moving while elevation streamed in.
+  The verdict is carried to a label rebuilt on a tile-set change, dropped when the culler re-places
+  the label elsewhere, and cleared while no occlusion test is set (flat map), so a switch back to 3D
+  does not hide labels on a verdict from another camera. A label never judged still counts as in the
+  clear. `LabelOcclusionKeepTest` pins the culler's half; `occKept` / `occFlips` in the stats line
+  count the verdicts kept by the culler and the per-frame verdict changes on the GL thread.
+
   **The slack is 5% of the distance (`billboardOcclusionTolerance`), not 20%.** At 0.2 the
   Matterhorn's Zmuttgrat kept its name seen from the Italian side: anchor at w 225, the south face
   at its pixel 193 — 900 m in front of it, and inside the 20%. Measured on the web build over 360°

@@ -136,6 +136,10 @@ namespace massif::vt {
         bool hasAbsoluteHeight() const { return _absoluteHeight; }
         void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
+        // The last terrain occlusion verdict. It stands while the height is unknown or stale: judging a
+        // label behind a ridge visible until its elevation lands made it blink in and out.
+        bool isTerrainOccluded() const { return _terrainOccluded; }
+        void setTerrainOccluded(bool occluded) { _terrainOccluded = occluded; }
         // The renderer's whole-set invalidation count the height was sampled at; behind it, it is re-anchored.
         unsigned int getElevationGeneration() const { return _elevationGeneration; }
         void setElevationGeneration(unsigned int generation) { _elevationGeneration = generation; }
@@ -465,6 +469,7 @@ namespace massif::vt {
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame
         unsigned int _elevationGeneration = 0;
         bool _elevationAnchored = false; // its last sample had every height, so a re-anchor may wait
+        bool _terrainOccluded = false;
         bool _absoluteHeight = false;    // anchored on a deck chord, not on the terrain
         long long _geometryHash = 0;
         int _geometryCount = 0;

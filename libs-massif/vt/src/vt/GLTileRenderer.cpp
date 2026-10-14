@@ -3132,12 +3132,14 @@ namespace massif::vt {
                     newLabel->setVisible(label->isVisible());
                     newLabel->setOpacity(label->getOpacity());
                     newLabel->setTextOpacity(label->getTextOpacity());
+                    newLabel->setTerrainOccluded(label->isTerrainOccluded());
                     newLabel->snapPlacement(*label);
                 }
                 else if (std::shared_ptr<Label> oldLabel = takeOldSpot(*newLabel)) {
                     newLabel->setVisible(oldLabel->isVisible());
                     newLabel->setOpacity(oldLabel->getOpacity());
                     newLabel->setTextOpacity(0);
+                    newLabel->setTerrainOccluded(oldLabel->isTerrainOccluded());
                     newLabel->snapPlacement(*oldLabel);
                     oldLabel->setOpacity(0); // the new one draws its icon now; two would overlap
                     oldLabel->setTextOpacity(0);
@@ -3206,14 +3208,21 @@ namespace massif::vt {
     bool GLTileRenderer::updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const {
         bool refresh = false;
         if (label->isValid()) {
-            bool occluded = false;
             // Not while the height is unknown: the flat decode height would hide it under the ground.
             if (_labelOcclusionTest && label->isVisible() && label->isActive() && label->isElevationAnchored() && !label->isElevationStale()) {
                 cglib::vec3<double> center(0, 0, 0);
                 if (label->calculateCenter(center)) {
-                    occluded = _labelOcclusionTest(center);
+                    bool occluded = _labelOcclusionTest(center);
+                    if (occluded != label->isTerrainOccluded()) {
+                        VT_STAT_INC(labelOcclusionFlips);
+                        label->setTerrainOccluded(occluded);
+                    }
                 }
             }
+            else if (!_labelOcclusionTest) {
+                label->setTerrainOccluded(false); // flat: back in 3D an old verdict would hide it until anchored
+            }
+            bool occluded = _labelOcclusionTest && label->isTerrainOccluded();
             bool shown = label->isVisible() && label->isActive() && !occluded;
             if (shown) {
                 float opacity = std::min(1.0f, label->getOpacity() + dOpacity);

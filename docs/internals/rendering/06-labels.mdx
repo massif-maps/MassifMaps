@@ -146,6 +146,21 @@ grid.
 A visible label keeps its slot unless a strictly higher-priority label overlaps it — that hysteresis
 is what stops labels flickering when the camera moves slightly.
 
+**A stand-in tile's labels sort after all others, whatever their priority.** While a tile loads,
+`TileLayer` draws an ancestor up to `MaxStandInLevel` levels coarser under it
+([02-tiles.md](02-tiles.md#substitution-preloading-caching)), and that tile's labels join the set
+like any other — a decode several levels coarser, with what that zoom's style names and how it ranks
+it. A name it draws under another text is another `globalId`, so nothing merges it with the real one.
+Ranked above a label on screen, one evicted it until the real tile landed and the stand-in went,
+and the evicted label came back — a name blinking in place on a zoom out (read from the code; not
+yet measured on a device). `setVisibleTiles` now tells a stand-in apart — keyed by the finer tile it
+stands in for, never by its own id — and a label no other tile contributes to (`Label::isStandIn`)
+is ranked after every other label of its map layer (the culler sorts per layer) and reserves no
+room, so it only fills what is free. Alone, as over a tile that never loads, it is placed as before.
+A stand-in that becomes a real tile (the zoom reached it) changes the label tile signature, so the
+flag is recomputed. `standIn` in the stats line counts these labels per pass; `LabelYieldTest` pins
+the ordering.
+
 Fork-specific rules, all comparing the **placement's** `localId` (hence the stability invariant
 above): `allowOverlapSameFeatureId`, `sameFeatureIdDependent`, and group ids with
 `minimumGroupDistance`.

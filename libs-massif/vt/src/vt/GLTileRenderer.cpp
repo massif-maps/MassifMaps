@@ -1342,18 +1342,35 @@ namespace massif::vt {
                 labelTiles.insert(it, tile);
             }
         };
+        // An ancestor drawn under a tile still loading is keyed by that finer tile; under its own id it is real.
+        std::unordered_map<const Tile*, bool> standIns;
+        auto addStandIn = [&standIns](const TilePair& tilePair) {
+            if (!tilePair.second) {
+                return;
+            }
+            bool standIn = tilePair.first.zoom > tilePair.second->getTileId().zoom;
+            auto it = standIns.emplace(tilePair.second.get(), standIn).first;
+            it->second = it->second && standIn;
+        };
         for (TilePair tilePair : tiles) {
             tileIds.insert(tilePair.first);
             addLabelTile(tilePair.second);
+            addStandIn(tilePair);
         }
         // Labels only: no tileId, so no surface and no render tile - see setVisibleTiles' comment.
         for (TilePair tilePair : labelOnlyTiles) {
             addLabelTile(tilePair.second);
+            addStandIn(tilePair);
         }
 
         // The expensive label map rebuild runs off the mutex against a snapshot; an unchanged set skips the snapshot.
         LabelMapBuild labelBuild;
-        labelBuild.signature = calculateLabelTilesSignature(labelTiles);
+        for (const std::pair<const Tile* const, bool>& standIn : standIns) {
+            if (standIn.second) {
+                labelBuild.standInTiles.insert(standIn.first);
+            }
+        }
+        labelBuild.signature = calculateLabelTilesSignature(labelTiles, labelBuild.standInTiles);
         {
             std::lock_guard<std::mutex> lock(_mutex);
             labelBuild.unchanged = (labelBuild.signature == _labelTilesSignature && !_layerLabelMap.empty());
@@ -1392,6 +1409,7 @@ namespace massif::vt {
                 rebuild.signature = labelBuild.signature;
                 rebuild.generation = _labelMapGeneration;
                 rebuild.transformer = _transformer;
+                rebuild.standInTiles = labelBuild.standInTiles;
                 prepareLabelMaps(labelTiles, _layerLabelMap, _rendererLayerFilter, rebuild);
                 commitLabelMaps(rebuild);
             } else {
@@ -2949,11 +2967,12 @@ namespace massif::vt {
         return static_cast<long long>(hash);
     }
 
-    // Keyed on the tile objects: a re-decoded tile can re-serve the same id and must rebuild.
-    long long GLTileRenderer::calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
+    // Keyed on the tile objects: a re-decoded tile can re-serve the same id and must rebuild, and so
+    // must a tile that stops standing in, as its labels' rank changes.
+    long long GLTileRenderer::calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::unordered_set<const Tile*>& standInTiles) {
         long long signature = static_cast<long long>(labelTiles.size());
         for (const std::shared_ptr<const Tile>& labelTile : labelTiles) {
-            signature += calculateLabelGeometryHash(labelTile.get(), 0); // order-independent, as pass 1 is
+            signature += calculateLabelGeometryHash(labelTile.get(), standInTiles.count(labelTile.get()) > 0 ? 1 : 0); // order-independent, as pass 1 is
         }
         return signature;
     }
@@ -2988,6 +3007,33 @@ namespace massif::vt {
                     std::pair<long long, int>& signature = signatureMap[tileLabel->getGlobalId()];
                     signature.first += calculateLabelGeometryHash(tile.get(), tileLabel->getLocalId());
                     signature.second++;
+                }
+            }
+        }
+        // Stand-in tiles first: with none, as at rest, the real tiles cost no lookup.
+        for (const std::shared_ptr<const Tile>& tile : labelTiles) {
+            if (build.standInTiles.count(tile.get()) == 0) {
+                continue;
+            }
+            for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                if (testLayerFilter(layer->getLayerName(), layerFilter)) {
+                    for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
+                        build.standInIds[layer->getLayerIndex()].insert(tileLabel->getGlobalId());
+                    }
+                }
+            }
+        }
+        for (const std::shared_ptr<const Tile>& tile : labelTiles) {
+            if (build.standInIds.empty() || build.standInTiles.count(tile.get()) > 0) {
+                continue;
+            }
+            for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                auto standInIt = build.standInIds.find(layer->getLayerIndex());
+                if (standInIt == build.standInIds.end() || !testLayerFilter(layer->getLayerName(), layerFilter)) {
+                    continue;
+                }
+                for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
+                    standInIt->second.erase(tileLabel->getGlobalId());
                 }
             }
         }
@@ -3120,8 +3166,10 @@ namespace massif::vt {
             const GlobalIdLabelMap& newLabelMap = newLayerLabelIt->second;
             GlobalIdLabelMap& labelMap = _layerLabelMap[newLayerLabelIt->first];
             const std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[newLayerLabelIt->first];
+            auto standInIt = build.standInIds.find(newLayerLabelIt->first);
             for (auto newLabelIt = newLabelMap.begin(); newLabelIt != newLabelMap.end(); newLabelIt++) {
                 const std::shared_ptr<Label>& newLabel = newLabelIt->second;
+                newLabel->setStandIn(standInIt != build.standInIds.end() && standInIt->second.count(newLabelIt->first) > 0);
                 std::shared_ptr<Label>& label = labelMap[newLabelIt->first];
                 // A reused object IS the previous label, already current. Not decidable from the map
                 // entry: the release pass erases entries whose label has faded out.

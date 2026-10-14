@@ -81,6 +81,11 @@ namespace massif::vt {
         bool isActive() const { return _active; }
         void setActive(bool active) { _active = active; }
 
+        // Carried only by an ancestor drawn in place of a loading tile: it yields to every other label,
+        // or it evicts labels that come back once that tile lands.
+        bool isStandIn() const { return _standIn; }
+        void setStandIn(bool standIn) { _standIn = standIn; }
+
         // Which of the style's sides the text is laid out on. Owned by LabelCuller, the only place that
         // knows what else is on screen; carried over by snapPlacement, or a label rebuilt on a tile-set
         // change takes the first side again and the name hops around its icon while the map pans.
@@ -466,6 +471,7 @@ namespace massif::vt {
         float _occlusion = 1.0f;
         bool _visible = false;
         bool _active = false;
+        bool _standIn = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame
         unsigned int _elevationGeneration = 0;
         bool _elevationAnchored = false; // its last sample had every height, so a re-anchor may wait

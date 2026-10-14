@@ -329,6 +329,8 @@ namespace massif::vt {
         static inline std::atomic<long long> cullerOcclusionKept{0};
         // Terrain verdicts that changed on the GL thread: each is a label starting to fade in or out.
         static inline std::atomic<long long> labelOcclusionFlips{0};
+        // Sorted labels only a stand-in tile carries, ranked after every other one.
+        static inline std::atomic<long long> cullerStandIn{0};
     };
 }
 

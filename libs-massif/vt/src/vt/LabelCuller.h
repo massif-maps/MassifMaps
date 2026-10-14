@@ -96,6 +96,7 @@ namespace massif::vt {
             bool valid;
             bool wasVisible;
             bool occluded; // partly hidden by 3D content on the last frame drawn
+            bool standIn;
             float priority;
             int layerIndex;
             float size;

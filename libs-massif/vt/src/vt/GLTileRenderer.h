@@ -615,8 +615,10 @@ namespace massif::vt {
             std::map<int, std::unordered_map<long long, std::pair<long long, int>>> signatures;
             std::map<int, GlobalIdLabelMap> labelMap;
             std::map<int, std::unordered_set<long long>> reusedIds;
+            std::unordered_set<const Tile*> standInTiles; // drawn only in place of a finer tile still loading
+            std::map<int, std::unordered_set<long long>> standInIds; // labels no other tile contributes to
         };
-        static long long calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles);
+        static long long calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::unordered_set<const Tile*>& standInTiles);
         void prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const;
         void commitLabelMaps(LabelMapBuild& build);
         bool updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const;

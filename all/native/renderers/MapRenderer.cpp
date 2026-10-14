@@ -2152,6 +2152,7 @@ namespace massif {
         float riseDuration = terrainOptions->getAutoFlattenRiseDuration();
         input.riseDuration = riseDuration < 0 ? input.flattenDuration : riseDuration;
         input.warmTimeout = TERRAIN_SWITCH_WARM_TIMEOUT;
+        input.maxRampStep = 1.0f / TERRAIN_SWITCH_MIN_RAMP_FRAMES;
         // The tile gate, for both the automatic wait and an app-driven rise.
         int tilesOwed = 0;
         if (FlattenSwitch::isWaitingForTiles(_flattenSwitchState, input)) {
@@ -4433,6 +4434,9 @@ namespace massif {
 
     // Late 3D beats a map pinned flat by one tile that never loads.
     const float MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT = 2.5f;
+    // A phone draws a 0.3 s ramp in 2-3 frames, and the frame terrain switches on in takes ~180 ms: that one
+    // frame was 60% of the rise, a camera step of a sixth of its distance to the ground.
+    const int MapRenderer::TERRAIN_SWITCH_MIN_RAMP_FRAMES = 6;
     const int MapRenderer::COARSE_DEM_LEVELS_UP = 2;
     const int MapRenderer::COARSE_DEM_PRIORITY = 3;
     const float MapRenderer::TERRAIN_RISE_HOLD_MAX = 1.5f;

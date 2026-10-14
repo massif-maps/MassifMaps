@@ -1220,6 +1220,12 @@ Three ways, in increasing order of control:
 The two durations are split because the directions are not alike: the rise is the one an app matches
 to a camera flight, and the one that waited for its tiles first.
 
+**A frame covers at most a sixth of the ramp** (`MapRenderer::TERRAIN_SWITCH_MIN_RAMP_FRAMES`,
+`FlattenSwitch::Input::maxRampStep`), so a slow frame stretches the switch instead of leaping through
+it. On the Crosscall the frame terrain switches on in took 182 ms, 60% of a 0.3 s rise in one step, and
+the camera, riding the ground, moved a sixth of its distance to it at once. At 60 fps a 0.3 s ramp
+steps less than that anyway, so a desktop's switch is unchanged.
+
 `FlattenRatio` is writable, and that is the only way two animations can be made to match **exactly** —
 a duration is a second timer, and two timers of the same length still drift when a frame is dropped.
 Writing it puts the switch in `MANUAL`, which suspends both its own ramp and auto-flattening, and

@@ -315,6 +315,7 @@ namespace massif {
         static const int ELEVATION_REFRESH_DELAY; // milliseconds between vector layer refreshes caused by elevation data changes
         static const float EYE_GROUND_SETTLE_TIME; // seconds for the first person eye to glide onto a refined ground
         static const float TERRAIN_SWITCH_WARM_TIMEOUT; // seconds the 2D/3D switch waits for the tiles 3D needs
+        static const int TERRAIN_SWITCH_MIN_RAMP_FRAMES; // the 2D/3D ramp spans at least this many frames
         static const int COARSE_DEM_LEVELS_UP; // levels above the coarsest unelevated leaf's grid that the coarse DEM is fetched at
         static const int COARSE_DEM_PRIORITY; // above a tile's own level (2): it ends a dropout the fine grids do not
         static const float TERRAIN_RISE_HOLD_MAX; // seconds the first rise into 3D waits for its coarse grids at most

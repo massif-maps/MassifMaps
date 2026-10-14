@@ -154,6 +154,11 @@ static BOOL IsStalePointer(UITouch* pointer, NSSet* touches, UIEvent* event) {
 }
 
 -(void)initBase {
+    // init, initWithFrame: and initWithCoder: can chain into one another (MGLKView's does), which ran
+    // this twice: two base maps, and on Mac Catalyst two touch recognizers feeding every touch twice
+    if (_baseMapView) {
+        return;
+    }
     _active = NO;
     _surfaceCreated = NO;
     _activeDrawableSize = CGSizeMake(0, 0);
@@ -531,6 +536,10 @@ static BOOL IsStalePointer(UITouch* pointer, NSSet* touches, UIEvent* event) {
 
 -(void)rotate:(float)deltaAngle durationSeconds:(float)durationSeconds {
     [_baseMapView rotate:deltaAngle durationSeconds:durationSeconds];
+}
+
+-(void)onWheelZoom:(float)zoomDelta x:(float)x y:(float)y {
+    [_baseMapView onWheelZoom:zoomDelta x:x y:y];
 }
 
 -(void)moveTo:(MSFMapPos*)pos zoom:(float)zoom {

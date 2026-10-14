@@ -1281,7 +1281,10 @@ Two mechanics that make the switch invisible:
   therefore re-casts every cascade each frame while `FlattenRatio > 0` and drops only the relief's own
   casting (`terrainCasts`), so building and model shadows stay on screen. It used to drop the whole
   pass, which left a gap of about the ramp's length on every auto-flatten. A full caster pass a frame
-  for those frames is the price: checked on the Crosscall at two points of an 8 s ramp, not timed.
+  is the price: Crosscall, Grenoble z17 tilt 45, `AutoFlattenMs` 6000, three interleaved runs per arm,
+  frame time over the ramp's one-second windows: **73.6 ms with the shadows (13 fps), 53.2 ms without
+  (18 fps), +20 ms**, all of it in the `drape` section (25.0 against 1.5 ms). At the default
+  `AutoFlattenDuration` of 0.3 s that is a handful of frames.
 
 - The ramp bumps the elevation version every frame, so `TileRenderer`'s `scaleOnly` path re-anchors
   labels on each of them, and `VectorLayer`'s terrain projection surface is rebuilt (debounced by

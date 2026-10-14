@@ -633,7 +633,10 @@ Everything below rests on that split — the icon stays on the feature, only the
   camera already stood on — a 76 px drop and return on one 75 ms frame, in the roof probe below.
   The label elevation provider is pushed there too: installed only in `onDrawFrame`, the first frame
   of a rise had none at `startFrame`, so every CPU-anchored label — the roof POIs — stayed flat for a
-  frame over a ground already rising (8-10 px down and back, measured on the same probe).
+  frame over a ground already rising (8-10 px down and back, measured on the same probe). So is the
+  extrusion elevation provider, withdrawn while flat: without it the first frame measured the roofs
+  on the flat map, and a roof POI stood barely over the risen ground — its height over the ground read
+  0.52, then 0.07 on that frame, then 0.59 (8-16 px down and back).
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran

@@ -322,6 +322,7 @@ namespace massif {
         bool prepareFrameUnsafe(float deltaSeconds, const ViewState& viewState); // caller holds _mutex
         void pushTerrainDrapeState(const ViewState& viewState); // caller holds _mutex
         void pushLabelElevationProvider(vt::GLTileRenderer& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions); // caller holds _mutex
+        void pushExtrusionElevationProvider(vt::GLTileRenderer& tileRenderer, const std::shared_ptr<TerrainOptions>& terrainOptions); // caller holds _mutex
         void invalidateExtrusionBasesOnElevation(vt::GLTileRenderer& tileRenderer, unsigned int elevationVersion); // caller holds _mutex
         unsigned int _extrusionBasesElevationVersion = 0;
 

@@ -1448,7 +1448,9 @@ view.
 ground under a still one, so the pin keeps following it under a finger too, while `FlattenRatio` is
 strictly between 0 and 1 and on the frame it lands on either end. That last step is no detail on a
 slow phone: the Crosscall draws a 0.3 s ramp in 3-4 frames, and its final step (0.11 to 0) was a tenth
-of the relief, held until the finger lifted. Held, a switch started by tilting (auto-flatten) rose the relief into a camera left at
+of the relief, held until the finger lifted. Nor does the pin land the focus on the ramp's first frame when a
+finger had frozen it: a landing holds the camera and slides the focus down the view, so that step's
+rise of the ground (a sixth of the relief on the Crosscall) came at the camera for a frame. Held, a switch started by tilting (auto-flatten) rose the relief into a camera left at
 the flat map's height — on Android, where the tilt is a two-finger gesture; the 3D button and a
 desktop's trackpad tilt raise no gesture and never showed it.
 

@@ -1485,8 +1485,9 @@ namespace massif {
                             _viewState.setFocusHeight(std::max(focusMapPos.getZ(), shellFocusZ + lift));
                         } else {
                             double pinnedZ = std::max(terrainZ, shellFocusZ) + lift;
-                            // On the ground, not the shell: the next frame raises a camera under it, and only then.
-                            bool landed = _terrainFocusFrozen && landFocusAlongView(*elevationManager, lift);
+                            // On the ground, not the shell: the next frame raises a camera under it, and only then. Not in a
+                            // ramp: a landing holds the camera, and the step's rise of the ground came at it for a frame.
+                            bool landed = _terrainFocusFrozen && !ramping && landFocusAlongView(*elevationManager, lift);
                             _terrainFocusFrozen = false;
                             if (landed) {
                                 requestRedraw();

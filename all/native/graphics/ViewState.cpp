@@ -958,6 +958,16 @@ namespace massif {
         return cglib::length(_cameraPos - _focusPos);
     }
 
+    double ViewState::calculateFogDistance(const Options& options) const {
+        if (options.getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+            double viewDistance = calculateViewDistance(options);
+            if (viewDistance > 0) {
+                return viewDistance;
+            }
+        }
+        return calculateCameraDistance();
+    }
+
     double ViewState::calculateViewDistance(const Options& options) const {
         // Tangram's rule (view.cpp): 2*m_pos.z / cos(pitch + fovy/2), capped at 127 tile widths for near-horizontal views.
         // The factor scales it: 1 is their rule, 0 the ground-derived one.

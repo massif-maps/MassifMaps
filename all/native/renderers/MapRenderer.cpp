@@ -1555,7 +1555,7 @@ namespace massif {
         _frameStyleEnvironment = collectStyleEnvironment(viewState);
         _frameFog = resolveFog(_options->getFogOptions(), _frameStyleEnvironment,
                                resolveLighting(_options->getLightOptions(), _frameStyleEnvironment),
-                               viewState.calculateCameraDistance(), viewState.getTilt());
+                               viewState.calculateFogDistance(*_options), viewState.getTilt());
 
         FRAME_PROF_NOW(profFrameStart);
         FRAME_PROF_RESET();

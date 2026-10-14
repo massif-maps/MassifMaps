@@ -1607,6 +1607,16 @@ is not clipped, it is simply invisible. Mapbox's fog scales the same way (its `r
 expression on `fog-range-end`. [05-depth-model.md](05-depth-model.md) lists the four limits together,
 and the `PROF VIEW` line prints the fog end in kilometres next to the far plane.
 
+### First person: the range is of the view distance
+
+The camera-to-focus distance is stable for an orbiting camera, and not for a first person eye, whose
+focus is wherever the view ray meets the ground: 14 km at the horizon, a few hundred metres looking
+down. A range of it moves the haze with the look, and when it lands past the view distance the ground is
+cut off while still only part fogged, and what shows beyond the cut is the sky's below-horizon colour
+(`SkyOptions::GroundColor`, light blue): a lighter band with a hard edge at the far clip.
+`ViewState::calculateFogDistance` is therefore the **view distance** under `FREE_ROAM_MODE_FIRST_PERSON`
+(the camera-to-focus distance otherwise), so a range of 1 is fully fogged at the cut and 0.9 hides it.
+
 ### No fog looking straight down
 
 The range being camera-relative means a top-down map fogs its own ground at a few kilometres out with

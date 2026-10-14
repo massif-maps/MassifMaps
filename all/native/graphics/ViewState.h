@@ -481,6 +481,14 @@ namespace massif {
          */
         double calculateCameraDistance() const;
 
+        /**
+         * The length a fog range is a multiple of: the camera-to-focus distance, but the view distance for a first
+         * person camera, whose focus is wherever the eye looks and so moves the fog with the look.
+         * @param options The options object.
+         * @return The fog range unit in internal units.
+         */
+        double calculateFogDistance(const Options& options) const;
+
     private:
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible) const;
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible, float& skyHorizonNDC) const;

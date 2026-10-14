@@ -538,6 +538,10 @@ static BOOL IsStalePointer(UITouch* pointer, NSSet* touches, UIEvent* event) {
     [_baseMapView rotate:deltaAngle durationSeconds:durationSeconds];
 }
 
+-(void)onWheelZoom:(float)zoomDelta x:(float)x y:(float)y {
+    [_baseMapView onWheelZoom:zoomDelta x:x y:y];
+}
+
 -(void)moveTo:(MSFMapPos*)pos zoom:(float)zoom {
     [_baseMapView moveTo:pos zoom:zoom];
 }

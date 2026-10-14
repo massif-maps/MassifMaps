@@ -134,6 +134,14 @@ __attribute__ ((visibility("default"))) @interface MSFMapView : MSFGLKView
  */
 -(void)rotate:(float)deltaAngle durationSeconds:(float)durationSeconds;
 /**
+ * Zooms by a continuous delta (positive zooms in), keeping the ground under the pointer still, also over
+ * 3D terrain. For a mouse wheel or a trackpad; setZoom with a target does not hold the ground still when tilted.
+ * @param zoomDelta The zoom change.
+ * @param x The x coordinate of the pointer, in pixels.
+ * @param y The y coordinate of the pointer, in pixels.
+ */
+-(void)onWheelZoom:(float)zoomDelta x:(float)x y:(float)y;
+/**
  * Points the camera at a position and a zoom level IMMEDIATELY, with no animation.
  *
  * Prefer it over setFocusPos + setZoom, which are clamped differently depending on which is applied

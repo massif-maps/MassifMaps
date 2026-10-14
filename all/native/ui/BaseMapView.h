@@ -88,6 +88,15 @@ namespace massif {
         void onWheelEvent(int delta, float x, float y);
 
         /**
+         * Zooms by a continuous delta, for a host whose wheel does not come in ticks (a trackpad, a browser).
+         * Keeps the ground under the pointer still, also over 3D terrain, unlike setZoom with a target.
+         * @param zoomDelta The zoom change, positive zooms in.
+         * @param x The x coordinate of the pointer.
+         * @param y The y coordinate of the pointer.
+         */
+        void onWheelZoom(float zoomDelta, float x, float y);
+
+        /**
          * Returns the Layers object, that can be used for adding and removing map layers.
          * @return The Layer object.
          */
@@ -405,8 +414,6 @@ namespace massif {
     
     protected:
         void stopCameraAnimations();
-        // A continuous zoom delta for a host whose wheel is not in ticks; pivots on the ground under the pointer.
-        void onWheelZoom(float zoomDelta, float x, float y);
         // The ground under a screen point, internal: what a mouse orbit turns about (Options::setOrbitAroundPivot).
         MapPos calculateOrbitPivot(float x, float y);
         void orbit(float rotationDelta, float tiltDelta, const MapPos& pivotPos);

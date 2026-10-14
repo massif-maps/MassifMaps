@@ -1008,11 +1008,6 @@ namespace massif {
             }
             if (_maxVertexTextureUnits > 0) {
                 std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
-                if (elevationManager) {
-                    // Node field density for every elevation consumer; mesh resolution is only its default.
-                    int nodeResolution = activeTerrainOptions->getSurfaceNodeResolution();
-                    elevationManager->setSurfaceResolution(nodeResolution > 0 ? nodeResolution : activeTerrainOptions->getMeshResolution());
-                }
                 // One cache per map (MapRenderer): a cache per layer meant an encode thread each.
                 _elevationTextureCache.reset();
                 if (elevationManager) {

@@ -91,6 +91,7 @@ namespace massif {
         if (!dataSource) {
             throw NullArgumentException("Null dataSource");
         }
+        applySurfaceResolution();
     }
 
     TerrainOptions::~TerrainOptions() {
@@ -308,6 +309,7 @@ namespace massif {
         // 1024 only guards against an allocation that would kill the process.
         int resolution = std::min(1024, std::max(2, meshResolution));
         if (_meshResolution.exchange(resolution) != resolution) {
+            applySurfaceResolution();
             notifyOptionChanged("MeshResolution");
         }
     }
@@ -333,7 +335,15 @@ namespace massif {
     void TerrainOptions::setSurfaceNodeResolution(int resolution) {
         int value = (resolution <= 0 ? 0 : std::min(512, std::max(2, resolution)));
         if (_surfaceNodeResolution.exchange(value) != value) {
+            applySurfaceResolution();
             notifyOptionChanged("SurfaceNodeResolution");
+        }
+    }
+
+    void TerrainOptions::applySurfaceResolution() {
+        if (_elevationManager) {
+            int nodeResolution = _surfaceNodeResolution.load();
+            _elevationManager->setSurfaceResolution(nodeResolution > 0 ? nodeResolution : _meshResolution.load());
         }
     }
 

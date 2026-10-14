@@ -59,6 +59,12 @@ the cap blurred the hillshade). It sizes the **node field** every decoded grid c
 the DEM box-filtered to one mesh cell, which is what the surface is displaced from and what every
 display-height query answers with. See [The node texture](#the-node-texture).
 
+`TerrainOptions` applies the resolution (`SurfaceNodeResolution`, else `MeshResolution`) to its
+`ElevationManager` when it is built and whenever either option changes, never from the render path.
+Applied lazily on the first 3D frame it dropped every grid decoded flat or warming at the manager's
+own 32 and re-baked heights, extrusion bases and label anchors mid-switch: the first 2D to 3D switch
+visibly jumped. The manager logs `surface resolution A -> B` when the value really changes.
+
 **Which DEM tile a render tile uses** is tangram's rule verbatim
 (`RasterSource::addRasterTask`): `subTileID = tileId.zoomBiasAdjusted(zoomDiff).withMaxSourceZoom(maxZoom)`
 — the render tile's own z/x/y adjusted by the source's zoom bias (one level per doubling of tile

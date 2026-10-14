@@ -145,7 +145,7 @@ namespace massif {
 
             static long long lastConsidered = 0, lastDistanceCut = 0, lastMaxDistanceCut = 0;
             static long long lastCullPhase[3] = { 0 };
-            static long long lastCullFate[9] = { 0 };
+            static long long lastCullFate[11] = { 0 };
             static long long lastLabelMapSkips = 0;
             long long labelMapSkips = RenderStats::labelMapSkips.load();
             long long deltaLabelMapSkips = labelMapSkips - lastLabelMapSkips;
@@ -159,12 +159,13 @@ namespace massif {
             const long long cullPhase[3] = {
                 RenderStats::cullerCollectNs.load(), RenderStats::cullerSortNs.load(), RenderStats::cullerInsertNs.load()
             };
-            const long long cullFate[9] = {
+            const long long cullFate[11] = {
                 RenderStats::cullerInvalid.load(), RenderStats::cullerSorted.load(), RenderStats::cullerVisible.load(),
                 RenderStats::cullerNotFacing.load(), RenderStats::cullerCollided.load(), RenderStats::cullerOccluded.load(),
-                RenderStats::cullerOcclusionKept.load(), RenderStats::labelOcclusionFlips.load(), RenderStats::cullerStandIn.load()
+                RenderStats::cullerOcclusionKept.load(), RenderStats::labelOcclusionFlips.load(), RenderStats::cullerStandIn.load(),
+                RenderStats::labelAnchorStale.load(), RenderStats::labelAnchorMisses.load()
             };
-            Log::Infof("RenderStats: over %.0f ms | cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld labelMapSkips=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld styleMaxDistCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld notFacing=%lld collided=%lld occluded=%lld occKept=%lld occFlips=%lld standIn=%lld",
+            Log::Infof("RenderStats: over %.0f ms | cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld labelMapSkips=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld styleMaxDistCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld notFacing=%lld collided=%lld occluded=%lld occKept=%lld occFlips=%lld standIn=%lld anchorStale=%lld anchorMiss=%lld",
                        intervalMs,
                        deltas[13], deltas[14], deltas[15], deltas[0], deltas[11], deltaLabelMapSkips,
                        deltas[1], deltas[2],
@@ -185,8 +186,10 @@ namespace massif {
                        cullFate[5] - lastCullFate[5],
                        cullFate[6] - lastCullFate[6],
                        cullFate[7] - lastCullFate[7],
-                       cullFate[8] - lastCullFate[8]);
-            std::copy(cullFate, cullFate + 9, lastCullFate);
+                       cullFate[8] - lastCullFate[8],
+                       cullFate[9] - lastCullFate[9],
+                       cullFate[10] - lastCullFate[10]);
+            std::copy(cullFate, cullFate + 11, lastCullFate);
             std::copy(cullPhase, cullPhase + 3, lastCullPhase);
             lastConsidered = considered;
             lastDistanceCut = distanceCut;

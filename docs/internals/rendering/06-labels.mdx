@@ -1327,7 +1327,12 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   invalidation bumps `_labelElevationGeneration`; a label records the generation its height was
   sampled at, and `anchorDirtyLabels` re-dirties any label behind it, every frame. The flag alone
   lost re-anchors: the cull thread's off-lock sample landed after a ramp step the render thread had
-  already consumed, and marked the label clean at the old height. And `setVisibleTiles` used to clear
+  already consumed, and marked the label clean at the old height. The generation re-dirtied it on the
+  next frame, but the frame in between still drew it at the sample's height — taken before the cull
+  thread walked every new label, so often several ramp steps back: through a 2D/3D switch, with the
+  tiles re-decoding for 3D, labels dropped back and rose again. The cull thread now drops a sample
+  whose generation has moved (`labelAnchorStale` counts them) and leaves the label to the frame's
+  `anchorDirtyLabels`, which re-anchors the whole set on every ramp step anyway. And `setVisibleTiles` used to clear
   `_labels` before an unchanged label set skipped its commit (#255): the labels stayed drawn but left
   the cull and anchor list until the set changed — frozen at whatever height they had.
 

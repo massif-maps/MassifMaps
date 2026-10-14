@@ -1453,7 +1453,14 @@ namespace massif::vt {
                 positions[i] = dirtyLabels[i]->sampleElevation(anchorFunc);
             }
             std::lock_guard<std::mutex> lock(_mutex);
+            // A ramp step since the sample: its heights are several steps old and would be drawn until the
+            // next frame re-anchors - labels dropping back and rising again through a 2D/3D switch.
+            bool stale = (labelElevationGeneration != _labelElevationGeneration);
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
+                if (stale) {
+                    VT_STAT_INC(labelAnchorStale);
+                    continue; // still dirty: the frame's anchorDirtyLabels samples it at the current step
+                }
                 if (dirtyLabels[i]->isElevationDirty()) {
                     // Cleared even without elevation: markPendingLabelsDirty re-dirties it when data
                     // arrives, and isElevationAnchored() is what carries "height unknown".

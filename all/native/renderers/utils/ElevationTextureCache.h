@@ -201,6 +201,9 @@ namespace massif {
         const std::shared_ptr<ElevationManager> _elevationManager;
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
+        // The height queries run off the GL thread too (label anchoring on the cull thread, building and
+        // span bases): they lock this. The GL thread is the only writer, so it locks only to write.
+        mutable std::mutex _cacheMutex;
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         unsigned int _drawnVersion = 0;
         bool _held = false;
@@ -211,7 +214,7 @@ namespace massif {
         // Where the search for that posting starts; it walks coarser from here, never finer.
         static const int SMOOTH_BASE_ZOOM_HINT = 12;
 
-        int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
+        std::atomic<int> _detailLevels { 0 }; // elevation levels resolved BEYOND what the mesh can express
         float _borderMetres = 0.0f; // see setBorderMetres
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::chrono::steady_clock::time_point _frameTime; // when the current frame began

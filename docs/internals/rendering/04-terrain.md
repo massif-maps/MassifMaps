@@ -1275,14 +1275,13 @@ Two mechanics that make the switch invisible:
   `GLTileRenderer::setTransformer` now swaps it in place and drops only the tile surfaces built
   with the old one; the label map prepare reads the transformer from its snapshot, as it runs off
   the mutex.
-- **Shadows stand down for the ramp.** A cascade is only re-cast when its light box or its caster
-  list changes, and neither does while the ratio moves — but the ground *receiving* the shadow is
-  displaced every frame, so the map wears the shadow of a terrain it no longer has. `applyShadows`
-  drops the pass while `FlattenRatio > 0` rather than re-casting each frame, which would be a full
-  caster pass on the frames least able to afford one. The `!shadowsWanted` path already invalidates
-  the atlas, so coming back out of the ramp re-casts every page.
-
-Two consequences worth knowing:
+- **Buildings keep casting through the ramp; the relief stands down.** A cascade is only re-cast when its
+  light box or its caster list changes, and neither does while the ratio moves - but the ground
+  *receiving* the shadow, and the buildings standing on it, are displaced every frame. `applyShadows`
+  therefore re-casts every cascade each frame while `FlattenRatio > 0` and drops only the relief's own
+  casting (`terrainCasts`), so building and model shadows stay on screen. It used to drop the whole
+  pass, which left a gap of about the ramp's length on every auto-flatten. A full caster pass a frame
+  for those frames is the price: checked on the Crosscall at two points of an 8 s ramp, not timed.
 
 - The ramp bumps the elevation version every frame, so `TileRenderer`'s `scaleOnly` path re-anchors
   labels on each of them, and `VectorLayer`'s terrain projection surface is rebuilt (debounced by

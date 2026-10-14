@@ -2373,16 +2373,16 @@ namespace massif {
         }
         bool shadowsWanted = false;
         {
-            // Dropped during the 2D/3D ramp rather than re-cast every frame.
+            // The 2D/3D ramp moves the ground every frame: buildings keep casting, re-cast each frame, and the relief stands down.
             bool switching = terrainOptions && terrainOptions->getFlattenRatio() > 0.0f;
-            shadowsWanted = castShadows && !switching && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
+            shadowsWanted = castShadows && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
             if (shadowsWanted) {
                 if (!_terrainShadowMap) {
                     _terrainShadowMap = std::make_unique<TerrainShadowMap>();
                 }
                 _terrainShadowMap->setSize(lighting.shadowMapSize, lighting.shadowCascades);
                 // A flat relief throws nothing, but its draws cost as much as a mountain's.
-                bool terrainCasts = terrainOptions && lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f;
+                bool terrainCasts = terrainOptions && !switching && lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f;
                 // At a low sun the box stretches by the height range / tan(altitude): keep the slab tight.
                 double minHeight = 0, maxHeight = 0;
                 // Per tile too, so a cascade fits its box to its own piece's relief.
@@ -2584,7 +2584,8 @@ namespace massif {
                     // The atlas layout itself changed: every page has to be redrawn.
                     // The caster set itself changed: the pages still hold the models' shadows.
                     bool modelShadows = _options->isModelShadowsEnabled();
-                    bool refreshAll = !_shadowMapValid
+                    bool refreshAll = switching
+                        || !_shadowMapValid
                         || _shadowMapTerrainCasts != terrainCasts
                         || _shadowMapModelShadows != modelShadows
                         || _shadowMapSize != _terrainShadowMap->getSize()

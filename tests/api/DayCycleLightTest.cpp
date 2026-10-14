@@ -11,6 +11,7 @@
 
 #include "components/DayCycleLight.h"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -143,6 +144,16 @@ namespace {
         // what the ground keeps is sRGB: gl-js's 0.909 under Standard's day at zenith, not the linear 0.8
         TEST_CHECK(nearly(1.0f - DayCycleLight::srgbShadowStrength(DayCycleLight::DAY, 1.0f, 1.0f), std::pow(0.8f, 1.0f / 2.2f)),
                    "a full shadow keeps the ambient's share in sRGB");
+        // A building takes that same factor in LINEAR light (applyLighting3D raises it to 2.2 and sums
+        // ambient and sun), so a shadowed facade loses exactly what the ground beside it loses.
+        for (float strength : { 0.3f, 1.0f, 2.0f }) {
+            for (float altitude : { 20.0f, 60.0f }) {
+                float share = DayCycleLight::directShare(DayCycleLight::DAY, sunUp(altitude));
+                float shader = 1.0f - DayCycleLight::srgbShadowStrength(DayCycleLight::DAY, sunUp(altitude), strength);
+                TEST_CHECK(nearly(std::pow(shader, 2.2f), 1.0f - std::min(1.0f, strength * share), 0.0005f),
+                           "ground and facade darken by the same linear factor at one shadow strength");
+            }
+        }
         // under the map, buildings go over to Standard's moon, a unit direction 70 degrees up in the west
         const float* moon = DayCycleLight::MOON_DIR;
         TEST_CHECK(nearly(moon[0] * moon[0] + moon[1] * moon[1] + moon[2] * moon[2], 1.0f) && nearly(moon[2], std::sin(70.0f * 3.14159265f / 180.0f)),

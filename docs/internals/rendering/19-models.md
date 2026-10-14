@@ -47,7 +47,7 @@ the model would otherwise replace the wall behind it.
 `applyLighting3D` is the extrusions' (`TileRenderer::LIGHTING_SHADER_3D`) with `wallT = sideVertex =
 1`, so a model and the wall beside it agree under the same sun. `u_emissive` is forced to 0 (lit by
 the scene, mapbox's `model-emissive-strength` default). Receiving uses the extrusion receiver flags
-(`SHADOW_SINGLE_TAP`, `SHADOW_RECEIVER_3D`, normal offset). Back faces flip their normal in the
+(`SHADOW_RECEIVER_3D`, normal offset, and `SHADOW_SINGLE_TAP` only at softness 0). Back faces flip their normal in the
 fragment stage and culling is off for the draw: generated foliage is single quads.
 
 ## Spin and redraw

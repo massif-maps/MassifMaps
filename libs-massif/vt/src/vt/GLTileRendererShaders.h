@@ -152,8 +152,7 @@ namespace massif::vt {
         // every surface covering that pixel (IN): the lookup is a shadowed fragment's main cost.
         SHADOW_MASK_OUT_FLAG = 65536,
         SHADOW_MASK_IN_FLAG = 131072,
-        // One tap instead of the kernel, for extrusions: a wall's silhouette is what the eye reads,
-        // so the kernel buys far less there than on terrain.
+        // One tap instead of the kernel: an extrusion or model asks for it at softness 0 (receiver3DFlags).
         SHADOW_SINGLE_TAP_FLAG = 262144,
         // Sample the shadow depth buffer directly instead of a packed-RGB copy (ES3-class only).
         SHADOW_DEPTH_TEXTURE_FLAG = 524288,
@@ -189,6 +188,12 @@ namespace massif::vt {
         // lookup cannot use it. See docs/internals/rendering/18-globe.md.
         TERRAIN_SPHERICAL_FLAG = 2147483648u
     };
+
+    // An extrusion or model takes the ground's kernel, so ShadowSoftness blurs its shadow edge too;
+    // softness 0 is the hard edge, and the one tap.
+    inline unsigned int receiver3DFlags(float softness) {
+        return SHADOW_RECEIVER_3D_FLAG | (softness > 0.0f ? 0u : static_cast<unsigned int>(SHADOW_SINGLE_TAP_FLAG));
+    }
 
     static const std::map<std::string, int> attribMap = {
         { "aVertexPosition", A_VERTEXPOSITION },

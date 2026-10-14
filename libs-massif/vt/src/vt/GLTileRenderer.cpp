@@ -6919,12 +6919,12 @@ namespace massif::vt {
                 break;
             }
             // TERRAIN_FLAG: extrusions need draped content's base-clearance slack against the pre-pass.
-            // SHADOW_SINGLE_TAP: the screen-space mask holds the ground's shadow, not theirs.
+            // Never the screen-space mask: it holds the ground's shadow, not theirs.
             {
                 GLuint spanDrapeTexture = 0;
                 cglib::vec4<float> spanDrapeTransform(0, 0, 1, 1);
                 bool spanDrape = _spanResolver.isEnabled() && !geometry->getSpanRecords().empty() && resolveSpanDrape(targetTileId, spanDrapeTexture, spanDrapeTransform);
-                shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG | SHADOW_RECEIVER_3D_FLAG : 0) | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0) | (spanDrape ? SPAN_DRAPE_FLAG : 0) | fogFlag());
+                shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? shadowReceiverFlags() | receiver3DFlags(_terrainShadowSoftness) : 0) | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0) | (spanDrape ? SPAN_DRAPE_FLAG : 0) | fogFlag());
                 _pendingSpanDrape = spanDrape ? spanDrapeTexture : 0;
                 _pendingSpanDrapeTransform = spanDrapeTransform;
                 _pendingGroundDrape = spanDrape && resolveGroundDrape(targetTileId, _pendingGroundDrape, _pendingGroundDrapeTransform) ? _pendingGroundDrape : 0;
@@ -7249,7 +7249,7 @@ namespace massif::vt {
         unsigned int terrainFlag = terrainVTF ? TERRAIN_VTF_FLAG | (caster ? 0 : TERRAIN_FLAG) : 0;
         const ShaderProgram& shaderProgram = caster
             ? buildShaderProgram("modelshadow", modelVsh, modelShadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag)
-            : buildShaderProgram("model", modelVsh, modelFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, terrainFlag | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG | SHADOW_RECEIVER_3D_FLAG : 0) | fogFlag());
+            : buildShaderProgram("model", modelVsh, modelFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, terrainFlag | (shadowReceiver ? shadowReceiverFlags() | receiver3DFlags(_terrainShadowSoftness) : 0) | fogFlag());
         useProgram(shaderProgram);
         if (!caster) {
             setupFogUniforms(shaderProgram);

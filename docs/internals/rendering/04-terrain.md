@@ -1281,12 +1281,14 @@ Two mechanics that make the switch invisible:
   `GLTileRenderer::setTransformer` now swaps it in place and drops only the tile surfaces built
   with the old one; the label map prepare reads the transformer from its snapshot, as it runs off
   the mutex.
-- **Shadows stand down for the ramp.** A cascade is only re-cast when its light box or its caster
-  list changes, and neither does while the ratio moves — but the ground *receiving* the shadow is
-  displaced every frame, so the map wears the shadow of a terrain it no longer has. `applyShadows`
-  drops the pass while `FlattenRatio > 0` rather than re-casting each frame, which would be a full
-  caster pass on the frames least able to afford one. The `!shadowsWanted` path already invalidates
-  the atlas, so coming back out of the ramp re-casts every page.
+- **Building shadows stay through the ramp.** They used to stand down while `FlattenRatio > 0`, so
+  both ends had shadows and the middle none (a device report, 2026-10: they vanish at the first
+  ramp frame and return at the last). The map is now re-cast per 1/32 of the configured
+  exaggeration (`all/native/terrain/ShadowRamp.h`), with the building bases following the ramped
+  value, so a shadow slides by at most that share of the relief between two casts. The ground's own
+  shadows (`terrainCasts`) wait for `FlattenRatio == 0`: their cascade fit and caster tiles follow
+  heights that are still moving. Coming in or out of the ramp swaps `applyFlatShadows` for the
+  drape path's `applyShadows`; the previous map is replaced inside the frame that re-casts it, never dropped.
 
 Two consequences worth knowing:
 

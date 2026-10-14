@@ -251,6 +251,8 @@ add_executable(api_tests
   ZoomConventionTest.cpp
   # Same: ShadowCasterRing.h is the caster ring's zoom bound and nothing else.
   ShadowCasterRingTest.cpp
+  # Same: ShadowRamp.h is the shadow map's recast rule during the 2D/3D ramp and nothing else.
+  ShadowRampTest.cpp
   # Same: TesselationBounds.h is the extent the surface refinement covers and nothing else.
   TerrainTesselationTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.

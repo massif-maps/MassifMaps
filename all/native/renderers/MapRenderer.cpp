@@ -45,6 +45,7 @@
 #include "terrain/DrapeStackCuts.h"
 #include "terrain/DrapeTuning.h"
 #include "terrain/ShadowCasterRing.h"
+#include "terrain/ShadowRamp.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/TerrainSkirts.h"
 #include "terrain/PrefetchOrder.h"
@@ -2373,16 +2374,14 @@ namespace massif {
         }
         bool shadowsWanted = false;
         {
-            // Dropped during the 2D/3D ramp rather than re-cast every frame.
-            bool switching = terrainOptions && terrainOptions->getFlattenRatio() > 0.0f;
-            shadowsWanted = castShadows && !switching && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
+            shadowsWanted = castShadows && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
             if (shadowsWanted) {
                 if (!_terrainShadowMap) {
                     _terrainShadowMap = std::make_unique<TerrainShadowMap>();
                 }
                 _terrainShadowMap->setSize(lighting.shadowMapSize, lighting.shadowCascades);
                 // A flat relief throws nothing, but its draws cost as much as a mountain's.
-                bool terrainCasts = terrainOptions && lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f;
+                bool terrainCasts = terrainOptions && lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f && ShadowRamp::castsGround(terrainOptions->getFlattenRatio());
                 // At a low sun the box stretches by the height range / tan(altitude): keep the slab tight.
                 double minHeight = 0, maxHeight = 0;
                 // Per tile too, so a cascade fits its box to its own piece's relief.
@@ -2584,9 +2583,11 @@ namespace massif {
                     // The atlas layout itself changed: every page has to be redrawn.
                     // The caster set itself changed: the pages still hold the models' shadows.
                     bool modelShadows = _options->isModelShadowsEnabled();
-                    float exaggeration = terrainOptions ? terrainOptions->getExaggeration() : 0.0f;
+                    float configuredExaggeration = terrainOptions ? terrainOptions->getExaggeration() : 0.0f;
+                    float flattenRatio = terrainOptions ? terrainOptions->getFlattenRatio() : 1.0f;
+                    float exaggeration = ShadowRamp::exaggeration(configuredExaggeration, flattenRatio);
                     bool refreshAll = !_shadowMapValid
-                        || _shadowMapExaggeration != exaggeration
+                        || ShadowRamp::needsCast(configuredExaggeration, flattenRatio, _shadowMapExaggeration)
                         || _shadowMapTerrainCasts != terrainCasts
                         || _shadowMapModelShadows != modelShadows
                         || _shadowMapSize != _terrainShadowMap->getSize()

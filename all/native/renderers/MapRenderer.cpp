@@ -2299,7 +2299,41 @@ namespace massif {
         return _shadowSunActive;
     }
 
-    void MapRenderer::applyTerrainShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, TerrainShadowMap::MAX_CASCADES>& shadowTexelMeters) {
+    void MapRenderer::applyFlatShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, float deltaSeconds) {
+        _flatShadowMaskTexture = 0;
+        ResolvedLighting wanted = resolveLighting(_options->getLightOptions(), _frameStyleEnvironment);
+        bool active = wanted.terrainLightingEnabled && wanted.shadowStrength > 0.0f && !tileLayers.empty();
+        // Nothing to clear when no layer was ever handed a shadow map.
+        if (!active && !_shadowsPushed) {
+            return;
+        }
+        std::vector<vt::TileId> coverTileIds;
+        if (active) {
+            std::set<vt::TileId> visible;
+            for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
+                tileLayer->prepareTerrainDrapeFrame(deltaSeconds, viewState);
+                std::map<vt::TileId, std::size_t> layerTiles;
+                tileLayer->collectDrapeTiles(layerTiles);
+                for (const auto& tile : layerTiles) {
+                    visible.insert(tile.first);
+                }
+            }
+            std::vector<ShadowCasterRing::Tile> tiles;
+            for (const vt::TileId& tileId : visible) {
+                tiles.push_back(ShadowCasterRing::Tile { tileId.zoom, tileId.x, tileId.y });
+            }
+            for (const ShadowCasterRing::Tile& tile : ShadowCasterRing::finest(tiles)) {
+                coverTileIds.emplace_back(tile.zoom, tile.x, tile.y);
+            }
+        }
+        GLint prevFBO = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+        ResolvedLighting lighting;
+        std::array<double, TerrainShadowMap::MAX_CASCADES> shadowTexelMeters = { };
+        applyShadows(tileLayers, coverTileIds, nullptr, viewState, prevFBO, true, true, lighting, shadowTexelMeters);
+    }
+
+    void MapRenderer::applyShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, TerrainShadowMap::MAX_CASCADES>& shadowTexelMeters) {
         // Casters and receivers share one vertex shader and elevation fetch, so they cannot disagree.
         float shadowStrength = 0.0f;
         unsigned int shadowTexture = 0;
@@ -2340,7 +2374,7 @@ namespace massif {
         bool shadowsWanted = false;
         {
             // Dropped during the 2D/3D ramp rather than re-cast every frame.
-            bool switching = terrainOptions->getFlattenRatio() > 0.0f;
+            bool switching = terrainOptions && terrainOptions->getFlattenRatio() > 0.0f;
             shadowsWanted = castShadows && !switching && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
             if (shadowsWanted) {
                 if (!_terrainShadowMap) {
@@ -2348,12 +2382,17 @@ namespace massif {
                 }
                 _terrainShadowMap->setSize(lighting.shadowMapSize, lighting.shadowCascades);
                 // A flat relief throws nothing, but its draws cost as much as a mountain's.
-                bool terrainCasts = lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f;
+                bool terrainCasts = terrainOptions && lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f;
                 // At a low sun the box stretches by the height range / tan(altitude): keep the slab tight.
                 double minHeight = 0, maxHeight = 0;
                 // Per tile too, so a cascade fits its box to its own piece's relief.
                 std::vector<std::pair<double, double> > tileHeights;
-                if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                std::shared_ptr<ElevationManager> coverElevationManager = terrainOptions ? terrainOptions->getElevationManager() : nullptr;
+                if (!coverElevationManager) {
+                    // A flat ground: a sliver, or the fit falls back to a slab from -1000 m to 9000 m.
+                    maxHeight = 1.0e-5;
+                }
+                if (std::shared_ptr<ElevationManager> elevationManager = coverElevationManager) {
                     bool first = true;
                     tileHeights.reserve(coverTileIds.size());
                     // Only tiles with real elevation: the inexact getter falls back to the session's highest ground.
@@ -2414,7 +2453,7 @@ namespace massif {
                     // in casterMargin tiles. Relief is measured around the view, not the cover.
                     // Without the relief casting, only buildings throw: the one-tile ring is enough.
                     double relief = terrainCasts ? std::max(0.0, maxHeight - minHeight) : 0.0;
-                    if (std::shared_ptr<ElevationManager> elevationManager = terrainCasts ? terrainOptions->getElevationManager() : nullptr) {
+                    if (std::shared_ptr<ElevationManager> elevationManager = terrainCasts ? coverElevationManager : nullptr) {
                         const vt::TileId& sample = coverTileIds[coverTileIds.size() / 2];
                         int coarseZoom = std::min(sample.zoom, SHADOW_RELIEF_ZOOM);
                         int shift = sample.zoom - coarseZoom;
@@ -2481,7 +2520,7 @@ namespace massif {
                 // Each caster's own range too: extruded over the whole slab, a valley tile reaches every cascade.
                 std::vector<std::pair<double, double> > casterHeights(casterTileIds.size());
                 std::vector<bool> casterHeightKnown(casterTileIds.size(), false);
-                if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                if (std::shared_ptr<ElevationManager> elevationManager = coverElevationManager) {
                     for (std::size_t i = 0; i < casterTileIds.size(); i++) {
                         const vt::TileId& tileId = casterTileIds[i];
                         double casterMin = 0, casterMax = 0;
@@ -2680,6 +2719,7 @@ namespace massif {
             // The surface draws before each layer's onDrawFrame, which would light it with last frame's sun.
             tileLayer->setTerrainSunLighting(lighting);
         }
+        _shadowsPushed = shadowTexture != 0;
         // Resolved once per (reduced) screen pixel: surface draws then fetch once instead of cascading.
         unsigned int maskTexture = 0;
         float invWidth = 0.0f, invHeight = 0.0f;
@@ -2700,8 +2740,10 @@ namespace massif {
             }
             FRAME_PROF_GPU_END();
         }
+        // A flat map has no surface shader to read the mask: it is multiplied into the frame instead.
+        _flatShadowMaskTexture = terrainOptions ? 0 : maskTexture;
         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
-            tileLayer->setTerrainShadowMask(maskTexture, invWidth, invHeight);
+            tileLayer->setTerrainShadowMask(terrainOptions ? maskTexture : 0, invWidth, invHeight);
         }
     }
 
@@ -3182,7 +3224,7 @@ namespace massif {
                         _groundCoverTileIds = groundTileIds;
                         // castShadows false: the road overlay shows acne here that the drape path does not.
                         FRAME_PROF_NOW(profCoverShadowStart);
-                        applyTerrainShadows(groundLayers, groundTileIds, terrainOptions, viewState, groundPrevFBO, coverChanged, false, lighting, shadowTexelMeters);
+                        applyShadows(groundLayers, groundTileIds, terrainOptions, viewState, groundPrevFBO, coverChanged, false, lighting, shadowTexelMeters);
                         FRAME_PROF_ADD(coverShadowMs, profCoverShadowStart);
 
                         FRAME_PROF_ADD(coverMs, profCoverStart);
@@ -3945,7 +3987,7 @@ namespace massif {
                     // Directional shadows over the drape cover.
                     ResolvedLighting lighting;
                     std::array<double, TerrainShadowMap::MAX_CASCADES> shadowTexelMeters = { };
-                    applyTerrainShadows(drapeLayers, drapeTileIds, terrainOptions, viewState, prevFBO, bakedThisFrame > 0, true, lighting, shadowTexelMeters);
+                    applyShadows(drapeLayers, drapeTileIds, terrainOptions, viewState, prevFBO, bakedThisFrame > 0, true, lighting, shadowTexelMeters);
 
                     updateTerrainSkirts(drapeLayers, leaves, terrainOptions);
                     // GL_LEQUAL: the background already wrote the same meshes' depth.
@@ -4061,6 +4103,9 @@ namespace massif {
                 tileLayer->setTerrainGroundTiles(std::vector<vt::TileId>(), std::vector<int>());
                 tileLayer->setTerrainSkirtDrops(std::map<vt::TileId, cglib::vec4<float> >());
             }
+            if (!terrainMode) {
+                applyFlatShadows(allTileLayers, viewState, deltaSeconds);
+            }
             if (terrainMode) {
                 static bool noDrapeLogged = false;
                 if (!noDrapeLogged) {
@@ -4131,6 +4176,11 @@ namespace massif {
         drawBillboards(underLabelsDrawDatas);
 
         FRAME_PROF_ADD(layerMs, profLayerStart);
+
+        // The flat map's building shadows on its ground, before the extrusions draw over their own footprints.
+        if (!terrainMode && _flatShadowMaskTexture != 0 && viewState.getWidth() > 0 && viewState.getHeight() > 0) {
+            multiplyScreenMask(_flatShadowMaskTexture, 1.0f / viewState.getWidth(), 1.0f / viewState.getHeight());
+        }
 
         // Undraped contact shadows: one screen mask under MIN, as overlapping quads would compound to black.
         {

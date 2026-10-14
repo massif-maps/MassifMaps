@@ -815,6 +815,9 @@ namespace massif::vt {
             return n;
         }
         #endif
+        #if defined(TERRAIN_SHADOW) && !defined(TERRAIN) && !defined(TERRAIN_LIGHT)
+        uniform mediump vec3 uSunDir;          // east, north, up
+        #endif
         // Same stencil as the surface, so a road and its ground get the same N.L, bias and back-face rule.
         #if defined(TERRAIN) && (defined(TERRAIN_SHADOW) || defined(GEOMETRY_LIGHT)) && !defined(TERRAIN_LIGHT)
         uniform highp sampler2D uElevationTexture;
@@ -1224,6 +1227,11 @@ namespace massif::vt {
         #endif
         #ifdef COVERAGE
             glFragColor = vec4(color.a * uOpacity);
+            return;
+        #endif
+        #if defined(SHADOW_MASK_OUT) && defined(TERRAIN_SHADOW) && !defined(TERRAIN)
+            // A flat ground has no slope term: the same lookup, for the shadow the buildings throw on it.
+            glFragColor = vec4(vec3(shadowFactor()), 1.0);
             return;
         #endif
         #if defined(TERRAIN_LIGHT) && defined(TERRAIN)

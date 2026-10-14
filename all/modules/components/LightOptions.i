@@ -38,6 +38,7 @@
 %attributeval(massif::LightOptions, %arg(std::vector<massif::LightStop>), DayCycleRisingLightStops, getDayCycleRisingLightStops, setDayCycleRisingLightStops)
 %attribute(massif::LightOptions, bool, TerrainLightingEnabled, isTerrainLightingEnabled, setTerrainLightingEnabled)
 %attribute(massif::LightOptions, bool, TerrainShadowCastingEnabled, isTerrainShadowCastingEnabled, setTerrainShadowCastingEnabled)
+%attribute(massif::LightOptions, bool, ShadowFollowsBuildingHeight, isShadowFollowsBuildingHeight, setShadowFollowsBuildingHeight)
 %attribute(massif::LightOptions, float, ShadowStrength, getShadowStrength, setShadowStrength)
 %attribute(massif::LightOptions, int, ShadowMapSize, getShadowMapSize, setShadowMapSize)
 %attribute(massif::LightOptions, int, ShadowCascades, getShadowCascades, setShadowCascades)

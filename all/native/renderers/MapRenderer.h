@@ -286,7 +286,10 @@ namespace massif {
         std::vector<vt::TileId> collectTerrainCoverTileIds(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) const;
 
         // Re-renders the caster pass only on a real change; contentChanged rations content-driven refreshes.
-        void applyTerrainShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, 4>& shadowTexelMeters);
+        // No terrainOptions is a flat map: no relief, no ground casters, and the ground's mask is left for flatShadowMaskTexture.
+        // The same pass on a map with no terrain: buildings and models cast, the ground takes the mask.
+        void applyFlatShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, float deltaSeconds);
+        void applyShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, 4>& shadowTexelMeters);
 
         // keepBound resolves into the screen framebuffer's secondary color texture and leaves it bound, for overlays.
         void applyPostProcessEffect(const std::shared_ptr<PostProcessEffect>& effect, const ViewState& viewState, bool keepBound = false);
@@ -375,6 +378,8 @@ namespace massif {
         // Quantised bake zoom, held while the camera moves (as mapbox) so a gesture does not re-bake every step.
         std::size_t _drapeBakeZoomTerm = 0;
         std::unique_ptr<ScreenMaskBuffer> _terrainShadowMaskBuffer;
+        unsigned int _flatShadowMaskTexture = 0;
+        bool _shadowsPushed = false;
         std::unique_ptr<ScreenMaskBuffer> _groundAOMaskBuffer;
         std::unique_ptr<ScreenMaskBuffer> _groundAODrapeBuffer;
         bool _shadowMapValid = false;

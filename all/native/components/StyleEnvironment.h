@@ -133,6 +133,7 @@ namespace massif {
         float shadowNormalOffset = 3.0f;
         float shadowSoftness = 1.0f;
         bool terrainShadowCasting = true;
+        bool shadowFollowsBuildingHeight = false;
         float shadowDistance = 0.0f;
         int shadowMapSize = 1024;
         int shadowCascades = 3;

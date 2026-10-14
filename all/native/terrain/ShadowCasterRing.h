@@ -18,7 +18,7 @@ namespace massif {
 
     /**
      * The shadow caster tiles around the cover.
-     * See MapRenderer::applyTerrainShadows and docs/internals/rendering/08-lighting-sky-fog.md.
+     * See MapRenderer::applyShadows and docs/internals/rendering/08-lighting-sky-fog.md.
      */
     struct ShadowCasterRing {
         struct Tile {
@@ -50,6 +50,25 @@ namespace massif {
                 }
             }
             return tiles;
+        }
+
+        /**
+         * The tiles with no finer one inside them: a flat map's visible set as the partition the shadow fit and
+         * the ground mask want, where a coarse stand-in over a finer tile would cast and mask twice.
+         */
+        static std::vector<Tile> finest(const std::vector<Tile>& tiles) {
+            std::vector<Tile> partition;
+            for (const Tile& tile : tiles) {
+                bool covered = false;
+                for (const Tile& other : tiles) {
+                    int shift = other.zoom - tile.zoom;
+                    covered = covered || (shift > 0 && (other.x >> shift) == tile.x && (other.y >> shift) == tile.y);
+                }
+                if (!covered) {
+                    partition.push_back(tile);
+                }
+            }
+            return partition;
         }
 
         /**

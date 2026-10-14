@@ -47,27 +47,27 @@ path: a different DEM must not be silently replaced by the terrain's.
 
 **It is not pixel-identical, by construction.** The sampling is the terrain's elevation grid, so the
 layer's own zoom bias no longer reaches it, and the gradient is recomputed per drape/ground texel in
-floats instead of interpolating an 8-bit-packed 256² normal map — crisper, and blockier where the DEM
-grid is coarse. A custom shader reading `getRawColor()` sees the terrain's re-encoded DEM texel;
-`getElevation()` is the portable one.
+floats instead of interpolating an 8-bit-packed 256² normal map. A custom shader reading `getRawColor()` sees the terrain's
+re-encoded DEM texel; `getElevation()` is the portable one.
 
 Device measurement with a background-only style (`--es minimal true`, north pan, interleaved):
 **22.0 fps against 17.0 for the normal-map path**, frame 38.7 vs 49.9 ms. With a full style the two
 are a wash, because the base map's own geometry is the frame; the hillshade's cost there is tile
 loading, which the frame timer does not see.
 
-**Below 6 m per texel the gradient is the normal map's.** The quadratic term takes second differences
-of the DEM, which amplify texel noise (white noise of variance s2, CPU model: the gradient's variance
-is 1.04 s2 on average and 2.04 s2 at a texel edge, against 0.11 s2 for bilinear Sobel/8), and it jumps
-at every texel edge across the axis it does not differentiate. On a 0.4-1.2 m DEM (Mapterhorn z16-17,
-lidar) this reads as speckle and facets that the 2D path, which interpolates Sobel/8 normals, does not show.
-`uPaintParams.z` (`terrainPaintSmoothFlag`) switches `terrainPaintSampleSmooth`: Sobel/8 at the four
-texel centres round the fragment (a 4x4 block, 16 fetches, hence the 2-texel texture border),
-bilinear between them, and `elevation` bilinear too. Coarser DEMs keep the quadratic, which follows
-features of 4-8 texels more closely (CPU model, clean DEM, slope amplitude 0.4: RMS slope error 0.07
-and 0.02 against 0.18 and 0.08 for Sobel/8) and costs 9 fetches. With 0.15 m white noise on a
-smooth DEM, slope error quadratic / Sobel: 0.088 / 0.032 at 2.4 m, 0.25 / 0.082 at 0.84 m, 0.50 / 0.16 at 0.42 m; shading
-roughness (RMS second difference) 12x lower at 0.84 m. Not measured on device.
+**The gradient is the normal map's at every zoom.** The paint used to take second differences of the
+DEM (3x3 stencil about the texel centre, one quadratic per texel, tangram's arrangement) above 6 m per
+texel. That gradient jumps at every texel edge, so a coarse DEM overzoomed on screen (Terrarium
+maxzoom 13, about 13.5 m per texel at 45 N, drawn at zoom 15-18) showed texel-sized blocks that the 2D
+path, which interpolates Sobel/8 normals, never shows. Second differences also amplify texel noise (white
+noise of variance s2, CPU model: the gradient's variance is 1.04 s2 on average and 2.04 s2 at a texel
+edge, against 0.11 s2 for bilinear Sobel/8), which read as speckle on a 0.4-1.2 m lidar DEM.
+`terrainPaintSampleSmooth` is now the only path: Sobel/8 at the four texel centres round the fragment
+(a 4x4 block, 16 fetches, hence the 2-texel texture border), bilinear between them, and `elevation`
+bilinear too, so contours drawn from it have no steps either. What the quadratic did better (CPU model,
+clean DEM, slope amplitude 0.4: RMS slope error 0.07 and 0.02 against 0.18 and 0.08 for Sobel/8 on
+features of 4-8 texels) is given up for parity with 2D; it cost 9 fetches against 16. Not measured on
+device.
 
 Two things the port had to get right:
 

@@ -376,6 +376,7 @@ parser.add_argument('--cmake-options', dest='cmakeoptions', default='', help='CM
 parser.add_argument('--configuration', dest='configuration', default='Release', choices=['Release', 'RelWithDebInfo', 'Debug'], help='Configuration')
 parser.add_argument('--build-number', dest='buildnumber', default='', help='Build sequence number, goes to version str')
 parser.add_argument('--build-version', dest='buildversion', default='%s-devel' % SDK_VERSION, help='Build version, goes to distributions')
+parser.add_argument('--headers-only', dest='headersonly', default='', help='Only write the public headers into this directory, for a dev build that swaps the library alone')
 parser.add_argument('--build-xcframework', dest='buildxcframework', default=False, action='store_true', help='Build XCFramework')
 parser.add_argument('--build-cocoapod', dest='buildcocoapod', default=False, action='store_true', help='Build CocoaPod')
 parser.add_argument('--use-metalangle', dest='metalangle', default=False, action='store_true', help='Use MetalANGLE instead of Apple GL')
@@ -409,6 +410,9 @@ if args.sharedlib:
 if not os.path.exists("%s/generated/ios-objc/proxies" % getBaseDir()):
   print("Proxies/wrappers not generated yet, run swigpp script first.")
   sys.exit(-1)
+
+if args.headersonly:
+  sys.exit(0 if copyXCFrameworkHeaders(args, getBaseDir(), args.headersonly) else -1)
 
 if not checkExecutable(args.cmake, '--help'):
   print('Failed to find CMake executable. Use --cmake to specify its location')

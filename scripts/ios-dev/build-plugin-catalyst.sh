@@ -6,21 +6,20 @@
 #
 #   ./build-plugin-catalyst.sh                      # arm64, Release (no LTO on Catalyst, -O2)
 #   CONFIGURATION=RelWithDebInfo ./build-plugin-catalyst.sh
-#   PROFILE=standard ./build-plugin-catalyst.sh
+#   PROFILE=standard ./build-plugin-catalyst.sh   # the build must have been configured with it
 #
 # The first run configures and builds the whole SDK through build-ios.py (long). Every run after
 # that is an xcodebuild of the same project, ~5-15 s when one file changed.
 #
-# Headers are copied from dist/ios_metal once. Change an all/modules/*.i (or add a public
-# header) and the generated bindings and headers are stale: rebuild dist with build-ios.py and
-# delete build/spm-local/MassifMaps.xcframework so it is copied again.
+# Headers are rewritten from generated/ios-objc on every run. After touching a public header or
+# an all/modules/*.i, regenerate the bindings first: python3 ../swigpp-objc.py --profile ... --swig ...
 set -e
 
 cd "$(dirname "$0")"
 BASE_DIR=$(cd ../.. && pwd)
 SWIG=${SWIG:-/Volumes/dev/carto/mobile-swig/swig}
 # Must match the profile of the headers in dist/ios_metal, or they describe an API this lib does not export.
-PROFILE=${PROFILE:-standard+valhalla+geocoding+routing+packagemanager}
+PROFILE=${PROFILE:-full}
 CONFIGURATION=${CONFIGURATION:-Release}
 ARCH=arm64
 BUILD_DIR="$BASE_DIR/build/ios_metal-MACCATALYST-$ARCH"
@@ -91,6 +90,14 @@ if [ -z "$SLICE_DIR" ]; then
   echo "No Mac Catalyst slice in $LOCAL_XCFRAMEWORK" >&2
   exit 1
 fi
+
+# The headers follow the sources: a public method added to a header must reach the app's
+# compiler, and the lib alone would link but never be callable. Synced by content, so an
+# unchanged header keeps its mtime and does not make Xcode rebuild its modules.
+HEADERS_TMP=$(mktemp -d)
+(cd .. && python3 build-ios.py --profile "$PROFILE" --use-metalangle --headers-only "$HEADERS_TMP")
+rsync -rc --delete "$HEADERS_TMP/" "$SLICE_DIR/Headers/"
+rm -rf "$HEADERS_TMP"
 LIB="$SLICE_DIR/MassifMaps.a"
 STAMP="$SLICE_DIR/.dev-stamp"
 

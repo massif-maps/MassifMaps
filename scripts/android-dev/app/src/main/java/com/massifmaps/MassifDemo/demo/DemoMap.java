@@ -292,6 +292,15 @@ public class DemoMap {
         rebuildLayers();
     }
 
+    /** Pushes DemoConfig.RASTER_ZOOM_BIAS to the stand-alone raster layer, if built. */
+    public void applyRasterZoomBias() {
+        Layer raster = layers.get(Feature.SATELLITE);
+        if (raster instanceof RasterTileLayer) {
+            ((RasterTileLayer) raster).setZoomLevelBias(DemoConfig.RASTER_ZOOM_BIAS);
+        }
+        mapView.requestRender();
+    }
+
     /** Drops the cached instance of a layer so the next rebuild constructs it from the config. */
     public void invalidate(Feature feature) {
         layers.remove(feature);
@@ -343,7 +352,11 @@ public class DemoMap {
             case CELESTIAL: return celestial.createLayer(mapView);
             case STARS: return stars.createLayer(mapView);
             case BASE: return createBaseLayer();
-            case SATELLITE: return new RasterTileLayer(rasterSource());
+            case SATELLITE: {
+                RasterTileLayer raster = new RasterTileLayer(rasterSource());
+                raster.setZoomLevelBias(DemoConfig.RASTER_ZOOM_BIAS);
+                return raster;
+            }
             case HILLSHADE: return createHillshadeLayer();
             case HYPSO: return createHypsoLayer();
             case CONTOUR: return createContourLayer();

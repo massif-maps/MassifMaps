@@ -406,6 +406,11 @@ public final class DemoPanel {
             });
         }
 
+        // +1 fetches the raster one level finer: 4x the tiles, sharper on a high-DPI screen.
+        slider(context, "satellite zoom bias", -1f, 3f, DemoConfig.RASTER_ZOOM_BIAS, false, new FloatSetting() {
+            public void set(float value) { DemoConfig.RASTER_ZOOM_BIAS = value; demo.applyRasterZoomBias(); }
+        });
+
         header(context, "BASE MAP");
         // Rebuilds every tile layer's transformer, so the tile caches drop and refill. Terrain is
         // dropped while it is on: TileLayer picks the spherical transformer over the terrain one.

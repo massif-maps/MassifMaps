@@ -212,6 +212,8 @@ public final class DemoConfig {
     public static int RASTER_MIN_ZOOM = 0;
     public static int RASTER_MAX_ZOOM = 19;
     public static String RASTER_CACHE_DB = "openstreetmap.db";
+    /** Zoom level bias of the stand-alone raster layer; +1 fetches a level finer (--es rasterBias, live). */
+    public static float RASTER_ZOOM_BIAS = 0f;
 
     // =============================================================================================
     // CAMERA (start position; every value can be overridden with --es lon/lat/zoom/tilt/rotation)
@@ -1294,6 +1296,9 @@ public final class DemoConfig {
         DEM2_MAX_ZOOM = DemoCfg.cfgInt("dem2MaxZoom", DEM2_MAX_ZOOM);
         DEM2_ENCODING = DemoCfg.cfgStr("dem2Encoding", DEM2_ENCODING);
         RASTER_URL = DemoCfg.cfgStr("rasterUrl", RASTER_URL);
+        RASTER_CACHE_DB = DemoCfg.cfgStr("rasterCacheDb", RASTER_CACHE_DB);
+        RASTER_MAX_ZOOM = DemoCfg.cfgInt("rasterMaxZoom", RASTER_MAX_ZOOM);
+        RASTER_ZOOM_BIAS = DemoCfg.cfgFloat("rasterBias", RASTER_ZOOM_BIAS);
         CONTOUR_TILES_URL = DemoCfg.cfgStr("contourTilesUrl", CONTOUR_TILES_URL);
         CONTOUR_TILES_MAX_ZOOM = DemoCfg.cfgInt("contourTilesMaxZoom", CONTOUR_TILES_MAX_ZOOM);
         STYLE_DIR_NAME = DemoCfg.cfgStr("styleDir", STYLE_DIR_NAME);

@@ -9,6 +9,7 @@
 
 #include "renderers/utils/GLResource.h"
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -23,6 +24,8 @@ namespace massif {
 
         std::thread::id getGLThreadId() const;
         void setGLThreadId(std::thread::id id);
+        // The context the resources live in; nullptr when the platform cannot tell contexts apart.
+        void setGLContext(void* context);
 
         template <typename T, typename... Args>
         std::shared_ptr<T> create(Args&&... args) {
@@ -37,7 +40,12 @@ namespace massif {
         void deleteResource(std::unique_ptr<GLResource> resource);
 
     private:
+        // Right thread is not enough when several views share it: GL names are per context.
+        bool isOnGLContext() const;
+
         std::thread::id _glThreadId;
+        void* _glContext;
+        std::atomic<int> _deferredWrongContext;
         std::vector<std::weak_ptr<GLResource> > _createQueue;
         std::vector<std::unique_ptr<GLResource> > _deleteQueue;
         mutable std::mutex _mutex;

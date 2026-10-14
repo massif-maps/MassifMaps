@@ -1346,6 +1346,7 @@ namespace massif {
         }
         _glResourceManager = std::make_shared<GLResourceManager>();
         _glResourceManager->setGLThreadId(std::this_thread::get_id());
+        _glResourceManager->setGLContext(GLContext::GetCurrentContext());
 
         // The GPU timer queries belong to the context that generated them, and this is a new one.
         FRAME_PROF_GPU_RESET();
@@ -1395,6 +1396,7 @@ namespace massif {
 
         // Windows Phone may call onSurfaceCreated/onSurfaceChanged from different threads.
         _glResourceManager->setGLThreadId(std::this_thread::get_id());
+        _glResourceManager->setGLContext(GLContext::GetCurrentContext());
 
         _glResourceManager->processResources();
 

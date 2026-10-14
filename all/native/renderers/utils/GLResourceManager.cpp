@@ -5,6 +5,8 @@ namespace massif {
 
     GLResourceManager::GLResourceManager() :
         _glThreadId(),
+        _glContext(nullptr),
+        _deferredWrongContext(0),
         _createQueue(),
         _deleteQueue(),
         _mutex()
@@ -12,7 +14,7 @@ namespace massif {
     }
     
     GLResourceManager::~GLResourceManager() {
-        if (std::this_thread::get_id() == getGLThreadId()) {
+        if (isOnGLContext()) {
             for (const std::unique_ptr<GLResource>& resource : _deleteQueue) {
                 resource->destroy();
             }
@@ -33,10 +35,34 @@ namespace massif {
         _glThreadId = id;
     }
     
+    void GLResourceManager::setGLContext(void* context) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _glContext = context;
+    }
+
+    bool GLResourceManager::isOnGLContext() const {
+        void* context = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (std::this_thread::get_id() != _glThreadId) {
+                return false;
+            }
+            context = _glContext;
+        }
+        return !context || context == GLContext::GetCurrentContext();
+    }
+
     void GLResourceManager::processResources() {
         if (std::this_thread::get_id() != getGLThreadId()) {
             Log::Warn("GLResourceManager::processResources: Method called from wrong thread!");
             return;
+        }
+        if (!isOnGLContext()) {
+            Log::Warn("GLResourceManager::processResources: Method called with another GL context current!");
+            return;
+        }
+        if (int deferred = _deferredWrongContext.exchange(0)) {
+            Log::Debugf("GLResourceManager::processResources: %d resources were released/created off-context and deferred to this context", deferred);
         }
 
         std::vector<std::weak_ptr<GLResource> > createQueue;
@@ -69,9 +95,12 @@ namespace massif {
             throw;
         }
 
-        if (std::this_thread::get_id() == getGLThreadId()) {
+        if (isOnGLContext()) {
             resource->create();
         } else {
+            if (std::this_thread::get_id() == getGLThreadId()) {
+                _deferredWrongContext++;
+            }
             std::lock_guard<std::mutex> lock(_mutex);
             _createQueue.push_back(resource);
         }
@@ -80,9 +109,12 @@ namespace massif {
 
     void GLResourceManager::deleteResource(std::unique_ptr<GLResource> resource) {
         if (resource) {
-            if (std::this_thread::get_id() == getGLThreadId()) {
+            if (isOnGLContext()) {
                 resource->destroy();
             } else {
+                if (std::this_thread::get_id() == getGLThreadId()) {
+                    _deferredWrongContext++;
+                }
                 std::lock_guard<std::mutex> lock(_mutex);
                 _deleteQueue.push_back(std::move(resource));
             }

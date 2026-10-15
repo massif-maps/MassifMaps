@@ -187,6 +187,15 @@ A stand-in or fading tile that a live tile of the same style layer overlaps is n
 hidden by depth in the 2D pass, and the ghost has no such test: a second, differently simplified copy of the
 line showed beside the live one).
 
+**What a frame pays, and when it is skipped.** `flushOccludedGeometry` runs `ghostSweeps` (`GhostDepth.h`):
+without a stencil buffer one depth sweep; with one, the stamp sweep when an extrusion or a model was drawn into
+the main buffer this frame (`gExtrusionsDrawn`, set by `renderGeometry3D`, cleared by `clearBuildingStamp`) and
+the depth sweep when a ghosted renderer is in terrain mode (a ridge is the only thing the stamp cannot see). With
+neither, the flush returns before the stencil clear: a flat map with no building, model or terrain in view pays
+nothing. Each sweep is a core and a rim pass over every ghosted tile layer, a batch drawn once per style
+(`_ghostStyle`), so up to `4 x styles` draws per batch and tile. Measured cost and advice:
+[3d-terrain.md](../../features/3d-terrain.md#cost-of-line-occlusion-opacity).
+
 **After every layer, not inside each.** The ghost used to be drawn from each layer's own 3D pass. Then a
 lower layer's ghost (the route) was drawn first and a higher one's (the arrow on it) over it, with nothing
 shared between them, so behind a building the route's blue lay across the arrow's head whichever layer

@@ -3770,6 +3770,16 @@ namespace massif::vt {
         _drawOncePass = DrawOncePass::NONE;
     }
     
+    namespace {
+        // Renderers that finished their 3D pass this frame, in stack order, waiting for the ghost pass.
+        std::vector<std::shared_ptr<GLTileRenderer>>& occludedQueue() {
+            static std::vector<std::shared_ptr<GLTileRenderer>> queue;
+            return queue;
+        }
+        // An extrusion or a model was drawn into the main buffer this frame: something that can hide a line.
+        bool gExtrusionsDrawn = false;
+    }
+
     void GLTileRenderer::renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity) {
         std::map<int, std::vector<const RenderTileLayer*>> renderLayerMap;
         for (const RenderTile& renderTile : renderTiles) {
@@ -3857,6 +3867,14 @@ namespace massif::vt {
             // Where an extrusion passes the depth test it hides whatever line is behind it: stamp the pixel, so
             // renderOccludedGeometry ghosts exactly there whatever the layers' depth pulls. Not into an overlay.
             bool stampBuildings = stampBuildingsEnabled && !pass.useOverlay;
+            if (!pass.useOverlay && std::any_of(renderLayers.begin(), renderLayers.end(), [](const RenderTileLayer* renderLayer) {
+                    const std::vector<std::shared_ptr<TileGeometry>>& geometries = renderLayer->layer->getGeometries();
+                    return !renderLayer->layer->getModels().empty() || std::any_of(geometries.begin(), geometries.end(), [](const std::shared_ptr<TileGeometry>& geometry) {
+                        return geometry->getType() == TileGeometry::Type::POLYGON3D;
+                    });
+                })) {
+                gExtrusionsDrawn = true;
+            }
             if (stampBuildings) {
                 glEnable(GL_STENCIL_TEST);
                 glStencilFunc(GL_ALWAYS, BUILDING_STENCIL_BIT, BUILDING_STENCIL_BIT);
@@ -3884,16 +3902,10 @@ namespace massif::vt {
         }
     }
 
-    namespace {
-        // Renderers that finished their 3D pass this frame, in stack order, waiting for the ghost pass.
-        std::vector<std::shared_ptr<GLTileRenderer>>& occludedQueue() {
-            static std::vector<std::shared_ptr<GLTileRenderer>> queue;
-            return queue;
-        }
-    }
 
     void GLTileRenderer::clearBuildingStamp() {
         occludedQueue().clear(); // a frame that threw before its flush leaves none behind
+        gExtrusionsDrawn = false;
         // Only this bit: the 2D passes' tile masks are done with, but the clear is cheap to keep narrow.
         glStencilMask(BUILDING_STENCIL_BIT);
         glClearStencil(0);
@@ -3990,6 +4002,12 @@ namespace massif::vt {
         if (renderers.empty()) {
             return;
         }
+        bool ghostOnce = boundStencilBits() >= 8;
+        bool anyTerrain = std::any_of(renderers.begin(), renderers.end(), [](const std::shared_ptr<GLTileRenderer>& renderer) { return renderer->_terrainMode; });
+        int sweeps = ghostSweeps(ghostOnce, gExtrusionsDrawn, anyTerrain);
+        if (sweeps == 0) {
+            return; // nothing in front of any line: no clear, no draw
+        }
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -3998,7 +4016,6 @@ namespace massif::vt {
         glDepthMask(GL_FALSE);
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(-3.0f, -12.0f);
-        bool ghostOnce = boundStencilBits() >= 8;
         if (ghostOnce) {
             glEnable(GL_STENCIL_TEST);
             glStencilMask(DRAW_ONCE_STENCIL_BIT);
@@ -4016,8 +4033,11 @@ namespace massif::vt {
         // of the layers are (the building's own ordinal is lower than the lines' - a low or flattened roof hides a
         // line yet sits nearer than the ghost's depth by less than the pulls differ). Then the depth test as before,
         // for what no extrusion stamped: a ridge. The draw-once bit makes each pixel belong to one sweep.
-        for (int sweep = 0; sweep < (ghostOnce ? 2 : 1); sweep++) {
-            bool stampSweep = ghostOnce && sweep == 0;
+        for (int sweep = 0; sweep < 2; sweep++) {
+            bool stampSweep = sweep == 0;
+            if (!(sweeps & (stampSweep ? GHOST_SWEEP_STAMP : GHOST_SWEEP_DEPTH))) {
+                continue;
+            }
             if (ghostOnce) {
                 if (stampSweep) {
                     glStencilFunc(GL_EQUAL, BUILDING_STENCIL_BIT, BUILDING_STENCIL_BIT | DRAW_ONCE_STENCIL_BIT);

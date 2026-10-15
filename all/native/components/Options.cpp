@@ -16,8 +16,24 @@
 #include "utils/GeneralUtils.h"
 
 #include <algorithm>
+#include <thread>
+
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
 
 namespace massif {
+
+    namespace {
+        int defaultTileThreadPoolSize() {
+#if defined(__APPLE__) && (TARGET_OS_MACCATALYST || TARGET_OS_OSX)
+            // A Mac has the cores to decode several tiles at once, and 2 threads starve it
+            return std::clamp(static_cast<int>(std::thread::hardware_concurrency()) / 2, 2, 8);
+#else
+            return 2;
+#endif
+        }
+    }
 
     Options::Options(const std::shared_ptr<CancelableThreadPool>& envelopeThreadPool, const std::shared_ptr<CancelableThreadPool>& tileThreadPool) :
         _ambientLightColor(DEFAULT_AMBIENT_LIGHT_COLOR),
@@ -86,7 +102,7 @@ namespace massif {
         setEnvelopeThreadPoolSize(1);
         // 2 decode threads, as tangram runs (SceneOptions::numTileWorkers). One is what made tiles
         // arrive late enough to be visible.
-        setTileThreadPoolSize(2);
+        setTileThreadPoolSize(defaultTileThreadPoolSize());
     }
     
     Options::~Options() {

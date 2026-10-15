@@ -36,7 +36,7 @@ and *still different*, the latter with the reason it is not simply copied.
 | elevation texture | source raster bound directly, ancestors via uv sub-rects, edges extrapolated in-shader (`res/scenes/elevation.yaml`) | per-tile CPU re-encode with a 2-texel border from up to 8 neighbours | **different — see below** |
 | tile LOD | subdivide while screen area > `(2·pixelScale·256)²` (`core/src/tile/tileManager.cpp:214`) | same rule, `Options::TileLODFactor` scaling it | ported whole |
 | LOD tile height | terrain depth at the screen centre, one value per frame (`View::getTileScreenArea`) | each tile's own elevation band midpoint | **different — see below** |
-| tile decode threads | 2 (`SceneOptions::numTileWorkers`) | 1 (`Options::setTileThreadPoolSize`) | **different — measured not to matter** |
+| tile decode threads | 2 (`SceneOptions::numTileWorkers`) | 2 (`Options::setTileThreadPoolSize`), Mac: half the cores up to 8 | **measured not to matter on a phone, where I/O paces the load; it does on a Mac** ([log 45](../performance-log.md#45-a-catalyst-tile-pool-pinned-to-the-background-and-a-pmtiles-lookup-that-walked-every-leaf-2026-10-15)) |
 | terrain depth read-back | worker thread, shared context, half res, never waited on | worker thread, **unshared** context, submit-interval limited | ported with a difference |
 | terrain shadows | none | cascaded shadow maps (currently off on the shared ground) | **we are ahead** ([08](08-lighting-sky-fog.md)) |
 | style system | YAML scenes, one global ordered style list | CartoCSS + a composite layer that buys back a single ordered list ([09](09-composite-layer.md)) | structural |

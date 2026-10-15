@@ -293,7 +293,7 @@ What is left, in order: **contour tile generation** (44 child fetches, 6–22 s 
 `#contour` slot is a whole second tile set, which is what [07-hillshade-contours.md](07-hillshade-contours.md)
 would remove by computing contours in the terrain fragment shader) and the network itself.
 
-**The decode pool changes almost nothing here.** `Options::setTileThreadPoolSize` retaken
+**The decode pool changes almost nothing here** - on a Crosscall, where fetch and cache I/O pace the load; a Mac with local archives is CPU-bound and sizes it from its cores ([log 45](../performance-log.md#45-a-catalyst-tile-pool-pinned-to-the-background-and-a-pmtiles-lookup-that-walked-every-leaf-2026-10-15)). `Options::setTileThreadPoolSize` retaken
 2026-08-13 now that the network no longer dominates — interleaved pairs, `--es tilePool 1|2`, warm
 caches, city camera:
 

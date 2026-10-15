@@ -2574,3 +2574,61 @@ swangle` in its log; start it with `-gpu host`), so its frame times (5-17 fps) m
 rasteriser and are void. On the host GPU the same sequence draws at 40-48 fps, 6-15 ms a frame, with
 models and shadows on, models off, or shadows off alike; the decode totals moved by under 10%.
 Not measured: a device.
+
+## 45. A Catalyst tile pool pinned to the background and a PMTiles lookup that walked every leaf (2026-10-15)
+
+Method: alpimaps on Mac Catalyst (Apple M5 Pro, 6 + 12 cores), local archives only
+(`europe.pmtiles` 20 GB / 6.3 M tiles / 1538 leaf directories, `europe_terrain.pmtiles`,
+`europe_routes.mbtiles`), `Release` SDK lib (`-O3 -DNDEBUG`, no LTO). Panning and zooming at z16-18
+for 3.5 minutes, read back from `os_log` (the per-tile `loadTile` lines carry the thread id), plus
+host benches over the same archives. The complaint: tiles load and draw slowly for the machine.
+
+| what | measured |
+|---|---|
+| distinct tile threads busy per 100 ms window | 1: 15, 2: 90, 3: 138, 4: 139, 5+: 25 - a 4-thread ceiling |
+| PMTiles read, request to the next request on that thread | median 5 ms, p90 9 |
+| the rest of a vector tile (MBTiles, merge, decode) | median 31 ms, p90 82 |
+| one z14 source tile loaded | 778 times in 3.5 min: every overzoomed child reads its parent again |
+| `ps -M` on the tile workers | priority `0T`, every other thread 31T or higher |
+| MBTiles `routes` read, warm | 13 us a tile, 94 000 tiles/s on four threads: not a cost |
+| `os_log` through `Log::Info` | 0.6 us a line, ~100 a second: not a cost |
+
+**The tile threads ran in the background band.** `CancelableThreadPool` workers ask
+`ThreadPriority::MINIMUM`, which `ThreadUtils.mm` hands to `NSThread` as `threadPriority = 0.0`.
+On macOS that is the background class. Fixed spin work, 20 x 20 M iterations a thread:
+
+| threads | default | priority 0.0 | 0.1 | 0.25 | QoS background |
+|---|---|---|---|---|---|
+| 4 | 566 ms | 1289 | 565 | 567 | 1282 |
+| 8 | 568 ms | 1554 | 580 | 583 | 1520 |
+| 12 | 567 ms | 2169-2404 | - | - | - |
+
+Four decode threads at 0.0 got about two cores' worth, and the pool is 2 threads (workers are added
+per distinct task priority, which is how the log reached 4). `ThreadUtils::SetThreadPriority` now
+keeps a Mac or Catalyst thread at 0.1 or above, and `Options` sizes the pool at half the cores,
+2 to 8, there. The earlier "pool size changes nothing" result (10-performance.md) is a Crosscall,
+where fetch I/O paces the load.
+
+**A PMTiles lookup scanned every leaf before the tile's.** See
+[the data source page](pmtiles-datasource.md#concurrency-and-caching): warm tile 2.9 -> 0.14 ms,
+four threads 468 -> ~30 000 tiles/s, first tile 55 -> 1.2 ms, and the ~75 MB of leaf directories
+the old lookup pulled in are no longer read. `europe_terrain.pmtiles` (raw tiles) 0.31 -> 0.002 ms.
+A z14 tile is 2.9 ms of a 36 ms vector tile, so this is worth ~8% of the pipeline per tile and all
+of the serialisation between threads, which is why it matters most together with the pool.
+
+Not changed, ranked by what the logs say they cost:
+
+1. **Overzoom re-reads and re-inflates the parent per child** (778 loads of one tile). A raw-tile
+   cache in front of the source would remove it; the app can wrap the local archives in a
+   `memory-cache` source today.
+2. **The cull runs 200 ms after the first view change** (`VectorTileLayer::DEFAULT_CULL_DELAY`,
+   `RasterTileLayer` 200, `Layer` 400), then at most every 200 ms. Fine on a phone, a visible
+   wait on a Mac: `cullDelay` is a layer property.
+3. **A static map redraws forever**: 300 of 300 frames "asked for by a layer" at rest, mask
+   `0x00000001` (layer 0, base pass), ~110 fps, the main thread at 78% of a core. It competes with
+   the JS thread and the GL thread for what the tile pool needs.
+4. **The `RTT drape` bake costs 2.6 ms a frame at rest** (109 tiles, 1271 baked) because the frame
+   is redrawn at all.
+
+Not measured: the end-to-end time to a full screen of tiles after the pool and priority change, a
+Release lib with the change on a device.

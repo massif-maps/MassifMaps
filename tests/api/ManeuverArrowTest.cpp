@@ -15,6 +15,10 @@
 #include "core/Variant.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/components/TileData.h"
+#include "geometry/Feature.h"
+#include "geometry/FeatureCollection.h"
+#include "geometry/LineGeometry.h"
+#include "geometry/ManeuverArrowBuilder.h"
 
 #include <cmath>
 #include <memory>
@@ -124,4 +128,52 @@ void testGeoJSONBareFeature() {
         refused = true;
     }
     TEST_CHECK(refused, "a bare geometry is still refused");
+}
+
+namespace {
+    // Metres east / north of (0, 0) on the equator, where a degree is the same length both ways.
+    MapPos metres(double east, double north) {
+        const double metresPerDegree = 111319.49;
+        return MapPos(east / metresPerDegree, north / metresPerDegree);
+    }
+
+    // The arrow's vertices, in metres, for a route turning at index 1 (the end of its first segment).
+    std::vector<MapPos> arrowVertices(const std::vector<MapPos>& route, float lengthBefore, float lengthAfter) {
+        ManeuverArrowBuilder builder;
+        builder.setLengthBefore(lengthBefore);
+        builder.setLengthAfter(lengthAfter);
+        std::shared_ptr<FeatureCollection> arrow = builder.buildArrowAtIndex(std::shared_ptr<Projection>(), route, 1);
+        std::vector<MapPos> vertices;
+        if (arrow && arrow->getFeatureCount() == 1) {
+            if (auto line = std::dynamic_pointer_cast<LineGeometry>(arrow->getFeature(0)->getGeometry())) {
+                for (const MapPos& pos : line->getPoses()) {
+                    vertices.push_back(MapPos(pos.getX() * 111319.49, pos.getY() * 111319.49));
+                }
+            }
+        }
+        return vertices;
+    }
+}
+
+// The head hangs on the arrow's last vertex and points along its last segment, so a cut that lands a few
+// metres past a route vertex left the head sitting on the join (docs/features/maneuver-arrows.md).
+void testManeuverArrowEnd() {
+    // North after the turn, then a 11 degree kink at (100, 40), and the cut lands 0.3 m past the next vertex.
+    std::vector<MapPos> kinked = { metres(0, 0), metres(100, 0), metres(100, 40), metres(102, 50), metres(105, 60) };
+    std::vector<MapPos> arrow = arrowVertices(kinked, 10, 50.3f);
+    TEST_CHECK(arrow.size() == 3, "a kinked end whose last segment is a few centimetres is one straight run after the turn");
+    TEST_CHECK(arrow.size() == 3 && std::abs(arrow[1].getX() - 100) < 1e-6 && std::abs(arrow[1].getY()) < 1e-6, "the turn itself is kept");
+    TEST_CHECK(arrow.size() == 3 && std::abs(arrow[2].getX() - 102.029) < 0.01 && std::abs(arrow[2].getY() - 50.098) < 0.01, "and it still ends where lengthAfter puts it");
+
+    // The same cut with a real corner in it keeps it: that is the route, not noise.
+    std::vector<MapPos> corner = { metres(0, 0), metres(100, 0), metres(100, 40), metres(140, 40) };
+    TEST_CHECK(arrowVertices(corner, 10, 51).size() == 4, "a corner in the last stretch stays");
+
+    // A last segment that is already a good part of the walk is left alone.
+    std::vector<MapPos> longEnd = { metres(0, 0), metres(100, 0), metres(100, 10), metres(103, 60) };
+    TEST_CHECK(arrowVertices(longEnd, 10, 50).size() == 4, "a long last segment is not touched");
+
+    // Nothing to iron out before the first segment past the turn.
+    std::vector<MapPos> shortWalk = { metres(0, 0), metres(100, 0), metres(100, 0.5), metres(101, 1) };
+    TEST_CHECK(arrowVertices(shortWalk, 10, 1.5f).size() >= 3, "a walk shorter than the run leaves the anchor and the end");
 }

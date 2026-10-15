@@ -43,6 +43,7 @@ void testCallCancel();
 void testCallConcurrency();
 void testCollections();
 void testManeuverArrowFacade();
+void testManeuverArrowEnd();
 void testGeoJSONBareFeature();
 void testRouting();
 void testStatics();
@@ -449,6 +450,7 @@ int main() {
     testCallConcurrency();
     testCollections();
     testManeuverArrowFacade();
+    testManeuverArrowEnd();
     testGeoJSONBareFeature();
     testRouting();
     testStatics();

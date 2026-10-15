@@ -156,6 +156,14 @@ namespace massif {
         shaftPoses.push_back(anchor);
         shaftPoses.insert(shaftPoses.end(), forwardPoses.begin(), forwardPoses.end());
 
+        // The head takes its direction and place from the LAST segment. The cut lands anywhere in a route
+        // segment, so that one can be a few pixels long, and then the head sits on the join before it.
+        double walkedAfter = 0;
+        for (std::size_t i = backPoses.size() + 1; i < shaftPoses.size(); i++) {
+            walkedAfter += Distance(shaftPoses[i - 1], shaftPoses[i]);
+        }
+        StraightenEnd(shaftPoses, backPoses.size(), END_RUN_FRACTION * std::min(static_cast<double>(lengthAfter), walkedAfter));
+
         double shaftLength = 0;
         for (std::size_t i = 1; i < shaftPoses.size(); i++) {
             shaftLength += Distance(shaftPoses[i - 1], shaftPoses[i]);
@@ -201,6 +209,36 @@ namespace massif {
         return std::sqrt(dx * dx + dy * dy);
     }
 
+    void ManeuverArrowBuilder::StraightenEnd(std::vector<LocalPos>& poses, std::size_t anchorIndex, double minRun) {
+        std::size_t last = poses.size() - 1;
+        if (minRun <= 0 || last < anchorIndex + 2 || Distance(poses[last - 1], poses[last]) >= minRun) {
+            return;
+        }
+        // The nearest vertex to the end that is a full run away from it; the anchor is the turn and stays.
+        std::size_t start = last - 1;
+        while (start > anchorIndex && Distance(poses[start], poses[last]) < minRun) {
+            start--;
+        }
+        if (Distance(poses[start], poses[last]) < minRun) {
+            return;
+        }
+        // Only a stretch that is nearly straight already: a corner in it is a turn of the route, not noise.
+        double dx = poses[last].x - poses[start].x, dy = poses[last].y - poses[start].y;
+        double length = std::sqrt(dx * dx + dy * dy);
+        for (std::size_t i = start + 1; i < last; i++) {
+            double offset = std::abs((poses[i].x - poses[start].x) * dy - (poses[i].y - poses[start].y) * dx) / length;
+            if (offset > END_RUN_DEVIATION * minRun) {
+                return;
+            }
+        }
+        poses.erase(poses.begin() + static_cast<std::ptrdiff_t>(start + 1), poses.begin() + static_cast<std::ptrdiff_t>(last));
+    }
+
     const float ManeuverArrowBuilder::DEFAULT_LENGTH = 30.0f;
+    // The last segment is at least this share of the walk after the turn: the casing head's setback plus the
+    // casing's half width is about 1.25 casing widths, which is 60% of the after length the app asks for.
+    const double ManeuverArrowBuilder::END_RUN_FRACTION = 0.6;
+    // How far, as a share of that run, a vertex may stray from it and still be ironed out.
+    const double ManeuverArrowBuilder::END_RUN_DEVIATION = 0.1;
 
 }

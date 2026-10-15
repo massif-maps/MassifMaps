@@ -34,7 +34,7 @@ static dispatch_group_t sPending;
 @implementation DemoCapture
 
 + (void)startIfRequested {
-    BOOL wanted = [DemoCfg has:@"shot"] || [DemoCfg has:@"shotTilts"] || [DemoCfg has:@"shotSequence"] || [DemoCfg has:@"rotateDegPerSec"];
+    BOOL wanted = [DemoCfg has:@"shot"] || [DemoCfg has:@"shotTilts"] || [DemoCfg has:@"shotViews"] || [DemoCfg has:@"shotSequence"] || [DemoCfg has:@"rotateDegPerSec"];
     if (!wanted) {
         return;
     }
@@ -86,6 +86,11 @@ static dispatch_group_t sPending;
     self.quitWhenDone = [DemoCfg boolFor:@"quitAfterShot" defaultValue:YES];
     self.baseRotation = [self.mapView getRotation];
 
+    NSString *views = [DemoCfg stringFor:@"shotViews" defaultValue:@""];
+    if (views.length) {
+        [self runViews:[views componentsSeparatedByString:@","] index:0];
+        return;
+    }
     NSString *tilts = [DemoCfg stringFor:@"shotTilts" defaultValue:@""];
     if (tilts.length) {
         [self runTilts:[tilts componentsSeparatedByString:@","] index:0];
@@ -154,6 +159,26 @@ static dispatch_group_t sPending;
     MSFMapRenderer *renderer = [self.mapView getMapRenderer];
     [renderer captureRendering:listener waitWhileUpdating:NO];
     [renderer requestRedraw];
+}
+
+/** One still per "zoom/tilt" view: <shotDir>/z<zoom>_t<tilt>.png. */
+- (void)runViews:(NSArray<NSString *> *)views index:(NSUInteger)index {
+    if (index >= views.count) {
+        [self finish];
+        return;
+    }
+    NSArray<NSString *> *parts = [views[index] componentsSeparatedByString:@"/"];
+    float zoom = parts[0].floatValue;
+    float tilt = parts.count > 1 ? parts[1].floatValue : [self.mapView getTilt];
+    NSString *dir = [DemoCfg stringFor:@"shotDir" defaultValue:@"/tmp/massifdemo-shots/views"];
+    float waitMs = [DemoCfg floatFor:@"shotTiltWaitMs" defaultValue:6000];
+    [self.mapView setZoom:zoom durationSeconds:0];
+    [self.mapView setTilt:tilt durationSeconds:0];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(waitMs * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{
+        NSString *path = [dir stringByAppendingPathComponent:[NSString stringWithFormat:@"z%.1f_t%02.0f.png", zoom, tilt]];
+        NSLog(@"DemoCapture: view asked z%.1f t%.0f, map reports z%.2f t%.1f", zoom, tilt, [self.mapView getZoom], [self.mapView getTilt]);
+        [self captureTo:path thenDo:^{ [self runViews:views index:index + 1]; }];
+    });
 }
 
 /** One still per tilt (SDK convention: 90 straight down, 0 the horizon): <shotDir>/tilt_<n>.png. */

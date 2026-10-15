@@ -26,8 +26,9 @@ It differs from the simulator project in three ways:
 - the SDK is **not** a project dependency: `OTHER_LDFLAGS` names
   `$(MASSIF_SDK_DIR)/build/ios_metal-MACCATALYST-arm64/Release/libmassif.a`, and the headers come from
   `$(MASSIF_SDK_DIR)/generated/ios-objc/proxies` + `ios/objc` + `libs-external/angle-metal/include`.
-  `MASSIF_SDK_DIR` defaults to the checkout holding the script and is overridden on the command line, so a
-  worktree can run the demo against the lib another checkout built. The lib is never rebuilt here: after a
+  `MASSIF_SDK_DIR` is the Xcode build setting; the script sets it from its `SDK_DIR` variable (default: the
+  MAIN checkout of the repo, so its lib is linked even when the script runs from a worktree). Set
+  `SDK_DIR=<worktree>` to run against the lib that worktree built. The lib is never rebuilt here: after a
   C++ change run `build-plugin-catalyst.sh` in that checkout, then rerun the demo (Xcode relinks).
 - `SUPPORTS_MACCATALYST=YES`, `TARGETED_DEVICE_FAMILY=1,2` (plain Catalyst, "scale to match iPad", not
   "Optimize for Mac"), ad-hoc signing (`CODE_SIGN_IDENTITY=-`, no team).
@@ -83,9 +84,12 @@ a leading space. Added for this loop (`DemoCapture.m`):
 | `-shotTilts 90,75,60,45,30,15` | one still per tilt into `<shotDir>/tilt_NN.png` (SDK convention: 90 straight down, 0 horizon); `-tiltMin 0` lifts the 30 clamp |
 | `-winW 800 -winH 600` | Catalyst window size in points (frames are 2x): a smaller window renders about 2.5x faster |
 
-Script variables: `SETTLE`, `SHOT`, `SHOTDIR`, `BURST`, `INTERVAL_MS`, `STEP_DEG`, `ROTATE_DEG_PER_SEC`,
+Parallel runs must not share state: `DD` (derived data, `/private/tmp/massifdemo-dd`), `PIDFILE` (`$DD.pid`) and
+`LOG` (`$SHOTDIR/run.log`) are overridable, give each its own.
+
+Script variables: `SDK_DIR`, `SETTLE`, `SHOT`, `SHOTDIR`, `BURST`, `INTERVAL_MS`, `STEP_DEG`, `ROTATE_DEG_PER_SEC`,
 `DURATION`, `TILTS`, `ARROWS`, `OFFLINE`, `APPLIKE`, `NOBUILD`, `KEEP`, `SDK_DIR`. The script only ever
-kills the pid it started (`/tmp/massifdemo.pid`). Log: `/tmp/massifdemo-shots/run.log`. The SDK itself logs
+kills the pid it started (`/tmp/massifdemo.pid`). Log: `$SHOTDIR/run.log`. The SDK itself logs
 nothing to stdout/stderr here, only the demo's own lines (`DemoCapture`, camera).
 
 `screencapture -x` of the whole screen came out black here (no Screen Recording grant); that is why the

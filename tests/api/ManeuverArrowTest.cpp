@@ -137,12 +137,12 @@ namespace {
         return MapPos(east / metresPerDegree, north / metresPerDegree);
     }
 
-    // The arrow's vertices, in metres, for a route turning at index 1 (the end of its first segment).
-    std::vector<MapPos> arrowVertices(const std::vector<MapPos>& route, float lengthBefore, float lengthAfter) {
+    // The arrow's vertices, in metres, for a route turning at turnIndex (the end of its first segment by default).
+    std::vector<MapPos> arrowVertices(const std::vector<MapPos>& route, float lengthBefore, float lengthAfter, int turnIndex = 1) {
         ManeuverArrowBuilder builder;
         builder.setLengthBefore(lengthBefore);
         builder.setLengthAfter(lengthAfter);
-        std::shared_ptr<FeatureCollection> arrow = builder.buildArrowAtIndex(std::shared_ptr<Projection>(), route, 1);
+        std::shared_ptr<FeatureCollection> arrow = builder.buildArrowAtIndex(std::shared_ptr<Projection>(), route, turnIndex);
         std::vector<MapPos> vertices;
         if (arrow && arrow->getFeatureCount() == 1) {
             if (auto line = std::dynamic_pointer_cast<LineGeometry>(arrow->getFeature(0)->getGeometry())) {
@@ -164,6 +164,12 @@ void testManeuverArrowEnd() {
     TEST_CHECK(arrow.size() == 3, "a kinked end whose last segment is a few centimetres is one straight run after the turn");
     TEST_CHECK(arrow.size() == 3 && std::abs(arrow[1].getX() - 100) < 1e-6 && std::abs(arrow[1].getY()) < 1e-6, "the turn itself is kept");
     TEST_CHECK(arrow.size() == 3 && std::abs(arrow[2].getX() - 102.029) < 0.01 && std::abs(arrow[2].getY() - 50.098) < 0.01, "and it still ends where lengthAfter puts it");
+
+    // The tail the same way round: its round cap and join step out of the casing when the first segment is tiny.
+    std::vector<MapPos> kinkedTail = { metres(105, -60), metres(102, -50), metres(100, -40), metres(100, 0), metres(140, 0) };
+    std::vector<MapPos> tail = arrowVertices(kinkedTail, 50.3f, 10, 3);
+    TEST_CHECK(tail.size() == 3, "a kinked start whose first segment is a few centimetres is one straight run into the turn");
+    TEST_CHECK(tail.size() == 3 && std::abs(tail[0].getX() - 102.029) < 0.01 && std::abs(tail[0].getY() + 50.098) < 0.01, "and it still starts where lengthBefore puts it");
 
     // The same cut with a real corner in it keeps it: that is the route, not noise.
     std::vector<MapPos> corner = { metres(0, 0), metres(100, 0), metres(100, 40), metres(140, 40) };

@@ -164,6 +164,16 @@ namespace massif {
         }
         StraightenEnd(shaftPoses, backPoses.size(), END_RUN_FRACTION * std::min(static_cast<double>(lengthAfter), walkedAfter));
 
+        // The tail's round cap and the join after it do the same with a short first segment: the casing steps
+        // out on the inner side of the bend. Same rule, from the other end.
+        double walkedBefore = 0;
+        for (std::size_t i = 1; i <= backPoses.size(); i++) {
+            walkedBefore += Distance(shaftPoses[i - 1], shaftPoses[i]);
+        }
+        std::reverse(shaftPoses.begin(), shaftPoses.end());
+        StraightenEnd(shaftPoses, shaftPoses.size() - 1 - backPoses.size(), END_RUN_FRACTION * std::min(static_cast<double>(lengthBefore), walkedBefore));
+        std::reverse(shaftPoses.begin(), shaftPoses.end());
+
         double shaftLength = 0;
         for (std::size_t i = 1; i < shaftPoses.size(); i++) {
             shaftLength += Distance(shaftPoses[i - 1], shaftPoses[i]);

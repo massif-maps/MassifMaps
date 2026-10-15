@@ -40,7 +40,8 @@ clamped at the ends of the route. The head sits on the line's last vertex and po
 segment, so the builder keeps that segment long: when the cut lands a few metres past a route vertex,
 the vertices of the last 60% of `lengthAfter` become one straight segment, as long as none strays
 more than a tenth of that run from it (a real corner in the stretch stays, and keeps its short last
-leg). Pass a `Projection` if the points are not WGS84 (`null` = WGS84).
+leg). The tail gets the same treatment on its first 60% of `lengthBefore`: a bend a few pixels after the
+round cap steps the casing out on the inner side. Pass a `Projection` if the points are not WGS84 (`null` = WGS84).
 The walk is done in an equirectangular plane anchored at the maneuver's latitude — exact at the tens
 of metres an arrow spans.
 

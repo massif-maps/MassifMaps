@@ -84,7 +84,7 @@ namespace massif {
         static MapPos FromLocal(const LocalPos& pos, double originLat);
         static LocalPos Interpolate(const LocalPos& p0, const LocalPos& p1, double t);
         static double Distance(const LocalPos& p0, const LocalPos& p1);
-        // Replaces the vertices of the last minRun metres by one segment when they are nearly straight.
+        // Replaces the vertices of the last minRun metres by one segment when they are nearly straight (the tail: called reversed).
         static void StraightenEnd(std::vector<LocalPos>& poses, std::size_t anchorIndex, double minRun);
 
         static const float DEFAULT_LENGTH;

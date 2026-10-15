@@ -33,7 +33,10 @@ namespace massif::vt {
                 if (geometry->getType() == TileGeometry::Type::POLYGON3DGROUND) {
                     _hasGroundAOGeometry = true;
                 }
-                if (_hasSpanGeometry && _hasGroundAOGeometry) {
+                if (geometry->getStyleParameters().occlusionOpacity) {
+                    _hasOcclusionGeometry = true;
+                }
+                if (_hasSpanGeometry && _hasGroundAOGeometry && _hasOcclusionGeometry) {
                     break;
                 }
             }
@@ -54,6 +57,8 @@ namespace massif::vt {
         bool hasSpanGeometry() const { return _hasSpanGeometry; }
         /** Whether any geometry here is an extrusion's contact shadow on the ground it stands on. */
         bool hasGroundAOGeometry() const { return _hasGroundAOGeometry; }
+        /** Whether any line here is drawn again, ghosted, where 3D content hides it (line-occlusion-opacity). */
+        bool hasOcclusionGeometry() const { return _hasOcclusionGeometry; }
         const std::vector<std::shared_ptr<TileLabel>>& getLabels() const { return _labels; }
         const std::vector<std::shared_ptr<TileModelInstances>>& getModels() const { return _models; }
 
@@ -84,6 +89,7 @@ namespace massif::vt {
         const std::vector<std::shared_ptr<TileGeometry>> _geometries;
         bool _hasSpanGeometry = false;
         bool _hasGroundAOGeometry = false;
+        bool _hasOcclusionGeometry = false;
         const std::vector<std::shared_ptr<TileLabel>> _labels;
         const std::vector<std::shared_ptr<TileModelInstances>> _models;
     };

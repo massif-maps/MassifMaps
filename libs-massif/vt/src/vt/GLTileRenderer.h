@@ -387,6 +387,8 @@ namespace massif::vt {
         bool startFrame(float dt);
         // layerOpacity: the SDK layer's, for a pass no screen-space blend wraps (the 3D pass).
         void renderGeometry(bool geom2D, bool geom3D, bool inline3D = false, float layerOpacity = 1.0f);
+        // The second draw of every line carrying line-occlusion-opacity, once the extrusions have written depth.
+        void renderOccludedGeometry();
         void renderLabels(bool labels2D, bool labels3D, float layerOpacity = 1.0f);
         bool endFrame();
 

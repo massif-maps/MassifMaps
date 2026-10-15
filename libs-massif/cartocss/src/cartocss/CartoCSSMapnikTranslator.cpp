@@ -705,6 +705,7 @@ namespace massif::css {
         { "line-arrow-scale", "arrow-scale" },
         { "line-arrow-rotation", "arrow-rotation" },
         { "line-elevation-mode", "elevation-mode" },
+        { "line-occlusion-opacity", "occlusion-opacity" },
         { "polygon-elevation-mode", "elevation-mode" },
         { "line-geometry-transform", "geometry-transform" },
         { "line-comp-op", "comp-op" },

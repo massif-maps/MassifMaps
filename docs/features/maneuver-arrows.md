@@ -119,6 +119,13 @@ With the composite wiring the route line itself should move into a tile source t
 layer, labels draw after that layer's geometry —
 `setLabelRenderOrder(VECTOR_TILE_RENDER_ORDER_LAST)` moves every base-map label above the arrow.
 
+## Behind 3D buildings
+
+On 3D terrain with extruded buildings an arrow that goes behind one is hidden. Add
+`line-occlusion-opacity: 0.35;` to the four rules to keep a faint ghost of it there, and normal
+drawing everywhere it is visible. The route line under it can carry the same property. See
+[Lines behind buildings](/docs/features/3d-terrain#lines-behind-buildings-line-occlusion-opacity).
+
 ## Why not a marker for the head
 
 A rotated `marker-file` symbol was built first (it is what maplibre does) and every one of these had

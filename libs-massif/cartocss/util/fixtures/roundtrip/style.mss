@@ -79,6 +79,13 @@ Map {
   line-width: 6;
 }
 
+/* a ghost of the line where 3D content hides it */
+#transportation[class = 'path']::ghost {
+  line-color: #ffffff;
+  line-width: 3;
+  line-occlusion-opacity: 0.35;
+}
+
 #transportation::labels {
   text-name: [name];
   text-face-name: 'DIN Pro Regular';

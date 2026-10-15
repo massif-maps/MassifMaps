@@ -27,6 +27,7 @@ void testShadowBox();
 void testShaderFlags();
 void testExtrusionAnchor();
 void testExtrusionEmissive();
+void testLineOcclusionOpacity();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 void testSpanResolver();
@@ -88,6 +89,7 @@ int main() {
     testShaderFlags();
     testExtrusionAnchor();
     testExtrusionEmissive();
+    testLineOcclusionOpacity();
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
     testSpanResolver();

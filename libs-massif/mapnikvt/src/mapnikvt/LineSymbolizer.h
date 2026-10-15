@@ -35,6 +35,7 @@ namespace massif::mvt {
             bindProperty("arrow-scale", &_arrowScale);
             bindProperty("arrow-rotation", &_arrowRotation);
             bindProperty("elevation-mode", &_elevationMode);
+            bindProperty("occlusion-opacity", &_occlusionOpacity, true); // splits the tile batch and leaves the drape at decode
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -90,6 +91,9 @@ namespace massif::mvt {
         // or 'underground' for a tunnel: a structure that does NOT follow the ground but takes its
         // height from its own two ends. See vt::LineElevationMode.
         StringProperty _elevationMode = StringProperty("drape");
+        // mapbox's line-occlusion-opacity: the opacity a second, ghost draw keeps where 3D content
+        // hides the line. 0 = hidden there, as before, and the line stays draped.
+        FloatProperty _occlusionOpacity = FloatProperty(0.0f);
 
         ColorFunctionBuilder _strokeFuncBuilder;
         ColorFunctionBuilder _borderColorFuncBuilder;

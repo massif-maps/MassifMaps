@@ -3848,6 +3848,115 @@ namespace massif::vt {
         }
     }
 
+    void GLTileRenderer::renderOccludedGeometry() {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        resetProgramState(); // another renderer may have bound its own program since the last draw
+
+        if (!_visibleRenderTiles) {
+            return;
+        }
+
+        std::map<int, std::vector<const RenderTileLayer*>> renderLayerMap;
+        int maxVisibleZoom = 0;
+        for (const RenderTile& renderTile : *_visibleRenderTiles) {
+            if (!renderTile.visible) {
+                continue;
+            }
+            maxVisibleZoom = std::max(maxVisibleZoom, renderTile.targetTileId.zoom);
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                // A comp-op layer draws into an overlay with no depth to test against.
+                if (!it->second.layer->hasOcclusionGeometry() || it->second.layer->getCompOp()) {
+                    continue;
+                }
+                if (!_rendererLayerIndexRange || (it->first >= _rendererLayerIndexRange->first && it->first < _rendererLayerIndexRange->second)) {
+                    renderLayerMap[it->first].push_back(&it->second);
+                }
+            }
+        }
+        if (renderLayerMap.empty()) {
+            return;
+        }
+
+        auto proxyDepth = [maxVisibleZoom](const RenderTileLayer* renderLayer) -> float {
+            if (renderLayer->active) {
+                return 0.0f;
+            }
+            return std::max(static_cast<float>(maxVisibleZoom - renderLayer->targetTileId.zoom), TERRAIN_PROXY_DEPTH_UNITS);
+        };
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendEquation(GL_FUNC_ADD);
+        // GREATER passes only where something nearer than the line wrote depth; the offset is the 2D
+        // decal's plus a margin, so the line never passes against its own 2D depth. See 01-frame.md.
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_GREATER);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_STENCIL_TEST);
+        glStencilMask(0);
+        if (_terrainMode) {
+            glDisable(GL_CULL_FACE);
+        } else {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+        }
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(-3.0f, -12.0f);
+
+        bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
+        std::optional<CompOp> currentCompOp;
+        _drapeMaskTexture = 0;
+        for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
+            for (const RenderTileLayer* renderLayer : it->second) {
+                // The state the 2D pass drew this layer's lines in, or the two depths would not match.
+                if (_terrainMode) {
+                    if (_terrainSharedGround) {
+                        _terrainDrawDepthBias = _terrainDepthBias;
+                        _terrainDrawDepthClipUnits = 0.0f;
+                        _terrainDrawLayerOffset = proxyDepth(renderLayer) - layerOrdinal;
+                    } else if (terrainVTF) {
+                        float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
+                        _terrainDrawDepthBias = (_terrainRegularGrid ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
+                        _terrainDrawDepthClipUnits = _terrainRegularGrid ? 0.0f : 12.0f;
+                    }
+                }
+                float geometryOpacity = (renderLayer->layer->getOpacityFunc())(_viewState);
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                    const std::optional<float>& occlusionOpacity = geometry->getStyleParameters().occlusionOpacity;
+                    if (!occlusionOpacity || geometry->getType() != TileGeometry::Type::LINE || !geometry->getSpanRecords().empty()) {
+                        continue;
+                    }
+                    CompOp geometryCompOp = geometry->getStyleParameters().compOp;
+                    if (currentCompOp != geometryCompOp) {
+                        setCompOp(geometryCompOp);
+                        currentCompOp = geometryCompOp;
+                    }
+                    if (terrainVTF) {
+                        _terrainDrawClearance = _terrainLineClearance;
+                    }
+                    renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
+                    _terrainDrawClearance = 0.0f;
+                }
+                _terrainDrawLayerOffset = 0.0f;
+            }
+        }
+
+        _terrainDrawDepthBias = _terrainDepthBias;
+        _terrainDrawDepthClipUnits = 0.0f;
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(0.0f, 0.0f);
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendEquation(GL_FUNC_ADD);
+        glStencilMask(255);
+        checkGLError();
+    }
+
     GLTileRenderer::Pass3DState GLTileRenderer::begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity) {
         Pass3DState state;
         const std::shared_ptr<const TileLayer>& layer = renderLayers.front()->layer;
@@ -6166,7 +6275,8 @@ namespace massif::vt {
         // maplibre's drapeable set: fills and lines bake, extrusions and points stay live. Lines are
         // opt-out: they blur where a slope magnifies the texture.
         if (type == TileGeometry::Type::LINE) {
-            return _terrainDrapeLines;
+            // A ghosted line is live: baked, it would sit under the extrusions with nothing to test against.
+            return _terrainDrapeLines && !geometry->getStyleParameters().occlusionOpacity;
         }
         return type == TileGeometry::Type::POLYGON;
     }

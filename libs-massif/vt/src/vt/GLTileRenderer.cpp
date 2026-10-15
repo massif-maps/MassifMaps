@@ -3949,6 +3949,21 @@ namespace massif::vt {
                 }
             }
         }
+        // A stand-in or fading-out tile under a live one: the 2D pass hides its line by depth, the ghost has no such
+        // test, so it showed a second, differently simplified copy of the line beside the live one.
+        for (auto& [styleIndex, layers] : renderLayerMap) {
+            std::vector<const RenderTileLayer*> live;
+            for (const RenderTileLayer* renderLayer : layers) {
+                if (renderLayer->active) {
+                    live.push_back(renderLayer);
+                }
+            }
+            layers.erase(std::remove_if(layers.begin(), layers.end(), [this, &live](const RenderTileLayer* renderLayer) {
+                return !renderLayer->active && std::any_of(live.begin(), live.end(), [this, renderLayer](const RenderTileLayer* liveLayer) {
+                    return tileCovers(liveLayer->targetTileId, renderLayer->targetTileId) || tileCovers(renderLayer->targetTileId, liveLayer->targetTileId);
+                });
+            }), layers.end());
+        }
         return maxVisibleZoom;
     }
 

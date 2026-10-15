@@ -176,6 +176,17 @@ the ghost reads as the visible line seen through glass: white inner, blue edge. 
 group, a line with `line-border-*` draws in the rim pass only, and without an 8-bit stencil buffer the
 ghosts keep style order, renderers bottom first.
 
+**One draw call holds several styles.** The tile builder batches the lines of several rules into one
+geometry (a style index per vertex) and the index buffer draws them in style order: a maneuver arrow's
+case, fill, headcase and head, or a `back/` line and its main line. A draw-once pass stamps a pixel with the
+FIRST fragment drawn, so ordering layers and geometries was not enough: the casing, first in the buffer,
+won every pixel it covered, the fill's included, and the ghost came out a solid blue wedge (or, with a
+`back/` rule also ghosted, only the white backing). The ghost pass draws such a batch once per style, the
+topmost first, with the other styles' widths collapsed to zero in the width table (`_ghostStyle`).
+A stand-in or fading tile that a live tile of the same style layer overlaps is not ghosted (its line is
+hidden by depth in the 2D pass, and the ghost has no such test: a second, differently simplified copy of the
+line showed beside the live one).
+
 **After every layer, not inside each.** The ghost used to be drawn from each layer's own 3D pass. Then a
 lower layer's ghost (the route) was drawn first and a higher one's (the arrow on it) over it, with nothing
 shared between them, so behind a building the route's blue lay across the arrow's head whichever layer

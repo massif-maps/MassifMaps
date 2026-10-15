@@ -1694,6 +1694,18 @@ for frames while one still moves), a rebuilt label carries it over, and "partly 
 only once it has eased a quarter of the way to its occluded opacity - one tap of four, settled - so
 a passing dip cannot re-rank it. `LabelYieldTest` pins the threshold.
 
+**Hides fast, shows slowly, and a label is judged before it is shown.** Easing from "clear" had a
+cost of its own: a label's occlusion is only computed while it is drawn, so a new label (or one back
+from opacity 0, whose value had gone stale) started at 1 and eased down at the same step its opacity
+rose - a label wholly behind a building drew at up to a quarter opacity for a dozen frames before
+vanishing, seen as POIs blinking in 3D with buildings. Now (`easeLabelOcclusion`, `LabelFade.h`):
+a label whose occlusion was never judged, or not since it last stood at opacity 0
+(`Label::isOcclusionJudged`, cleared in `renderLabelPass`, carried over to a rebuilt label), takes
+its first verdict outright, so it starts at the verdict instead of at "clear". After that the value
+falls at 4 fade steps and rises at half of one: a covered label is gone in a few frames, while a
+verdict that reads clear for a frame or two as building tiles swap or an unresolved base blocks
+nothing barely lifts it. `LabelFadeTest` pins both.
+
 **A line run collides by its glyphs**, as maplibre's by collision circles along the line
 (`Label::calculateEnvelope`'s glyphEnvelopes): the bounds of a run round a bend covered the corner
 beside it (405x320 device px for Place Grenette, tilt 60) and hid what stood there. Neighbouring glyphs

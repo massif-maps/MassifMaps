@@ -70,6 +70,10 @@ namespace massif::vt {
         void setOcclusion(float occlusion, float floor = 0.0f) { _occlusion = occlusion; _occlusionFloor = floor; }
         float getOcclusion() const { return _occlusion; }
         float getOcclusionFloor() const { return _occlusionFloor; }
+        // False until a frame drew the label and judged it, and again once it stops being drawn: the next verdict is
+        // then taken outright, not eased from a value that no longer describes the view.
+        bool isOcclusionJudged() const { return _occlusionJudged; }
+        void setOcclusionJudged(bool judged) { _occlusionJudged = judged; }
         // Wholly hidden by 3D content on the last frame drawn: kept, but it claims no room from the labels in front.
         bool isFullyOccluded() const { return _occlusion <= 0.0f; }
         // One of its four taps blocked once eased, a quarter of the way to its floor: a passing verdict does not re-rank it.
@@ -474,6 +478,7 @@ namespace massif::vt {
         float _textOpacity = 0.0f;
         float _occlusion = 1.0f;
         float _occlusionFloor = 0.0f;
+        bool _occlusionJudged = false;
         bool _visible = false;
         bool _active = false;
         bool _standIn = false;

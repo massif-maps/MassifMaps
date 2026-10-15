@@ -3181,6 +3181,7 @@ namespace massif::vt {
                     newLabel->setTextOpacity(label->getTextOpacity());
                     newLabel->setTerrainOccluded(label->isTerrainOccluded());
                     newLabel->setOcclusion(label->getOcclusion(), label->getOcclusionFloor());
+                    newLabel->setOcclusionJudged(label->isOcclusionJudged());
                     newLabel->snapPlacement(*label);
                 }
                 else if (std::shared_ptr<Label> oldLabel = takeOldSpot(*newLabel)) {
@@ -3189,6 +3190,7 @@ namespace massif::vt {
                     newLabel->setTextOpacity(0);
                     newLabel->setTerrainOccluded(oldLabel->isTerrainOccluded());
                     newLabel->setOcclusion(oldLabel->getOcclusion(), oldLabel->getOcclusionFloor());
+                    newLabel->setOcclusionJudged(oldLabel->isOcclusionJudged());
                     newLabel->snapPlacement(*oldLabel);
                     oldLabel->setOpacity(0); // the new one draws its icon now; two would overlap
                     oldLabel->setTextOpacity(0);
@@ -4412,6 +4414,7 @@ namespace massif::vt {
                 continue;
             }
             if (label->getOpacity() <= 0.0f) {
+                label->setOcclusionJudged(false); // its occlusion goes stale unseen: judge it afresh when it shows
                 continue;
             }
             const std::shared_ptr<const TileLabel::Style>& labelStyle = label->getStyle();
@@ -4622,9 +4625,9 @@ namespace massif::vt {
             if (pass != Label::DrawPass::CALLOUT_LINE) {
                 float occludedOpacity = std::min(1.0f, labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity));
                 float target = occludedOpacity < 1.0f ? occludedOpacity + (1.0f - occludedOpacity) * calculateLabelVisibility(*label) : 1.0f;
-                float occlusion = label->getOcclusion();
-                occlusion = target > occlusion ? std::min(target, occlusion + _labelOcclusionStep) : std::max(target, occlusion - _labelOcclusionStep);
+                float occlusion = easeLabelOcclusion(label->getOcclusion(), target, _labelOcclusionStep, label->isOcclusionJudged());
                 label->setOcclusion(occlusion, occludedOpacity);
+                label->setOcclusionJudged(true);
                 _labelOcclusionEasing = _labelOcclusionEasing || occlusion != target;
             }
 

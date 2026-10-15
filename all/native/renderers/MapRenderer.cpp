@@ -3455,49 +3455,22 @@ namespace massif {
                     // generation stand-ins read). An app's DrapeResolution keeps one size for all.
                     std::map<vt::TileId, int> leafResolution;
                     if (terrainOptions->getDrapeResolution() <= 0 && TerrainDrapeCache::isBudgetEnabled() && std::dynamic_pointer_cast<PlanarProjectionSurface>(_options->getProjectionSurface())) {
-                        const cglib::mat4x4<double>& mvp = viewState.getModelviewProjectionMat();
+                        // Screen pixels per tile width at the tile's nearest point: a distance from the eye, so turning the
+                        // camera resizes no drape (the view's projection and the eye are all it reads).
+                        const cglib::vec3<double>& eye = viewState.getCameraPos();
+                        double focalPixels = viewState.getProjectionMat()(1, 1) * viewState.getHalfHeight();
                         double groundZ = viewState.getFocusPos()(2);
                         std::vector<double> edgePixels;
                         std::vector<vt::TileId> sizedLeaves;
                         for (auto it = drapeTiles.begin(); it != drapeTiles.end(); it++) {
                             const vt::TileId& tileId = it->first;
                             double extent = static_cast<double>(1 << tileId.zoom);
-                            // Screen pixels per tile width where the leaf is ON screen; the ground under the camera is nearer
-                            // than anything drawn. A leaf seen only in the margin (a sliver between samples) takes its nearest scale.
-                            double marginX = 0.25 * viewState.getWidth(), marginY = 0.25 * viewState.getHeight();
-                            auto project = [&](double u, double v, cglib::vec2<double>& screen) {
-                                double x = ((tileId.x + u) / extent - 0.5) * Const::WORLD_SIZE;
-                                double y = (0.5 - (tileId.y + v) / extent) * Const::WORLD_SIZE;
-                                cglib::vec4<double> clip = cglib::transform(cglib::vec4<double>(x, y, groundZ, 1.0), mvp);
-                                if (!(clip(3) > 1.0e-9)) {
-                                    return false;
-                                }
-                                screen = cglib::vec2<double>((clip(0) / clip(3) + 1.0) * 0.5 * viewState.getWidth(), (clip(1) / clip(3) + 1.0) * 0.5 * viewState.getHeight());
-                                return true;
-                            };
-                            static const int SAMPLES = 9;
-                            static const double STEP = 0.01;
-                            double edge = 0;
-                            double margin = std::numeric_limits<double>::max();
-                            for (int i = 0; i < SAMPLES; i++) {
-                                for (int j = 0; j < SAMPLES; j++) {
-                                    double u = (i + 0.5) / SAMPLES, v = (j + 0.5) / SAMPLES;
-                                    cglib::vec2<double> p, pu, pv;
-                                    if (!project(u, v, p) || !project(u + STEP, v, pu) || !project(u, v + STEP, pv) || std::abs(p(0) - 0.5 * viewState.getWidth()) > 0.5 * viewState.getWidth() + marginX || std::abs(p(1) - 0.5 * viewState.getHeight()) > 0.5 * viewState.getHeight() + marginY) {
-                                        continue;
-                                    }
-                                    double scale = std::max(cglib::length(pu - p), cglib::length(pv - p)) / STEP;
-                                    if (p(0) >= 0 && p(0) <= viewState.getWidth() && p(1) >= 0 && p(1) <= viewState.getHeight()) {
-                                        edge = std::max(edge, scale);
-                                    } else {
-                                        margin = std::min(margin, scale);
-                                    }
-                                }
-                            }
-                            if (edge == 0 && margin < std::numeric_limits<double>::max()) {
-                                edge = margin;
-                            }
-                            edgePixels.push_back(edge);
+                            double width = Const::WORLD_SIZE / extent;
+                            double minX = (tileId.x / extent - 0.5) * Const::WORLD_SIZE, minY = (0.5 - (tileId.y + 1) / extent) * Const::WORLD_SIZE;
+                            double dx = std::max(minX - eye(0), std::max(0.0, eye(0) - (minX + width)));
+                            double dy = std::max(minY - eye(1), std::max(0.0, eye(1) - (minY + width)));
+                            double distance = std::sqrt(dx * dx + dy * dy + (eye(2) - groundZ) * (eye(2) - groundZ));
+                            edgePixels.push_back(distance > 0 ? focalPixels * width / distance : 0.0);
                             sizedLeaves.push_back(tileId);
                         }
                         std::size_t cacheBytes = (terrainOptions->getDrapeCacheSize() > 0 ? static_cast<std::size_t>(terrainOptions->getDrapeCacheSize()) * 1024 * 1024 : TerrainDrapeCache::MAX_BYTES);

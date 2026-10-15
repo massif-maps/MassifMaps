@@ -463,7 +463,7 @@ class ProjectionSurface;
         virtual bool paintsEveryDrapeTile() const { return false; }
         // Whether this layer's tiles may hold extrusions, which cast from past the view (see _shadowCasterTiles).
         virtual bool castsExtrusionShadows() const { return false; }
-        // Whether a free roam terrain camera fetches this layer's stand-in ancestors before its view (imagery).
+        // Whether a free roam terrain camera cuts this layer by distance alone and fetches its stand-in ancestors before its view (imagery).
         virtual bool usesDistanceTileZoom() const { return false; }
         // The terrain cover a paint layer draws itself on when nothing bakes it. Ignored by
         // layers that are not paints.
@@ -560,6 +560,8 @@ class ProjectionSurface;
         void calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& mapTile, const MapBounds& dataExtent, double parentCritical = std::numeric_limits<double>::infinity());
         // Fits the tree recorded by calculateVisibleTilesRecursive to the tile budget and fills the tile lists from it.
         void selectDistanceTiles(const std::shared_ptr<CullState>& cullState);
+        // Debug level: the levels over fixed ground points round the eye, to compare between looks.
+        void logDistanceProbes(const ViewState& viewState, double scale);
         void calculateShadowCasterTiles();
         // mapbox extendTileCoverToNearPlane: extrusions on the tiles below the frame rise into it.
         void extendTilesToNearPlane(const ViewState& viewState, const MapBounds& dataExtent);
@@ -628,9 +630,8 @@ class ProjectionSurface;
         int _terrainMaxTileZoom = 1000;
         int _terrainMinTileZoom = 0; // terrain mode: the coarsest tile zoom the LOD rule may pick
         bool _distanceLod = false; // planar: a tile splits by its distance from the eye (DistanceTileLOD.h), not by its screen area
-        bool _freeRoamCut = false; // ...and under a free roam camera, whose zoom bounds and styles no tile
-        bool _standInsFirst = false; // free roam terrain imagery: the stand-in ancestors are fetched before the view
-        int _distanceZoomCap = 0; // the zoom no tile goes past: the camera's, or under free roam the data's plus overzoom
+        bool _freeRoamImagery = false; // ...free roam terrain imagery: no view-zoom cap, stand-ins fetched first, the drape cache's budget
+        DistanceTileLOD::Limits _distanceLimits; // ...the levels it is held to
         DistanceTileLOD::View _distanceView; // ...what this cull measures a tile with
         std::vector<DistanceTileLOD::Node> _distanceNodes; // ...every tile the cull visited, see DistanceTileLOD.h
         std::vector<MapTile> _distanceTiles; // ...and which tile each is
@@ -638,6 +639,7 @@ class ProjectionSurface;
         mutable std::mutex _tileViewZoomMutex;
         std::unordered_map<long long, float> _tileViewZoom; // free roam: the view zoom of each tile the last cull kept
         bool _tileViewZoomActive = false; // ...which styles them, in place of the camera's target zoom
+        long long _distanceProbeTime = 0;
         long long _distanceLogTime = 0; // steady clock ms of the last cut report
         double _maxVisibleDistance = 0; // internal units; 0 = as far as the camera can see
         double _lodMaxTileArea = 0; // screen pixels squared; the tangram LOD threshold, 0 = no area test

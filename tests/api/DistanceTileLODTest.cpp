@@ -45,7 +45,9 @@ namespace {
     struct Scene {
         bool flat = false; // the plane z = 0, not the mountain range
         Rule rule = Rule::Distance;
-        DistanceTileLOD::Limits limits { 0, 0, CAP };
+        DistanceTileLOD::Limits limits { 0, CAP, DistanceTileLOD::NO_VIEW_CAP }; // free roam imagery: only the data caps
+        double farCoarsening = 0.0;
+        int areaCap = CAP; // the camera's zoom, which the area rule is capped by
         double viewDistance = VIEW_DISTANCE;
         double lodFactor = 1.0; // on the 0.5 default's pixels
     };
@@ -137,10 +139,10 @@ namespace {
         }
         double critical;
         if (cut.scene.rule == Rule::Distance) {
-            critical = DistanceTileLOD::nodeCritical(cut.view, cut.scene.limits, zoom, edge, distance);
+            critical = DistanceTileLOD::nodeCritical(cut.view, cut.scene.limits, zoom, edge, distance, std::abs(nearest[2] - camera.z));
         } else if (zoom < cut.scene.limits.minZoom) {
             critical = std::numeric_limits<double>::infinity();
-        } else if (zoom >= cut.scene.limits.capZoom) {
+        } else if (zoom >= cut.scene.areaCap) {
             critical = 0.0;
         } else {
             critical = areaSplits(camera, basis, minX, minY, edge, cut.view.maxEdgePixels) ? std::numeric_limits<double>::infinity() : 0.0;
@@ -175,6 +177,7 @@ namespace {
         cut.scene = scene;
         cut.view = makeView(camera);
         cut.view.maxEdgePixels *= scene.lodFactor;
+        cut.view.farCoarsening = scene.farCoarsening;
         visit(camera, basis, 0, 0, 0, std::numeric_limits<double>::infinity(), cut);
         scale = DistanceTileLOD::fitScale(cut.nodes, budget);
         // Neighbours stay within a level while a tile spans at least this many tiles' worth of distance (see the test).
@@ -271,7 +274,9 @@ namespace {
         Scene scene;
         scene.flat = true;
         scene.rule = rule;
-        scene.limits.capZoom = static_cast<int>(zoom + 0.001);
+        scene.areaCap = static_cast<int>(zoom + 0.001);
+        scene.limits.capOffset = 0;
+        scene.farCoarsening = DistanceTileLOD::FAR_COARSENING;
         double distance = makeView(camera).zoom0Distance / std::pow(2.0, zoom);
         double toHorizon = (camera.pitch + 90.0 + camera.fovY * 0.5) * PI / 180.0;
         double reach = std::cos(toHorizon) > 0 ? 2.0 * distance / std::cos(toHorizon) : std::numeric_limits<double>::infinity();
@@ -343,8 +348,10 @@ namespace {
         // mountain range and over a plane, free roam (nothing bounds a level but the data's) and under a classic map's cap.
         Scene mountains, plane, capped;
         plane.flat = true;
-        capped.flat = true;
-        capped.limits.capZoom = 15;
+        plane.limits.capOffset = 0;
+        plane.farCoarsening = DistanceTileLOD::FAR_COARSENING;
+        capped.limits.capOffset = 0;
+        capped.farCoarsening = DistanceTileLOD::FAR_COARSENING;
         int compared = 0, flipped = 0, treesFlipped = 0, withTrees = 0, withoutTrees = 0, areaCompared = 0, areaFlipped = 0, areaTreesFlipped = 0;
         int budgetedCompared = 0, budgetedFlipped = 0, budgetedSkipped = 0;
         for (double above : { 3.0, 80.0, 900.0 }) {
@@ -444,20 +451,56 @@ namespace {
         view.zoom0Distance = 1.0e9;
         view.zoomShift = 0.001;
         const double inf = std::numeric_limits<double>::infinity();
+        auto at = [&](int level) { return view.zoom0Distance / std::pow(2.0, level); }; // where the view zoom reads `level`
 
-        DistanceTileLOD::Limits limits { 5, 8, 14 };
-        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 4, 1000.0, 1.0e6) == inf, "under the layer's min zoom a tile always splits");
-        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 14, 1000.0, 1.0) == 0.0, "from the cap on it never does, whatever the eye");
-        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 7, 1000.0, 1.0e9) == inf, "under the floor it splits though the rule would not: a depth occluder");
-        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 20, 14 }, 14, 1000.0, 1.0e9) == 0.0, "a floor above the cap is the cap's, as the walk always had it");
-        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 10, 200.0, 1000.0) == DistanceTileLOD::criticalScale(200.0, 1000.0, 2700.0, 512.0),
+        DistanceTileLOD::Limits limits { 5, 20, 0, 3, std::numeric_limits<int>::max() };
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 4, 1000.0, at(16), at(16)) == inf, "under the layer's min zoom a tile always splits");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 16, 1000.0, at(16), at(16)) == 0.0, "at the view level a tile never splits");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 16, 1000.0, at(18), at(18)) > 0.0, "though it does where the view level is two finer");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 12, 1000.0, at(16), at(16)) == inf, "under the floor, coarsening under the view level, it splits though the rule would not");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 20, 0, 3, 9 }, 12, 1.0, at(16), at(16)) != inf, "unless the floor's own ceiling is under it");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 20, 2, -1, 99 }, 17, 1.0, at(16), at(16)) > 0.0 && DistanceTileLOD::nodeCritical(view, { 5, 20, 2, -1, 99 }, 18, 1.0, at(16), at(16)) == 0.0,
+                   "a cap offset lets the tiles go that many levels over the view level");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 14, 0, -1, 99 }, 14, 1.0, at(20), at(20)) == 0.0, "the data's max zoom caps whatever the view level is");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 14, DistanceTileLOD::NO_VIEW_CAP, -1, 99 }, 13, 1000.0, at(10), at(10)) != 0.0, "and with no view cap only the data caps");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 20, 0, -1, 99 }, 10, 200.0, at(14) * 0.5, at(14) * 0.5) == DistanceTileLOD::criticalScale(200.0, at(14) * 0.5, 2700.0, 512.0),
                    "in between it is the rule");
 
         // A zoom is a distance: the camera's own zoom at its focus distance, one less for every doubling.
-        double distance = view.zoom0Distance / std::pow(2.0, 16.0);
+        double distance = at(16);
         TEST_CHECK(std::abs(DistanceTileLOD::viewZoom(view, distance) - 16.001) < 1e-9, "the view zoom at the focus distance is the camera's zoom");
         TEST_CHECK(std::abs(DistanceTileLOD::viewZoom(view, distance * 2.0) - 15.001) < 1e-9, "and falls a level for every doubling of the distance");
         TEST_CHECK(std::isinf(DistanceTileLOD::viewZoom(view, 0.0)), "an eye inside the tile has no distance to read a zoom off");
+        TEST_CHECK(DistanceTileLOD::viewLevel(view, 0.0) == DistanceTileLOD::NO_VIEW_CAP, "and its level is bounded");
+
+        // The grazing allowance: a tile seen head on is judged by pixels alone, one seen at a grazing angle may span more.
+        view.farCoarsening = DistanceTileLOD::FAR_COARSENING;
+        TEST_CHECK(DistanceTileLOD::farAllowance(view, 1000.0, 1000.0) == 1.0, "straight below the eye the allowance is 1");
+        TEST_CHECK(std::abs(DistanceTileLOD::farAllowance(view, 1000.0, 250.0) - 2.0) < 1e-9, "four times as far as high, a tile may span twice the pixels");
+        TEST_CHECK(std::abs(DistanceTileLOD::farAllowance(view, 1000.0, 0.0) - 4.0) < 1e-9, "level with the eye it is bounded, at two levels");
+        view.farCoarsening = 0.0;
+        TEST_CHECK(DistanceTileLOD::farAllowance(view, 1000.0, 10.0) == 1.0, "and none with no exponent");
+    }
+
+    void testTheViewLevelBoundsTheClassicCut() {
+        // Whatever the tilt, no tile is finer than the zoom a top-down camera at the nearest ground would be at (a
+        // tile is only split while under the view level of its own nearest point, which no tile has nearer than the
+        // eye's height). The camera's zoom is not an input of the cut at all.
+        int tooFine = 0, cases = 0;
+        for (double tilt : { 0.0, 30.0, 60.0, 75.0 }) {
+            for (double zoom : { 14.3, 16.0, 17.8 }) {
+                Camera camera = orbitCamera(zoom, 20.0, tilt, 36.87, 1000, 1000, 1.0);
+                Scene scene = classicScene(camera, zoom, Rule::Distance);
+                double scale = 1, relaxedFactor = 0;
+                int finest = 0;
+                for (const Leaf& leaf : cull(camera, scene, std::numeric_limits<std::size_t>::max(), scale, relaxedFactor)) {
+                    finest = std::max(finest, leaf.tile.zoom);
+                }
+                cases++;
+                tooFine += finest > DistanceTileLOD::viewLevel(makeView(camera), camera.z) ? 1 : 0;
+            }
+        }
+        TEST_CHECK(cases == 12 && tooFine == 0, "no classic tile is finer than the view zoom at the ground under the eye");
     }
 }
 
@@ -590,6 +633,7 @@ void testDistanceTileLOD() {
     }
 
     testNodeRule();
+    testTheViewLevelBoundsTheClassicCut();
     testTheLevelIsTheDistances();
     testTopDownIsTheOldCut();
     testTheTileCountOfATiltedMap();

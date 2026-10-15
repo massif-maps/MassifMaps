@@ -72,7 +72,7 @@ namespace massif {
         virtual std::shared_ptr<TileData> loadTile(const MapTile& mapTile);
 
     private:
-        using Directory = std::vector<pmtiles::DirectoryEntry>;
+        typedef std::vector<pmtiles::DirectoryEntry> Directory;
 
         struct CachedLeaf {
             std::shared_ptr<const Directory> directory;
@@ -83,8 +83,6 @@ namespace massif {
         std::vector<uint8_t> readRange(uint64_t offset, uint64_t length) const;
         bool findTileEntry(uint64_t tileId, pmtiles::DirectoryEntry& outEntry);
         std::shared_ptr<const Directory> getLeafDirectory(uint64_t offset, uint32_t length);
-
-        static constexpr std::size_t MAX_CACHED_LEAF_ENTRIES = 1 << 20;
 
         std::string _path;
 #ifdef _WIN32

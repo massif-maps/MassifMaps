@@ -24,6 +24,10 @@
 
 namespace massif {
 
+    namespace {
+        constexpr std::size_t MAX_CACHED_LEAF_ENTRIES = 1 << 20;
+    }
+
     PMTilesTileDataSource::PMTilesTileDataSource(const std::string& path) :
         TileDataSource(),
         _path(path),

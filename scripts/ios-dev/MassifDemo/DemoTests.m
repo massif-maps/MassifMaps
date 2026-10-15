@@ -245,7 +245,7 @@ static MSFLocalVectorDataSource *sResults = nil;
         @"properties": @{ @"class": @"route" },
         @"geometry": @{ @"type": @"LineString", @"coordinates": coordinates } } ] };
     NSData *geoJSONData = [NSJSONSerialization dataWithJSONObject:geoJSON options:0 error:nil];
-    MSFGeoJSONVectorTileDataSource *source = [demo maneuverSource];
+    MSFGeoJSONVectorTileDataSource *source = [demo routeSource];
     int navigationLayer = [source createLayer:@"navigation"];
     [source setLayerGeoJSONString:navigationLayer
                           geoJSON:[[NSString alloc] initWithData:geoJSONData encoding:NSUTF8StringEncoding]];
@@ -263,7 +263,9 @@ static MSFLocalVectorDataSource *sResults = nil;
         if (turn < 35) {
             continue;
         }
-        [demo setManeuverArrow:arrows++ arrow:[builder buildArrowAtIndex:nil points:wgs maneuverIndex:index]];
+        MSFFeatureCollection *arrow = [builder buildArrowAtIndex:nil points:wgs maneuverIndex:index];
+        NSLog(@"MassifDemo: arrow at point %d: before %.1f after %.1f turn %.0f deg, %d features", index, [builder getLengthBefore], [builder getLengthAfter], turn, [arrow getFeatureCount]);
+        [demo setManeuverArrow:arrows++ arrow:arrow];
     }
     NSLog(@"MassifDemo: route %@ drawn, %d arrows", path.lastPathComponent, arrows);
     return arrows;

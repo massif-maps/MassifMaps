@@ -65,6 +65,9 @@ static const DemoFeature LAYER_ORDER[] = {
     MSFTileDataSource *_cachedRaster;
     MSFTileDataSource *_cachedContourTiles;
     MSFGeoJSONVectorTileDataSource *_cachedManeuvers;
+MSFGeoJSONVectorTileDataSource *_cachedRoute;
+MSFLayer *_routeLayer;
+MSFLayer *_maneuversLayer;
     int _maneuverLayerIndex;
     MSFManeuverArrowBuilder *_maneuverBuilder;
     NSMutableDictionary<NSNumber *, MSFFeatureCollection *> *_maneuverArrows;
@@ -211,6 +214,7 @@ static const DemoFeature LAYER_ORDER[] = {
  */
 - (void)rebuildLayers {
     MSFLayerVector *vector = [[MSFLayerVector alloc] init];
+    int added = 0, maneuversIndex = -1;
     for (size_t i = 0; i < sizeof(LAYER_ORDER) / sizeof(LAYER_ORDER[0]); i++) {
         DemoFeature feature = LAYER_ORDER[i];
         if (![self isEnabled:feature]) {
@@ -224,9 +228,16 @@ static const DemoFeature LAYER_ORDER[] = {
             }
             _layers[@(feature)] = layer;
         }
+        if (feature == DemoFeatureManeuvers) {
+            maneuversIndex = added;
+        }
         [vector add:layer];
+        added++;
     }
     [[self.mapView getLayers] setAll:vector];
+    if (_routeLayer && maneuversIndex >= 0) {
+        [[self.mapView getLayers] insert:maneuversIndex layer:_routeLayer];
+    }
     // The sky objects are built with their layer, which happens here, so place them now that they
     // exist.
     [self updateSky];
@@ -551,7 +562,22 @@ static const DemoFeature LAYER_ORDER[] = {
         _seededManeuvers = YES;
         [DemoTests seedManeuverArrows:self];
     }
-    return [[MSFVectorTileLayer alloc] initWithDataSource:source decoder:decoder];
+    if (_cachedRoute) {
+        _routeLayer = [[MSFVectorTileLayer alloc] initWithDataSource:_cachedRoute decoder:decoder];
+    }
+    _maneuversLayer = [[MSFVectorTileLayer alloc] initWithDataSource:source decoder:decoder];
+    return _maneuversLayer;
+}
+
+/** The route's own source when -routeSeparate is on, else the arrows'. */
+- (MSFGeoJSONVectorTileDataSource *)routeSource {
+    if (![DemoConfig boolFor:@"routeSeparate"]) {
+        return [self maneuverSource];
+    }
+    if (!_cachedRoute) {
+        _cachedRoute = [[MSFGeoJSONVectorTileDataSource alloc] initWithMinZoom:0 maxZoom:24];
+    }
+    return _cachedRoute;
 }
 
 - (MSFGeoJSONVectorTileDataSource *)maneuverSource {

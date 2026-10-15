@@ -434,11 +434,11 @@ namespace massif {
         return 0;
     }
 
-    void TileRenderer::setTerrainLayerOrdinalBase(int base) {
+    void TileRenderer::setTerrainLayerOrdinalBase(int base, int top) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            tileRenderer->setTerrainLayerOrdinalBase(base);
+            tileRenderer->setTerrainLayerOrdinalBase(base, top);
         }
     }
 

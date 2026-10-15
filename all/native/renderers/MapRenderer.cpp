@@ -3207,12 +3207,16 @@ namespace massif {
                         }
 
                         // Dense ordinals per layer from 1 (0 is the ground): the total span sets the leak threshold (05-depth-model.md).
+                        int ordinalTop = 0;
+                        for (const std::shared_ptr<TileLayer>& tileLayer : groundLayers) {
+                            ordinalTop += std::max(1, tileLayer->getStyleLayerCount());
+                        }
                         int ordinalBase = 1;
                         for (const std::shared_ptr<TileLayer>& tileLayer : groundLayers) {
                             tileLayer->setExternalDrapeTarget(false);
                             tileLayer->setExternalDrapeTiles(std::vector<vt::TileId>());
                             tileLayer->setTerrainGroundTiles(groundTileIds, groundProxyDepths);
-                            tileLayer->setTerrainLayerOrdinalBase(ordinalBase);
+                            tileLayer->setTerrainLayerOrdinalBase(ordinalBase, ordinalTop);
                             ordinalBase += std::max(1, tileLayer->getStyleLayerCount());
                         }
                         // Before the ground draws; with no bake, content-driven refresh rides on the cover changing.

@@ -1304,8 +1304,8 @@ namespace massif {
         _tileRenderer->setTerrainSkirtDrops(drops);
     }
 
-    void TileLayer::setTerrainLayerOrdinalBase(int base) {
-        _tileRenderer->setTerrainLayerOrdinalBase(base);
+    void TileLayer::setTerrainLayerOrdinalBase(int base, int top) {
+        _tileRenderer->setTerrainLayerOrdinalBase(base, top);
     }
 
     int TileLayer::getStyleLayerCount() const {

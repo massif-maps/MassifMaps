@@ -177,6 +177,12 @@ These details are what make it usable rather than a triangle stuck on the end:
   test is maplibre's for symbol anchors (`symbol_layout.ts`): the last vertex must lie in the
   half-open tile `[0, 1)`, so an end on a shared edge is drawn by exactly one tile. Without it a
   maneuver arrow crossing z18 tile edges grew a head at every crossing.
+- **A tile edge clips the head only under stencil masks.** Under the shared ground the line shader
+  discards by the CENTRE-line position (`lineFsh`, `vTileUnit`), and every vertex of a head sits on
+  its last vertex, so a head owned by a tile is never cut. In the stencil-mask path (no terrain) the
+  owner's mask cuts a head that overhangs the tile's edge, and the neighbour has none to complete it.
+  A neighbour whose buffer holds the end draws the shaft without the pull-back and with a cap.
+
 - **The head hangs on its incenter**, and the line is pulled back to the head's base by the same
   amount. A homothety about the incenter moves every edge of a triangle by the same distance, so
   two heads about a common incenter stay a constant distance apart everywhere. Anchoring the tip

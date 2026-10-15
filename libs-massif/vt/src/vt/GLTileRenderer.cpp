@@ -12,6 +12,7 @@
 #include "BitmapManager.h"
 #include "RenderTileBlend.h"
 #include "GroundCover.h"
+#include "GhostDepth.h"
 #include "LabelCuller.h"
 #include "LabelSpot.h"
 #include "RenderStats.h"
@@ -181,10 +182,11 @@ namespace massif::vt {
         }
     }
 
-    void GLTileRenderer::setTerrainLayerOrdinalBase(int base) {
+    void GLTileRenderer::setTerrainLayerOrdinalBase(int base, int top) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _terrainLayerOrdinalBase = base;
+        _terrainLayerOrdinalTop = top;
     }
 
     int GLTileRenderer::getStyleLayerCount() const {
@@ -3888,8 +3890,8 @@ namespace massif::vt {
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
-        // GREATER passes only where something nearer than the line wrote depth; the offset is the 2D
-        // decal's plus a margin, so the line never passes against its own 2D depth. See 01-frame.md.
+        // GREATER passes only where something nearer than the line wrote depth. The ghost is drawn at the
+        // stack's top ordinal, so no later layer's decal passes it. See 01-frame.md.
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GREATER);
         glDepthMask(GL_FALSE);
@@ -3915,7 +3917,7 @@ namespace massif::vt {
                     if (_terrainSharedGround) {
                         _terrainDrawDepthBias = _terrainDepthBias;
                         _terrainDrawDepthClipUnits = 0.0f;
-                        _terrainDrawLayerOffset = proxyDepth(renderLayer) - layerOrdinal;
+                        _terrainDrawLayerOffset = ghostLayerOffset(proxyDepth(renderLayer), layerOrdinal, _terrainLayerOrdinalTop);
                     } else if (terrainVTF) {
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         _terrainDrawDepthBias = (_terrainRegularGrid ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;

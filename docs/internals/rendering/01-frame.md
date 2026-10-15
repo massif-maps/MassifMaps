@@ -127,7 +127,9 @@ the 3D pass and overwrite it. A rule that sets `line-occlusion-opacity` (CartoCS
 3. `TileRenderer::onDrawFrame3D` calls `GLTileRenderer::renderOccludedGeometry()` right after the
    layer's extrusions. It draws only the flagged `LINE` geometries again with the state the 2D loop
    used, `glDepthFunc(GL_GREATER)`, depth writes off, and a polygon offset one slope unit and four
-   depth units further forward than the decal's `(-2, -8)`, with alpha times the property.
+   depth units further forward than the decal's `(-2, -8)`, with alpha times the property. Under
+   the shared ground its ordinal is the stack's TOP one, whatever the layer's own (`ghostLayerOffset`,
+   `GhostDepth.h`; `MapRenderer` publishes the top beside each layer's base).
 
 `GL_GREATER` passes where the depth buffer holds something *nearer than the line*: an extrusion
 written by this or an earlier layer's 3D pass, or a ridge. Where the line is visible, the buffer
@@ -137,10 +139,17 @@ later layers are unaffected.
 
 What decides how much is ghosted is the same ordinal model as the hiding
 ([05-depth-model.md](05-depth-model.md)): the ghost covers exactly the pixels where an extrusion
-beat the line's pulled-forward depth, and a later layer's line nearer than this one (a maneuver arrow
-on the route) passes the test too. Skipped: a layer with a `comp-op` (overlay buffer), an extrusion
-layer whose buildings went to the overlay (layer opacity below 1: not in the main depth buffer), a
-span. Not honoured: the 2D pass's tile stencil masks and the drape coverage mask.
+beat a line of the topmost layer. Every 2D pass has run before the first 3D pass, so the depth buffer
+holds every layer's decals, each pulled forward by its ordinal. A ghost at its own layer's ordinal
+passed against all LATER ones (the route's ghost over a maneuver arrow, an arrow's casing ghost over
+its own fill) and tinted the visible line with its translucent colour; at the top ordinal nothing in
+the stack is nearer, so only an extrusion or a ridge can pass it. The price is the pull of the
+ordinals above the layer, a few clip-space steps for the navigation layers, which sit at the top.
+Skipped: a layer with a `comp-op` (overlay buffer), an extrusion layer whose buildings went to the
+overlay (layer opacity below 1: not in the main depth buffer), a span. Not honoured: the 2D pass's
+tile stencil masks and the drape coverage mask. Not used: a stencil bit set by the
+extrusion pass. The 2D pass's tile masks and the draw-once groups own the stencil bits, and a ridge
+would need the ground to set it too.
 
 ## What causes a frame
 

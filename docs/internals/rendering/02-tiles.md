@@ -418,6 +418,15 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
   redrawing on each arrival. Holding them at refresh alone was not enough either: on the iOS
   simulator several arrivals landed between two culls and pushed each other out first
   ([performance log](../performance-log.md#34-shadow-casters-and-the-label-band-refetched-forever-2026-09-30)).
+- **A raster layer's visible cache grows to the set in use.** `RasterTileLayer` used to cap it at
+  128 MB, "never meant to fill" - but a hillshade layer on a 512 px DEM (mapterhorn) holds a 1 MB
+  normal map per tile, and ~150 tiles at z18 filled it: each arrival evicted a tile in use, the next
+  cull fetched that one again, ~130 persistent-cache loads and an RTT drape re-bake per second on a
+  still camera, tiles blinking between crisp and parent stand-in. `putVisibleTile`
+  (`layers/TileCacheHold.h`) now grows the capacity to take an arrival; the hold bounds the content.
+  Logged as `RasterTileLayer: visible cache A -> B MB`. The layer only has tiles when the terrain
+  paint is not active, i.e. when the terrain's DEM source is not the layer's own
+  (`HillshadeRasterTileLayer::isTerrainPaintActive`).
 - **The preloading cache follows the screen** - maplibre's `TileManager.updateCacheSize`: five
   viewports of tiles (`(ceil(w / tile) + 1) x (ceil(h / tile) + 1) x 5`, the tile shrunk by the
   layer's zoom bias) at the average size of the tiles in view, never under the old 10 MB, resized

@@ -176,6 +176,29 @@ namespace {
         TEST_CHECK(withTheViewportRule == 0, "with the viewport rule, back to the first view nothing is fetched");
     }
 
+    void testAnArrivalNeverEvictsATileInUse() {
+        // Hillshade normal maps of a 512 px DEM are 1 MB each: 150 of them in use outgrew the raster layer's 128 MB.
+        const std::size_t tileKB = 1024, tiles = 150;
+        Cache fixed(128 * 1024), growing(128 * 1024);
+        int refetchedWithFixed = 0, refetchedWithGrowth = 0, grownTimes = 0;
+        for (int cull = 0; cull < 3; cull++) {
+            for (std::size_t tile = 0; tile < tiles; tile++) {
+                if (!fixed.exists(tile)) {
+                    refetchedWithFixed++;
+                    fixed.put(tile, 0, tileKB);
+                }
+                if (!growing.exists(tile)) {
+                    refetchedWithGrowth++;
+                    grownTimes += putVisibleTile(growing, tile, 0, tileKB) ? 1 : 0;
+                }
+            }
+        }
+        TEST_CHECK(refetchedWithFixed > static_cast<int>(tiles), "a fixed cache smaller than the set in use fetches tiles again at every cull");
+        TEST_CHECK(refetchedWithGrowth == static_cast<int>(tiles), "a growing cache fetches each tile once");
+        TEST_CHECK(grownTimes > 0 && grownTimes < 10, "it grows in steps, not once per arrival");
+        TEST_CHECK(growing.size() == tiles * tileKB, "and holds exactly what is in use");
+    }
+
     void testAUsedPreloadedTileIsPromoted() {
         // A tile preloaded earlier comes into use: it moves, it is not duplicated or refetched.
         Cache visibleCache(VISIBLE_CAPACITY), preloadingCache(PRELOADING_CAPACITY);
@@ -195,6 +218,7 @@ void testTileCacheHold() {
     testUsedTilesAreFetchedOnce();
     testUnusedTilesReturnToTheBoundedCache();
     testAUsedPreloadedTileIsPromoted();
+    testAnArrivalNeverEvictsATileInUse();
     testTheViewportRuleIsMaplibres();
     testALookAroundComesBackToItsTiles();
 }

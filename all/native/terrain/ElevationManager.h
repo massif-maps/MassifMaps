@@ -316,6 +316,8 @@ namespace massif {
         const unsigned long long _instanceId;
 
         mutable std::atomic<unsigned int> _dataVersion; // moves with _version whenever tile data changes
+        mutable std::atomic<long long> _bumpWindowStartMs{0};
+        mutable std::atomic<unsigned int> _bumpWindowFirstVersion{0};
 
         std::atomic<float> _exaggeration;
         std::atomic<bool> _seamlessTileEdges;

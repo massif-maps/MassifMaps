@@ -314,6 +314,14 @@ Rayleigh and Mie scattering, so the sky reddens at a low sun on its own. Set
 style properties `sky-type`, `sky-atmosphere-sun-intensity`, `sky-atmosphere-color`,
 `sky-atmosphere-halo-color`, `sky-atmosphere-luminance`.
 
+**`SkyOptions.groundColor` is unset by default, and that removes the band under the sky.** It used to
+be a fixed light blue, shown where a ray below the horizon meets no map (past the view distance, a
+tile not loaded yet) - a flat band between a scattered or fogged horizon and the far hills. Unset,
+the gap now continues the sky's own horizon colour. Apps that worked around the band by setting
+`groundColor` to the fog colour (or by clamping the ray in a custom sky shader) can delete that; one
+that still sets it keeps exactly what it set. Details in
+[Sky, Sun & Shadows](/docs/features/sky-sun-shadows#no-band-under-the-sky).
+
 **Every custom shader has to be rewritten.** `FogOptions.shaderSource` now replaces three entry
 points instead of one, and both `SkyOptions.shaderSource` and
 `TerrainOptions.surfaceShaderSource` changed with it:

@@ -194,13 +194,16 @@ namespace massif {
 
         /**
          * Returns the ground color.
-         * @return The color drawn below the horizon. The default is the horizon color.
+         * @return The color drawn below the horizon. Until setGroundColor is called this is the
+         *         horizon color, though the built-in shaders then draw the sky's own horizon there.
          */
         Color getGroundColor() const;
         /**
-         * Sets the color drawn below the horizon; it only shows between the far edge of the drawn map
-         * and the mathematical horizon, so keep it close to the horizon color (the default).
-         * Setting it transparent leaves the clear color there.
+         * Sets the color drawn below the mathematical horizon, where a ray meets no drawn map (past
+         * the view distance, or a tile not loaded yet). Setting it makes it explicit: it is then used
+         * as is, and it should match the fog color or the horizon haze or it shows as a band under
+         * the sky. Left unset, the built-in shaders carry the sky's horizon color down instead, which
+         * always matches. Setting it transparent leaves the clear color there.
          * @param color The new ground color.
          */
         void setGroundColor(const Color& color);
@@ -254,6 +257,11 @@ namespace massif {
         void unregisterOnChangeListener(const std::shared_ptr<OnChangeListener>& listener);
 
     private:
+        friend class SkyRenderer;
+
+        // True until setGroundColor is called; the renderer then carries the horizon down.
+        bool isGroundColorAutomatic() const;
+
         void notifyOptionChanged(const std::string& optionName);
 
         std::atomic<bool> _enabled;
@@ -266,6 +274,7 @@ namespace massif {
         std::atomic<int> _skyColorARGB;
         std::atomic<int> _horizonColorARGB;
         std::atomic<int> _groundColorARGB;
+        std::atomic<bool> _groundColorExplicit;
         std::atomic<float> _horizonBlend;
         std::atomic<bool> _sunDiscEnabled;
 

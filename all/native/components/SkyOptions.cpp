@@ -15,6 +15,7 @@ namespace massif {
         _skyColorARGB(Color(58, 116, 196, 255).getARGB()),
         _horizonColorARGB(Color(171, 206, 236, 255).getARGB()),
         _groundColorARGB(Color(171, 206, 236, 255).getARGB()),
+        _groundColorExplicit(false),
         _horizonBlend(12.0f),
         _sunDiscEnabled(true),
         _shaderSource(),
@@ -120,11 +121,19 @@ namespace massif {
     }
 
     Color SkyOptions::getGroundColor() const {
-        return Color(_groundColorARGB.load());
+        return _groundColorExplicit.load() ? Color(_groundColorARGB.load()) : getHorizonColor();
+    }
+
+    bool SkyOptions::isGroundColorAutomatic() const {
+        return !_groundColorExplicit.load();
     }
 
     void SkyOptions::setGroundColor(const Color& color) {
-        if (_groundColorARGB.exchange(color.getARGB()) != color.getARGB()) {
+        // Compared with what getGroundColor reports, so the first call notifies even when it is the horizon color.
+        bool changed = getGroundColor().getARGB() != color.getARGB() || !_groundColorExplicit.load();
+        _groundColorExplicit = true;
+        _groundColorARGB = color.getARGB();
+        if (changed) {
             notifyOptionChanged("GroundColor");
         }
     }

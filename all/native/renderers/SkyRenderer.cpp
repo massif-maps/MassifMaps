@@ -39,6 +39,7 @@ namespace massif {
         _u_skyColor(-1),
         _u_horizonColor(-1),
         _u_groundColor(-1),
+        _u_groundAuto(-1),
         _u_horizonBlend(-1),
         _u_sunIntensity(-1),
         _u_sunDisc(-1),
@@ -138,6 +139,7 @@ namespace massif {
         _u_skyColor = glGetUniformLocation(progId, "u_skyColor");
         _u_horizonColor = glGetUniformLocation(progId, "u_horizonColor");
         _u_groundColor = glGetUniformLocation(progId, "u_groundColor");
+        _u_groundAuto = glGetUniformLocation(progId, "u_groundAuto");
         _u_horizonBlend = glGetUniformLocation(progId, "u_horizonBlend");
         _u_sunIntensity = glGetUniformLocation(progId, "u_sunIntensity");
         _u_sunDisc = glGetUniformLocation(progId, "u_sunDisc");
@@ -236,6 +238,9 @@ namespace massif {
         if (_u_groundColor >= 0) {
             glUniform4f(_u_groundColor, groundColor.getR() / 255.0f, groundColor.getG() / 255.0f, groundColor.getB() / 255.0f, groundColor.getA() / 255.0f);
         }
+        if (_u_groundAuto >= 0) {
+            glUniform1f(_u_groundAuto, skyOptions->isGroundColorAutomatic() ? 1.0f : 0.0f);
+        }
         if (_u_horizonBlend >= 0) {
             glUniform1f(_u_horizonBlend, static_cast<float>(skyOptions->getHorizonBlend() * Const::DEG_TO_RAD));
         }
@@ -327,6 +332,7 @@ namespace massif {
         uniform vec4 u_skyColor;
         uniform vec4 u_horizonColor;
         uniform vec4 u_groundColor;
+        uniform float u_groundAuto;     // 1 until SkyOptions::setGroundColor is called
         uniform float u_horizonBlend;
         uniform float u_sunIntensity;
         uniform float u_sunDisc;
@@ -375,9 +381,12 @@ namespace massif {
             return star * smoothstep(0.0, 0.10, rayDir.z) * u_starIntensity * 1.7;
         }
 
+        // Set by main() for a ray below the horizon that it tipped up to the horizon (see main).
+        float skyBelowHorizon = 0.0;
+
         // The disc and the glow around it, shared by both sky types.
         vec4 sunDisc(vec4 color, vec3 rayDir) {
-            if (u_sunDisc <= 0.5) {
+            if (u_sunDisc <= 0.5 || skyBelowHorizon > 0.5) {
                 return color;
             }
             // Chord length between the two unit vectors, which is the angle in radians to within
@@ -515,7 +524,15 @@ namespace massif {
     const std::string SkyRenderer::SKY_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
             vec3 rayDir = normalize(u_localFrame * v_rayDir);
-            vec4 color = clamp(skyColor(rayDir), 0.0, 1.0);
+            // Below the horizon there is no sky, only the gap the map leaves (past the view distance, or
+            // a tile not loaded yet). Unless the ground color was set, that ray sees the sky just above
+            // the horizon: any other colour there is a band under the sky.
+            vec3 skyRay = rayDir;
+            if (rayDir.z < 0.0 && u_groundAuto > 0.5) {
+                skyBelowHorizon = 1.0;
+                skyRay = normalize(vec3(rayDir.xy, 0.001));
+            }
+            vec4 color = clamp(skyColor(skyRay), 0.0, 1.0);
             // The sky is at infinity, so what varies over it is the ANGULAR haze alone - the same
             // term the ground takes, which is what makes the two meet without a seam.
             vec4 premul = skyFog(vec4(color.rgb * color.a, color.a), rayDir);

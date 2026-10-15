@@ -667,11 +667,61 @@
     return crc ^ 0xffffffffu;
 }
 
+/**
+ * A CartoCSS project folder read straight from disk (MapModule.ts' `{ type: 'dir' }` assets), with
+ * the app's fallback icon fonts and style parameters. '-bld3d true' sets the style's `buildings`
+ * parameter to 2 (extrusions) unless -styleParams names one.
+ */
++ (MSFMBVectorTileDecoder *)createDirDecoder {
+    NSString *dir = [DemoConfig stringFor:@"styleDir"];
+    if (!dir.length) {
+        NSLog(@"MassifDemo: -style dir needs -styleDir");
+        return nil;
+    }
+    MSFDirAssetPackage *package = [[MSFDirAssetPackage alloc] initWithDirPath:dir];
+    MSFMBVectorTileDecoder *decoder = [[MSFMBVectorTileDecoder alloc] initWithCompiledStyleSet:
+        [[MSFCompiledStyleSet alloc] initWithAssetPackage:package styleName:[DemoConfig stringFor:@"styleName"]]];
+
+    for (NSString *path in [[DemoConfig stringFor:@"fontFiles"] componentsSeparatedByString:@":"]) {
+        NSData *bytes = path.length ? [NSData dataWithContentsOfFile:path] : nil;
+        if (bytes) {
+            [decoder addFallbackFont:[[MSFBinaryData alloc] initWithDataPtr:(unsigned char *)bytes.bytes
+                                                                       size:(unsigned int)bytes.length]];
+        } else if (path.length) {
+            NSLog(@"MassifDemo: font %@ not readable", path);
+        }
+    }
+
+    NSMutableDictionary<NSString *, NSString *> *params = [NSMutableDictionary dictionary];
+    if ([DemoConfig boolFor:@"bld3d"]) {
+        params[@"buildings"] = @"2";
+    }
+    for (NSString *pair in [[DemoConfig stringFor:@"styleParams"] componentsSeparatedByString:@","]) {
+        NSRange equals = [pair rangeOfString:@"="];
+        if (equals.location != NSNotFound) {
+            params[[pair substringToIndex:equals.location]] = [pair substringFromIndex:equals.location + 1];
+        }
+    }
+    for (NSString *name in params) {
+        BOOL accepted = [decoder setStyleParameter:name value:params[name]];
+        NSLog(@"MassifDemo: style parameter %@=%@ %@", name, params[name], accepted ? @"set" : @"REFUSED");
+    }
+    return decoder;
+}
+
 + (MSFMBVectorTileDecoder *)createDecoder {
     NSString *source = [DemoConfig stringFor:@"style"];
 
     if ([source isEqualToString:@"project"]) {
         MSFMBVectorTileDecoder *decoder = [self createProjectDecoder];
+        if (decoder) {
+            return decoder;
+        }
+        NSLog(@"MassifDemo: falling back to the inline style");
+    }
+
+    if ([source isEqualToString:@"dir"]) {
+        MSFMBVectorTileDecoder *decoder = [self createDirDecoder];
         if (decoder) {
             return decoder;
         }

@@ -222,6 +222,54 @@ static MSFLocalVectorDataSource *sResults = nil;
 }
 
 // =================================================================================================
+// ROUTE FROM A FILE
+// =================================================================================================
+
++ (int)drawRouteFile:(NSString *)path demo:(DemoMap *)demo {
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    NSDictionary *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+    NSArray<NSArray<NSNumber *> *> *points = json[@"points"];
+    if (points.count < 3) {
+        NSLog(@"MassifDemo: -routeFile %@ unreadable", path);
+        return 0;
+    }
+    MSFMapPosVector *wgs = [[MSFMapPosVector alloc] init];
+    NSMutableArray<NSArray<NSNumber *> *> *coordinates = [NSMutableArray array];
+    for (NSArray<NSNumber *> *point in points) {
+        [wgs add:[[MSFMapPos alloc] initWithX:point[0].doubleValue y:point[1].doubleValue]];
+        [coordinates addObject:@[point[0], point[1]]];
+    }
+    // the navigation layer of the app's inner style: class=route
+    NSDictionary *geoJSON = @{ @"type": @"FeatureCollection", @"features": @[ @{
+        @"type": @"Feature",
+        @"properties": @{ @"class": @"route" },
+        @"geometry": @{ @"type": @"LineString", @"coordinates": coordinates } } ] };
+    NSData *geoJSONData = [NSJSONSerialization dataWithJSONObject:geoJSON options:0 error:nil];
+    MSFGeoJSONVectorTileDataSource *source = [demo maneuverSource];
+    int navigationLayer = [source createLayer:@"navigation"];
+    [source setLayerGeoJSONString:navigationLayer
+                          geoJSON:[[NSString alloc] initWithData:geoJSONData encoding:NSUTF8StringEncoding]];
+
+    MSFManeuverArrowBuilder *builder = [self builderFor:demo
+                                                before:[DemoConfig floatFor:@"maneuverBefore"]
+                                                 after:[DemoConfig floatFor:@"maneuverAfter"]];
+    int arrows = 0;
+    for (int index = 1; index + 1 < (int)points.count; index++) {
+        double before = atan2(points[index][1].doubleValue - points[index - 1][1].doubleValue,
+                              (points[index][0].doubleValue - points[index - 1][0].doubleValue) * cos(points[index][1].doubleValue * M_PI / 180));
+        double after = atan2(points[index + 1][1].doubleValue - points[index][1].doubleValue,
+                             (points[index + 1][0].doubleValue - points[index][0].doubleValue) * cos(points[index][1].doubleValue * M_PI / 180));
+        double turn = fabs(fmod((after - before) * 180 / M_PI + 540, 360) - 180);
+        if (turn < 35) {
+            continue;
+        }
+        [demo setManeuverArrow:arrows++ arrow:[builder buildArrowAtIndex:nil points:wgs maneuverIndex:index]];
+    }
+    NSLog(@"MassifDemo: route %@ drawn, %d arrows", path.lastPathComponent, arrows);
+    return arrows;
+}
+
+// =================================================================================================
 // ROUTING
 // =================================================================================================
 

@@ -2,6 +2,7 @@
 #import "DemoViewController.h"
 #import "DemoLive.h"
 #import "DemoCfg.h"
+#import "DemoCapture.h"
 #import "Examples/MSFGalleryViewController.h"
 #import "Examples/MSFExampleCatalogue.h"
 #import "Examples/MSFExampleViewController.h"
@@ -42,6 +43,16 @@
 
     self.window.rootViewController = navigation;
     [self.window makeKeyAndVisible];
+#if TARGET_OS_MACCATALYST
+    // '-winW 800 -winH 600' (points): a smaller window renders faster, so a burst can be paced finer.
+    if ([DemoCfg has:@"winW"] && [DemoCfg has:@"winH"]) {
+        CGSize size = CGSizeMake([DemoCfg floatFor:@"winW" defaultValue:800], [DemoCfg floatFor:@"winH" defaultValue:600]);
+        UIWindowScene *scene = self.window.windowScene;
+        scene.sizeRestrictions.minimumSize = size;
+        scene.sizeRestrictions.maximumSize = size;
+    }
+#endif
+    [DemoCapture startIfRequested];
     return YES;
 }
 

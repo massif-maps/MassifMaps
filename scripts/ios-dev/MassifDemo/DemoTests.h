@@ -24,4 +24,7 @@
  */
 + (int)seedManeuverArrows:(DemoMap *)demo;
 
+/** The route of -routeFile as the app draws it (navigation line + an arrow on every turn); @return the arrow count. */
++ (int)drawRouteFile:(NSString *)path demo:(DemoMap *)demo;
+
 @end

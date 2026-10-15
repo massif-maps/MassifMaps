@@ -15,6 +15,13 @@ static NSMutableDictionary *sValues = nil;
         // --- base map ---
         @"base":                @"composite",   // plain | composite
         @"style":               @"inline",      // dir | zip | inline | project
+        // style=dir: a CartoCSS project FOLDER (the app's assembled Massif style, see
+        // scripts/ios-dev/assemble-app-style.sh) and the project inside it, plus style parameters
+        // "name=value,name=value" and fallback font files separated by ':'.
+        @"styleDir":            @"",
+        @"styleName":           @"alpimaps",
+        @"styleParams":         @"",
+        @"fontFiles":           @"",
         @"map":                 @YES,
 
         // --- layers ---
@@ -37,6 +44,10 @@ static NSMutableDictionary *sValues = nil;
         // --- tile sources ---
         @"vectorUrl":           @"https://tiles.akylas.fr/data/france/{z}/{x}/{y}.pbf",
         @"vectorMaxZoom":       @14,
+        // A local .pmtiles read INSTEAD of vectorUrl / demUrl (absolute path), like the Android
+        // demo's vectorFile and the app's PMTilesTileDataSource archives.
+        @"vectorFile":          @"",
+        @"demFile":             @"",
         @"demUrl":              @"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp",
         @"demMaxZoom":          @16,
         @"demEncoding":         @"terrarium",
@@ -59,6 +70,8 @@ static NSMutableDictionary *sValues = nil;
         @"clearance":           @60.0f,
         @"drape":               @YES,
         @"drapeLines":          @NO,
+        @"noDrape":             @"",            // TerrainOptions.noDrapeLayerFilter, e.g. '^contour|maneuver.*'
+
         @"drapeResolution":     @0,
         @"stitch":              @YES,
         @"seamlessEdges":       @YES,
@@ -69,6 +82,11 @@ static NSMutableDictionary *sValues = nil;
         @"coarsening":          @8,
         @"backgroundBitmap":    @NO,
         @"tilePool":            @1,
+        // -1 = the SDK default; the Alpi Maps app sets 3 on its base layer
+        @"layerBlendingSpeed":  @(-1.0f),
+        @"labelBlendingSpeed":  @(-1.0f),
+        @"labelsReverse":       @NO,            // Options.layersLabelsProcessedInReverseOrder (the app sets it)
+        @"baseCacheMB":         @256,           // the app's tileCacheCapacity on Catalyst
         @"lodFactor":           @0.5f,
         @"labelMaxDistance":    @2000.0f,
 
@@ -168,6 +186,12 @@ static NSMutableDictionary *sValues = nil;
         @"routeOpacity":        @1.0f,
         @"routeOpacityMode":    @"geom",      // geom | layer
         @"maneuvers":           @NO,
+        // A route read from a JSON file ({"points": [[lon, lat], ...]}, see make-grenoble-route.py): drawn
+        // as the app's `navigation` route with an arrow on every turn, instead of the gallery. The
+        // arrow style can be a CartoCSS project folder (the app's dev_assets/styles/inner, name voyager).
+        @"routeFile":           @"",
+        @"maneuverStyleDir":    @"",
+        @"maneuverStyleName":   @"voyager",
         @"maneuverBefore":      @30.0f,
         @"maneuverAfter":       @30.0f,
         @"maneuverWidth":       @8.0f,

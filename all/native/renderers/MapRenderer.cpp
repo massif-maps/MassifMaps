@@ -4302,6 +4302,7 @@ namespace massif {
 
         FRAME_PROF_NOW(profLayer3DStart);
         FRAME_PROF_GPU_BEGIN(SECTION_LAYERS3D);
+        vt::GLTileRenderer::clearBuildingStamp();
         for (std::size_t i = 0; i < layers.size(); i++) {
             if (layers[i]->onDrawFrame3D(deltaSeconds, billboardSorter, viewState)) {
                 needRedraw = true;

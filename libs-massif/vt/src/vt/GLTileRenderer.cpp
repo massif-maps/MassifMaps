@@ -3812,6 +3812,7 @@ namespace massif::vt {
             return std::max(static_cast<float>(maxVisibleZoom - renderLayer->targetTileId.zoom), TERRAIN_PROXY_DEPTH_UNITS);
         };
 
+        bool stampBuildingsEnabled = boundStencilBits() >= 8;
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             const std::vector<const RenderTileLayer*>& renderLayers = it->second;
             if (renderLayers.empty()) {
@@ -3853,6 +3854,15 @@ namespace massif::vt {
                 _terrainDrawLayerOffset = 0.0f;
             }
             };
+            // Where an extrusion passes the depth test it hides whatever line is behind it: stamp the pixel, so
+            // renderOccludedGeometry ghosts exactly there whatever the layers' depth pulls. Not into an overlay.
+            bool stampBuildings = stampBuildingsEnabled && !pass.useOverlay;
+            if (stampBuildings) {
+                glEnable(GL_STENCIL_TEST);
+                glStencilFunc(GL_ALWAYS, BUILDING_STENCIL_BIT, BUILDING_STENCIL_BIT);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+                glStencilMask(BUILDING_STENCIL_BIT);
+            }
             if (pass.translucentExtrusions) {
                 glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 drawTileLayers(true);
@@ -3865,9 +3875,21 @@ namespace massif::vt {
             } else {
                 drawTileLayers(false);
             }
+            if (stampBuildings) {
+                glDisable(GL_STENCIL_TEST);
+                glStencilMask(255);
+            }
 
             end3DPass(pass);
         }
+    }
+
+    void GLTileRenderer::clearBuildingStamp() {
+        // Only this bit: the 2D passes' tile masks are done with, but the clear is cheap to keep narrow.
+        glStencilMask(BUILDING_STENCIL_BIT);
+        glClearStencil(0);
+        glClear(GL_STENCIL_BUFFER_BIT);
+        glStencilMask(255);
     }
 
     GLint GLTileRenderer::boundStencilBits() {
@@ -3947,7 +3969,6 @@ namespace massif::vt {
             glClearStencil(0);
             glClear(GL_STENCIL_BUFFER_BIT);
             glStencilMask(0);
-            glStencilFunc(GL_EQUAL, 0, DRAW_ONCE_STENCIL_BIT);
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         } else {
             glDisable(GL_STENCIL_TEST);
@@ -3970,9 +3991,25 @@ namespace massif::vt {
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             layerOrder.push_back(it);
         }
-        for (const auto& [it, drawOncePass] : drawOnceSchedule(layerOrder, [ghostOnce](decltype(renderLayerMap)::iterator) {
-                 return std::string(ghostOnce ? "ghost" : "");
-             })) {
+        // Two sweeps with a stencil buffer. First the pixels an extrusion stamped (BUILDING_STENCIL_BIT): there it
+        // won the depth test against the lines, i.e. it hides them, so the ghost is wanted whatever the depth pulls
+        // of the layers are (the building's own ordinal is lower than the lines' - a low or flattened roof hides a
+        // line yet sits nearer than the ghost's depth by less than the pulls differ). Then the depth test as before,
+        // for what no extrusion stamped: a ridge. The draw-once bit makes each pixel belong to one sweep.
+        const auto schedule = drawOnceSchedule(layerOrder, [ghostOnce](decltype(renderLayerMap)::iterator) {
+            return std::string(ghostOnce ? "ghost" : "");
+        });
+        for (int sweep = 0; sweep < (ghostOnce ? 2 : 1); sweep++) {
+        bool stampSweep = ghostOnce && sweep == 0;
+        if (ghostOnce) {
+            if (stampSweep) {
+                glStencilFunc(GL_EQUAL, BUILDING_STENCIL_BIT, BUILDING_STENCIL_BIT | DRAW_ONCE_STENCIL_BIT);
+            } else {
+                glStencilFunc(GL_EQUAL, 0, DRAW_ONCE_STENCIL_BIT);
+            }
+        }
+        glDepthFunc(stampSweep ? GL_ALWAYS : GL_GREATER);
+        for (const auto& [it, drawOncePass] : schedule) {
             _drawOncePass = drawOncePass;
             int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
             for (const RenderTileLayer* renderLayer : it->second) {
@@ -4007,6 +4044,7 @@ namespace massif::vt {
                 }
                 _terrainDrawLayerOffset = 0.0f;
             }
+        }
         }
         _drawOncePass = DrawOncePass::NONE;
         glDisable(GL_STENCIL_TEST);

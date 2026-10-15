@@ -151,6 +151,19 @@ tile stencil masks and the drape coverage mask. Not used: a stencil bit set by t
 extrusion pass. The 2D pass's tile masks and the draw-once groups own the stencil bits, and a ridge
 would need the ground to set it too.
 
+**Where it is wanted: the extrusion's stamp.** The ghost's depth is the stack's TOP ordinal, while the
+building was drawn at its own, lower one. Each ordinal is a flat 0.02 clip units, ~0.8 m of eye depth, so
+the depth test only passes where the building is nearer than the line by the difference of the two pulls
+(several metres for a navigation layer over a base map) while the building already HIDES the line where
+it is nearer than the line's own pull. In that gap the line is gone with no ghost, and the gap is
+crossed by height / cos(angle off the vertical): a style that flattens buildings near the top-down view
+(`building-height-view-scale`) shows the ghost at some tilts and not at others. So an inline extrusion
+now stamps stencil bit `0x40` wherever it passes the depth test (`renderGeometry3D`; it passed against
+every decal, so it hides whatever line is there), `MapRenderer` clears the bit before the first layer's
+3D pass (`clearBuildingStamp`), and the ghost pass sweeps twice: first the stamped pixels with the depth
+test off, then the depth test as before for what no extrusion stamped (a ridge). The draw-once bit makes
+a pixel belong to one sweep. An extrusion drawn into an overlay (translucent layer) does not stamp.
+
 **One blend per pixel.** The ghosts are translucent, so drawing them in style order let each one
 show through the next: a maneuver arrow's casing ghost (blue) under its fill ghost (white) tinted the
 white inner blue, the head's casing the head's, and a round join or a tile edge blended twice. The

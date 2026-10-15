@@ -390,6 +390,8 @@ namespace massif::vt {
         void renderGeometry(bool geom2D, bool geom3D, bool inline3D = false, float layerOpacity = 1.0f);
         // The second draw of every line carrying line-occlusion-opacity, once the extrusions have written depth.
         void renderOccludedGeometry();
+        // Once per frame, before the first layer's 3D pass: forgets which pixels an extrusion covers (the ghost pass's stamp).
+        static void clearBuildingStamp();
         void renderLabels(bool labels2D, bool labels3D, float layerOpacity = 1.0f);
         bool endFrame();
 
@@ -833,6 +835,7 @@ namespace massif::vt {
         float _terrainDrawClearance = 0.0f;      // per-draw METRE-constant clearance in world units (applyDepthBias); non-zero only for content that chords over the ground
         DrawOncePass _drawOncePass = DrawOncePass::NONE; // the draw-once pass the 2D layer being drawn is in
         static constexpr GLuint DRAW_ONCE_STENCIL_BIT = 0x80; // tile mask values stay below it
+        static constexpr GLuint BUILDING_STENCIL_BIT = 0x40; // 3D pass only: an extrusion won the depth test here (the ghost pass reads it)
         int _terrainLayerOrdinalBase = 0;        // first style-layer ordinal of this renderer in the stack
         int _terrainLayerOrdinalTop = 0;         // last ordinal of the whole stack
         std::set<int> _terrainStyleLayerIndices; // every style layer index this renderer has drawn - the stable order list

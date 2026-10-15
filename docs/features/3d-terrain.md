@@ -249,6 +249,8 @@ alpha times the property.
   buildings' layer (a navigation layer over the base map). The ghost is tested against the depth
   buffer at the end of that layer's 3D pass, which holds the buildings of every layer below it and
   its own.
+- **At every tilt.** The ghost shows wherever a building actually hides the line, whatever the camera
+  tilt or the building's height (a flattened roof included): the building stamps the pixels it wins.
 - **Ridges ghost it too.** The test is "something nearer wrote depth here", so a line going behind
   a ridge shows faintly through it, exactly as through a building.
 - **One faint colour per pixel.** The ghosts of a layer are drawn as one group, topmost style layer

@@ -27,18 +27,33 @@ CullWorker (per layer, background)
 
 ## Which tiles are visible (the LOD rule)
 
-`TileLayer::calculateVisibleTilesRecursive` walks the quadtree from the root and subdivides while
-the tile's **projected screen area** is at least that of a 2x2 block of nominal tiles - tangram's
-rule (`TileManager::updateTileSets` + `View::getTileScreenArea`), ported whole:
+`TileLayer::calculateVisibleTilesRecursive` walks the quadtree from the root, and on a **plane a tile
+splits while its edge, seen from its nearest point, spans more than `2 * tileSize * TileLODFactor`
+pixels** (`DistanceTileLOD::nodeCritical`, `focal * edge / distance`): the level of a tile is a
+function of its **distance from the eye**, so it does not change when the camera looks around, and
+falls one level per doubling of the distance. Every planar layer, vector or raster, in every mode
+uses it - [the zoom follows the distance](#the-zoom-follows-the-distance).
 
 ```cpp
-// four tile corners at surface level -> clip space -> screen space, shoelace area
-bool subDivide = screenArea >= _lodMaxTileArea;   // (2 * tileSizePixels * lodFactor)^2, x 4^-zoomLevelBias
+// nearest point of the tile's box (DEM range included) to the eye, edge in world units
+bool split = tileEdge * focalPixels / (nearestDistance * maxEdgePixels) > 1;   // maxEdge = 2 * tileSizePixels * lodFactor
 ```
 
-`Options::TileLODFactor` scales it: 1 is their rule verbatim, larger keeps tiles coarser everywhere
-at a tilt - fewer tiles, fewer far labels, less far detail - and 0 turns the area test off, refining
-everything to the camera zoom (the behaviour before this rule).
+`Options::TileLODFactor` scales it: 1 is tangram's rule, larger keeps tiles coarser everywhere at a
+tilt - fewer tiles, fewer far labels, less far detail - and 0 turns the pixel test off, refining
+everything to the camera zoom.
+
+:::note The area rule is the globe's now
+The sections down to "Free roam" describe tangram's **projected screen area** rule
+(`View::getTileScreenArea`: four corners to screen space, shoelace area, split at
+`(2 * tileSizePixels * lodFactor)^2`) with maplibre's two corrections on top. It decided every planar
+tile until the distance rule replaced it, and **a globe still uses it** (`_distanceLod` is planar
+only), with `TileLODMaxZoomLevelsOnScreen` and `TileLODTileCountRatio`, which planar maps now ignore.
+The measurements are kept: they are why the area rule was shaped as it was, and what the distance
+rule trades away. The reason it went is in [the zoom follows the distance](#the-zoom-follows-the-distance):
+a tile's projected area depends on where it lands on the screen and on the incidence angle, so
+turning the camera moved far tiles between levels and, with them, which features exist there.
+:::
 
 :::warning Our default is a level finer than every reference
 `TileLODFactor` defaults to **0.5**, which asks for **one whole zoom level finer than tangram,
@@ -94,8 +109,8 @@ much further. Do not re-add it without also bounding the view distance.
 :::
 
 Three bounds apply on top of all of it: the data source's `getMaxZoom()`, the camera's discrete zoom
-(`viewState.getZoom() + bias + DISCRETE_ZOOM_LEVEL_BIAS`), and, in terrain mode,
-`TerrainOptions::MaxTileZoomOffset`.
+(`viewState.getZoom() + bias + DISCRETE_ZOOM_LEVEL_BIAS`; a free roam camera has none, see below), and,
+in terrain mode, `TerrainOptions::MaxTileZoomOffset`.
 
 In the near field this is the same density as the distance rule it replaced (refinement stops when a
 tile covers between one and two tile sizes on screen, which is what the discrete zoom bound gives
@@ -131,6 +146,9 @@ visible edge sits (foreshortening alone costs 1.0–1.5 levels at 75°–83° of
 ring is one to two levels down). Past it the lift is not partial - the tile styles at exactly its
 own zoom, so the horizon band costs precisely what it did before the lift existed. `0` is the old
 tile-zoom behaviour everywhere.
+
+Under a free roam camera the target is not the camera's: each tile is styled at its own view zoom
+([the zoom follows the distance](#the-zoom-follows-the-distance)).
 
 Two consequences worth knowing:
 
@@ -365,55 +383,124 @@ whatever the app configured, it allows enough coarsening for the covered ground 
 `TERRAIN_COVER_TILE_BUDGET` (256) tiles, and logs when it does. Two settings that each look
 reasonable can be ruinous multiplied together, and an app has no way to see that coming.
 
-### Free roam: the zoom follows the distance
+### The zoom follows the distance
 
-The camera's discrete zoom is the zoom **at the focus**, and a free roam camera (`FreeRoamMode` other
-than `OFF`) is not above its focus: a first person eye on a summit has the focus wherever the view ray
-meets the ground, so the "zoom" is a distance to a point that moves with the look. Looking at the
-horizon it is ~14; looking down it is 20 and more. Everything a raster layer derived from it moved with
-the look: the **cap** (`_targetTileZoom`, no tile finer), the **floor** (zoom minus
-`MaxTileZoomCoarsening`, no tile coarser), the pitch drop of `calculateTileLODRule` (a uniform level
-shed by where the camera points), and the drape cover's own `viewZoomCap`. A pinch or a double-tap
-drag, which changes the zoom value, re-picked the resolution of every tile, near and far.
+A tile's level has to be a function of **how far the tile is from the eye** and of nothing else about
+the view: not the heading, not the pitch, not where on the screen it lands. Otherwise looking around
+from one spot moves far tiles between levels, and with them the features that exist there: a tree
+point only lives in a vector tile decoded from zoom 15, so far trees line a street in one look and
+are gone in the next, though the eye never moved. Three things in the old cut depended on the look:
 
-For a raster layer (`usesDistanceTileZoom()`) in terrain mode under free roam on a plane, `TileLayer`
-therefore uses none of them. A tile **splits while its edge, seen from its nearest point, spans more than
-`2 * tileSize * TileLODFactor` pixels** (`focal * edge / distance`, the focal length from the projection
-matrix; `DistanceTileLOD::criticalScale`), up to the data's max zoom plus `MaxOverzoomLevel`. The level
-therefore falls **one per doubling of the distance** whichever way the camera looks. `TileLODFactor` 0 (test
-off) falls back to 1: there is no camera zoom to refine to. Vector layers keep the camera-zoom rule, as
-their style is evaluated at it, and so does a globe.
+- **The projected area.** A tile's area is its width times its foreshortened depth, and it shrinks
+  with the angle off the camera axis (cos^3, 35 % at the edge of a wide screen) as well as with the
+  incidence on the ground. Turning the camera moved the same tile through the threshold. A flat
+  synthetic sweep (eye fixed, heading every 30 degrees, pitch 90 down to 12 up) had **6 % of the ground
+  points** judged by two looks land on different levels, and 1 % of them across the trees line (z14/z15).
+  Looking along the ground it also falls with the cube of the distance (worked out on a plane, not read
+  off a device frame: eye 300 m up, z17 inside ~1 km, z15 at 1.6 km, z13 at 3.2 km, z11 at 6.4 km), two
+  levels per doubling, a hard arc where the ground steps from crisp to blurry.
+- **The camera's discrete zoom**, the cap (`_targetTileZoom`, no tile finer), the floor (zoom minus
+  `MaxTileZoomCoarsening`) and the pitch drop of `calculateTileLODRule`. Under a free roam camera
+  (`FreeRoamMode` other than `OFF`) the zoom is the distance to a focus that moves with the look: ~14
+  looking at the horizon from a summit, 20 and more looking down.
+- **The style zoom** each vector tile is decoded at (below).
 
-The first version of this rule was the area rule of the screen-area LOD above, and that was the bug the
-panorama showed. A tile's projected AREA is its width times its foreshortened depth; looking along the
-ground the depth shrinks with the square of the distance, so the area falls with its cube and the cut gives
-**two levels per doubling** (worked out on a plane, not read off a device frame: eye 300 m up, z17 inside
-~1 km, z15 at 1.6 km, z13 at 3.2 km, z11 at 6.4 km): a hard arc where the ground steps from crisp to blurry, and a valley floor a few
-kilometres away stretched ten texels per pixel across the screen. The area rule is right for a map seen
-from above and wrong for a first person eye, whose texels are limited by the screen WIDTH of the tile.
+#### The rule
 
-The tile budget does not scale a threshold step by step any more. Every tile records the scale at which it
-stops splitting (`critical`, which only falls down the tree), the walk keeps the whole tree down to the rule
-(scale 1), and `DistanceTileLOD::fitScale` reads the finest scale whose leaves fit the budget off it: the
-count only changes where some tile stops splitting, so the answer lands on one of those, a **pure function of
-the view** (no scale carried from the last cull, so the same view gives the same cut however it was reached,
-and the hysteresis of the half-level ladder that moved every tile at once with the eye's height is gone).
-Measured on a synthetic range (`DistanceTileLODTest`, 2025 eyes: heights, headings, pitch -90..12, fields of
-view, viewports): neighbours differ by one level at most, a nearer tile is never more than a level coarser than
-a farther one, and 50 m of eye height moves the budget scale by under 0.1 level.
+On a plane (every layer, vector or raster, with or without terrain, in every mode) a tile splits while
+`edge * focal / nearestDistance > 2 * tileSizePixels * TileLODFactor`, up to the data's max zoom (plus
+`MaxOverzoomLevel` with terrain). The edge is in world units, the distance runs from the eye to the
+nearest point of the tile's box - DEM range included, so a summit tile is near - and the focal length in
+pixels is the projection's. The level falls **one per doubling of the distance**. The flat top-down map
+keeps its cut: at tilt 90 the nearest point and the projected area measure the same thing, and the
+sweeps in `DistanceTileLODTest` find the two rules within a level (identical in the cases run).
+`TileLODFactor` 0 turns the test off and refines to the cap; under free roam it falls back to 1, as
+there is no camera zoom to refine to.
 
-The budget is the drape cache's: the cover is the visible tiles plus the stand-ins and the generation
-behind it, so the layer asks for 70 % of the cache's entries (`DistanceTileLOD::budget`, from
-`DrapeResolution` and `DrapeCacheSize`; 112 for an automatic resolution). 160 MB of 512 px drapes holds 160
-entries and takes 112 tiles; `TerrainDrapeCache` caps its entries at 256 (the cover's own ceiling), so 320
-MB takes 179. Past 5 levels coarser than the rule (scale 32) the cut stops coarsening.
+What bounds the level on top of it depends on whether the camera has a zoom:
 
-A still camera is re-culled when the DEM data version moved: a tile's box carries its DEM height range, and a
-summit view that culled before its DEM landed (every tile 4800 m below the eye) kept that coarse cut until
-the first touch. The stand-in ancestors (`STAND_IN_ZOOM_DELTA` up) are fetched BEFORE the view in this
-mode, so a not yet loaded tile has a blurry picture instead of a bare one. The cut is reported every 3 s as
-`TileLayer: free roam cut - N visible tiles of BUDGET ... edge scale S (L levels coarser than the rule) ...
-zooms zA:n zB:m`: a scale well over 1 means the budget, not the rule, sets the detail.
+| | cap | floor | style zoom |
+|---|---|---|---|
+| classic map (orbits its focus) | the camera's zoom (`_targetTileZoom`) | zoom minus `MaxTileZoomCoarsening`, terrain only | the camera's target, lifted (above) |
+| free roam | the data's max zoom (+ overzoom with terrain) | none | the tile's own view zoom, below |
+| globe | the camera's zoom | as classic | the camera's target; **the area rule** |
+
+A classic camera orbits its focus, so its zoom is the eye-to-focus distance and does not move when the
+eye turns: the cap and the floor stay a pure function of the eye and the focus. The globe keeps the
+area rule (and maplibre's two numbers): the distance is taken in planar world units, and nothing in
+this section was measured on a sphere.
+
+#### The tile budget
+
+The cut is read off the whole tree, not walked with a threshold. Every tile records the scale at which
+it stops splitting (`critical`, which only falls down the tree), the walk keeps the tree down to the
+rule (scale 1), and `DistanceTileLOD::fitScale` reads the finest scale whose visible leaves fit the
+budget: the count only changes where some tile stops splitting, so the answer lands on one of those.
+At scale 1 - the usual case - the cut is the rule itself and depends on nothing but the eye. Over
+budget every tile coarsens together by `log2(scale)` levels (at most five), which is the one place the
+cut depends on the look, as the count is taken over the visible tiles; the log line
+`TileLayer: distance cut ... edge scale S` appears when that happens.
+
+- **With terrain**, the budget is the drape cache's: the cover is the visible tiles plus the stand-ins
+  and the generation behind it, so a layer asks for 70 % of the cache's entries
+  (`DistanceTileLOD::budget`, from `DrapeResolution` and `DrapeCacheSize`; 112 for an automatic
+  resolution). 160 MB of 512 px drapes holds 160 entries and takes 112 tiles; `TerrainDrapeCache` caps
+  its entries at 256 (the cover's own ceiling), so 320 MB takes 179.
+- **Without**, a constant: `DistanceTileLOD::DEFAULT_BUDGET`, 112. A vector layer's cache (512 MB)
+  never binds, so there is nothing to derive it from; the number is a ceiling, not a measurement.
+
+The one-per-doubling fall is gentler than the area rule's, so a tilted view asks for more tiles than it
+did. Mirrored on a flat plane (`DistanceTileLODTest`, 1000 px screen, TileLODFactor 0.5, z16, the view
+distance of `ViewState::calculateViewDistance`), **not measured on a device**:
+
+| tilt | area rule | distance rule | within 112 |
+|---|---|---|---|
+| 0 | 28 | 28 | 28 |
+| 30 | 32 | 32 | 32 |
+| 45 | 36 | 42 | 42 |
+| 60 | 37 | 74 | 74 |
+| 70 | 42 | 183 | 110 (scale 1.5) |
+| 75 | 39 | 223 | 111 (scale 1.7) |
+
+`TileLODFactor` is the knob: at 0.71 (`MOBILE`) tilt 60 is 51 tiles and tilt 75 133 (before the budget),
+at 1 (`REFERENCE`) 40 and 89.
+
+#### Vector layers: the style zoom of a far tile
+
+A converted MapBox style gates its layers on the VIEW zoom, so a tile is decoded at the zoom the camera
+would be at ([the style zoom is the camera's](#the-style-zoom-is-the-cameras-not-the-tiles), lifted by
+at most `TileStyleZoomLift` over the tile's own). A free roam camera has no such zoom, so a tile is
+styled at **its own view zoom**: the zoom a top-down camera at its nearest distance would be at,
+`log2(zoom0Distance / distance)` plus the zoom offset and bias (`DistanceTileLOD::viewZoom`), floored
+and held between the tile's zoom and the lift (`calculateViewStyleTileZoom`). It is as pure a function
+of the distance as the level is: a far tile keeps the same rules whichever way the eye turns, and a
+near one gets the rules of the near field. The cut records each kept tile's view zoom
+(`_tileViewZoom`), which the decoder and the staleness test read by tile id; a decoded tile goes stale
+when its view zoom leaves its style zoom by more than `TARGET_TILE_ZOOM_HYSTERESIS`. A tile the cut
+does not hold (a stand-in) is styled at its own zoom. The data decides the rest: a z13 tile of a
+source that puts trees from z14 has none, however it is styled, and which tile sits where is what the
+level, above, no longer lets the look decide.
+
+#### What is kept for free roam imagery
+
+For a raster layer in terrain mode under free roam on a plane (`usesDistanceTileZoom()`), the stand-in
+ancestors (`STAND_IN_ZOOM_DELTA` up) are fetched BEFORE the view, so a not yet loaded tile has a blurry
+picture instead of a bare one. Vector layers keep stand-ins at their old priority. A still camera is
+re-culled when the DEM data version moved: a tile's box carries its DEM height range, and a summit
+view that culled before its DEM landed (every tile 4800 m below the eye) kept that coarse cut until the
+first touch. Past 5 levels coarser than the rule (scale 32) the cut stops coarsening. The cut is
+reported every 3 s as `TileLayer: distance cut - N visible tiles of BUDGET ... edge scale S (L levels
+coarser than the rule) ... zooms zA:n zB:m` for that imagery, and for any layer whose budget binds: a
+scale well over 1 means the budget, not the rule, sets the detail.
+
+Not covered by the pure rule, and why:
+
+- **`extendTilesToNearPlane`** (buildings, `castsExtrusionShadows`) still uses `_targetTileZoom` for
+  the strip below the frame; under free roam that is the focus zoom.
+- **The budget scale** (over budget only) is taken over the tiles in the frustum.
+- **The globe**, above.
+- **Seamless panning copies** of the world, which are the same tile at another wrap: the one with the
+  larger view zoom styles it.
 
 ### Tiles below the frame, for buildings
 

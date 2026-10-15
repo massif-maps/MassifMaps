@@ -114,7 +114,7 @@ Details, and the rule that has held for every performance round, in
 
 ```mermaid
 flowchart TD
-  cam["Camera moves"] --> cullw["CullWorker<br/>screen-area LOD → visible tile ids"]
+  cam["Camera moves"] --> cullw["CullWorker<br/>distance LOD → visible tile ids"]
   cullw --> fetch["TileDataSource<br/>HTTP · MBTiles · PMTiles · memory/persistent cache"]
   fetch --> decode["MBVectorTileDecoder<br/>mapnikvt + cartocss → vt::Tile"]
   decode --> tiles[("Tile cache<br/>vt::Tile: geometry + TileLabels")]

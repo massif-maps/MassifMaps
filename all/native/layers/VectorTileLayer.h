@@ -310,7 +310,7 @@ namespace massif {
             int _styleTileZoom;
         };
 
-        bool styleTileZoomCurrent(const TileInfo& tileInfo) const;
+        bool styleTileZoomCurrent(long long tileId, const TileInfo& tileInfo) const;
 
         static const int BACKGROUND_BLOCK_SIZE;
         static const int BACKGROUND_BLOCK_COUNT;

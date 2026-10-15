@@ -1,7 +1,10 @@
-// The free roam raster cut (layers/DistanceTileLOD.h): the scale that fits the tile budget, and the cut it makes over
-// a synthetic mountain range seen from many eyes. NOT covered here: the TileLayer walk itself (it needs Options and a
-// renderer; this one mirrors it on a plane), a device check.
+// The tile cut every planar layer makes (layers/DistanceTileLOD.h): the rule, the scale that fits the tile budget, and
+// the cut it makes over a synthetic mountain range and a flat plane seen from many eyes. The point of it: a tile's level
+// is a function of its distance from the eye, so looking around changes none of them. NOT covered here: the TileLayer
+// walk itself (it needs Options and a renderer; this one mirrors it with a pinhole frustum and calls the same rule), the
+// DEM boxes, a device check.
 
+#include "graphics/ZoomConvention.h"
 #include "layers/DistanceTileLOD.h"
 
 #include "TestCheck.h"
@@ -36,11 +39,23 @@ namespace {
         long long x, y;
     };
 
+    enum class Rule { Distance, Area };
+
+    // What a cull is held to: the ground, the rule, and the levels TileLayer bounds it by.
+    struct Scene {
+        bool flat = false; // the plane z = 0, not the mountain range
+        Rule rule = Rule::Distance;
+        DistanceTileLOD::Limits limits { 0, 0, CAP };
+        double viewDistance = VIEW_DISTANCE;
+        double lodFactor = 1.0; // on the 0.5 default's pixels
+    };
+
     struct Cut {
+        Scene scene;
+        DistanceTileLOD::View view;
         std::vector<DistanceTileLOD::Node> nodes;
         std::vector<Tile> tiles;
         std::vector<double> distances; // from the eye to the tile's nearest point
-        double focal = 0, maxEdge = 0;
     };
 
     struct Leaf {
@@ -52,14 +67,41 @@ namespace {
         result = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
     }
 
-    // What TileLayer::calculateVisibleTilesRecursive does in the free roam branch, on a plane, with a pinhole frustum.
+    // The old rule's split test on the plane: the tile's projected area against a block of nominal tiles. A corner behind
+    // the eye splits, as it did.
+    bool areaSplits(const Camera& camera, const double* basis, double minX, double minY, double edge, double maxEdge) {
+        double tanV = std::tan(camera.fovY * 0.5 * PI / 180.0), tanH = tanV * camera.width / camera.height;
+        double screen[4][2];
+        for (int corner = 0; corner < 4; corner++) {
+            double relative[3] = { minX + ((corner & 1) ? edge : 0.0) - camera.x, minY + ((corner & 2) ? edge : 0.0) - camera.y, -camera.z };
+            double cx, cy, cz;
+            dot3(relative, basis, cx);
+            dot3(relative, basis + 3, cy);
+            dot3(relative, basis + 6, cz);
+            if (!(cz > 0)) {
+                return true;
+            }
+            screen[corner][0] = cx / (cz * tanH) * camera.width * 0.5;
+            screen[corner][1] = cy / (cz * tanV) * camera.height * 0.5;
+        }
+        const int order[4] = { 0, 1, 3, 2 };
+        double area = 0;
+        for (int i = 0; i < 4; i++) {
+            const double* p = screen[order[i]];
+            const double* q = screen[order[(i + 1) % 4]];
+            area += p[0] * q[1] - q[0] * p[1];
+        }
+        return std::abs(area) * 0.5 >= maxEdge * maxEdge;
+    }
+
+    // What TileLayer::calculateVisibleTilesRecursive does on a plane, with a pinhole frustum.
     void visit(const Camera& camera, const double* basis, int zoom, long long x, long long y, double parentCritical, Cut& cut) {
         double edge = ROOT / static_cast<double>(1LL << zoom);
         double minX = (x - (1LL << zoom) / 2.0) * edge, minY = (y - (1LL << zoom) / 2.0) * edge;
         double minZ = 1e9, maxZ = -1e9;
         for (int i = 0; i <= 6; i++) {
             for (int j = 0; j <= 6; j++) {
-                double height = terrainHeight(minX + edge * i / 6.0, minY + edge * j / 6.0);
+                double height = cut.scene.flat ? 0.0 : terrainHeight(minX + edge * i / 6.0, minY + edge * j / 6.0);
                 minZ = std::min(minZ, height);
                 maxZ = std::max(maxZ, height);
             }
@@ -81,7 +123,7 @@ namespace {
             outside[2] = outside[2] && cz - cy / tanV < 0;
             outside[3] = outside[3] && cz + cy / tanV < 0;
             outside[4] = outside[4] && cz < 0;
-            outside[5] = outside[5] && cz > VIEW_DISTANCE;
+            outside[5] = outside[5] && cz > cut.scene.viewDistance;
         }
         for (bool plane : outside) {
             if (plane) {
@@ -90,10 +132,19 @@ namespace {
         }
         double reach[3] = { nearest[0] - camera.x, nearest[1] - camera.y, nearest[2] - camera.z };
         double distance = std::sqrt(reach[0] * reach[0] + reach[1] * reach[1] + reach[2] * reach[2]);
-        if (distance > VIEW_DISTANCE) {
+        if (distance > cut.scene.viewDistance) {
             return;
         }
-        double critical = zoom < CAP ? DistanceTileLOD::criticalScale(edge, distance, cut.focal, cut.maxEdge) : 0.0;
+        double critical;
+        if (cut.scene.rule == Rule::Distance) {
+            critical = DistanceTileLOD::nodeCritical(cut.view, cut.scene.limits, zoom, edge, distance);
+        } else if (zoom < cut.scene.limits.minZoom) {
+            critical = std::numeric_limits<double>::infinity();
+        } else if (zoom >= cut.scene.limits.capZoom) {
+            critical = 0.0;
+        } else {
+            critical = areaSplits(camera, basis, minX, minY, edge, cut.view.maxEdgePixels) ? std::numeric_limits<double>::infinity() : 0.0;
+        }
         cut.nodes.push_back({ critical, parentCritical, 0 });
         cut.tiles.push_back({ zoom, x, y });
         cut.distances.push_back(distance);
@@ -104,19 +155,30 @@ namespace {
         }
     }
 
-    std::vector<Leaf> cull(const Camera& camera, std::size_t budget, double& scale, double& relaxedFactor) {
+    DistanceTileLOD::View makeView(const Camera& camera) {
+        double tanHalf = std::tan(camera.fovY * 0.5 * PI / 180.0);
+        DistanceTileLOD::View view;
+        view.focalPixels = camera.height * 0.5 / tanHalf;
+        view.maxEdgePixels = 2.0 * 256.0 * camera.dpi * 0.5; // TileLODFactor 0.5, the default
+        view.zoom0Distance = ZoomConvention::zoom0Distance(camera.height, ROOT, 256.0, 0.0, tanHalf, camera.dpi);
+        view.zoomShift = 0.001;
+        return view;
+    }
+
+    std::vector<Leaf> cull(const Camera& camera, const Scene& scene, std::size_t budget, double& scale, double& relaxedFactor) {
         double yaw = camera.yaw * PI / 180.0, pitch = camera.pitch * PI / 180.0;
         double right[3] = { std::cos(yaw), -std::sin(yaw), 0.0 };
         double forward[3] = { std::sin(yaw) * std::cos(pitch), std::cos(yaw) * std::cos(pitch), std::sin(pitch) };
         double up[3] = { right[1] * forward[2] - right[2] * forward[1], right[2] * forward[0] - right[0] * forward[2], right[0] * forward[1] - right[1] * forward[0] };
         double basis[9] = { right[0], right[1], right[2], up[0], up[1], up[2], forward[0], forward[1], forward[2] };
         Cut cut;
-        cut.focal = camera.height * 0.5 / std::tan(camera.fovY * 0.5 * PI / 180.0);
-        cut.maxEdge = 2.0 * 256.0 * camera.dpi * 0.5; // TileLODFactor 0.5, the default
+        cut.scene = scene;
+        cut.view = makeView(camera);
+        cut.view.maxEdgePixels *= scene.lodFactor;
         visit(camera, basis, 0, 0, 0, std::numeric_limits<double>::infinity(), cut);
         scale = DistanceTileLOD::fitScale(cut.nodes, budget);
         // Neighbours stay within a level while a tile spans at least this many tiles' worth of distance (see the test).
-        relaxedFactor = cut.focal / (cut.maxEdge * 2.2);
+        relaxedFactor = cut.view.focalPixels / (cut.view.maxEdgePixels * 2.2);
         std::vector<Leaf> leaves;
         for (std::size_t i = 0; i < cut.nodes.size(); i++) {
             if (DistanceTileLOD::isLeaf(cut.nodes[i], scale)) {
@@ -143,10 +205,10 @@ namespace {
         bool balanced = true; // whether the scale is one where neighbours must be within a level
     };
 
-    Quality measure(const Camera& camera, std::size_t budget) {
+    Quality measure(const Camera& camera, const Scene& scene, std::size_t budget) {
         double relaxedFactor = 0;
         Quality quality;
-        std::vector<Leaf> leaves = cull(camera, budget, quality.scale, relaxedFactor);
+        std::vector<Leaf> leaves = cull(camera, scene, budget, quality.scale, relaxedFactor);
         quality.count = leaves.size();
         quality.balanced = quality.scale <= relaxedFactor;
         for (std::size_t i = 0; i < leaves.size(); i++) {
@@ -169,6 +231,234 @@ namespace {
         return quality;
     }
 
+
+    bool covers(const Tile& tile, double x, double y) {
+        double edge = ROOT / static_cast<double>(1LL << tile.zoom);
+        double minX = (tile.x - (1LL << tile.zoom) / 2.0) * edge, minY = (tile.y - (1LL << tile.zoom) / 2.0) * edge;
+        return x >= minX && x < minX + edge && y >= minY && y < minY + edge;
+    }
+
+    // The level of the leaf over a ground point, -1 where the view holds none.
+    int levelAt(const std::vector<Leaf>& leaves, double x, double y) {
+        for (const Leaf& leaf : leaves) {
+            if (covers(leaf.tile, x, y)) {
+                return leaf.tile.zoom;
+            }
+        }
+        return -1;
+    }
+
+    bool overlap(const Tile& a, const Tile& b) {
+        long long unitA = 1LL << (CAP - a.zoom), unitB = 1LL << (CAP - b.zoom);
+        long long ax0 = a.x * unitA, ay0 = a.y * unitA, bx0 = b.x * unitB, by0 = b.y * unitB;
+        return std::min(ax0 + unitA, bx0 + unitB) > std::max(ax0, bx0) && std::min(ay0 + unitA, by0 + unitB) > std::max(ay0, by0);
+    }
+
+    // A camera orbiting its focus on the plane the way a classic map does: `tilt` from straight down, at `zoom`.
+    Camera orbitCamera(double zoom, double heading, double tilt, double fovY, double width, double height, double dpi) {
+        Camera camera { 0, 0, 0, heading, tilt - 90.0, fovY, width, height, dpi };
+        double distance = makeView(camera).zoom0Distance / std::pow(2.0, zoom);
+        double yaw = heading * PI / 180.0, elevation = camera.pitch * PI / 180.0;
+        camera.x = -std::sin(yaw) * std::cos(elevation) * distance;
+        camera.y = -std::cos(yaw) * std::cos(elevation) * distance;
+        camera.z = -std::sin(elevation) * distance;
+        return camera;
+    }
+
+    // What the classic map is held to: the camera's zoom caps the levels and the view distance bounds the walk
+    // (ViewState::calculateViewDistance: twice the orbit over the cosine of the angle to the horizon edge).
+    Scene classicScene(const Camera& camera, double zoom, Rule rule) {
+        Scene scene;
+        scene.flat = true;
+        scene.rule = rule;
+        scene.limits.capZoom = static_cast<int>(zoom + 0.001);
+        double distance = makeView(camera).zoom0Distance / std::pow(2.0, zoom);
+        double toHorizon = (camera.pitch + 90.0 + camera.fovY * 0.5) * PI / 180.0;
+        double reach = std::cos(toHorizon) > 0 ? 2.0 * distance / std::cos(toHorizon) : std::numeric_limits<double>::infinity();
+        scene.viewDistance = std::min(reach, ROOT / std::pow(2.0, zoom) * 127.0);
+        return scene;
+    }
+
+    // The ground points a view is judged at: rings round the eye from 40 m to 40 km, a level apart or so.
+    std::vector<std::pair<double, double>> ringPoints(double eyeX, double eyeY) {
+        std::vector<std::pair<double, double>> points;
+        for (double radius = 40.0; radius < 40000.0; radius *= 1.7) {
+            for (int step = 0; step < 24; step++) {
+                double angle = step * PI / 12.0;
+                points.push_back({ eyeX + radius * std::sin(angle), eyeY + radius * std::cos(angle) });
+            }
+        }
+        return points;
+    }
+
+    struct Looks {
+        int looksSkipped = 0; // looks the budget coarsened, which the rule alone does not describe
+        int compared = 0; // points that two looks of one eye both hold a tile over
+        int flipped = 0; // ...of which the two tiles are of different levels
+        int treesFlipped = 0; // ...or one is a level with trees (15 and finer) and the other is not
+        int withTrees = 0, withoutTrees = 0; // so that the last is not vacuous
+    };
+
+    // One eye, every way it can look: the level over each ground point must not depend on the look.
+    Looks lookAround(const Camera& eye, const Scene& scene, std::size_t budget) {
+        const int TREES_FROM = 15;
+        Looks looks;
+        std::vector<std::pair<double, double>> points = ringPoints(eye.x, eye.y);
+        std::vector<int> first(points.size(), -1);
+        for (double yaw = 0; yaw < 360.0; yaw += 30.0) {
+            for (double pitch : { -90.0, -70.0, -45.0, -25.0, -10.0, 0.0, 12.0 }) {
+                Camera look = eye;
+                look.yaw = yaw;
+                look.pitch = pitch;
+                double scale = 1, relaxedFactor = 0;
+                std::vector<Leaf> leaves = cull(look, scene, budget, scale, relaxedFactor);
+                if (scale > 1.0) {
+                    looks.looksSkipped++;
+                    continue;
+                }
+                for (std::size_t i = 0; i < points.size(); i++) {
+                    int level = levelAt(leaves, points[i].first, points[i].second);
+                    if (level < 0) {
+                        continue;
+                    }
+                    if (first[i] < 0) {
+                        first[i] = level;
+                        (level >= TREES_FROM ? looks.withTrees : looks.withoutTrees)++;
+                        continue;
+                    }
+                    looks.compared++;
+                    looks.flipped += level != first[i] ? 1 : 0;
+                    looks.treesFlipped += (level >= TREES_FROM) != (first[i] >= TREES_FROM) ? 1 : 0;
+                }
+            }
+        }
+        return looks;
+    }
+
+    const double SIZES[][2] = { { 1280, 720 }, { 900, 1800 } };
+
+    void testTheLevelIsTheDistances() {
+        const std::size_t NO_BUDGET = std::numeric_limits<std::size_t>::max();
+        // The eye stays; heading 0-330, pitch 90 degrees down to 12 up, two fields of view, two screens, over the
+        // mountain range and over a plane, free roam (nothing bounds a level but the data's) and under a classic map's cap.
+        Scene mountains, plane, capped;
+        plane.flat = true;
+        capped.flat = true;
+        capped.limits.capZoom = 15;
+        int compared = 0, flipped = 0, treesFlipped = 0, withTrees = 0, withoutTrees = 0, areaCompared = 0, areaFlipped = 0, areaTreesFlipped = 0;
+        int budgetedCompared = 0, budgetedFlipped = 0, budgetedSkipped = 0;
+        for (double above : { 3.0, 80.0, 900.0 }) {
+            for (double fov : { 30.0, 50.0 }) {
+                for (const double* size : SIZES) {
+                    for (const Scene* scene : { &mountains, &plane, &capped }) {
+                        Camera eye { 1234.0, 5678.0, scene->flat ? above : terrainHeight(1234.0, 5678.0) + above, 0, 0, fov, size[0], size[1], 1.0 };
+                        Looks looks = lookAround(eye, *scene, NO_BUDGET);
+                        compared += looks.compared;
+                        flipped += looks.flipped;
+                        treesFlipped += looks.treesFlipped;
+                        withTrees += looks.withTrees;
+                        withoutTrees += looks.withoutTrees;
+                        Looks budgeted = lookAround(eye, *scene, DistanceTileLOD::DEFAULT_BUDGET);
+                        budgetedCompared += budgeted.compared;
+                        budgetedFlipped += budgeted.flipped;
+                        budgetedSkipped += budgeted.looksSkipped;
+                        if (scene->flat) {
+                            Scene area = *scene;
+                            area.rule = Rule::Area;
+                            Looks old = lookAround(eye, area, NO_BUDGET);
+                            areaCompared += old.compared;
+                            areaFlipped += old.flipped;
+                            areaTreesFlipped += old.treesFlipped;
+                        }
+                    }
+                }
+            }
+        }
+        std::printf("      %d ground points held by two looks of one eye: %d change level (%d across the trees line); the area rule: %d of %d (%d)\n",
+                    compared, flipped, treesFlipped, areaFlipped, areaCompared, areaTreesFlipped);
+        TEST_CHECK(compared > 10000, "the sweep holds many points under more than one look");
+        TEST_CHECK(flipped == 0, "no ground point changes level whichever way the eye looks");
+        TEST_CHECK(treesFlipped == 0, "so no far tree appears or goes as the eye looks around");
+        TEST_CHECK(withTrees > 500 && withoutTrees > 500, "and both sides of the trees line are in the sweep");
+        TEST_CHECK(areaFlipped > 1000 && areaTreesFlipped > 100, "where the rule it replaces changed them by the look: the sweep can fail");
+        std::printf("      within the budget of %d: %d points compared, %d change level, %d looks left out for being coarsened by it\n",
+                    static_cast<int>(DistanceTileLOD::DEFAULT_BUDGET), budgetedCompared, budgetedFlipped, budgetedSkipped);
+        TEST_CHECK(budgetedCompared > 10000 && budgetedFlipped == 0, "the same holds under the budget, for every look it leaves alone");
+    }
+
+    void testTopDownIsTheOldCut() {
+        // At tilt 90 the distance and the area rule agree: a tile sees the eye head on, so its nearest point and its
+        // projected area are the same measure. Within a level, on a plane, whatever the zoom, field of view or screen.
+        int worst = 0, compared = 0, nearestFiner = 0, ruleBinds = 0;
+        for (double lodFactor : { 1.0, 2.0, 4.0 }) {
+        for (double zoom : { 3.4, 6.2, 12.05, 13.5, 15.95, 17.3 }) {
+            for (double fov : { 30.0, 36.87, 50.0 }) {
+                for (const double* size : SIZES) {
+                    Camera camera = orbitCamera(zoom, 25.0, 0.0, fov, size[0], size[1], 1.0);
+                    double scale = 1, relaxedFactor = 0;
+                    Scene distanceScene = classicScene(camera, zoom, Rule::Distance), areaScene = classicScene(camera, zoom, Rule::Area);
+                    distanceScene.lodFactor = areaScene.lodFactor = lodFactor;
+                    std::vector<Leaf> now = cull(camera, distanceScene, std::numeric_limits<std::size_t>::max(), scale, relaxedFactor);
+                    std::vector<Leaf> old = cull(camera, areaScene, std::numeric_limits<std::size_t>::max(), scale, relaxedFactor);
+                    for (const Leaf& a : now) {
+                        for (const Leaf& b : old) {
+                            if (overlap(a.tile, b.tile)) {
+                                compared++;
+                                worst = std::max(worst, std::abs(a.tile.zoom - b.tile.zoom));
+                                nearestFiner += a.tile.zoom > b.tile.zoom ? 1 : 0;
+                                ruleBinds += a.tile.zoom < static_cast<int>(zoom + 0.001) ? 1 : 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+        std::printf("      top down: %d tiles against the area rule's, at most %d level apart, %d finer, %d under the camera's cap\n", compared, worst, nearestFiner, ruleBinds);
+        TEST_CHECK(compared > 1500 && ruleBinds > 200, "the top-down cases include tiles the rule coarsened, not only the camera's cap");
+        TEST_CHECK(worst <= 1, "looking straight down, the cut is the area rule's to within a level");
+    }
+
+    void testTheTileCountOfATiltedMap() {
+        // Grenoble, z16 and a tilted map: how many tiles the area rule held and how many the distance rule asks for,
+        // before and after the budget. The distance rule keeps the far ground finer, which is the cost of it.
+        std::printf("      tiles held, classic z16 on a 1000 px screen (area rule | distance rule | within the budget of %d)\n", static_cast<int>(DistanceTileLOD::DEFAULT_BUDGET));
+        for (double tilt : { 0.0, 30.0, 45.0, 60.0, 70.0, 75.0 }) {
+            Camera camera = orbitCamera(16.0, 20.0, tilt, 36.87, 1000, 1000, 1.0);
+            double scale = 1, relaxedFactor = 0;
+            std::size_t area = cull(camera, classicScene(camera, 16.0, Rule::Area), std::numeric_limits<std::size_t>::max(), scale, relaxedFactor).size();
+            std::size_t distance = cull(camera, classicScene(camera, 16.0, Rule::Distance), std::numeric_limits<std::size_t>::max(), scale, relaxedFactor).size();
+            std::size_t budgeted = cull(camera, classicScene(camera, 16.0, Rule::Distance), DistanceTileLOD::DEFAULT_BUDGET, scale, relaxedFactor).size();
+            std::printf("      tilt %2.0f: %3d | %3d | %3d (scale %.2f)\n", tilt, static_cast<int>(area), static_cast<int>(distance), static_cast<int>(budgeted), scale);
+            TEST_CHECK(budgeted <= DistanceTileLOD::DEFAULT_BUDGET || scale >= DistanceTileLOD::MAX_SCALE, "a tilted classic map fits the tile budget");
+            if (tilt <= 30.0) {
+                TEST_CHECK(distance <= area * 5 / 4 + 4, "a gentle tilt asks no more of the layer than the area rule did");
+            }
+        }
+    }
+
+    void testNodeRule() {
+        DistanceTileLOD::View view;
+        view.focalPixels = 2700;
+        view.maxEdgePixels = 512;
+        view.zoom0Distance = 1.0e9;
+        view.zoomShift = 0.001;
+        const double inf = std::numeric_limits<double>::infinity();
+
+        DistanceTileLOD::Limits limits { 5, 8, 14 };
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 4, 1000.0, 1.0e6) == inf, "under the layer's min zoom a tile always splits");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 14, 1000.0, 1.0) == 0.0, "from the cap on it never does, whatever the eye");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 7, 1000.0, 1.0e9) == inf, "under the floor it splits though the rule would not: a depth occluder");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 20, 14 }, 14, 1000.0, 1.0e9) == 0.0, "a floor above the cap is the cap's, as the walk always had it");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, limits, 10, 200.0, 1000.0) == DistanceTileLOD::criticalScale(200.0, 1000.0, 2700.0, 512.0),
+                   "in between it is the rule");
+
+        // A zoom is a distance: the camera's own zoom at its focus distance, one less for every doubling.
+        double distance = view.zoom0Distance / std::pow(2.0, 16.0);
+        TEST_CHECK(std::abs(DistanceTileLOD::viewZoom(view, distance) - 16.001) < 1e-9, "the view zoom at the focus distance is the camera's zoom");
+        TEST_CHECK(std::abs(DistanceTileLOD::viewZoom(view, distance * 2.0) - 15.001) < 1e-9, "and falls a level for every doubling of the distance");
+        TEST_CHECK(std::isinf(DistanceTileLOD::viewZoom(view, 0.0)), "an eye inside the tile has no distance to read a zoom off");
+    }
 }
 
 void testDistanceTileLOD() {
@@ -219,7 +509,7 @@ void testDistanceTileLOD() {
                     for (double fov : fovs) {
                         for (const double* size : sizes) {
                             Camera camera { place[0], place[1], terrainHeight(place[0], place[1]) + above, yaw, pitch, fov, size[0], size[1], 2.0 };
-                            Quality quality = measure(camera, budget);
+                            Quality quality = measure(camera, Scene(), budget);
                             cases++;
                             overBudget += quality.count > budget && quality.scale < DistanceTileLOD::MAX_SCALE ? 1 : 0;
                             capped += quality.scale >= DistanceTileLOD::MAX_SCALE ? 1 : 0;
@@ -250,7 +540,7 @@ void testDistanceTileLOD() {
         for (double pitch : { -30.0, 0.0 }) {
             Camera camera { 1234.0, 5678.0, terrainHeight(1234.0, 5678.0) + above, 20.0, pitch, 36.87, 2800, 1800, 2.0 };
             double scale = 1, relaxedFactor = 0;
-            std::vector<Leaf> leaves = cull(camera, budget, scale, relaxedFactor);
+            std::vector<Leaf> leaves = cull(camera, Scene(), budget, scale, relaxedFactor);
             int coarsest[16];
             int count[16] = {};
             std::fill(coarsest, coarsest + 16, 99);
@@ -287,7 +577,7 @@ void testDistanceTileLOD() {
         for (double above = 400.0; above <= 1200.0; above += 50.0) {
             Camera camera { 1234.0, 5678.0, terrainHeight(1234.0, 5678.0) + above, yaw, -8.0, 36.87, 2800, 1800, 2.0 };
             double scale = 1, relaxedFactor = 0;
-            std::vector<Leaf> leaves = cull(camera, budget, scale, relaxedFactor);
+            std::vector<Leaf> leaves = cull(camera, Scene(), budget, scale, relaxedFactor);
             if (previous > 0) {
                 worstJump = std::max(worstJump, std::abs(std::log2(scale / previous)));
                 worstCountJump = std::max(worstCountJump, leaves.size() > previousCount ? leaves.size() - previousCount : previousCount - leaves.size());
@@ -298,4 +588,9 @@ void testDistanceTileLOD() {
         std::printf("      eye height sweep at yaw %.0f: scale moves at most %.2f levels per 50 m, the count %d tiles\n", yaw, worstJump, static_cast<int>(worstCountJump));
         TEST_CHECK(worstJump < 0.5, "50 m of eye height moves the budget scale less than half a level");
     }
+
+    testNodeRule();
+    testTheLevelIsTheDistances();
+    testTopDownIsTheOldCut();
+    testTheTileCountOfATiltedMap();
 }

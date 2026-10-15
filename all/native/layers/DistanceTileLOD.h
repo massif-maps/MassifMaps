@@ -16,7 +16,7 @@
 namespace massif {
 
     /**
-     * The free roam raster cut (02-tiles.md, "Free roam: the zoom follows the distance"). A tile splits while it spans
+     * The tile cut of every planar layer (02-tiles.md, "The zoom follows the distance"). A tile splits while it spans
      * more than a pixel budget on screen as seen from its NEAREST point, so the level falls one per doubling of the
      * distance whatever way the camera looks. Every tile carries the budget scale it stops splitting at (`critical`),
      * and the scale that fits the tile budget is read off the finished tree: a pure function of the view, with no
@@ -34,12 +34,52 @@ namespace massif {
         static constexpr std::size_t DEFAULT_BUDGET = 112;
         static constexpr std::size_t MIN_BUDGET = 24;
 
+        /** What one cull measures a tile with. */
+        struct View {
+            double focalPixels = 0; // pixels one world unit spans at distance 1: projection(1,1) * half height
+            double maxEdgePixels = 0; // what a tile may span; 0 splits to the cap
+            double zoom0Distance = 0; // the eye-to-focus distance at zoom 0 (ViewState::getZoom0Distance)
+            double zoomShift = 0; // from the camera's zoom to a tile level: Options::ZoomOffset + the layer's bias
+        };
+
+        /** The levels a tile is held to, whatever the rule says. */
+        struct Limits {
+            int minZoom = 0; // the layer's own: coarser always splits
+            int floorZoom = 0; // coarser splits, though the budget would not (terrain tiles are depth occluders)
+            int capZoom = 0; // from here on a tile never splits
+        };
+
         /** The scale a tile stops splitting at: its edge on screen, over the pixels a tile may span. */
         static double criticalScale(double tileEdge, double nearestDistance, double focalPixels, double maxEdgePixels) {
             if (!(maxEdgePixels > 0) || !(nearestDistance > 0)) {
                 return std::numeric_limits<double>::infinity();
             }
             return tileEdge * focalPixels / (nearestDistance * maxEdgePixels);
+        }
+
+        /** The scale a tile of `zoom` and `tileEdge` world units, `nearestDistance` from the eye, stops splitting at. */
+        static double nodeCritical(const View& view, const Limits& limits, int zoom, double tileEdge, double nearestDistance) {
+            if (zoom < limits.minZoom) {
+                return std::numeric_limits<double>::infinity();
+            }
+            if (zoom >= limits.capZoom) {
+                return 0.0;
+            }
+            if (zoom < limits.floorZoom) {
+                return std::numeric_limits<double>::infinity();
+            }
+            return criticalScale(tileEdge, nearestDistance, view.focalPixels, view.maxEdgePixels);
+        }
+
+        /**
+         * The zoom a top-down camera `distance` from the ground would be at: the camera's own zoom at its focus
+         * distance, falling one per doubling. A tile's view zoom is the one to match its style's zoom gates at.
+         */
+        static double viewZoom(const View& view, double distance) {
+            if (!(distance > 0) || !(view.zoom0Distance > 0)) {
+                return std::numeric_limits<double>::infinity();
+            }
+            return std::log2(view.zoom0Distance / distance) + view.zoomShift;
         }
 
         static bool isLeaf(const Node& node, double scale) {

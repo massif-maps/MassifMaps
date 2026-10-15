@@ -18,6 +18,8 @@
 
 #include "layers/TileStyleZoom.h"
 
+#include <limits>
+
 using namespace massif;
 
 #include "TestCheck.h"
@@ -25,6 +27,7 @@ using namespace massif;
 void testTargetTileZoomHysteresis();
 void testTargetTileZoomSettlesAtRest();
 void testStyleTileZoomStaleness();
+void testViewStyleTileZoom();
 
 void testTileStyleZoom() {
     // The near field: the tile IS the zoom the camera asked for, so nothing moves. Every style that
@@ -54,6 +57,7 @@ void testTileStyleZoom() {
     testTargetTileZoomHysteresis();
     testTargetTileZoomSettlesAtRest();
     testStyleTileZoomStaleness();
+    testViewStyleTileZoom();
 }
 
 // A target-zoom change re-decodes every visible tile, and in terrain mode the zoom wobbles around
@@ -134,4 +138,27 @@ void testStyleTileZoomStaleness() {
 
     TEST_CHECK(isStyleTileZoomCurrent(15, 15, 17, 0), "at lift 0 a crossing stales nothing");
     TEST_CHECK(calculateStyleTileZoom(15, 17, 0) == 15, "because every tile styles at its own zoom");
+}
+
+// A free roam camera has no zoom to style at: each tile is styled at the zoom a top-down camera at its OWN distance
+// would be, so a far tile keeps the same rules whichever way the eye looks.
+void testViewStyleTileZoom() {
+    TEST_CHECK(calculateViewStyleTileZoom(16, 16.4, 2) == 16, "a tile at its view zoom styles as itself");
+    TEST_CHECK(calculateViewStyleTileZoom(16, 14.0, 2) == 16, "a tile finer than its view zoom keeps its own, as the camera's does");
+    TEST_CHECK(calculateViewStyleTileZoom(14, 15.9, 2) == 15, "a coarse tile is styled at the whole level its distance sits in");
+    TEST_CHECK(calculateViewStyleTileZoom(14, 19.0, 2) == 16, "and never past the lift");
+    TEST_CHECK(calculateViewStyleTileZoom(14, 16.0, 2) == 16, "the lift itself is reachable");
+    TEST_CHECK(calculateViewStyleTileZoom(14, 19.0, 0) == 14, "a zero lift is the tile's own zoom");
+    TEST_CHECK(calculateViewStyleTileZoom(14, std::numeric_limits<double>::infinity(), 2) == 16, "an eye inside the tile lifts it fully");
+    TEST_CHECK(calculateViewStyleTileZoom(14, std::numeric_limits<double>::quiet_NaN(), 2) == 14, "an unusable view zoom leaves the tile's own");
+
+    const double H = 0.15;
+    TEST_CHECK(isViewStyleTileZoomCurrent(14, 15, 15.05, 2, H), "a tile styled for its level is current");
+    TEST_CHECK(isViewStyleTileZoomCurrent(14, 15, 14.95, 2, H), "a wobble a little under the level holds it");
+    TEST_CHECK(isViewStyleTileZoomCurrent(14, 14, 15.1, 2, H), "and a little over it, too");
+    TEST_CHECK(!isViewStyleTileZoomCurrent(14, 14, 15.5, 2, H), "clear of the margin the tile is stale");
+    TEST_CHECK(!isViewStyleTileZoomCurrent(14, 16, 14.5, 2, H), "and so is one that outlived a retreat");
+    TEST_CHECK(isViewStyleTileZoomCurrent(14, 14, 3.0, 2, H), "a tile past the view zoom is current wherever the view goes below");
+    TEST_CHECK(isViewStyleTileZoomCurrent(14, 16, 30.0, 2, H), "a fully lifted tile stays current as the eye comes closer");
+    TEST_CHECK(isViewStyleTileZoomCurrent(14, 14, 15.5, 0, H), "at lift 0 a distance stales nothing");
 }

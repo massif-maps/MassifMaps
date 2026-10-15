@@ -253,10 +253,9 @@ alpha times the property.
   tilt or the building's height (a flattened roof included): the building stamps the pixels it wins.
 - **Ridges ghost it too.** The test is "something nearer wrote depth here", so a line going behind
   a ridge shows faintly through it, exactly as through a building.
-- **One faint colour per pixel.** The ghosts of a layer are drawn as one group, topmost style layer
-  first, so a casing under a fill (a maneuver arrow) never tints the fill. A *different* tile layer
-  is a different draw: an arrow over the route behind a building still shows the route's ghost
-  under its own. Set the property on the topmost line only if that reads badly.
+- **One faint colour per pixel, topmost layer first.** The ghosts of the whole map are drawn as one
+  group after the last layer, so a casing under a fill (a maneuver arrow) never tints the fill and an
+  arrow over the route behind a building hides the route's ghost under its own.
 - **Not applied** to a layer with a `comp-op` (it draws into an overlay with no depth), nor to an
   extrusion layer faded by layer opacity below 1 (its buildings are in a separate buffer). Where
   two tiles of different zoom overlap during a zoom transition, the ghost is drawn once per pixel,

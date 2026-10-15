@@ -128,7 +128,9 @@ layer, labels draw after that layer's geometry —
 
 On 3D terrain with extruded buildings an arrow that goes behind one is hidden. Add
 `line-occlusion-opacity: 0.35;` to the four rules to keep a faint ghost of it there, and normal
-drawing everywhere it is visible. The route line under it can carry the same property. See
+drawing everywhere it is visible: the four attachments ghost as one, so the head stays white with a
+blue edge. The route line under it can carry the same property: layers ghost in stack order, so the
+arrow's ghost lies over the route's. See
 [Lines behind buildings](/docs/features/3d-terrain#lines-behind-buildings-line-occlusion-opacity).
 
 ## Why not a marker for the head

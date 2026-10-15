@@ -124,8 +124,9 @@ the 3D pass and overwrite it. A rule that sets `line-occlusion-opacity` (CartoCS
 2. `GLTileRenderer::isDrapeableGeometry` refuses such a line, so it is neither baked into the drape
    nor skipped by the 2D loop: it draws live in the 2D pass like any line of a `NoDrapeLayerFilter`
    layer (decal offset, line clearance, the layer's ordinal).
-3. `TileRenderer::onDrawFrame3D` calls `GLTileRenderer::renderOccludedGeometry()` right after the
-   layer's extrusions. It draws only the flagged `LINE` geometries again with the state the 2D loop
+3. `TileRenderer::onDrawFrame3D` queues its renderer (`GLTileRenderer::queueOccludedGeometry`) after
+   the layer's extrusions, and `MapRenderer` calls `GLTileRenderer::flushOccludedGeometry()` once after
+   the last layer's 3D pass (and after the overlay layers'), which draws the queue in stack order. It draws only the flagged `LINE` geometries again with the state the 2D loop
    used, `glDepthFunc(GL_GREATER)`, depth writes off, and a polygon offset one slope unit and four
    depth units further forward than the decal's `(-2, -8)`, with alpha times the property. Under
    the shared ground its ordinal is the stack's TOP one, whatever the layer's own (`ghostLayerOffset`,
@@ -167,15 +168,19 @@ a pixel belong to one sweep. An extrusion drawn into an overlay (translucent lay
 **One blend per pixel.** The ghosts are translucent, so drawing them in style order let each one
 show through the next: a maneuver arrow's casing ghost (blue) under its fill ghost (white) tinted the
 white inner blue, the head's casing the head's, and a round join or a tile edge blended twice. The
-ghosts of one renderer therefore run as ONE draw-once group ([03-vt-renderer.md](03-vt-renderer.md#translucent-layers-draw-once-groups-opt-in)):
-`drawOnceSchedule` with a single group name, top style layer first, stencil bit `0x80` cleared at
-the start of the pass (that bit only; the 2D passes clear it again themselves). A pixel gets the
-colour of the topmost ghost that covers it, at the one faint opacity, so the ghost reads as the
-visible line seen through glass: white inner, blue edge. Like every draw-once group, a line with
-`line-border-*` draws in the rim pass only, and without an 8-bit stencil buffer the ghosts keep
-style order. **Per renderer**: the ghost of a lower layer (the route) and of a higher one (the
-arrow on it) are drawn at different times with nothing shared between them, so where an arrow lies
-over the route behind a building the route's ghost still shows under the arrow's.
+ghosts of the frame therefore run as ONE draw-once group ([03-vt-renderer.md](03-vt-renderer.md#translucent-layers-draw-once-groups-opt-in)):
+a core and a rim pass over the WHOLE stack, the topmost renderer first and its top style layer first,
+stencil bit `0x80` cleared once at the start of the flush (that bit only; the 2D passes clear it again
+themselves). A pixel gets the colour of the topmost ghost that covers it, at the one faint opacity, so
+the ghost reads as the visible line seen through glass: white inner, blue edge. Like every draw-once
+group, a line with `line-border-*` draws in the rim pass only, and without an 8-bit stencil buffer the
+ghosts keep style order, renderers bottom first.
+
+**After every layer, not inside each.** The ghost used to be drawn from each layer's own 3D pass. Then a
+lower layer's ghost (the route) was drawn first and a higher one's (the arrow on it) over it, with nothing
+shared between them, so behind a building the route's blue lay across the arrow's head whichever layer
+was on top. The flush also sees the extrusions and stamps of every layer, not only those up to its own.
+It draws over the 3D labels of the layers, which are faint lines under billboards anyway.
 
 ## What causes a frame
 

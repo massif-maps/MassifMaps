@@ -4310,6 +4310,7 @@ namespace massif {
             }
         }
 
+        vt::GLTileRenderer::flushOccludedGeometry();
         FRAME_PROF_ADD(layer3DMs, profLayer3DStart);
 
         FRAME_PROF_NOW(profBillboardStart);
@@ -4371,6 +4372,7 @@ namespace massif {
         for (const std::shared_ptr<Layer>& layer : layers) {
             needRedraw = layer->onDrawFrame3D(deltaSeconds, billboardSorter, viewState) || needRedraw;
         }
+        vt::GLTileRenderer::flushOccludedGeometry();
 
         billboardSorter.sort(viewState);
         if (!billboardDrawDatas.empty()) {

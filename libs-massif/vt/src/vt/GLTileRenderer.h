@@ -388,8 +388,11 @@ namespace massif::vt {
         bool startFrame(float dt);
         // layerOpacity: the SDK layer's, for a pass no screen-space blend wraps (the 3D pass).
         void renderGeometry(bool geom2D, bool geom3D, bool inline3D = false, float layerOpacity = 1.0f);
-        // The second draw of every line carrying line-occlusion-opacity, once the extrusions have written depth.
-        void renderOccludedGeometry();
+        // The second draw of every line carrying line-occlusion-opacity, once the extrusions have written depth:
+        // a renderer queues itself after its 3D pass, and one flush after the last layer's draws them all, the
+        // topmost layer's ghost on top.
+        static void queueOccludedGeometry(const std::shared_ptr<GLTileRenderer>& renderer);
+        static void flushOccludedGeometry();
         // Once per frame, before the first layer's 3D pass: forgets which pixels an extrusion covers (the ghost pass's stamp).
         static void clearBuildingStamp();
         void renderLabels(bool labels2D, bool labels3D, float layerOpacity = 1.0f);
@@ -592,6 +595,9 @@ namespace massif::vt {
         int bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx, bool spanOnly = false, const cglib::mat4x4<float>* clipZoom = nullptr);
         // A tile's baked layers that pass `wanted`, in draw-once order once one carries a group: the bound
         // drape FBO then borrows _drapeStencilRB for the bake (see renderGeometry2D for the passes).
+        int collectOccludedLayers(std::map<int, std::vector<const RenderTileLayer*>>& renderLayerMap) const;
+        bool hasOccludedGeometry() const;
+        void drawOccludedGeometry(DrawOncePass drawOncePass);
         // Stencil bits of the framebuffer bound now (0 without a stencil buffer).
         static GLint boundStencilBits();
         void bakeLayersDrawOnce(const RenderTile& renderTile, const std::function<bool(const RenderTileLayer&)>& wanted, const std::function<void(const RenderTileLayer&)>& draw);

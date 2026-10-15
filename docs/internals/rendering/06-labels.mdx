@@ -1702,9 +1702,20 @@ vanishing, seen as POIs blinking in 3D with buildings. Now (`easeLabelOcclusion`
 a label whose occlusion was never judged, or not since it last stood at opacity 0
 (`Label::isOcclusionJudged`, cleared in `renderLabelPass`, carried over to a rebuilt label), takes
 its first verdict outright, so it starts at the verdict instead of at "clear". After that the value
-falls at 4 fade steps and rises at half of one: a covered label is gone in a few frames, while a
-verdict that reads clear for a frame or two as building tiles swap or an unresolved base blocks
-nothing barely lifts it. `LabelFadeTest` pins both.
+follows it through a first-order low-pass that hides faster than it shows (time constants about
+100 ms down, 330 ms up): a covered label is gone in a few frames, while a verdict that reads clear
+for a frame or two as building tiles swap or an unresolved base blocks nothing barely lifts it.
+
+**A half-hidden label holds still while the camera looks around.** The same verdict wobbles by a tap
+or two as rays move over a roof edge or the occluder set changes by a tile, and a linear slew
+followed every wobble. Three things now keep a semi-occluded label steady (`LabelFade.h`):
+the verdict is held through changes under a 0.15 dead band (`holdLabelOcclusionVerdict`; fully
+hidden and fully clear always pass); the low-pass above is exponential, so a verdict flipping every
+frame ripples the opacity by a few percent; and when the four corner taps disagree, five more
+(edge middles and centre) are cast, so the verdict moves in ninths, not quarters, as an edge sweeps
+the box. "Partly occluded" (the culler's rank) is a Schmitt trigger: it sets at one blocked tap of
+four and clears only when nearly clear, so a label hovering at the threshold no longer flips rank
+in every placement pass. `LabelFadeTest` and `LabelYieldTest` pin these.
 
 **A line run collides by its glyphs**, as maplibre's by collision circles along the line
 (`Label::calculateEnvelope`'s glyphEnvelopes): the bounds of a run round a bend covered the corner

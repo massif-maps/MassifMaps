@@ -67,7 +67,26 @@ namespace massif::vt {
 
         // What 3D occluders leave of the label, multiplied into both opacities (1 = unoccluded); floor is the
         // occluded opacity it eases down to.
-        void setOcclusion(float occlusion, float floor = 0.0f) { _occlusion = occlusion; _occlusionFloor = floor; }
+        void setOcclusion(float occlusion, float floor = 0.0f) {
+            _occlusion = occlusion;
+            _occlusionFloor = floor;
+            // Schmitt trigger: in at one blocked tap of four, out only when nearly clear, or a label hovering at the
+            // threshold flips its rank in every placement pass.
+            float blocked = 1.0f - occlusion;
+            float range = 1.0f - floor;
+            _partlyOccluded = _partlyOccluded ? blocked > range * 0.1f - 1.0e-4f : (blocked > 0.0f && blocked >= range * 0.25f - 1.0e-4f);
+        }
+        // The verdict (fraction of the label in the clear) the occlusion eases toward, held through noise below a dead band.
+        float getOcclusionVerdict() const { return _occlusionVerdict; }
+        void setOcclusionVerdict(float verdict) { _occlusionVerdict = verdict; }
+        // A rebuilt label carries all of the old one's occlusion state.
+        void inheritOcclusion(const Label& other) {
+            _occlusion = other._occlusion;
+            _occlusionFloor = other._occlusionFloor;
+            _occlusionVerdict = other._occlusionVerdict;
+            _occlusionJudged = other._occlusionJudged;
+            _partlyOccluded = other._partlyOccluded;
+        }
         float getOcclusion() const { return _occlusion; }
         float getOcclusionFloor() const { return _occlusionFloor; }
         // False until a frame drew the label and judged it, and again once it stops being drawn: the next verdict is
@@ -76,8 +95,8 @@ namespace massif::vt {
         void setOcclusionJudged(bool judged) { _occlusionJudged = judged; }
         // Wholly hidden by 3D content on the last frame drawn: kept, but it claims no room from the labels in front.
         bool isFullyOccluded() const { return _occlusion <= 0.0f; }
-        // One of its four taps blocked once eased, a quarter of the way to its floor: a passing verdict does not re-rank it.
-        bool isPartlyOccluded() const { return _occlusion < 1.0f && _occlusion <= 1.0f - (1.0f - _occlusionFloor) * 0.25f + 1.0e-4f; }
+        // A quarter of the way to its floor once eased, and until nearly clear again: a passing verdict does not re-rank it.
+        bool isPartlyOccluded() const { return _partlyOccluded; }
         // The anchor the occlusion rays aim at, world coordinates; null before placement.
         const cglib::vec3<double>* getAnchorPosition() const { return _placement ? &_placement->position : nullptr; }
         // A point label's anchor before it is placed (its first tile's copy); false for a label on a line.
@@ -479,6 +498,8 @@ namespace massif::vt {
         float _occlusion = 1.0f;
         float _occlusionFloor = 0.0f;
         bool _occlusionJudged = false;
+        bool _partlyOccluded = false;
+        float _occlusionVerdict = 1.0f;
         bool _visible = false;
         bool _active = false;
         bool _standIn = false;

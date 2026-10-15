@@ -172,6 +172,10 @@ void testLabelYield() {
         street->setOcclusion(0.8125f, 0.25f);
         cull({ street, poi });
         TEST_CHECK(poi->isVisible() && !street->isVisible(), "eased to one blocked tap of four, it gives way");
+        street->setOcclusion(0.9f, 0.25f);
+        TEST_CHECK(street->isPartlyOccluded(), "it stays ranked behind until nearly clear, not flipping at the threshold");
+        street->setOcclusion(0.95f, 0.25f);
+        TEST_CHECK(!street->isPartlyOccluded(), "and ranks again once nearly clear");
     }
 
     for (float occlusion : { 1.0f, 0.5f }) {

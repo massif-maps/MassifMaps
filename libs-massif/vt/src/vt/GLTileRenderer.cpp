@@ -3180,8 +3180,7 @@ namespace massif::vt {
                     newLabel->setOpacity(label->getOpacity());
                     newLabel->setTextOpacity(label->getTextOpacity());
                     newLabel->setTerrainOccluded(label->isTerrainOccluded());
-                    newLabel->setOcclusion(label->getOcclusion(), label->getOcclusionFloor());
-                    newLabel->setOcclusionJudged(label->isOcclusionJudged());
+                    newLabel->inheritOcclusion(*label);
                     newLabel->snapPlacement(*label);
                 }
                 else if (std::shared_ptr<Label> oldLabel = takeOldSpot(*newLabel)) {
@@ -3189,8 +3188,7 @@ namespace massif::vt {
                     newLabel->setOpacity(oldLabel->getOpacity());
                     newLabel->setTextOpacity(0);
                     newLabel->setTerrainOccluded(oldLabel->isTerrainOccluded());
-                    newLabel->setOcclusion(oldLabel->getOcclusion(), oldLabel->getOcclusionFloor());
-                    newLabel->setOcclusionJudged(oldLabel->isOcclusionJudged());
+                    newLabel->inheritOcclusion(*oldLabel);
                     newLabel->snapPlacement(*oldLabel);
                     oldLabel->setOpacity(0); // the new one draws its icon now; two would overlap
                     oldLabel->setTextOpacity(0);
@@ -4624,9 +4622,12 @@ namespace massif::vt {
             // as building tiles load and grow in, and an instant verdict flickered a half-hidden name.
             if (pass != Label::DrawPass::CALLOUT_LINE) {
                 float occludedOpacity = std::min(1.0f, labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity));
-                float target = occludedOpacity < 1.0f ? occludedOpacity + (1.0f - occludedOpacity) * calculateLabelVisibility(*label) : 1.0f;
-                float occlusion = easeLabelOcclusion(label->getOcclusion(), target, _labelOcclusionStep, label->isOcclusionJudged());
+                bool judged = label->isOcclusionJudged();
+                float verdict = occludedOpacity < 1.0f ? holdLabelOcclusionVerdict(label->getOcclusionVerdict(), calculateLabelVisibility(*label), judged) : 1.0f;
+                float target = occludedOpacity + (1.0f - occludedOpacity) * verdict;
+                float occlusion = easeLabelOcclusion(label->getOcclusion(), target, _labelOcclusionStep, judged);
                 label->setOcclusion(occlusion, occludedOpacity);
+                label->setOcclusionVerdict(verdict);
                 label->setOcclusionJudged(true);
                 _labelOcclusionEasing = _labelOcclusionEasing || occlusion != target;
             }
@@ -6071,14 +6072,12 @@ namespace massif::vt {
                 taps[tap](2) = std::max(taps[tap](2), target(2) + margin); // below the roof plane, its own roof took it
             }
         }
-        int visible = 0;
-        for (const cglib::vec3<double>& tapTarget : taps) {
+        auto tapBlocked = [&](const cglib::vec3<double>& tapTarget) {
             cglib::vec3<double> dir = tapTarget - eye;
             double length = cglib::length(dir);
             double t1 = (length > margin ? 1.0 - margin / length : 0.0);
             double x0 = std::min(eye(0), tapTarget(0)), x1 = std::max(eye(0), tapTarget(0));
             double y0 = std::min(eye(1), tapTarget(1)), y1 = std::max(eye(1), tapTarget(1));
-            bool blocked = false;
             for (const FrameOccluder& frameOccluder : _frameOccluders) {
                 if (x1 < frameOccluder.bounds.min(0) || x0 > frameOccluder.bounds.max(0) || y1 < frameOccluder.bounds.min(1) || y0 > frameOccluder.bounds.max(1)) {
                     continue;
@@ -6086,13 +6085,28 @@ namespace massif::vt {
                 cglib::vec3<double> localOrigin((eye(0) - frameOccluder.origin(0)) / frameOccluder.scale, (eye(1) - frameOccluder.origin(1)) / frameOccluder.scale, eye(2));
                 cglib::vec3<double> localDir(dir(0) / frameOccluder.scale, dir(1) / frameOccluder.scale, dir(2));
                 if (frameOccluder.occluder->intersects(localOrigin, localDir, 0.0, t1, *frameOccluder.geometry, frameOccluder.heightScale, frameOccluder.origin(2), !_extrusionElevationProvider)) {
-                    blocked = true;
-                    break;
+                    return true;
                 }
             }
-            visible += (blocked ? 0 : 1);
+            return false;
+        };
+        int visible = 0;
+        for (const cglib::vec3<double>& tapTarget : taps) {
+            visible += (tapBlocked(tapTarget) ? 0 : 1);
         }
-        return visible * 0.25f;
+        if (visible == 0 || visible == 4) {
+            return visible * 0.25f;
+        }
+        // The corners disagree: an edge crosses the box. Five more taps (the middles and the centre) turn the
+        // quarters into ninths, so a rotating edge moves the verdict in finer steps than a whole corner.
+        const cglib::vec3<double> middles[5] = {
+            (taps[0] + taps[1]) * 0.5, (taps[2] + taps[3]) * 0.5, (taps[0] + taps[2]) * 0.5, (taps[1] + taps[3]) * 0.5,
+            (taps[0] + taps[1] + taps[2] + taps[3]) * 0.25
+        };
+        for (const cglib::vec3<double>& tapTarget : middles) {
+            visible += (tapBlocked(tapTarget) ? 0 : 1);
+        }
+        return visible / 9.0f;
     }
 
     // What a z-elevated label can stand on: a deck stands on its chord, and a translated layer is drawn elsewhere.

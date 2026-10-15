@@ -190,6 +190,7 @@ static NSMutableDictionary *sValues = nil;
         @"routeSeparate":       @NO,
         // A line of the app's saved-items style (`items`, with its `back/` attachment) from "lon,lat;lon,lat;..." drawn beside the route
         @"itemsLine":           @"",
+        @"itemsRandom":         @"",
         // A route read from a JSON file ({"points": [[lon, lat], ...]}, see make-grenoble-route.py): drawn
         // as the app's `navigation` route with an arrow on every turn, instead of the gallery. The
         // arrow style can be a CartoCSS project folder (the app's dev_assets/styles/inner, name voyager).

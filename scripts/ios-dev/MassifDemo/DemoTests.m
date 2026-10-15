@@ -250,6 +250,33 @@ static MSFLocalVectorDataSource *sResults = nil;
     [source setLayerGeoJSONString:navigationLayer
                           geoJSON:[[NSString alloc] initWithData:geoJSONData encoding:NSUTF8StringEncoding]];
 
+    // -itemsRandom "count,lengthMeters,seed": that many lines of the items style spread over the area, for load tests
+    NSString *itemsRandom = [DemoConfig stringFor:@"itemsRandom"];
+    if (itemsRandom.length) {
+        NSArray<NSString *> *parts = [itemsRandom componentsSeparatedByString:@","];
+        int count = parts.count > 0 ? parts[0].intValue : 0;
+        double length = parts.count > 1 ? parts[1].doubleValue : 100;
+        srand48(parts.count > 2 ? parts[2].intValue : 1);
+        NSMutableArray *features = [NSMutableArray array];
+        for (int i = 0; i < count; i++) {
+            double lon = 5.7215 + drand48() * 0.0105, lat = 45.1850 + drand48() * 0.0060;
+            double heading = drand48() * 2 * M_PI;
+            NSMutableArray *coordinates = [NSMutableArray array];
+            for (int k = 0; k < 4; k++) {
+                [coordinates addObject:@[@(lon), @(lat)]];
+                heading += (drand48() - 0.5) * 0.8;
+                double step = length / 3;
+                lon += step * cos(heading) / (111320.0 * cos(lat * M_PI / 180));
+                lat += step * sin(heading) / 111320.0;
+            }
+            [features addObject:@{ @"type": @"Feature", @"properties": @{ @"class": @"bicycle", @"id": @(100 + i) },
+                                   @"geometry": @{ @"type": @"LineString", @"coordinates": coordinates } }];
+        }
+        NSDictionary *items = @{ @"type": @"FeatureCollection", @"features": features };
+        int itemsLayer = [source createLayer:@"items"];
+        [source setLayerGeoJSONString:itemsLayer
+                              geoJSON:[[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:items options:0 error:nil] encoding:NSUTF8StringEncoding]];
+    }
     NSString *itemsLine = [DemoConfig stringFor:@"itemsLine"];
     if (itemsLine.length) {
         NSMutableArray *itemCoordinates = [NSMutableArray array];

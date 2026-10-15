@@ -250,6 +250,24 @@ static MSFLocalVectorDataSource *sResults = nil;
     [source setLayerGeoJSONString:navigationLayer
                           geoJSON:[[NSString alloc] initWithData:geoJSONData encoding:NSUTF8StringEncoding]];
 
+    NSString *itemsLine = [DemoConfig stringFor:@"itemsLine"];
+    if (itemsLine.length) {
+        NSMutableArray *itemCoordinates = [NSMutableArray array];
+        for (NSString *pair in [itemsLine componentsSeparatedByString:@";"]) {
+            NSArray<NSString *> *lonLat = [pair componentsSeparatedByString:@","];
+            if (lonLat.count == 2) {
+                [itemCoordinates addObject:@[@(lonLat[0].doubleValue), @(lonLat[1].doubleValue)]];
+            }
+        }
+        NSDictionary *items = @{ @"type": @"FeatureCollection", @"features": @[ @{
+            @"type": @"Feature",
+            @"properties": @{ @"class": @"bicycle", @"id": @1 },
+            @"geometry": @{ @"type": @"LineString", @"coordinates": itemCoordinates } } ] };
+        int itemsLayer = [source createLayer:@"items"];
+        [source setLayerGeoJSONString:itemsLayer
+                              geoJSON:[[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:items options:0 error:nil] encoding:NSUTF8StringEncoding]];
+    }
+
     MSFManeuverArrowBuilder *builder = [self builderFor:demo
                                                 before:[DemoConfig floatFor:@"maneuverBefore"]
                                                  after:[DemoConfig floatFor:@"maneuverAfter"]];

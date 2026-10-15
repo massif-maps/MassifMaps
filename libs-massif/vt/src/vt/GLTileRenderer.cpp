@@ -4092,7 +4092,13 @@ namespace massif::vt {
                     }
                 }
                 float geometryOpacity = (renderLayer->layer->getOpacityFunc())(_viewState);
-                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                // The attachments of one rule set (a maneuver arrow's case, fill, headcase and head) are geometries of
+                // ONE layer, in draw order: a draw-once pass wants the topmost of them first too.
+                std::vector<std::shared_ptr<TileGeometry>> geometries = renderLayer->layer->getGeometries();
+                if (drawOncePass != DrawOncePass::NONE) {
+                    std::reverse(geometries.begin(), geometries.end());
+                }
+                for (const std::shared_ptr<TileGeometry>& geometry : geometries) {
                     const std::optional<float>& occlusionOpacity = geometry->getStyleParameters().occlusionOpacity;
                     if (!occlusionOpacity || geometry->getType() != TileGeometry::Type::LINE || !geometry->getSpanRecords().empty()) {
                         continue;
@@ -4105,7 +4111,18 @@ namespace massif::vt {
                     if (terrainVTF) {
                         _terrainDrawClearance = _terrainLineClearance;
                     }
-                    renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
+                    if (drawOncePass == DrawOncePass::NONE) {
+                        renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
+                    } else {
+                        // One geometry batches the styles of several rules (a maneuver arrow's four attachments, a
+                        // `back/` line and its main line), drawn in style order by the index buffer. A pixel is
+                        // stamped by the first fragment, so draw the batch once per style, the topmost first.
+                        for (int style = geometry->getStyleParameters().parameterCount - 1; style >= 0; style--) {
+                            _ghostStyle = style;
+                            renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
+                        }
+                        _ghostStyle = -1;
+                    }
                     _terrainDrawClearance = 0.0f;
                 }
                 _terrainDrawLayerOffset = 0.0f;
@@ -7298,6 +7315,14 @@ namespace massif::vt {
                     borderWidths[i] = (borderHalf > 0.0f && widths[i] > 0.0f ? widths[i] + borderHalf : 0.0f);
                     borderGapWidths[i] = std::max(0.0f, gapWidths[i] - borderHalf);
                     borderColors[i] = evaluateStyleColor(styleParams.borderColorFuncs[i], i);
+                }
+            }
+            // The ghost pass draws one style of the batch at a time: the others collapse to nothing.
+            if (_ghostStyle >= 0) {
+                for (int i = 0; i < styleParams.parameterCount; i++) {
+                    if (i != _ghostStyle) {
+                        widths[i] = 0.0f;
+                    }
                 }
             }
             VT_STAT_SPLIT(geomStyleEvalNs, statClock);

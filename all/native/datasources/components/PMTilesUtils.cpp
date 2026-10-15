@@ -29,6 +29,56 @@ namespace pmtiles {
                 y = t;
             }
         }
+
+        // The gzip trailer holds the uncompressed size mod 2^32: sizing from it makes the common case
+        // a single inflate into the final buffer. A multi-member or oversized stream grows from there.
+        std::vector<uint8_t> inflateGzip(const std::vector<uint8_t>& data) {
+            z_stream stream;
+            std::memset(&stream, 0, sizeof(stream));
+            // windowBits = 15 + 16 for gzip
+            if (inflateInit2(&stream, 15 + 16) != Z_OK) {
+                throw GenericException("Failed to initialize gzip decompression");
+            }
+
+            std::size_t expectedSize = data.size() * 4;
+            if (data.size() >= 18) {
+                const uint8_t* trailer = data.data() + data.size() - 4;
+                std::size_t declaredSize = static_cast<std::size_t>(trailer[0]) | (static_cast<std::size_t>(trailer[1]) << 8) | (static_cast<std::size_t>(trailer[2]) << 16) | (static_cast<std::size_t>(trailer[3]) << 24);
+                // deflate cannot expand past ~1032:1, so a larger claim is not a size
+                if (declaredSize > 0 && declaredSize <= data.size() * 1032) {
+                    expectedSize = declaredSize;
+                }
+            }
+
+            std::vector<uint8_t> result(std::max<std::size_t>(expectedSize, 1));
+            stream.avail_in = static_cast<uInt>(data.size());
+            stream.next_in = const_cast<uint8_t*>(data.data());
+
+            int ret;
+            do {
+                if (stream.avail_out == 0) {
+                    std::size_t produced = static_cast<std::size_t>(stream.total_out);
+                    if (produced == result.size()) {
+                        result.resize(result.size() * 2);
+                    }
+                    stream.next_out = result.data() + produced;
+                    stream.avail_out = static_cast<uInt>(result.size() - produced);
+                }
+                ret = inflate(&stream, Z_NO_FLUSH);
+                if (ret == Z_STREAM_ERROR || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR || ret == Z_NEED_DICT) {
+                    inflateEnd(&stream);
+                    throw GenericException("gzip decompression failed");
+                }
+                if (ret == Z_BUF_ERROR && stream.avail_in == 0 && stream.avail_out != 0) {
+                    inflateEnd(&stream);
+                    throw GenericException("gzip decompression failed: truncated input");
+                }
+            } while (ret != Z_STREAM_END);
+
+            result.resize(static_cast<std::size_t>(stream.total_out));
+            inflateEnd(&stream);
+            return result;
+        }
     }
 
     Header readHeader(const uint8_t* headerBytes) {
@@ -104,6 +154,13 @@ namespace pmtiles {
         return header;
     }
 
+    std::vector<uint8_t> decompressData(std::vector<uint8_t>&& data, uint8_t compression) {
+        if (compression == 0x01 || compression == 0x00) {
+            return std::move(data);
+        }
+        return decompressData(static_cast<const std::vector<uint8_t>&>(data), compression);
+    }
+
     std::vector<uint8_t> decompressData(const std::vector<uint8_t>& data, uint8_t compression) {
         // Compression: 0x00=Unknown, 0x01=None, 0x02=gzip, 0x03=brotli, 0x04=zstd
         
@@ -112,43 +169,7 @@ namespace pmtiles {
             return data;
         }
         else if (compression == 0x02) {
-            // gzip decompression using streaming API
-            // zlib's inflate() API works best with streaming decompression
-            z_stream stream;
-            std::memset(&stream, 0, sizeof(stream));
-            
-            // Initialize for gzip (windowBits = 15 + 16 for gzip)
-            if (inflateInit2(&stream, 15 + 16) != Z_OK) {
-                throw GenericException("Failed to initialize gzip decompression");
-            }
-            
-            stream.avail_in = data.size();
-            stream.next_in = const_cast<uint8_t*>(data.data());
-            
-            std::vector<uint8_t> result;
-            result.reserve(data.size() * 4); // Initial estimate: 4x compression ratio
-            
-            uint8_t buffer[32768];
-            int ret;
-            
-            do {
-                stream.avail_out = sizeof(buffer);
-                stream.next_out = buffer;
-                
-                ret = inflate(&stream, Z_NO_FLUSH);
-                
-                if (ret == Z_STREAM_ERROR || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR) {
-                    inflateEnd(&stream);
-                    throw GenericException("gzip decompression failed");
-                }
-                
-                size_t have = sizeof(buffer) - stream.avail_out;
-                result.insert(result.end(), buffer, buffer + have);
-                
-            } while (ret != Z_STREAM_END);
-            
-            inflateEnd(&stream);
-            return result;
+            return inflateGzip(data);
         }
         else if (compression == 0x03) {
             // Brotli decompression
@@ -333,19 +354,28 @@ namespace pmtiles {
         return baseTileId + d;
     }
 
-    bool findTileEntry(const std::vector<DirectoryEntry>& directory, uint64_t tileId, DirectoryEntry& outEntry) {
-        for (const auto& entry : directory) {
-            if (entry.runLength == 0) {
-                // This is a pointer to a leaf directory, not a tile
-                continue;
-            }
-            
-            if (tileId >= entry.tileId && tileId < entry.tileId + entry.runLength) {
-                outEntry = entry;
-                return true;
-            }
+    const DirectoryEntry* findDirectoryEntry(const std::vector<DirectoryEntry>& directory, uint64_t tileId) {
+        // The last entry starting at or before the id: a run holding it, or the leaf pointer covering it
+        auto it = std::upper_bound(directory.begin(), directory.end(), tileId, [](uint64_t id, const DirectoryEntry& entry) {
+            return id < entry.tileId;
+        });
+        if (it == directory.begin()) {
+            return nullptr;
         }
-        return false;
+        --it;
+        if (it->runLength == 0 || tileId - it->tileId < it->runLength) {
+            return &*it;
+        }
+        return nullptr;
+    }
+
+    bool findTileEntry(const std::vector<DirectoryEntry>& directory, uint64_t tileId, DirectoryEntry& outEntry) {
+        const DirectoryEntry* entry = findDirectoryEntry(directory, tileId);
+        if (!entry || entry->runLength == 0) {
+            return false;
+        }
+        outEntry = *entry;
+        return true;
     }
 
 } // namespace pmtiles

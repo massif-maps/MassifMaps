@@ -1,3 +1,7 @@
+#if !defined(_WIN32) && !defined(_FILE_OFFSET_BITS)
+#define _FILE_OFFSET_BITS 64 // pread offsets past 2 GB on 32-bit ABIs
+#endif
+
 #ifdef _MASSIF_OFFLINE_SUPPORT
 
 #include "PMTilesTileDataSource.h"
@@ -8,9 +12,13 @@
 #include "projections/Projection.h"
 #include "utils/Log.h"
 
-#include <cstring>
 #include <algorithm>
+#include <cstring>
 #include <unordered_map>
+#ifndef _WIN32
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 // For JSON parsing (simple extraction)
 #include <boost/algorithm/string.hpp>
 
@@ -19,70 +27,92 @@ namespace massif {
     PMTilesTileDataSource::PMTilesTileDataSource(const std::string& path) :
         TileDataSource(),
         _path(path),
-        _file(),
         _header(),
         _rootDirectory(),
         _cachedMetadata(),
-        _cachedDataExtent(),
-        _leafDirectoryCache(),
-        _mutex()
+        _cachedDataExtent()
     {
-        _file = std::make_unique<std::ifstream>(path, std::ios::binary);
-        if (!_file->is_open()) {
-            throw FileException("Failed to open PMTiles file", path);
-        }
-
-        _header = ReadHeader(*_file);
-        
-        // Read and decode root directory
-        std::vector<uint8_t> rootDirData(_header.rootDirectoryLength);
-        _file->seekg(_header.rootDirectoryOffset);
-        _file->read(reinterpret_cast<char*>(rootDirData.data()), _header.rootDirectoryLength);
-        
-        std::vector<uint8_t> decompressed = pmtiles::decompressData(rootDirData, _header.internalCompression);
-        _rootDirectory = pmtiles::decodeDirectory(decompressed);
-        adoptContainerDemEncoding();
-        
-        Log::Infof("PMTilesTileDataSource: Opened %s with %llu tiles, zoom %d-%d", 
-                   path.c_str(), _header.numTileEntries, _header.minZoom, _header.maxZoom);
+        openArchive();
     }
 
     PMTilesTileDataSource::PMTilesTileDataSource(int minZoom, int maxZoom, const std::string& path) :
         TileDataSource(minZoom, maxZoom),
         _path(path),
-        _file(),
         _header(),
         _rootDirectory(),
         _cachedMetadata(),
-        _cachedDataExtent(),
-        _leafDirectoryCache(),
-        _mutex()
+        _cachedDataExtent()
     {
-        _file = std::make_unique<std::ifstream>(path, std::ios::binary);
-        if (!_file->is_open()) {
-            throw FileException("Failed to open PMTiles file", path);
-        }
+        openArchive();
+    }
 
-        _header = ReadHeader(*_file);
-        
-        // Read and decode root directory
-        std::vector<uint8_t> rootDirData(_header.rootDirectoryLength);
-        _file->seekg(_header.rootDirectoryOffset);
-        _file->read(reinterpret_cast<char*>(rootDirData.data()), _header.rootDirectoryLength);
-        
-        std::vector<uint8_t> decompressed = pmtiles::decompressData(rootDirData, _header.internalCompression);
-        _rootDirectory = pmtiles::decodeDirectory(decompressed);
-        adoptContainerDemEncoding();
-        
-        Log::Infof("PMTilesTileDataSource: Opened %s with %llu tiles, zoom %d-%d", 
-                   path.c_str(), _header.numTileEntries, _header.minZoom, _header.maxZoom);
-    }
-        
     PMTilesTileDataSource::~PMTilesTileDataSource() {
+#ifndef _WIN32
+        if (_fd >= 0) {
+            ::close(_fd);
+        }
+#endif
     }
-    
+
+    void PMTilesTileDataSource::openArchive() {
+#ifdef _WIN32
+        _file.open(_path, std::ios::binary);
+        if (!_file.is_open()) {
+            throw FileException("Failed to open PMTiles file", _path);
+        }
+#else
+        _fd = ::open(_path.c_str(), O_RDONLY);
+        if (_fd < 0) {
+            throw FileException("Failed to open PMTiles file", _path);
+        }
+#endif
+
+        try {
+            std::vector<uint8_t> headerBytes = readRange(0, 127);
+            _header = pmtiles::readHeader(headerBytes.data());
+
+            std::vector<uint8_t> rootDirData = readRange(_header.rootDirectoryOffset, _header.rootDirectoryLength);
+            _rootDirectory = pmtiles::decodeDirectory(pmtiles::decompressData(std::move(rootDirData), _header.internalCompression));
+        }
+        catch (...) {
+#ifndef _WIN32
+            ::close(_fd);
+            _fd = -1;
+#endif
+            throw;
+        }
+        adoptContainerDemEncoding();
+
+        Log::Infof("PMTilesTileDataSource: Opened %s with %llu tiles, zoom %d-%d",
+                   _path.c_str(), _header.numTileEntries, _header.minZoom, _header.maxZoom);
+    }
+
+    std::vector<uint8_t> PMTilesTileDataSource::readRange(uint64_t offset, uint64_t length) const {
+        std::vector<uint8_t> data(length);
+#ifdef _WIN32
+        std::lock_guard<std::mutex> lock(_fileMutex);
+        _file.clear();
+        _file.seekg(offset);
+        _file.read(reinterpret_cast<char*>(data.data()), length);
+        if (!_file) {
+            throw GenericException("Failed to read PMTiles data");
+        }
+#else
+        // pread keeps no file position, so concurrent tile reads need no lock
+        uint64_t done = 0;
+        while (done < length) {
+            ssize_t count = ::pread(_fd, data.data() + done, length - done, static_cast<off_t>(offset + done));
+            if (count <= 0) {
+                throw GenericException("Failed to read PMTiles data");
+            }
+            done += static_cast<uint64_t>(count);
+        }
+#endif
+        return data;
+    }
+
     std::string PMTilesTileDataSource::getContainerMetaData() const {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_cacheMutex);
         
         if (!_cachedMetadata) {
             if (_header.metadataLength == 0) {
@@ -92,12 +122,10 @@ namespace massif {
             
             try {
                 // Read metadata
-                std::vector<uint8_t> metadataData(_header.metadataLength);
-                _file->seekg(_header.metadataOffset);
-                _file->read(reinterpret_cast<char*>(metadataData.data()), _header.metadataLength);
-                
+                std::vector<uint8_t> metadataData = readRange(_header.metadataOffset, _header.metadataLength);
+
                 // Decompress if needed
-                std::vector<uint8_t> decompressed = pmtiles::decompressData(metadataData, _header.internalCompression);
+                std::vector<uint8_t> decompressed = pmtiles::decompressData(std::move(metadataData), _header.internalCompression);
                 
                 _cachedMetadata = std::string(decompressed.begin(), decompressed.end());
             }
@@ -164,7 +192,7 @@ namespace massif {
     }
     
     MapBounds PMTilesTileDataSource::getDataExtent() const {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_cacheMutex);
         
         if (!_cachedDataExtent) {
             // Convert WGS84 bounds to projection bounds
@@ -177,14 +205,7 @@ namespace massif {
     }
 
     std::shared_ptr<TileData> PMTilesTileDataSource::loadTile(const MapTile& mapTile) {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
-        
         Log::Infof("PMTilesTileDataSource::loadTile: Loading %s", mapTile.toString().c_str());
-        
-        if (!_file || !_file->is_open()) {
-            Log::Errorf("PMTilesTileDataSource::loadTile: File not open");
-            return std::shared_ptr<TileData>();
-        }
 
         // Handle overzoom
         if (getMaxOverzoomLevel() >= 0 && mapTile.getZoom() > getMaxZoomWithOverzoom()) {
@@ -199,7 +220,7 @@ namespace massif {
             
             // Find the tile entry
             pmtiles::DirectoryEntry entry;
-            if (!FindTileEntry(tileId, entry)) {
+            if (!findTileEntry(tileId, entry)) {
                 // Tile not found, try parent tile
                 if (mapTile.getZoom() > getMinZoom()) {
                     Log::Infof("PMTilesTileDataSource::loadTile: Tile not found, redirecting to parent");
@@ -213,12 +234,9 @@ namespace massif {
             }
             
             // Read tile data
-            std::vector<uint8_t> compressedData = ReadTileData(entry.offset, entry.length);
-            
-            // Decompress if needed
-            std::vector<uint8_t> tileBytes = pmtiles::decompressData(compressedData, _header.tileCompression);
-            
-            auto data = std::make_shared<BinaryData>(tileBytes.data(), tileBytes.size());
+            std::vector<uint8_t> compressedData = readRange(_header.tileDataOffset + entry.offset, entry.length);
+
+            auto data = std::make_shared<BinaryData>(pmtiles::decompressData(std::move(compressedData), _header.tileCompression));
             auto tileData = std::make_shared<TileData>(data);
             applyTileMetaData(tileData);
             return tileData;
@@ -229,86 +247,60 @@ namespace massif {
         }
     }
 
-    pmtiles::Header PMTilesTileDataSource::ReadHeader(std::ifstream& file) {
-        // Read 127-byte header
-        uint8_t headerBytes[127];
-        file.seekg(0);
-        file.read(reinterpret_cast<char*>(headerBytes), 127);
-        
-        if (!file) {
-            throw GenericException("Failed to read PMTiles header");
-        }
-        
-        return pmtiles::readHeader(headerBytes);
-    }
-
-    std::vector<uint8_t> PMTilesTileDataSource::ReadTileData(uint64_t offset, uint32_t length) {
-        std::vector<uint8_t> data(length);
-        _file->seekg(_header.tileDataOffset + offset);
-        _file->read(reinterpret_cast<char*>(data.data()), length);
-        
-        if (!_file) {
-            throw GenericException("Failed to read tile data");
-        }
-        
-        return data;
-    }
-
-    bool PMTilesTileDataSource::FindTileEntry(uint64_t tileId, pmtiles::DirectoryEntry& outEntry) {
-        // Search in root directory first
-        for (const auto& entry : _rootDirectory) {
-            if (entry.runLength == 0) {
-                // This is a leaf directory entry
-                if (entry.tileId <= tileId) {
-                    // Check if this leaf directory might contain our tile
-                    try {
-                        // Check cache first
-                        auto cacheIt = _leafDirectoryCache.find(entry.offset);
-                        std::vector<pmtiles::DirectoryEntry>* leafDir;
-                        
-                        if (cacheIt != _leafDirectoryCache.end()) {
-                            leafDir = &cacheIt->second;
-                        } else {
-                            // Load and cache the leaf directory
-                            std::vector<pmtiles::DirectoryEntry> loadedLeafDir = LoadLeafDirectory(entry.offset, entry.length);
-                            auto insertResult = _leafDirectoryCache.emplace(entry.offset, std::move(loadedLeafDir));
-                            leafDir = &insertResult.first->second;
-                        }
-                        
-                        // Search in the leaf directory using shared utility
-                        if (pmtiles::findTileEntry(*leafDir, tileId, outEntry)) {
-                            return true;
-                        }
-                    }
-                    catch (const std::exception& ex) {
-                        Log::Warnf("PMTilesTileDataSource: Failed to load leaf directory: %s", ex.what());
-                    }
-                }
-            } else {
-                // This is a tile entry
-                if (tileId >= entry.tileId && tileId < entry.tileId + entry.runLength) {
-                    outEntry = entry; // Copy the entry
-                    return true;
-                }
+    bool PMTilesTileDataSource::findTileEntry(uint64_t tileId, pmtiles::DirectoryEntry& outEntry) {
+        // Root, then at most a few levels of leaf directories (the spec allows 3)
+        const Directory* directory = &_rootDirectory;
+        std::shared_ptr<const Directory> leaf;
+        for (int depth = 0; depth < 4; depth++) {
+            const pmtiles::DirectoryEntry* entry = pmtiles::findDirectoryEntry(*directory, tileId);
+            if (!entry) {
+                return false;
             }
+            if (entry->runLength > 0) {
+                outEntry = *entry;
+                return true;
+            }
+            try {
+                leaf = getLeafDirectory(entry->offset, entry->length);
+            }
+            catch (const std::exception& ex) {
+                Log::Warnf("PMTilesTileDataSource: Failed to load leaf directory: %s", ex.what());
+                return false;
+            }
+            directory = leaf.get();
         }
-        
         return false;
     }
 
-    std::vector<pmtiles::DirectoryEntry> PMTilesTileDataSource::LoadLeafDirectory(uint64_t offset, uint32_t length) {
-        // Read leaf directory data
-        std::vector<uint8_t> leafData(length);
-        _file->seekg(_header.leafDirectoriesOffset + offset);
-        _file->read(reinterpret_cast<char*>(leafData.data()), length);
-        
-        if (!_file) {
-            throw GenericException("Failed to read leaf directory");
+    std::shared_ptr<const PMTilesTileDataSource::Directory> PMTilesTileDataSource::getLeafDirectory(uint64_t offset, uint32_t length) {
+        {
+            std::lock_guard<std::mutex> lock(_leafMutex);
+            auto it = _leafCache.find(offset);
+            if (it != _leafCache.end()) {
+                _leafOrder.splice(_leafOrder.begin(), _leafOrder, it->second.position);
+                return it->second.directory;
+            }
         }
-        
-        // Decompress and decode using shared utilities
-        std::vector<uint8_t> decompressed = pmtiles::decompressData(leafData, _header.internalCompression);
-        return pmtiles::decodeDirectory(decompressed);
+
+        // Decoded outside the lock; two threads missing the same leaf both decode it, the first insert wins
+        std::vector<uint8_t> leafData = readRange(_header.leafDirectoriesOffset + offset, length);
+        auto directory = std::make_shared<const Directory>(pmtiles::decodeDirectory(pmtiles::decompressData(std::move(leafData), _header.internalCompression)));
+
+        std::lock_guard<std::mutex> lock(_leafMutex);
+        auto it = _leafCache.find(offset);
+        if (it != _leafCache.end()) {
+            return it->second.directory;
+        }
+        _leafOrder.push_front(offset);
+        _leafCache.emplace(offset, CachedLeaf { directory, _leafOrder.begin() });
+        _leafCacheEntries += directory->size();
+        while (_leafCacheEntries > MAX_CACHED_LEAF_ENTRIES && _leafOrder.size() > 1) {
+            auto evicted = _leafCache.find(_leafOrder.back());
+            _leafCacheEntries -= evicted->second.directory->size();
+            _leafCache.erase(evicted);
+            _leafOrder.pop_back();
+        }
+        return directory;
     }
 
 }

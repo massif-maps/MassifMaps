@@ -1683,6 +1683,17 @@ sorts after all unoccluded labels of its layer, whatever their priorities, and r
 blocked keeps that value, and its low rank, until it is drawn again: sticky, but it cannot flip
 every pass, which treating an unknown occlusion as clear does.
 
+**The occlusion eases; it is not set.** Each frame's verdict comes from four taps against the
+extrusions drawn that frame, and while building tiles load that set moves under a still camera: tiles
+swap, buildings grow in (`renderLayer.blend`), and a building whose base is not resolved yet blocks
+nothing. Applied outright, the verdict jumped by quarters from frame to frame - a half-hidden POI
+flickered, and through the ranking above it lost and won its slot pass after pass, seen as POIs
+showing and hiding while rotating over 3D terrain with 3D buildings until the tiles settled. The
+value now moves toward the verdict at the label fade step (`_labelOcclusionStep`; `endFrame` asks
+for frames while one still moves), a rebuilt label carries it over, and "partly occluded" holds
+only once it has eased a quarter of the way to its occluded opacity - one tap of four, settled - so
+a passing dip cannot re-rank it. `LabelYieldTest` pins the threshold.
+
 **A line run collides by its glyphs**, as maplibre's by collision circles along the line
 (`Label::calculateEnvelope`'s glyphEnvelopes): the bounds of a run round a bend covered the corner
 beside it (405x320 device px for Place Grenette, tilt 60) and hid what stood there. Neighbouring glyphs

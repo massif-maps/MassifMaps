@@ -29,6 +29,7 @@
 #include <cstring>
 #include <limits>
 #include <set>
+#include <utility>
 
 namespace {
     const GLvoid* bufferGLOffset(int offset) {
@@ -1760,6 +1761,7 @@ namespace massif::vt {
         _visiblePassLabels = _passLabels;
         // A forced placement replaces the whole screen: a crossfade would double every label (mapbox: fadeDuration 0).
         float dOpacity = labelOpacityStep(dt, _labelBlendingSpeed, _snapLabelTransition.exchange(false));
+        _labelOcclusionStep = dOpacity;
         for (int pass = 0; pass < 2; pass++) {
             for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
                 fading = updateLabel(label, dOpacity) || fading;
@@ -2060,8 +2062,10 @@ namespace massif::vt {
     bool GLTileRenderer::endFrame() {
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_CLOCK(statClock);
+        // An occlusion still easing wants the next frame, as a fade does.
+        bool occlusionEasing = std::exchange(_labelOcclusionEasing, false);
         if (--_resourceSweepCounter > 0) {
-            return false;
+            return occlusionEasing;
         }
         _resourceSweepCounter = RESOURCE_SWEEP_INTERVAL_FRAMES;
         VT_STAT_ADD(endFrameSwept, _compiledBitmapMap.size() + _compiledTileBitmapMap.size() + _compiledTileSurfaceMap.size() + _compiledTileGeometryMap.size());
@@ -2124,7 +2128,7 @@ namespace massif::vt {
 
         // Unused label batches are kept: they are unlikely to be big and can be reused.
         VT_STAT_SPLIT(endFrameNs, statClock);
-        return false;
+        return occlusionEasing;
     }
 
     void GLTileRenderer::snapLabelTransition() {
@@ -3192,6 +3196,7 @@ namespace massif::vt {
                     newLabel->setOpacity(label->getOpacity());
                     newLabel->setTextOpacity(label->getTextOpacity());
                     newLabel->setTerrainOccluded(label->isTerrainOccluded());
+                    newLabel->setOcclusion(label->getOcclusion(), label->getOcclusionFloor());
                     newLabel->snapPlacement(*label);
                 }
                 else if (std::shared_ptr<Label> oldLabel = takeOldSpot(*newLabel)) {
@@ -3199,6 +3204,7 @@ namespace massif::vt {
                     newLabel->setOpacity(oldLabel->getOpacity());
                     newLabel->setTextOpacity(0);
                     newLabel->setTerrainOccluded(oldLabel->isTerrainOccluded());
+                    newLabel->setOcclusion(oldLabel->getOcclusion(), oldLabel->getOcclusionFloor());
                     newLabel->snapPlacement(*oldLabel);
                     oldLabel->setOpacity(0); // the new one draws its icon now; two would overlap
                     oldLabel->setTextOpacity(0);
@@ -4438,9 +4444,16 @@ namespace massif::vt {
             }
             VT_STAT_SPLIT(labelPassStyleNs, styleClock);
 
-            // The style layer's occluded opacity, else this layer's default.
-            float occludedOpacity = labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity);
-            label->setOcclusion(occludedOpacity < 1.0f ? occludedOpacity + (1.0f - occludedOpacity) * calculateLabelVisibility(*label) : 1.0f);
+            // The style layer's occluded opacity, else this layer's default. Eased like a fade: the occluders change
+            // as building tiles load and grow in, and an instant verdict flickered a half-hidden name.
+            if (pass != Label::DrawPass::CALLOUT_LINE) {
+                float occludedOpacity = std::min(1.0f, labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity));
+                float target = occludedOpacity < 1.0f ? occludedOpacity + (1.0f - occludedOpacity) * calculateLabelVisibility(*label) : 1.0f;
+                float occlusion = label->getOcclusion();
+                occlusion = target > occlusion ? std::min(target, occlusion + _labelOcclusionStep) : std::max(target, occlusion - _labelOcclusionStep);
+                label->setOcclusion(occlusion, occludedOpacity);
+                _labelOcclusionEasing = _labelOcclusionEasing || occlusion != target;
+            }
 
             VT_STAT_CLOCK(statClock);
             std::size_t labelVertexOffset = _labelVertices.size();

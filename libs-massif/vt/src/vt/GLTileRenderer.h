@@ -1020,6 +1020,8 @@ namespace massif::vt {
         std::atomic<bool> _snapLabelTransition = false; // commit the next placement without a fade
         std::size_t _labelCullCursor = 0; // how far the current placement cycle got through _labels
         std::atomic<bool> _labelsReanchored { false }; // see consumeLabelsReanchored
+        float _labelOcclusionStep = 1.0f; // this frame's fade step, which building occlusion eases by too
+        bool _labelOcclusionEasing = false; // a label's occlusion has not reached its verdict: draw another frame
         bool _hasZElevatedLabels = false; // a label of the set stands on a roof (refreshRoofSurfaces)
         unsigned int _roofBasesVersion = 0; // the base versions refreshRoofSurfaces last resolved roofs at
         int _resourceSweepCounter = 0;

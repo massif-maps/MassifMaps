@@ -161,6 +161,19 @@ void testLabelYield() {
         TEST_CHECK(ancestor->isVisible(), "alone, a stand-in tile's label is placed");
     }
 
+    {
+        // Building occlusion eases toward each frame's verdict: one frame's dip, as building tiles load, must not re-rank.
+        auto street = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), {});
+        auto poi = buildLabel(2, 0, cglib::vec2<float>(1, 0), buildIcon(), {});
+        street->setVisible(true);
+        street->setOcclusion(0.9f, 0.25f);
+        cull({ street, poi });
+        TEST_CHECK(street->isVisible() && !poi->isVisible(), "a name one easing step under clear keeps its rank over the POI");
+        street->setOcclusion(0.8125f, 0.25f);
+        cull({ street, poi });
+        TEST_CHECK(poi->isVisible() && !street->isVisible(), "eased to one blocked tap of four, it gives way");
+    }
+
     for (float occlusion : { 1.0f, 0.5f }) {
         auto street = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), {});
         auto poi = buildLabel(2, 0, cglib::vec2<float>(1, 0), buildIcon(), {});

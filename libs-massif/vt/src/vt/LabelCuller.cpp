@@ -277,7 +277,7 @@ namespace massif::vt {
                 if (label->isStandIn()) {
                     VT_STAT_INC(cullerStandIn);
                 }
-                validLabelList.push_back({ valid, wasVisible, label->isPartlyOccluded(), label->isStandIn(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
+                validLabelList.push_back({ valid, wasVisible, label->isPartlyOccluded(), !label->isOcclusionKnown(), label->isStandIn(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
                                            variants.size() > 1 ? variants : std::vector<CullRecord>() });
             }
         }
@@ -298,6 +298,11 @@ namespace massif::vt {
             // A label a building half hides gives way to any label in the clear, whatever their priorities.
             if (labelInfo1.occluded != labelInfo2.occluded) {
                 return labelInfo2.occluded;
+            }
+            // A rebuilt label starts unjudged, and ranking it with the clear ones let it evict a settled label for the
+            // frame or two before it was drawn and found hidden.
+            if (labelInfo1.unknown != labelInfo2.unknown) {
+                return labelInfo2.unknown;
             }
             if (labelInfo1.priority != labelInfo2.priority) {
                 return labelInfo1.priority > labelInfo2.priority;

@@ -84,15 +84,16 @@ namespace massif::vt {
             _occlusion = other._occlusion;
             _occlusionFloor = other._occlusionFloor;
             _occlusionVerdict = other._occlusionVerdict;
-            _occlusionJudged = other._occlusionJudged;
+            _occlusionStamp = other._occlusionStamp;
             _partlyOccluded = other._partlyOccluded;
         }
         float getOcclusion() const { return _occlusion; }
         float getOcclusionFloor() const { return _occlusionFloor; }
-        // False until a frame drew the label and judged it, and again once it stops being drawn: the next verdict is
-        // then taken outright, not eased from a value that no longer describes the view.
-        bool isOcclusionJudged() const { return _occlusionJudged; }
-        void setOcclusionJudged(bool judged) { _occlusionJudged = judged; }
+        // The render frame the occlusion was last judged at, 0 before the first: a label never judged ranks below those
+        // in the clear (it may be behind a building), and a stale judgement is replaced outright, not eased from.
+        unsigned int getOcclusionStamp() const { return _occlusionStamp; }
+        void setOcclusionStamp(unsigned int stamp) { _occlusionStamp = stamp; }
+        bool isOcclusionKnown() const { return _occlusionStamp != 0; }
         // Wholly hidden by 3D content on the last frame drawn: kept, but it claims no room from the labels in front.
         bool isFullyOccluded() const { return _occlusion <= 0.0f; }
         // A quarter of the way to its floor once eased, and until nearly clear again: a passing verdict does not re-rank it.
@@ -497,7 +498,7 @@ namespace massif::vt {
         float _textOpacity = 0.0f;
         float _occlusion = 1.0f;
         float _occlusionFloor = 0.0f;
-        bool _occlusionJudged = false;
+        unsigned int _occlusionStamp = 0;
         bool _partlyOccluded = false;
         float _occlusionVerdict = 1.0f;
         bool _visible = false;

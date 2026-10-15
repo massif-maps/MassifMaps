@@ -96,6 +96,7 @@ namespace massif::vt {
             bool valid;
             bool wasVisible;
             bool occluded; // partly hidden by 3D content on the last frame drawn
+            bool unknown; // its occlusion was never judged: it may be behind a building, so it takes no slot from a label in the clear
             bool standIn;
             float priority;
             int layerIndex;

@@ -27,6 +27,11 @@ namespace massif::vt {
      *  100 ms (time constant) after the verdict, one clearing shows about 330 ms after it. */
     inline constexpr float LABEL_OCCLUSION_FALL_RATE = 3.0f;
     inline constexpr float LABEL_OCCLUSION_RISE_RATE = 0.9f;
+    /** Frames an occlusion judgement stays current, and how often a hidden label's is renewed, at most this many a frame. */
+    inline constexpr unsigned int LABEL_OCCLUSION_STALE_FRAMES = 60;
+    inline constexpr unsigned int LABEL_OCCLUSION_REJUDGE_FRAMES = 30;
+    inline constexpr int LABEL_OCCLUSION_JUDGE_BUDGET = 96;
+
     /** Verdict noise below this fraction of the label is ignored. */
     inline constexpr float LABEL_OCCLUSION_DEAD_BAND = 0.15f;
 

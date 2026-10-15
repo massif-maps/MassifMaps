@@ -1686,6 +1686,21 @@ namespace massif::vt {
         _labelMapGeneration++; // invalidates a prepare running off the mutex
     }
     
+    // The style layer's occluded opacity, else this layer's default. Eased like a fade: the occluders change as
+    // building tiles load and grow in, and an instant verdict flickered a half-hidden name. A label not judged
+    // for a while (it was hidden, or is new) takes the verdict outright.
+    void GLTileRenderer::judgeLabelOcclusion(Label& label) {
+        float occludedOpacity = std::min(1.0f, label.getStyle()->occlusionOpacity.value_or(_labelOcclusionOpacity));
+        bool judged = label.isOcclusionKnown() && _labelOcclusionFrame - label.getOcclusionStamp() < LABEL_OCCLUSION_STALE_FRAMES;
+        float verdict = occludedOpacity < 1.0f ? holdLabelOcclusionVerdict(label.getOcclusionVerdict(), calculateLabelVisibility(label), judged) : 1.0f;
+        float target = occludedOpacity + (1.0f - occludedOpacity) * verdict;
+        float occlusion = easeLabelOcclusion(label.getOcclusion(), target, _labelOcclusionStep, judged);
+        label.setOcclusion(occlusion, occludedOpacity);
+        label.setOcclusionVerdict(verdict);
+        label.setOcclusionStamp(_labelOcclusionFrame);
+        _labelOcclusionEasing = _labelOcclusionEasing || occlusion != target;
+    }
+
     bool GLTileRenderer::startFrame(float dt) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1765,6 +1780,41 @@ namespace massif::vt {
         for (int pass = 0; pass < 2; pass++) {
             for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
                 fading = updateLabel(label, dOpacity) || fading;
+            }
+        }
+        // Judge the labels nobody draws too (hidden, or just built), those on screen: the culler ranks a label hidden
+        // by a building after every one in the clear, and a label judged only once drawn took a free slot first.
+        _labelOcclusionFrame++;
+        {
+            int budget = LABEL_OCCLUSION_JUDGE_BUDGET;
+            cglib::mat4x4<double> cameraMatrix = _viewState.cameraMatrix;
+            for (int i = 0; i < 3; i++) {
+                cameraMatrix(i, 3) = 0; // the anchor is made camera-relative below
+            }
+            cglib::mat4x4<double> viewProjection = _viewState.projectionMatrix * cameraMatrix;
+            for (int pass = 0; pass < 2 && budget > 0; pass++) {
+                const std::vector<std::shared_ptr<Label>>& passLabels = *_visiblePassLabels[pass];
+                std::size_t count = passLabels.size();
+                for (std::size_t n = 0; n < count && budget > 0; n++) {
+                    const std::shared_ptr<Label>& label = passLabels[(n + _labelOcclusionCursor) % count];
+                    if (!label->isValid() || label->getOpacity() > 0.0f || (label->isOcclusionKnown() && _labelOcclusionFrame - label->getOcclusionStamp() < LABEL_OCCLUSION_REJUDGE_FRAMES)) {
+                        continue;
+                    }
+                    const cglib::vec3<double>* anchor = label->getAnchorPosition();
+                    if (!anchor) {
+                        continue;
+                    }
+                    cglib::vec3<double> relative = *anchor - _viewState.origin;
+                    cglib::vec4<double> clip = cglib::transform(cglib::vec4<double>(relative(0), relative(1), relative(2), 1), viewProjection);
+                    if (!(clip(3) > 0) || std::abs(clip(0)) > clip(3) * 1.4 || std::abs(clip(1)) > clip(3) * 1.4) {
+                        continue;
+                    }
+                    judgeLabelOcclusion(*label);
+                    budget--;
+                }
+                if (budget == 0) {
+                    _labelOcclusionCursor += count / 2 + 1; // the next frame starts further on, so a long list is not judged from its head only
+                }
             }
         }
         VT_STAT_SPLIT(prepLabelBlendNs, prepClock);
@@ -4412,7 +4462,6 @@ namespace massif::vt {
                 continue;
             }
             if (label->getOpacity() <= 0.0f) {
-                label->setOcclusionJudged(false); // its occlusion goes stale unseen: judge it afresh when it shows
                 continue;
             }
             const std::shared_ptr<const TileLabel::Style>& labelStyle = label->getStyle();
@@ -4621,15 +4670,7 @@ namespace massif::vt {
             // The style layer's occluded opacity, else this layer's default. Eased like a fade: the occluders change
             // as building tiles load and grow in, and an instant verdict flickered a half-hidden name.
             if (pass != Label::DrawPass::CALLOUT_LINE) {
-                float occludedOpacity = std::min(1.0f, labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity));
-                bool judged = label->isOcclusionJudged();
-                float verdict = occludedOpacity < 1.0f ? holdLabelOcclusionVerdict(label->getOcclusionVerdict(), calculateLabelVisibility(*label), judged) : 1.0f;
-                float target = occludedOpacity + (1.0f - occludedOpacity) * verdict;
-                float occlusion = easeLabelOcclusion(label->getOcclusion(), target, _labelOcclusionStep, judged);
-                label->setOcclusion(occlusion, occludedOpacity);
-                label->setOcclusionVerdict(verdict);
-                label->setOcclusionJudged(true);
-                _labelOcclusionEasing = _labelOcclusionEasing || occlusion != target;
+                judgeLabelOcclusion(*label);
             }
 
             VT_STAT_CLOCK(statClock);

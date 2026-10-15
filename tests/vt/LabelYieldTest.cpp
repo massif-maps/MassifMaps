@@ -178,6 +178,19 @@ void testLabelYield() {
         TEST_CHECK(!street->isPartlyOccluded(), "and ranks again once nearly clear");
     }
 
+    {
+        // A label never judged against the buildings (just rebuilt) must not evict a settled label in the clear.
+        auto settled = buildLabel(1, 0, cglib::vec2<float>(0, 0), buildIcon(), {});
+        auto fresh = buildLabel(2, 10, cglib::vec2<float>(1, 0), buildIcon(), {});
+        settled->setVisible(true);
+        settled->setOcclusionStamp(1);
+        cull({ settled, fresh });
+        TEST_CHECK(settled->isVisible() && !fresh->isVisible(), "an unjudged label ranks after a judged one in the clear, whatever its priority");
+        fresh->setOcclusionStamp(1);
+        cull({ settled, fresh });
+        TEST_CHECK(fresh->isVisible() && !settled->isVisible(), "once judged clear it ranks by priority again");
+    }
+
     for (float occlusion : { 1.0f, 0.5f }) {
         auto street = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), {});
         auto poi = buildLabel(2, 0, cglib::vec2<float>(1, 0), buildIcon(), {});

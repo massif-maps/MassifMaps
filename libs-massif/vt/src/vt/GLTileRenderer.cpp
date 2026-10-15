@@ -1792,23 +1792,7 @@ namespace massif::vt {
         }
 
         if (geom2D) {
-            GLint stencilBits = 0;
-            GLint currentFBO = 0;
-            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
-            if (currentFBO != 0) {
-                GLint stencilRB = 0;
-                glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &stencilRB);
-                if (stencilRB != 0) {
-                    GLint currentRB = 0;
-                    glGetIntegerv(GL_RENDERBUFFER_BINDING, &currentRB);
-                    glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
-                    glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_STENCIL_SIZE, &stencilBits);
-                    glBindRenderbuffer(GL_RENDERBUFFER, currentRB);
-                }
-            } else {
-                glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
-            }
-
+            GLint stencilBits = boundStencilBits();
 
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -3886,6 +3870,26 @@ namespace massif::vt {
         }
     }
 
+    GLint GLTileRenderer::boundStencilBits() {
+        GLint stencilBits = 0;
+        GLint currentFBO = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+        if (currentFBO != 0) {
+            GLint stencilRB = 0;
+            glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &stencilRB);
+            if (stencilRB != 0) {
+                GLint currentRB = 0;
+                glGetIntegerv(GL_RENDERBUFFER_BINDING, &currentRB);
+                glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
+                glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_STENCIL_SIZE, &stencilBits);
+                glBindRenderbuffer(GL_RENDERBUFFER, currentRB);
+            }
+        } else {
+            glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
+        }
+        return stencilBits;
+    }
+
     void GLTileRenderer::renderOccludedGeometry() {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -3931,8 +3935,24 @@ namespace massif::vt {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GREATER);
         glDepthMask(GL_FALSE);
-        glDisable(GL_STENCIL_TEST);
-        glStencilMask(0);
+        // The ghosts are translucent and drawn in style order, so a casing's ghost would show through its
+        // own fill's, tinting the white inner. They go through the draw-once passes instead (top layer
+        // first, one blend per pixel, see 03-vt-renderer.md): the ghost looks like the opaque line at one
+        // faint opacity. Stencil bit 0x80 only, which the 2D passes clear themselves; without a stencil
+        // buffer the ghosts draw as plain layers.
+        bool ghostOnce = boundStencilBits() >= 8;
+        if (ghostOnce) {
+            glEnable(GL_STENCIL_TEST);
+            glStencilMask(DRAW_ONCE_STENCIL_BIT);
+            glClearStencil(0);
+            glClear(GL_STENCIL_BUFFER_BIT);
+            glStencilMask(0);
+            glStencilFunc(GL_EQUAL, 0, DRAW_ONCE_STENCIL_BIT);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        } else {
+            glDisable(GL_STENCIL_TEST);
+            glStencilMask(0);
+        }
         if (_terrainMode) {
             glDisable(GL_CULL_FACE);
         } else {
@@ -3945,7 +3965,15 @@ namespace massif::vt {
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
         std::optional<CompOp> currentCompOp;
         _drapeMaskTexture = 0;
+        std::vector<decltype(renderLayerMap)::iterator> layerOrder;
+        layerOrder.reserve(renderLayerMap.size());
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            layerOrder.push_back(it);
+        }
+        for (const auto& [it, drawOncePass] : drawOnceSchedule(layerOrder, [ghostOnce](decltype(renderLayerMap)::iterator) {
+                 return std::string(ghostOnce ? "ghost" : "");
+             })) {
+            _drawOncePass = drawOncePass;
             int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
             for (const RenderTileLayer* renderLayer : it->second) {
                 // The state the 2D pass drew this layer's lines in, or the two depths would not match.
@@ -3980,6 +4008,8 @@ namespace massif::vt {
                 _terrainDrawLayerOffset = 0.0f;
             }
         }
+        _drawOncePass = DrawOncePass::NONE;
+        glDisable(GL_STENCIL_TEST);
 
         _terrainDrawDepthBias = _terrainDepthBias;
         _terrainDrawDepthClipUnits = 0.0f;

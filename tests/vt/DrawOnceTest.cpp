@@ -1,5 +1,6 @@
 // A draw-once group (hybrid's translucent roads) reaches the renderer as the tile layer's group name,
-// and the renderer draws each run of one group twice, top layer first (vt/DrawOnceOrder.h).
+// and the renderer draws each run of one group twice, top layer first (vt/DrawOnceOrder.h). The ghost
+// pass of line-occlusion-opacity reuses the same schedule with one group for every ghosted layer.
 // Not covered: the stencil passes themselves (GLTileRenderer, GL) - that is a render check.
 
 #include "DrawOnceOrder.h"
@@ -38,6 +39,11 @@ void testDrawOnce() {
     TEST_CHECK(order({ { 1, "road" }, { 2, "" }, { 3, "road" } }) == "1c 1r 2n 3c 3r",
                "one name split by another layer is two runs, not one reordered across it");
     TEST_CHECK(order({}).empty(), "no layers, nothing to do");
+    // The ghost pass (line-occlusion-opacity) runs a maneuver arrow's case / fill / headcase / head as one
+    // group, so the head's white is drawn first and the casing's blue never shows through it.
+    TEST_CHECK(order({ { 1, "ghost" }, { 2, "ghost" }, { 3, "ghost" }, { 4, "ghost" } }) == "4c 3c 2c 1c 4r 3r 2r 1r",
+               "a ghosted arrow's four attachments draw top first, each pixel once");
+    TEST_CHECK(order({ { 1, "" }, { 2, "" } }) == "1n 2n", "without a stencil buffer the ghosts keep style order");
 
     auto transformer = std::make_shared<DefaultTileTransformer>(1.0f);
     TileLayerBuilder plain("road", 0, TileId(14, 8501, 5845), transformer, 256.0f, 1.0f);

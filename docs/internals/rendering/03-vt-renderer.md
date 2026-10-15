@@ -343,6 +343,9 @@ threshold is 0.8: measured in the style preview (hybrid, Grenoble Rue Thiers, z1
 0.8–1 coverage edge then claims pixels inside the next way and leaves a dotted ring where the disc
 was; 0.99 stamps only fully covered pixels and the ring is gone.
 
+The **ghost pass** (`line-occlusion-opacity`, [01-frame.md](01-frame.md#the-ghost-pass-line-occlusion-opacity))
+runs the same schedule with one built-in group, so a ghosted casing never tints its fill.
+
 A casing (`line-gap-width`) shares its fill's group: its round end otherwise shows through the next
 way's translucent fill as a ring. A second line symbolizer in ONE grouped attachment is still punched
 out, as above.

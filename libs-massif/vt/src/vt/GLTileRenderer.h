@@ -590,6 +590,8 @@ namespace massif::vt {
         int bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx, bool spanOnly = false, const cglib::mat4x4<float>* clipZoom = nullptr);
         // A tile's baked layers that pass `wanted`, in draw-once order once one carries a group: the bound
         // drape FBO then borrows _drapeStencilRB for the bake (see renderGeometry2D for the passes).
+        // Stencil bits of the framebuffer bound now (0 without a stencil buffer).
+        static GLint boundStencilBits();
         void bakeLayersDrawOnce(const RenderTile& renderTile, const std::function<bool(const RenderTileLayer&)>& wanted, const std::function<void(const RenderTileLayer&)>& draw);
         // A live layer's occlusion mask over a tile and the target -> mask uv transform. False without a
         // mask, or when the drape tile is finer than the target: one draw cannot sample several masks.

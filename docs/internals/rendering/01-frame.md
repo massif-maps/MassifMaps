@@ -151,6 +151,19 @@ tile stencil masks and the drape coverage mask. Not used: a stencil bit set by t
 extrusion pass. The 2D pass's tile masks and the draw-once groups own the stencil bits, and a ridge
 would need the ground to set it too.
 
+**One blend per pixel.** The ghosts are translucent, so drawing them in style order let each one
+show through the next: a maneuver arrow's casing ghost (blue) under its fill ghost (white) tinted the
+white inner blue, the head's casing the head's, and a round join or a tile edge blended twice. The
+ghosts of one renderer therefore run as ONE draw-once group ([03-vt-renderer.md](03-vt-renderer.md#translucent-layers-draw-once-groups-opt-in)):
+`drawOnceSchedule` with a single group name, top style layer first, stencil bit `0x80` cleared at
+the start of the pass (that bit only; the 2D passes clear it again themselves). A pixel gets the
+colour of the topmost ghost that covers it, at the one faint opacity, so the ghost reads as the
+visible line seen through glass: white inner, blue edge. Like every draw-once group, a line with
+`line-border-*` draws in the rim pass only, and without an 8-bit stencil buffer the ghosts keep
+style order. **Per renderer**: the ghost of a lower layer (the route) and of a higher one (the
+arrow on it) are drawn at different times with nothing shared between them, so where an arrow lies
+over the route behind a building the route's ghost still shows under the arrow's.
+
 ## What causes a frame
 
 The renderer is **not** a free-running loop. A frame is drawn when something calls

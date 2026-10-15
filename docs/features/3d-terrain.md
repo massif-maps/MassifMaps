@@ -251,14 +251,14 @@ alpha times the property.
   its own.
 - **Ridges ghost it too.** The test is "something nearer wrote depth here", so a line going behind
   a ridge shows faintly through it, exactly as through a building.
-- **Content of a later layer over the line** (a maneuver arrow drawn on the route) is also nearer
-  than the line's own depth, so it takes a faint tint of the ghost. Set the property on the
-  topmost line only if that reads badly.
+- **One faint colour per pixel.** The ghosts of a layer are drawn as one group, topmost style layer
+  first, so a casing under a fill (a maneuver arrow) never tints the fill. A *different* tile layer
+  is a different draw: an arrow over the route behind a building still shows the route's ghost
+  under its own. Set the property on the topmost line only if that reads badly.
 - **Not applied** to a layer with a `comp-op` (it draws into an overlay with no depth), nor to an
   extrusion layer faded by layer opacity below 1 (its buildings are in a separate buffer). Where
-  two tiles of different zoom overlap during a zoom transition, the ghost may blend twice for a
-  moment: the 2D pass's stencil masks do not apply to it.
-- Where a line crosses itself or turns sharply, the overlapping join geometry may blend twice at a low property value.
+  two tiles of different zoom overlap during a zoom transition, the ghost is drawn once per pixel,
+  by whichever tile comes first: the 2D pass's stencil masks do not apply to it.
 
 The renderer side is in [the frame](/docs/internals/rendering/frame#the-ghost-pass-line-occlusion-opacity).
 

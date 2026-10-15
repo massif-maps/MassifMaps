@@ -1726,10 +1726,13 @@ neighbouring POI, was then drawn once, judged behind a building and fell to the 
 which gave the slot back: the evicted label faded out and in again, and the POI itself flashed. In the
 turn log 1600 visibility flips in 90 frames, 590 of them hides by an overlap with exactly such a label.
 Two changes (`GLTileRenderer::judgeLabelOcclusion`, `startFrame`):
-- `startFrame` judges, within a budget of 96 labels a frame, the on-screen labels nobody draws (hidden
+- `startFrame` judges, within a budget of 32 labels a frame (a hidden label again every 60 frames), the on-screen labels nobody draws (hidden
   or just built, unjudged or stale), so the culler's `isPartlyOccluded` / `isFullyOccluded` are current
   for the pass that follows. A judgement carries a frame stamp (`Label::getOcclusionStamp`, carried to a
-  rebuilt label); a stamp older than 60 frames is replaced outright, not eased from.
+  rebuilt label); a stamp older than 120 frames is replaced outright, not eased from.
+  Measured on the Catalyst loop (Grenoble z17.5 tilt 60, 3D buildings): about 8 us a judgement, the
+  pre-pass 0.05 ms a frame on average and 0.37 ms at p95 (it was 0.10 / 0.68 ms at a budget of 96);
+  drawing the labels already judged about 190 labels a frame for 0.45 ms.
 - a label never judged (`Label::isOcclusionKnown`) ranks after every judged label in the clear and
   before the occluded ones, whatever its priority, so a rebuilt label of unknown standing cannot evict a
   settled one in the frames before it is judged. `LabelYieldTest` pins it.

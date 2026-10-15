@@ -7,6 +7,7 @@
 #ifndef _MASSIF_VT_GLTILERENDERER_H_
 #define _MASSIF_VT_GLTILERENDERER_H_
 
+#include "AnimationProgress.h"
 #include "Bitmap.h"
 #include "Color.h"
 #include "ViewState.h"
@@ -1109,6 +1110,7 @@ namespace massif::vt {
         bool isModelTileInReach(const TileId& targetTileId, float cutoffMetres) const;
         void findTileModelIntersections(const RenderTileLayer& renderLayer, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const;
         bool _modelsAnimating = false; // a spinning model was drawn last frame
+        AnimationStall _animationStall; // startFrame: an animation that stopped moving stops asking
         double _modelTime = 0.0;       // seconds the spin has run
 
         VertexArray<cglib::vec3<float>> _labelVertices;

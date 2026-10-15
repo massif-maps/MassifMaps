@@ -74,7 +74,9 @@ is the one whose call graph starts at `MapRenderer::onDrawFrame`.
 - **A static camera never settles here.** With a rich style, a parked camera swings 9–24 fps for
   minutes (tile arrival, drape bakes, label placement, elevation fetches), so "leave it still and
   read the number" is not a measurement. Drive a scripted move — `--es anim pan` — for anything you
-  intend to believe; it also makes the two arms traverse the same tiles.
+  intend to believe; it also makes the two arms traverse the same tiles. A map that keeps drawing with the
+  camera still and nothing loading is an animation that never ends, not weather: the log names the
+  source ([01-frame.md](01-frame.md#what-stops-a-frame-the-animation-that-no-longer-moves)).
 - **The camera decides what you measure.** The slow case is panning **north into the mountains**
   (`--es animLatDelta 0.06`) with contours and hillshade. Panning east over the valley is cheap.
   Tilt matters as much: at tilt 85 most of the screen is sky. Tilt 90 is straight down, so a

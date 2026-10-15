@@ -9,6 +9,7 @@
 #include "TileGeometryIterator.h"
 #include "TileSurfaceBuilder.h"
 #include "TerrainElevationScale.h"
+#include "AnimationProgress.h"
 #include "BitmapManager.h"
 #include "RenderTileBlend.h"
 #include "GroundCover.h"
@@ -1659,7 +1660,9 @@ namespace massif::vt {
         resetProgramState(); // another renderer may have bound its own program since the last draw
         warmTerrainRasterShader();
 
-        bool refresh = false;
+        bool blending = false;
+        bool anchored = false;
+        bool fading = false;
 
         GLint viewport[4] = { 0, 0, 0, 0 };
         glGetIntegerv(GL_VIEWPORT, viewport);
@@ -1677,7 +1680,7 @@ namespace massif::vt {
         VT_STAT_CLOCK(prepClock);
         float dBlend = (_layerBlendingSpeed > 0.0f ? dt * _layerBlendingSpeed : 1.0f);
         for (RenderTile& renderTile : *_visibleRenderTiles) {
-            refresh = updateRenderTile(renderTile, dBlend) || refresh;
+            blending = updateRenderTile(renderTile, dBlend) || blending;
         }
         VT_STAT_SPLIT(prepTileBlendNs, prepClock);
         
@@ -1685,7 +1688,7 @@ namespace massif::vt {
         // the cull thread in setVisibleTiles, off the render thread, all but those on roofs.
         bool roofsMoved = refreshRoofSurfaces();
         if (_labelElevationProvider || roofsMoved || !_roofSurfaces.empty()) {
-            refresh = anchorDirtyLabels() || refresh;
+            anchored = anchorDirtyLabels();
             VT_STAT_SPLIT(prepElevUpdateNs, prepClock);
         }
 
@@ -1728,7 +1731,7 @@ namespace massif::vt {
         float dOpacity = labelOpacityStep(dt, _labelBlendingSpeed, _snapLabelTransition.exchange(false));
         for (int pass = 0; pass < 2; pass++) {
             for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
-                refresh = updateLabel(label, dOpacity) || refresh;
+                fading = updateLabel(label, dOpacity) || fading;
             }
         }
         VT_STAT_SPLIT(prepLabelBlendNs, prepClock);
@@ -1738,10 +1741,42 @@ namespace massif::vt {
         if (_modelAnimationsEnabled) {
             _modelTime += dt;
         }
-        refresh = _modelsAnimating || refresh;
+        bool spinning = _modelsAnimating;
         _modelsAnimating = false;
 
-        return refresh;
+        RefreshStats& stats = refreshStats();
+        stats.frames++;
+        stats.blend += blending ? 1 : 0;
+        stats.label += fading ? 1 : 0;
+        stats.anchor += anchored ? 1 : 0;
+        stats.spinning += spinning ? 1 : 0;
+        if (!(blending || anchored || fading || spinning)) {
+            _animationStall.reset();
+            return false;
+        }
+        // A step that moved nothing leaves the next frame the same as this one, so it is not asked for.
+        if (dt > 0.0f) {
+            AnimationState state;
+            for (const RenderTile& renderTile : *_visibleRenderTiles) {
+                for (const auto& renderLayer : renderTile.renderLayers) {
+                    state.add(renderLayer.second.blend);
+                }
+            }
+            for (int pass = 0; pass < 2; pass++) {
+                for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
+                    state.add(label->getOpacity());
+                    state.add(label->getTextOpacity());
+                }
+            }
+            if (spinning) {
+                state.add(_modelTime);
+            }
+            if (_animationStall.stalled(state.value())) {
+                stats.stalled++;
+                return false;
+            }
+        }
+        return true;
     }
     
     void GLTileRenderer::renderGeometry(bool geom2D, bool geom3D, bool inline3D, float layerOpacity) {

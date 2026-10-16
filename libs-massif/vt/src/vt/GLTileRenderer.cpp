@@ -1699,6 +1699,7 @@ namespace massif::vt {
         label.setOcclusionVerdict(verdict);
         label.setOcclusionStamp(_labelOcclusionFrame);
         _labelOcclusionEasing = _labelOcclusionEasing || occlusion != target;
+        _labelOcclusionState.add(occlusion);
     }
 
     bool GLTileRenderer::startFrame(float dt) {
@@ -2096,8 +2097,18 @@ namespace massif::vt {
     bool GLTileRenderer::endFrame() {
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_CLOCK(statClock);
-        // An occlusion still easing wants the next frame, as a fade does.
+        // An occlusion still easing wants the next frame, as a fade does, unless it stopped moving.
         bool occlusionEasing = std::exchange(_labelOcclusionEasing, false);
+        if (occlusionEasing) {
+            refreshStats().occlusion++;
+            if (_labelOcclusionStep > 0.0f && _occlusionStall.stalled(_labelOcclusionState.value())) {
+                refreshStats().stalled++;
+                occlusionEasing = false;
+            }
+        } else {
+            _occlusionStall.reset();
+        }
+        _labelOcclusionState = AnimationState();
         if (--_resourceSweepCounter > 0) {
             return occlusionEasing;
         }

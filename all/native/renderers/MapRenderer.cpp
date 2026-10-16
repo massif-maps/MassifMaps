@@ -4324,8 +4324,8 @@ namespace massif {
                 Log::Infof("MapRenderer: %d frames drawn, %d asked for by a layer, layer mask 0x%08x (low 16 bits base pass, high 16 bits 3D pass)", frames, layerRedrawFrames, redrawMaskSum);
                 logRedrawSources();
                 vt::RefreshStats& refresh = vt::refreshStats();
-                Log::Infof("MapRenderer: what kept the tile renderers asking, over %d of their frames - tile blend %d, label fade %d, label anchor %d, spinning model %d, stalled and not passed on %d",
-                    refresh.frames.exchange(0), refresh.blend.exchange(0), refresh.label.exchange(0), refresh.anchor.exchange(0), refresh.spinning.exchange(0), refresh.stalled.exchange(0));
+                Log::Infof("MapRenderer: what kept the tile renderers asking, over %d of their frames - tile blend %d, label fade %d, label anchor %d, spinning model %d, label occlusion %d, stalled and not passed on %d",
+                    refresh.frames.exchange(0), refresh.blend.exchange(0), refresh.label.exchange(0), refresh.anchor.exchange(0), refresh.spinning.exchange(0), refresh.occlusion.exchange(0), refresh.stalled.exchange(0));
                 frames = 0;
                 layerRedrawFrames = 0;
                 redrawMaskSum = 0;

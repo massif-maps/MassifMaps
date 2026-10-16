@@ -85,6 +85,7 @@ namespace massif::vt {
         std::atomic<int> label { 0 };     // a label still fading
         std::atomic<int> anchor { 0 };    // a label moved onto terrain or a roof
         std::atomic<int> spinning { 0 };  // a spinning model drawn
+        std::atomic<int> occlusion { 0 }; // a label's building occlusion still easing
         std::atomic<int> stalled { 0 };   // asked, but the step moved nothing: not passed on
     };
 

@@ -275,7 +275,8 @@ Two more consequences worth knowing:
 Between frames a still map owes nothing; the only thing that keeps asking is a layer's
 `onDrawFrame` returning true. For a tile layer that is `GLTileRenderer::startFrame`, which says
 "another frame" while a tile is still blending, a label still fading, a label was just anchored onto
-terrain or a roof, or a spinning model was drawn. `MapRenderer::drawLayers` turns any true into `requestRedraw()`, and `requestRedraw()` owes
+terrain or a roof, or a spinning model was drawn (`endFrame` adds a label's building occlusion still
+easing). `MapRenderer::drawLayers` turns any true into `requestRedraw()`, and `requestRedraw()` owes
 the follow-up frame described above — so a layer that keeps saying true never lets the map idle: the
 iOS/Catalyst view is an `MGLKView` redrawn by `setNeedsDisplay` and nothing else (no display link, no
 continuous mode), so the frame rate at rest is simply the display's refresh (about 113 fps observed on a
@@ -287,7 +288,7 @@ A real fade moves a little every frame and ends. `vt/AnimationProgress.h` is the
 do not: `startFrame` hashes what its step moves (tile blends, label opacities, a spinning model's clock)
 and keeps the last four hashes; **a frame whose state equals one of them has not progressed**, so it is
 not asked for again (a stall asks nothing new, a flip between a few states is cut the same way). The
-frame that notices is still drawn, so the pixels on screen are those of the state it stopped on. A step with `dt <= 0` is never judged, and the history is
+frame that notices is still drawn, so the pixels on screen are those of the state it stopped on. `endFrame` does the same for the building-occlusion easing. A step with `dt <= 0` is never judged, and the history is
 dropped whenever a frame asks for nothing, so the next animation starts clean.
 
 The 300-frame log line says which source asked, per tile-renderer frame (so up to 7 x 300 with seven
@@ -295,7 +296,7 @@ renderers):
 
 ```
 MapRenderer: what kept the tile renderers asking, over 2100 of their frames - tile blend 0, label fade 0,
-label anchor 2100, spinning model 0, stalled and not passed on 2090
+label anchor 2100, spinning model 0, label occlusion 0, stalled and not passed on 2090
 ```
 
 A map that is idle logs neither this line nor the `frames drawn` one for as long as nothing draws. A

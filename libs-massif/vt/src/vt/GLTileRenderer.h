@@ -1039,6 +1039,8 @@ namespace massif::vt {
         void judgeLabelOcclusion(Label& label);
         float _labelOcclusionStep = 1.0f; // this frame's fade step, which building occlusion eases by too
         bool _labelOcclusionEasing = false; // a label's occlusion has not reached its verdict: draw another frame
+        AnimationState _labelOcclusionState; // what the label pass eased this frame, for _occlusionStall
+        AnimationStall _occlusionStall;
         bool _hasZElevatedLabels = false; // a label of the set stands on a roof (refreshRoofSurfaces)
         unsigned int _roofBasesVersion = 0; // the base versions refreshRoofSurfaces last resolved roofs at
         int _resourceSweepCounter = 0;

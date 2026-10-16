@@ -14,6 +14,7 @@
 #include "components/DirectorPtr.h"
 #include "datasources/TileDataSource.h"
 #include "layers/Layer.h"
+#include "layers/DistanceTileLOD.h"
 #include "layers/TerrainDecodeWait.h"
 
 #include <vt/TileId.h>
@@ -462,6 +463,8 @@ class ProjectionSurface;
         virtual bool paintsEveryDrapeTile() const { return false; }
         // Whether this layer's tiles may hold extrusions, which cast from past the view (see _shadowCasterTiles).
         virtual bool castsExtrusionShadows() const { return false; }
+        // Whether a free roam camera picks this layer's tile zoom by distance alone (imagery), not by the camera zoom.
+        virtual bool usesDistanceTileZoom() const { return false; }
         // The terrain cover a paint layer draws itself on when nothing bakes it. Ignored by
         // layers that are not paints.
         virtual void setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds);
@@ -554,7 +557,9 @@ class ProjectionSurface;
         };
 
         void calculateVisibleTiles(const std::shared_ptr<CullState>& cullState);
-        void calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& mapTile, const MapBounds& dataExtent);
+        void calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& mapTile, const MapBounds& dataExtent, double parentCritical = std::numeric_limits<double>::infinity());
+        // Fits the free roam tree recorded by calculateVisibleTilesRecursive to the tile budget and fills the tile lists from it.
+        void selectDistanceTiles(const std::shared_ptr<CullState>& cullState);
         void calculateShadowCasterTiles();
         // mapbox extendTileCoverToNearPlane: extrusions on the tiles below the frame rise into it.
         void extendTilesToNearPlane(const ViewState& viewState, const MapBounds& dataExtent);
@@ -579,6 +584,8 @@ class ProjectionSurface;
 
         static const int PARENT_PRIORITY_OFFSET;
         static const int PRELOADING_PRIORITY_OFFSET;
+        // A free roam raster cull fetches its stand-ins before the view: a blurry ground beats a bare one while it loads.
+        static const int STAND_IN_FIRST_PRIORITY_OFFSET;
         // maplibre-native's DEFAULT_PREFETCH_ZOOM_DELTA.
         static const int STAND_IN_ZOOM_DELTA;
         void collectStandInTiles();
@@ -620,6 +627,12 @@ class ProjectionSurface;
         int _tileStyleZoomLift = 0; // last Options tile style zoom lift a cull ran with
         int _terrainMaxTileZoom = 1000;
         int _terrainMinTileZoom = 0; // terrain mode: the coarsest tile zoom the LOD rule may pick
+        bool _distanceLod = false; // free roam, terrain, usesDistanceTileZoom: the camera zoom bounds no tile
+        int _distanceZoomCap = 0; // ...and the zoom none goes past (data max zoom plus overzoom, terrain zoom offset)
+        double _lodFocalPixels = 0; // ...a tile spans (focal * edge / distance) pixels, measured from its nearest point
+        std::vector<DistanceTileLOD::Node> _distanceNodes; // ...every tile the cull visited, see DistanceTileLOD.h
+        std::vector<MapTile> _distanceTiles; // ...and which tile each is
+        long long _distanceLogTime = 0; // steady clock ms of the last cut report
         double _maxVisibleDistance = 0; // internal units; 0 = as far as the camera can see
         double _lodMaxTileArea = 0; // screen pixels squared; the tangram LOD threshold, 0 = no area test
         double _lodCosThetaExponent = 0; // maplibre's p - 1: extra power on cos(incidence), 0 = the plain area rule
@@ -670,6 +683,8 @@ class ProjectionSurface;
         float _terrainViewDistanceFactor = 0.0f; // last TerrainOptions view distance factor a cull ran with
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with
+        bool _cullFreeRoam = false; // last free roam state a cull ran with
+        unsigned int _cullElevationVersion = 0; // last DEM data version a distance LOD cull ran with
         bool _terrainActive = false; // last TerrainOptions active state a cull ran with
         float _cullZoomLevelBias = 0.0f; // last zoom level bias a cull ran with
         // Its own mutex: the render thread reads this every frame while the switch waits, and

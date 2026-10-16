@@ -220,7 +220,7 @@ terrain.viewDistanceFactor = 1.0f      // where the ground ends — pair it with
 |---|---|---|---|
 | `Enabled` | `true` | — | The switch. Off keeps every value configured, so a UI toggle never has to drive a colour or a range through zero. It stops the **haze** only: `HighColor`, `SpaceColor` and `StarIntensity` are the sky's, and survive it. |
 | `Color` | transparent | `color` | Alpha = strength at full distance. Transparent = no fog. |
-| `RangeStart` / `RangeEnd` | `0.8` / `8` | `range` | **Multiples of the camera-to-focus distance**, not metres. That distance is a function of the zoom alone, so one setting holds at every zoom. |
+| `RangeStart` / `RangeEnd` | `0.8` / `8` | `range` | **Multiples of the camera-to-focus distance**, not metres. That distance is a function of the zoom alone, so one setting holds at every zoom. Under `FREE_ROAM_MODE_FIRST_PERSON` the unit is the view distance, as the focus moves with the look: `1` is fully fogged at the far cut. |
 | `HighColor` | transparent | `high-color` | The lit upper atmosphere. Transparent leaves the `SkyOptions` gradient alone. |
 | `SpaceColor` | transparent | `space-color` | The zenith, beyond the atmosphere. |
 | `HorizonBlend` | `0.133` | `horizon-blend` | How far up the sky the haze reaches: `exp(-3 · (sin θ / blend)²)`. The **ground** is scaled by the same factor, which is why haze and sky meet along the skyline with no seam at any tilt. |

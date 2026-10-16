@@ -87,7 +87,7 @@ namespace massif {
          */
         float getRangeEnd() const;
         /**
-         * Sets where the fog reaches full strength, in multiples of the camera-to-focus distance.
+         * Sets where the fog reaches full strength, in multiples of the camera-to-focus distance (the view distance under FREE_ROAM_MODE_FIRST_PERSON).
          * At or below RangeStart turns the fog off. Mapbox range[1]. Style property: "fog-range-end".
          * @param rangeEnd The new end of the range (clamped to 0 and above).
          */

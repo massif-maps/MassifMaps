@@ -560,7 +560,7 @@ Cours Jean Jaures tilt 30: z18.77, 24 leaves all 512 before, all 1024 after; z20
 `TerrainDrapeCache` keeps a generation of tiles alive past the visible cover, because a zoom or a
 pan walks the cover back and forth over the same tiles and re-acquiring means re-baking every layer
 of every tile. Its cap is a **byte** budget, not a tile count: a drape texture is `resolution² ×
-RGBA`, so the same 160 entries are 10 MB at 128 and 640 MB at 1024 — the count alone is how the
+RGBA`, so the same 256 entries (the cap, the cover's own ceiling) are 16 MB at 128 and 1 GB at 1024 — the count alone is how the
 cache came to ask for hundreds of megabytes on a high-DPI screen. The tile count is derived from the
 budget per resolution, with a floor so a large resolution still caches a usable cover.
 
@@ -675,6 +675,14 @@ Measured on the day-cycle-light example, the same fast pinch out on emulator-555
 surfaces actually drawn as a flat fill in a frame: worst frame **11 of 19 (58 %) → 9 of 25 (36 %)**.
 What is left is a cold cache, where there is genuinely nothing to stand in on — the remaining fills
 cluster in the first second after launch.
+
+**Under free roam the cover does not follow the camera zoom either.** The split level is the layers'
+own finest tile (`collectTerrainCover`), the `bakeZoomTerm` of the fingerprint stays 0 (a look up or
+down moves the zoom through levels, and a re-bake of the whole cover per level), and the bake queues
+are ordered **nearest the eye**, not the focus: the focus of a first person camera is the far horizon,
+so the far city baked first and the ground at the feet last, which read as a large grey area in the
+mid ground (`drapeClearColor`, the flat fill of a leaf that has neither a bake nor an ancestor to
+stand in on) beside a textured horizon. Read `RTT drape EMPTY GROUND` and `RTT drape queues` in the log.
 
 ### The cache has to hold two generations, not one
 

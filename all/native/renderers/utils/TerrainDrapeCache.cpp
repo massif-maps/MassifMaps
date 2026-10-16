@@ -20,10 +20,11 @@ namespace massif {
     const std::size_t TerrainDrapeCache::MAX_POOLED_TEXTURES = 32;
     // Keep a generation of tiles past the visible cover: a zoom or pan walks back over the same
     // tiles and re-acquiring means re-baking every layer of each. A BYTE budget, not a tile count -
-    // 160 entries are 10 MB at 128 and 640 MB at 1024. docs/internals/rendering/04-terrain.md.
+    // 256 entries are 16 MB at 128 and 1 GB at 1024. docs/internals/rendering/04-terrain.md.
 const std::size_t TerrainDrapeCache::MAX_BYTES = 192 * 1024 * 1024;
 const std::size_t TerrainDrapeCache::MIN_ENTRIES = 24;
-const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
+// The drape cover's own ceiling (MapRenderer MAX_DRAPE_TILES): a cache holding less thrashes a full cover.
+const std::size_t TerrainDrapeCache::MAX_ENTRIES = 256;
 
     bool TerrainDrapeCache::Key::operator < (const Key& other) const {
         if (stack != other.stack) {
@@ -347,6 +348,10 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         return true;
     }
 #endif
+
+    std::size_t TerrainDrapeCache::getEntryCap() {
+        return MAX_ENTRIES;
+    }
 
     void TerrainDrapeCache::setMaxBytes(std::size_t maxBytes) {
         _maxBytes = (maxBytes > 0 ? maxBytes : MAX_BYTES);

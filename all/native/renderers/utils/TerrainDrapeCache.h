@@ -75,6 +75,8 @@ namespace massif {
         void setMaxBytes(std::size_t maxBytes);
         // debug.massif.drapebudget 0 restores the tile-count cap and uncapped resolution. Android demo builds only.
         static bool isBudgetEnabled();
+        // The most colour drapes it keeps, whatever the byte budget allows.
+        static std::size_t getEntryCap();
         // debug.massif.drapemask 0 turns the no-drape occlusion masks off (#175). Android demo builds only.
         static bool isCoverageMaskEnabled();
 

@@ -1189,7 +1189,7 @@ namespace massif {
             }
 
             // Camera-relative range in internal units: fogs a plain 2D map too.
-            ResolvedFog fog = resolveFog(options->getFogOptions(), _styleEnvironment, lighting, viewState.calculateCameraDistance(), viewState.getTilt());
+            ResolvedFog fog = resolveFog(options->getFogOptions(), _styleEnvironment, lighting, viewState.calculateFogDistance(*options), viewState.getTilt());
             tileRenderer->setFog(vt::Color(fog.color.getR() / 255.0f, fog.color.getG() / 255.0f, fog.color.getB() / 255.0f, fog.color.getA() / 255.0f),
                                  fog.startDistance, fog.distance, fog.rangeScale, fog.horizonBlend);
             tileRenderer->setFogColors(vt::Color(fog.highColor.getR() / 255.0f, fog.highColor.getG() / 255.0f, fog.highColor.getB() / 255.0f, fog.highColor.getA() / 255.0f),

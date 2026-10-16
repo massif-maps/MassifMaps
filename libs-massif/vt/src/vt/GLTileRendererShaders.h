@@ -152,8 +152,7 @@ namespace massif::vt {
         // every surface covering that pixel (IN): the lookup is a shadowed fragment's main cost.
         SHADOW_MASK_OUT_FLAG = 65536,
         SHADOW_MASK_IN_FLAG = 131072,
-        // One tap instead of the kernel, for extrusions: a wall's silhouette is what the eye reads,
-        // so the kernel buys far less there than on terrain.
+        // One tap instead of the kernel: an extrusion or model asks for it at softness 0 (receiver3DFlags).
         SHADOW_SINGLE_TAP_FLAG = 262144,
         // Sample the shadow depth buffer directly instead of a packed-RGB copy (ES3-class only).
         SHADOW_DEPTH_TEXTURE_FLAG = 524288,
@@ -189,6 +188,12 @@ namespace massif::vt {
         // lookup cannot use it. See docs/internals/rendering/18-globe.md.
         TERRAIN_SPHERICAL_FLAG = 2147483648u
     };
+
+    // An extrusion or model takes the ground's kernel, so ShadowSoftness blurs its shadow edge too;
+    // softness 0 is the hard edge, and the one tap.
+    inline unsigned int receiver3DFlags(float softness) {
+        return SHADOW_RECEIVER_3D_FLAG | (softness > 0.0f ? 0u : static_cast<unsigned int>(SHADOW_SINGLE_TAP_FLAG));
+    }
 
     static const std::map<std::string, int> attribMap = {
         { "aVertexPosition", A_VERTEXPOSITION },
@@ -1460,7 +1465,7 @@ namespace massif::vt {
         uniform highp float uElevationOffset;   // the decode's constant term
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         uniform highp vec2 uPaintSlopeScale;    // metres per texel -> dimensionless slope (height scale folded in)
-        uniform mediump vec4 uPaintParams;      // x = contrast, y = opacity, z = 1 for the smooth gradient, w reserved
+        uniform mediump vec4 uPaintParams;      // x = contrast, y = opacity, zw reserved
         uniform highp_opt float u_zoom;         // fractional map zoom
         varying highp vec2 vElevUV;
         varying mediump float vElevCosh;
@@ -1469,32 +1474,8 @@ namespace massif::vt {
             return dot(texture2D(uElevationTexture, uv), uElevationDecode) + uElevationOffset;
         }
 
-        // tangram's hillshade.yaml: 3x3 stencil at texel centres plus a quadratic expansion; a
-        // central difference is constant per texel and facets the shading.
         highp float gTerrainElev;      // metres at this fragment
         highp vec2 gTerrainGrad;       // metres per elevation texel, (du, dv), v growing north
-
-        void terrainPaintSample(out highp float elev, out highp vec2 gradPerTexel) {
-            highp vec2 duv = uElevationTexelSize.zw;
-            highp vec2 ij = vElevUV * uElevationTexelSize.xy;
-            highp vec2 cen = floor(ij) + 0.5;
-            highp vec2 uv = cen * duv;
-            highp float h00 = sampleElevation(uv - duv);
-            highp float h01 = sampleElevation(uv + vec2(-duv.x, 0.0));
-            highp float h02 = sampleElevation(uv + vec2(-duv.x, duv.y));
-            highp float h10 = sampleElevation(uv + vec2(0.0, -duv.y));
-            highp float h11 = sampleElevation(uv);
-            highp float h12 = sampleElevation(uv + vec2(0.0, duv.y));
-            highp float h20 = sampleElevation(uv + vec2(duv.x, -duv.y));
-            highp float h21 = sampleElevation(uv + vec2(duv.x, 0.0));
-            highp float h22 = sampleElevation(uv + duv);
-            highp vec2 f = ij - cen;
-            highp float ddxy = (h22 - h20 - h02 + h00) * 0.25;
-            highp mat2 curv = mat2(h21 - 2.0 * h11 + h01, ddxy, ddxy, h12 - 2.0 * h11 + h10);
-            highp vec2 grad0 = vec2(h21 - h01, h12 - h10) * 0.5;
-            gradPerTexel = grad0 + curv * f;
-            elev = h11 + dot(f, grad0) + 0.5 * dot(f, curv * f);
-        }
 
         highp vec2 terrainPaintSobel(highp float h00, highp float h10, highp float h20,
                                      highp float h01, highp float h21,
@@ -1503,8 +1484,8 @@ namespace massif::vt {
                         (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20)) * 0.125;
         }
 
-        // The normal-map path's gradient (Sobel/8 per texel centre, bilinear between them): on a
-        // sub-5 m DEM the quadratic term above amplifies texel noise into speckle.
+        // The normal-map path's gradient (Sobel/8 per texel centre, bilinear between them), so an
+        // overzoomed DEM shades as smoothly as in 2D.
         void terrainPaintSampleSmooth(out highp float elev, out highp vec2 gradPerTexel) {
             highp vec2 duv = uElevationTexelSize.zw;
             highp vec2 ij = vElevUV * uElevationTexelSize.xy;
@@ -1536,11 +1517,7 @@ namespace massif::vt {
         }
 
         void terrainPaintPrepare() {
-            if (uPaintParams.z > 0.5) {
-                terrainPaintSampleSmooth(gTerrainElev, gTerrainGrad);
-            } else {
-                terrainPaintSample(gTerrainElev, gTerrainGrad);
-            }
+            terrainPaintSampleSmooth(gTerrainElev, gTerrainGrad);
         }
 
         // Same custom-shader contract as the normal-map path.

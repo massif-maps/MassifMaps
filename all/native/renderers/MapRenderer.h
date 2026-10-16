@@ -228,6 +228,7 @@ namespace massif {
     
         void billboardsChanged();
         void vtLabelsChanged(const std::shared_ptr<Layer>& layer, bool delay);
+        void vtLabelsPostponed(const std::shared_ptr<Layer>& layer);
         void layerChanged(const std::shared_ptr<Layer>& layer, bool delay);
         void viewChanged(bool delay, MapMoveReason::MapMoveReason reason);
     
@@ -259,6 +260,8 @@ namespace massif {
         void updateTerrainSkirts(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& cover, const std::shared_ptr<TerrainOptions>& terrainOptions);
         // Only the drape pass holds the first rise; any other frame must not inherit it.
         void releaseTerrainRiseHold();
+        // While a rise waits for its tiles: loads and uploads the ground the ramp will show; true while any is owed.
+        bool warmElevationTextures(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
 
         // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
         double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);
@@ -311,6 +314,7 @@ namespace massif {
         // Zoom drift before a drape tile is re-baked, so zoom-dependent style widths follow the camera.
         static const float DRAPE_REBAKE_ZOOM_THRESHOLD;
         static const int LABEL_PLACEMENT_ZOOM_DELAY;
+        static const int LABEL_PLACEMENT_REANCHOR_DELAY; // ms of quiet before labels moved to new ground are placed again
 
         static const int ELEVATION_REFRESH_DELAY; // milliseconds between vector layer refreshes caused by elevation data changes
         static const float EYE_GROUND_SETTLE_TIME; // seconds for the first person eye to glide onto a refined ground
@@ -391,6 +395,7 @@ namespace massif {
         int _shadowMapCascades = 0;
         bool _shadowMapTerrainCasts = true;
         bool _shadowMapModelShadows = true;
+        float _shadowMapExaggeration = -1.0f;
         int _shadowMapAge = 0;
         // Per cascade: caster content signature when that page was last drawn.
         std::array<float, 4> _shadowMapFadeSignatures = { };
@@ -408,6 +413,7 @@ namespace massif {
         std::shared_ptr<ElevationTextureCache> _skirtCache;
         unsigned int _skirtDrawnVersion = 0;
         std::map<vt::TileId, cglib::vec4<float> > _skirtDrops;
+        bool _elevationWarmPending = true; // the rise's ground is not all on the GPU yet; true until a warm pass says otherwise
         bool _terrainRisen = false; // the drape scene has been displaced since nothing was
         std::chrono::steady_clock::time_point _terrainRiseHoldStart;
         double _eyeGroundZ = 0;

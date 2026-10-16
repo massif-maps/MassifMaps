@@ -148,7 +148,9 @@ namespace massif {
 
     void ElevationManager::setSurfaceResolution(int resolution) {
         int value = std::max(1, resolution);
-        if (_surfaceResolution.exchange(value) != value) {
+        int previous = _surfaceResolution.exchange(value);
+        if (previous != value) {
+            Log::Infof("ElevationManager: surface resolution %d -> %d", previous, value);
             tilesChanged(); // every grid's node field was built for the old lattice
         }
     }

@@ -10,7 +10,12 @@
  * uShadowTopScale repeats. A metres-vs-tile-units mix-up put the probe kilometres up in the first
  * draft of this fix and every back wall read as unshadowed.
  *
- * NOT covered: the shader's decode and the lookup itself (GL, a device check), nor the renderer
+ * A wall FOOT vertex looks up from the ground under it, not from the level roof base, so on a slope its
+ * lookup would land (base - ground) under the roof, inside the building. liftTopHeight adds that drop to
+ * the foot's top (GLTileRenderer::resolveExtrusionBases); asserted: the lifted foot lookup reaches the roof
+ * for any drop, a zero drop changes nothing, and the lift stays within one step of the exact value.
+ *
+ * NOT covered: the resolver applying it per footprint, the shader's decode and the lookup itself (GL, a device check), nor the renderer
  * setting uShadowTopScale.
  */
 
@@ -85,6 +90,33 @@ namespace {
     }
 }
 
+namespace {
+    // Foot lookup height above the roof, in metres, for a foot `drop` metres under the level base.
+    float footLookupMargin(std::int8_t top, float roofHeight, float drop) {
+        return decodeTop(TileLayerBuilder::liftTopHeight(top, drop)) - (drop + roofHeight);
+    }
+
+    void checkFootLift(const std::vector<WallVertex>& vertices, float roofHeight, const char* what) {
+        int feet = 0, buried = 0, overshoot = 0, moved = 0;
+        for (const WallVertex& v : vertices) {
+            if (v.side != 127 || v.height != 0.0f) {
+                continue;
+            }
+            feet++;
+            moved += (TileLayerBuilder::liftTopHeight(v.top, 0.0f) != v.top);
+            for (float drop : { 0.5f, 3.0f, 9.0f, 40.0f }) {
+                float margin = footLookupMargin(v.top, roofHeight, drop);
+                buried += (margin < 0.0f);
+                overshoot += (margin > (decodeTop(v.top) + drop + 1.0f) * (std::exp2(1.0f / 12.0f) - 1.0f) + (decodeTop(v.top) - roofHeight) + 1.0e-3f);
+            }
+        }
+        TEST_CHECK(feet > 0, (std::string(what) + ": the extrusion emits foot vertices").c_str());
+        TEST_CHECK(moved == 0, (std::string(what) + ": a foot on the level base keeps its top").c_str());
+        TEST_CHECK(buried == 0, (std::string(what) + ": a foot below the base still looks up at or above the roof").c_str());
+        TEST_CHECK(overshoot == 0, (std::string(what) + ": the lift adds at most one step to the exact roof lookup").c_str());
+    }
+}
+
 void testExtrusionShadowTop() {
     bool roundsUp = true, oneStep = true;
     for (float h : { 0.3f, 2.0f, 9.5f, 20.0f, 57.3f, 300.0f, 828.0f }) {
@@ -103,4 +135,8 @@ void testExtrusionShadowTop() {
 
     Polygon3DStyle gabled(ColorFunction(Color(1, 1, 1, 1)), std::optional<Transform>(), RoofShape::GABLED, 6.0f);
     checkWalls(extrude(24.0f, gabled, 0.0f), 30.0f, true, "gabled roof (top at the ridge)");
+
+    checkFootLift(extrude(24.0f, flat, 0.0f), 24.0f, "flat roof foot");
+    checkFootLift(extrude(24.0f, gabled, 0.0f), 30.0f, "gabled roof foot");
+    TEST_CHECK(TileLayerBuilder::liftTopHeight(TileLayerBuilder::packTopHeight(1.0e5f), 50.0f) == 127, "a lifted top past the code range clamps to 127");
 }

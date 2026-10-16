@@ -89,6 +89,7 @@ void testDrapeTuning();
 void testNearPlaneCover();
 void testZoomConvention();
 void testShadowCasterRing();
+void testShadowRamp();
 void testTerrainTesselation();
 void testFlattenSwitch();
 void testTerrainDecodeWait();
@@ -496,6 +497,7 @@ int main() {
     testNearPlaneCover();
     testZoomConvention();
     testShadowCasterRing();
+    testShadowRamp();
     testTerrainTesselation();
     testFlattenSwitch();
     testTerrainDecodeWait();

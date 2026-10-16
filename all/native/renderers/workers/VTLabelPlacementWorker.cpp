@@ -247,7 +247,8 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _pendingWakeup = true;
-        _wakeupTime = std::max(_nextAllowedTime, std::chrono::steady_clock::now());
+        // Never before the last pass has finished fading, as schedule() does: a continuation repeating faster blinks the labels.
+        _wakeupTime = std::max({ _nextAllowedTime, std::chrono::steady_clock::now(), _lastPassTime + std::chrono::milliseconds(MIN_PLACEMENT_INTERVAL) });
         _idle = false;
         _condition.notify_one();
     }

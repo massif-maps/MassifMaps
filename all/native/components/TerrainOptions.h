@@ -271,6 +271,7 @@ namespace massif {
          * Sets the resolution of the height field the terrain is displaced from, per DEM tile edge,
          * independently of the mesh drawn over it. Overzoomed, this field limits the relief, not the mesh.
          * Costs memory per cached DEM grid, not frames. The default 0 follows MeshResolution.
+         * Applied to the elevation manager at once, not on the first 3D frame, so no decoded grid is dropped mid-switch.
          * @param resolution Node cells per tile edge (clamped to 2..512), or 0 to follow MeshResolution.
          */
         void setSurfaceNodeResolution(int resolution);
@@ -816,6 +817,7 @@ namespace massif {
         void unregisterOnChangeListener(const std::shared_ptr<OnChangeListener>& listener);
 
     private:
+        void applySurfaceResolution();
         void notifyOptionChanged(const std::string& optionName);
         void writeFlattenRatio(float ratio);
         void markSwitchingIfRising(float askedRatio);

@@ -92,6 +92,23 @@ namespace massif {
         return true;
     }
 
+    bool ElevationTextureCache::warm(const std::vector<vt::TileId>& tileIds) {
+        bool pending = false;
+        for (const vt::TileId& tileId : tileIds) {
+            int tileMask = (1 << tileId.zoom) - 1;
+            MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
+            MapTile dataTile = _elevationManager->getDetailDataTile(mapTile, _detailLevels);
+            std::shared_ptr<ElevationTileGrid> grid = _elevationManager->getDataTileGrid(dataTile, ElevationManager::LoadMode::CACHED_ONLY);
+            MapTile gridTile;
+            // Only the tile's own grid counts: an ancestor's texture draws now and pops to the real one later.
+            bool own = grid && grid->getTile() == dataTile;
+            bool ready = resolveEntry(tileId, gridTile) && own;
+            // A grid that is neither cached nor on its way has no data here: nothing to wait for.
+            pending = pending || (own ? !ready : _elevationManager->isTileGridPending(dataTile));
+        }
+        return pending;
+    }
+
     bool ElevationTextureCache::getDrawnNodeField(const vt::TileId& tileId, NodeFieldView& field) {
         CacheEntry* entry = findDrawnEntry(tileId);
         if (!entry || !entry->grid || !entry->nodeBitmap || entry->grid->getNodesPerEdge() < 1) {

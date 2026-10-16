@@ -974,10 +974,25 @@ pitched-slope vertex carries that top in attribute byte 2 (`TileLayerBuilder::pa
 as `log2(1 + h)` twelfths, rounded up, ≤ 6% over), decoded with `uShadowTopScale` — the builder's
 `calculateHeight` at the tile centre, because heights reach the GPU in tile units, not metres. Under
 `SHADOW_RECEIVER_3D` the fragment stage no longer returns early on a back face: it takes that one tap
-for `mapLit` and still returns the back face's sun as fully shadowed. Cost: one single-tap lookup per
+for `mapLit` and still returns the back face's sun as fully shadowed. Cost: one lookup per
 back-face extrusion fragment, the one every sun-facing fragment already paid; no memory (the byte was
 always 0 on walls). A taller part of the same building does shade the lower part's back wall, which is
 correct.
+
+**On a slope the foot needs a taller top than the roof vertices.** The top is the building's height above
+its level base, packed at tile build time before any DEM exists, and `polygon3DVsh` adds it to the vertex's
+own base: the level `aVertexBase` for every vertex above the foot, but the per-vertex ground for the foot.
+Where the ground under a foot is `drop` below the base, the foot's lookup landed `drop` under the roof,
+inside the building, so the map read "occluded" there; interpolated up the wall it crossed the roofline
+part way, a jagged dark band on the lower back wall plus a dark patch on the ground below, growing with
+the slope across the footprint (flat ground has `drop = 0` and never showed it). `aVertexBase` of a foot
+cannot carry the fix: `resolveExtrusionBases` gives it the lowest ground for the label occluder.
+Instead the resolver rewrites the foot vertices' attribute byte 2 to `liftTopHeight(top, drop)`, `drop` =
+base minus the footprint's lowest ground in metres (the same `metersToZ` the base floor uses), so every
+vertex of a wall looks up at `base + top`. A foot standing higher than the lowest ground looks up a little
+above the roof, never under it. The lift is for the lookup only: the drawn height, the label occluder and
+the caster never read that byte. A re-resolve lifts from the unlifted top again (read off the run's first
+vertex above the foot), and losing the elevation provider restores it.
 
 The straight mapbox port — sun term × `(1 − shadow-intensity · occlusion)`, ambient never shadowed —
 was tried and rejected at the same camera: at this light balance (ambient ~0.81 against a direct
@@ -1045,6 +1060,45 @@ Two things follow from where it is evaluated, and both were learned the hard way
 
 The reach is therefore **decode-time geometry**, not a uniform: changing it re-decodes the tiles.
 The strength stays a live uniform.
+
+### A facade's shadow is the ground's: same strength, same kernel
+
+**Strength.** `uShadowParams.y` is one number for every receiver (`resolveLighting`'s `srgbShadowStrength`,
+`strength x directShare` taken to sRGB). The ground multiplies its sRGB colour by `1 - y x (1 - lit)`. A
+facade raises that to 2.2 in `applyLighting3D` and applies it to ambient and sun alike, which is the same
+factor in linear light, so a shadowed roof loses exactly what the ground beside it loses
+(`pow(1 - y, 2.2) = 1 - strength x share`, pinned in `DayCycleLightTest`). It is small by design: the
+direct share of a white 1 / 1 light under a 60 degree sun is 0.46, so `shadowStrength 0.3` darkens both by
+6.6% in sRGB; under Standard's 0.8 / 0.2 it is 2.5%. A shadow on a building that reads much darker than
+that is not the strength: look at the edge and at the faces below.
+
+**Kernel.** The ground blurs its shadow with four taps at +-0.75 x `ShadowSoftness` texels, each a hardware
+2x2 compare. Extrusions and models used to compile `SHADOW_SINGLE_TAP` whatever the softness, one 2x2
+compare: a one-texel ramp, so a wall's shadow edge showed the shadow map's texel grid (a stair-step, at the
+far cascade several pixels wide) while the ground beside it was a 3.5 texel ramp. They now take the same
+kernel, `receiver3DFlags(softness)`; softness 0 keeps the single tap (and its cost: three more fetches per
+extrusion and model fragment otherwise).
+
+The taps are NOT moved onto the facade's plane. A tap `d` texels out reads a plane `d x sin(theta) / N.L`
+texel-lengths of depth away from the centre one (`theta` the angle between the normal and the light); the
+normal offset already lifts the lookup `3 x (0.5..1) / N.L` texel-lengths clear of the face, which exceeds
+the kernel's reach `(0.75 x softness + 1) x sin(theta) / N.L` up to softness ~1.5 at the default offset. Past
+that, or with `ShadowNormalOffset` 0, a steep facade can speckle at its shadow edge. Receiver-plane taps
+from screen-space derivatives are not the answer: that is the serrated wedge described under "Per tap".
+
+**Which wall is dark.** The sun is world-fixed: `u_sunDir` is `LightOptions.getSunDirection()`
+(x east = `cos(alt) sin(az)`, y north = `cos(alt) cos(az)`, azimuth clockwise from north) and the extrusion
+normals are in the same tile frame, so the map's bearing changes nothing (only the maplibre model's
+`u_mlLightPos` is turned by it, because that light is viewport-anchored). At azimuth 330, altitude 60 with
+`building-ambient` / `building-light-intensity` 0.5 the model gives, in sRGB:
+
+| face | N | NE | E | SE | S | SW | W | NW | roof |
+|---|---|---|---|---|---|---|---|---|---|
+| `N.L` | +0.43 | +0.13 | -0.25 | -0.48 | -0.43 | -0.13 | +0.25 | +0.48 | +0.87 |
+| brightness | 0.85 | 0.76 | 0.70 | 0.69 | 0.70 | 0.71 | 0.80 | 0.86 | 0.97 |
+
+A wall can never be as bright as a roof under a high sun, and the walls turned from the NNW sun sit 15-20%
+below the lit ones; that is the model working, not a face mis-lit.
 
 ### Two dead ends, both shipped before being caught
 

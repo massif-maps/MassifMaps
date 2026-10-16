@@ -45,6 +45,7 @@
 #include "terrain/DrapeStackCuts.h"
 #include "terrain/DrapeTuning.h"
 #include "terrain/ShadowCasterRing.h"
+#include "terrain/ShadowRamp.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/TerrainSkirts.h"
 #include "terrain/PrefetchOrder.h"
@@ -941,6 +942,34 @@ namespace massif {
         }
     }
 
+    bool MapRenderer::warmElevationTextures(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) {
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        if (!elevationManager) {
+            return false;
+        }
+        std::shared_ptr<ElevationTextureCache> cache = getElevationTextureCache(elevationManager);
+        if (!cache) {
+            return false;
+        }
+        if (!_terrainRenderer) {
+            _terrainRenderer = std::make_unique<TerrainRenderer>();
+            _terrainRenderer->setTileTransformer(_options->getTileTransformer());
+        }
+        elevationManager->setPrefetchFocus(viewState.getFocusPos()(0), viewState.getFocusPos()(1));
+        cache->setBorderMetres(terrainOptions->getNormalSampleDistance());
+        cache->beginFrame();
+        std::vector<vt::TileId> tileIds = collectTerrainCoverTileIds(viewState, terrainOptions);
+        bool pending = cache->warm(tileIds);
+#if MASSIF_VT_RENDER_STATS
+        static int lastPending = -1;
+        if (static_cast<int>(pending) != lastPending) {
+            lastPending = pending ? 1 : 0;
+            Log::Infof("MapRenderer: rise warm - %d ground tiles, elevation %s", static_cast<int>(tileIds.size()), pending ? "owed" : "on the GPU");
+        }
+#endif
+        return pending;
+    }
+
     void MapRenderer::updateTerrainSkirts(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& cover, const std::shared_ptr<TerrainOptions>& terrainOptions) {
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         std::shared_ptr<ElevationTextureCache> cache = (elevationManager ? getElevationTextureCache(elevationManager) : std::shared_ptr<ElevationTextureCache>());
@@ -1495,6 +1524,17 @@ namespace massif {
                             if (landed) {
                                 requestRedraw();
                             } else if (pinnedZ != focusMapPos.getZ()) {
+#if MASSIF_VT_RENDER_STATS
+                                // A step of the pin during the ramp is a jump of the picture; the grid zoom says whether a finer DEM caused it.
+                                float ramp = focusTerrainOptions->getFlattenRatio();
+                                if (ramp > 0.0f && ramp < 1.0f && std::abs(pinnedZ - focusMapPos.getZ()) > orbitHeight * 0.01) {
+                                    double pinProbe = 0;
+                                    int pinGridZoom = -1;
+                                    elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), pinProbe, pinGridZoom);
+                                    Log::Infof("MapRenderer: ramp focus pin ratio %.3f - step %.3f%% of the orbit (terrain %.3f, shell %.3f, lift %.3f, grid z%d)",
+                                        ramp, 100.0 * (pinnedZ - focusMapPos.getZ()) / orbitHeight, terrainZ, shellFocusZ, lift, pinGridZoom);
+                                }
+#endif
                                 // A finer DEM tile moves the ground under a still camera: without a frame for it, the
                                 // picture stays at the old height.
                                 _viewState.setFocusHeight(pinnedZ);
@@ -2168,6 +2208,8 @@ namespace massif {
                     tilesOwed = owed < 0 || tilesOwed < 0 ? -1 : tilesOwed + owed;
                 }
             }
+            // The ground the ramp shows must be on the GPU: a tile whose relief lands mid-ramp pops up.
+            input.tilesReady = input.tilesReady && !_elevationWarmPending;
             requestRedraw(); // nothing else asks for the frame the wait ends on
         }
 
@@ -2182,7 +2224,11 @@ namespace massif {
         }
         _flattenSwitchState = next;
         reportFlattenSwitchTiming(next, input, tilesOwed, deltaSeconds);
-        terrainOptions->setSwitching(FlattenSwitch::isWaitingForTiles(next, input));
+        bool waitingForTiles = FlattenSwitch::isWaitingForTiles(next, input);
+        terrainOptions->setSwitching(waitingForTiles);
+        if (!waitingForTiles) {
+            _elevationWarmPending = true; // unknown until the next wait's first warm pass
+        }
         if (next.phase == FlattenSwitch::Phase::RAMPING) {
             // The ramp's first frame has no delta yet, and nothing else asks for the next one.
             requestRedraw();
@@ -2204,6 +2250,10 @@ namespace massif {
         _vtLabelPlacementWorker->init(layer, delay ? VT_LABEL_PLACEMENT_TASK_DELAY : 0);
     }
     
+    void MapRenderer::vtLabelsPostponed(const std::shared_ptr<Layer>& layer) {
+        _vtLabelPlacementWorker->postpone(layer, LABEL_PLACEMENT_REANCHOR_DELAY);
+    }
+
     void MapRenderer::layerChanged(const std::shared_ptr<Layer>& layer, bool delay) {
         // Before the surface exists, onSurfaceChanged starts the cull worker instead.
         if (_surfaceCreated) {
@@ -2383,16 +2433,14 @@ namespace massif {
         }
         bool shadowsWanted = false;
         {
-            // Dropped during the 2D/3D ramp rather than re-cast every frame.
-            bool switching = terrainOptions && terrainOptions->getFlattenRatio() > 0.0f;
-            shadowsWanted = castShadows && !switching && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
+            shadowsWanted = castShadows && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
             if (shadowsWanted) {
                 if (!_terrainShadowMap) {
                     _terrainShadowMap = std::make_unique<TerrainShadowMap>();
                 }
                 _terrainShadowMap->setSize(lighting.shadowMapSize, lighting.shadowCascades);
                 // A flat relief throws nothing, but its draws cost as much as a mountain's.
-                bool terrainCasts = terrainOptions && lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f;
+                bool terrainCasts = terrainOptions && lighting.terrainShadowCasting && terrainOptions->getExaggeration() > 0.0f && ShadowRamp::castsGround(terrainOptions->getFlattenRatio());
                 // At a low sun the box stretches by the height range / tan(altitude): keep the slab tight.
                 double minHeight = 0, maxHeight = 0;
                 // Per tile too, so a cascade fits its box to its own piece's relief.
@@ -2594,7 +2642,11 @@ namespace massif {
                     // The atlas layout itself changed: every page has to be redrawn.
                     // The caster set itself changed: the pages still hold the models' shadows.
                     bool modelShadows = _options->isModelShadowsEnabled();
+                    float configuredExaggeration = terrainOptions ? terrainOptions->getExaggeration() : 0.0f;
+                    float flattenRatio = terrainOptions ? terrainOptions->getFlattenRatio() : 1.0f;
+                    float exaggeration = ShadowRamp::exaggeration(configuredExaggeration, flattenRatio);
                     bool refreshAll = !_shadowMapValid
+                        || ShadowRamp::needsCast(configuredExaggeration, flattenRatio, _shadowMapExaggeration)
                         || _shadowMapTerrainCasts != terrainCasts
                         || _shadowMapModelShadows != modelShadows
                         || _shadowMapSize != _terrainShadowMap->getSize()
@@ -2664,6 +2716,7 @@ namespace massif {
                             _shadowMapCascades = cascades;
                             _shadowMapTerrainCasts = terrainCasts;
                             _shadowMapModelShadows = modelShadows;
+                            _shadowMapExaggeration = exaggeration;
                             _shadowMapAge = 0;
                             shadowPasses++;
                         } else {
@@ -3050,6 +3103,11 @@ namespace massif {
             }
         }
         if (!terrainMode) {
+            if (auto warmOptions = _options->getTerrainOptions()) {
+                if (warmOptions->isEnabled() && warmOptions->isSwitching()) {
+                    _elevationWarmPending = warmElevationTextures(viewState, warmOptions);
+                }
+            }
             for (const std::shared_ptr<Layer>& layer : layers) {
                 if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
                     tileLayer->setTerrainDepthWriteMode(false);
@@ -4433,6 +4491,7 @@ namespace massif {
     // A quarter zoom level is ~20% more room under the labels; the delay places once per gesture.
     const float MapRenderer::LABEL_PLACEMENT_ZOOM_THRESHOLD = 0.25f;
     const int MapRenderer::LABEL_PLACEMENT_ZOOM_DELAY = 250;
+    const int MapRenderer::LABEL_PLACEMENT_REANCHOR_DELAY = 250;
 
     const float MapRenderer::DRAPE_REBAKE_ZOOM_THRESHOLD = 0.25f;
 

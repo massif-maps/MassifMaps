@@ -182,6 +182,20 @@ namespace massif::vt {
             return patchVertexFloat(_vertexGeometryLayoutParameters.baseOffset, vertexIndex, base);
         }
 
+        /** Rewrites one vertex's packed building top (attribute byte 2, TileLayerBuilder::packTopHeight). */
+        bool setVertexTop(std::size_t vertexIndex, std::int8_t top) {
+            if (_vertexGeometryLayoutParameters.attribsOffset < 0 || _vertexGeometry.empty()) {
+                return false;
+            }
+            std::size_t first = vertexIndex * _vertexGeometryLayoutParameters.vertexSize + _vertexGeometryLayoutParameters.attribsOffset + 2;
+            if (static_cast<std::int8_t>(_vertexGeometry[first]) == top) {
+                return false;
+            }
+            _vertexGeometry[first] = static_cast<std::uint8_t>(top);
+            _dirtyVertexBytes = (_dirtyVertexBytes ? std::make_pair(std::min(_dirtyVertexBytes->first, first), std::max(_dirtyVertexBytes->second, first + 1)) : std::make_pair(first, first + 1));
+            return true;
+        }
+
         /** The vertex's unclamped chord parameter (see VertexGeometryLayoutParameters::chordOffset). */
         bool setVertexChord(std::size_t vertexIndex, float chordParam) {
             return patchVertexFloat(_vertexGeometryLayoutParameters.chordOffset, vertexIndex, chordParam);

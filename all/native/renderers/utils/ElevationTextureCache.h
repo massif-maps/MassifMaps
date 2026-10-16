@@ -53,6 +53,12 @@ namespace massif {
          */
         bool getTexture(const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture);
 
+        /**
+         * Queues the grid and the texture of each tile, and says whether any is still on its way (a grid loading, an
+         * encode queued, an upload owed). The 2D/3D switch calls it before the ground rises, so no tile pops up mid-ramp.
+         */
+        bool warm(const std::vector<vt::TileId>& tileIds);
+
         /** The node heights the tile is displaced by, from the same entry getTexture picks: the uploaded bytes, patches included. */
         bool getDrawnNodeField(const vt::TileId& tileId, NodeFieldView& field);
         /** Changes whenever an upload or a border patch changes what some tile is drawn with. */

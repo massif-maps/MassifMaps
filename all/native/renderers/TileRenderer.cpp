@@ -313,6 +313,20 @@ namespace massif {
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTerrainRegularGrid(terrainMode && (bool) terrainTextureProvider,
                                             activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
+        if (activeTerrainOptions) {
+            if (std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager()) {
+                invalidateExtrusionBasesOnElevation(*tileRenderer, elevationManager->getVersion());
+            }
+        }
+    }
+
+    // Bases carry the exaggeration. The shadow casters resolve them before onDrawFrame, so a bump there
+    // left the shadow map one step behind and, once the drag stopped, nothing refreshed it.
+    void TileRenderer::invalidateExtrusionBasesOnElevation(vt::GLTileRenderer& tileRenderer, unsigned int elevationVersion) {
+        if (elevationVersion != _extrusionBasesElevationVersion) {
+            _extrusionBasesElevationVersion = elevationVersion;
+            tileRenderer.invalidateExtrusionBases();
+        }
     }
 
     bool TileRenderer::prepareFrame(float deltaSeconds, const ViewState& viewState) {
@@ -386,7 +400,7 @@ namespace massif {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
             // Re-anchored labels were placed at their old height; a still camera asks for no new pass.
             if (tileRenderer->consumeLabelsReanchored()) {
-                _labelPlacementOwed = true;
+                _labelReanchorOwed = true;
             }
         }
         catch (const std::exception& ex) {
@@ -957,8 +971,8 @@ namespace massif {
                             bool scaleOnly = (_elevationDataVersion != 0 && elevationDataVersion == _elevationDataVersion);
                             _elevationDataVersion = elevationDataVersion;
 
-                            // Bases carry the exaggeration too; not narrowed, an unmoved base uploads nothing.
-                            tileRenderer->invalidateExtrusionBases();
+                            // Not narrowed, an unmoved base uploads nothing; a no-op when prepareFrame already ran.
+                            invalidateExtrusionBasesOnElevation(*tileRenderer, elevationVersion);
 
                             std::vector<MapTile> changedTiles;
                             if (scaleOnly) {
@@ -1008,11 +1022,6 @@ namespace massif {
             }
             if (_maxVertexTextureUnits > 0) {
                 std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
-                if (elevationManager) {
-                    // Node field density for every elevation consumer; mesh resolution is only its default.
-                    int nodeResolution = activeTerrainOptions->getSurfaceNodeResolution();
-                    elevationManager->setSurfaceResolution(nodeResolution > 0 ? nodeResolution : activeTerrainOptions->getMeshResolution());
-                }
                 // One cache per map (MapRenderer): a cache per layer meant an encode thread each.
                 _elevationTextureCache.reset();
                 if (elevationManager) {
@@ -1314,6 +1323,13 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
         bool owed = _labelPlacementOwed;
         _labelPlacementOwed = false;
+        return owed;
+    }
+
+    bool TileRenderer::consumeLabelReanchorOwed() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        bool owed = _labelReanchorOwed;
+        _labelReanchorOwed = false;
         return owed;
     }
 
@@ -1692,7 +1708,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 // Relative tolerance: the default absorbs anchor-vs-terrain mismatch; more labels partly hidden features.
                 float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
                 // Outside the read-back viewport, the elevation ray answers.
-                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest, elevationManager](const cglib::vec3<double>& pos) {
+                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest, elevationManager, terrainOptions](const cglib::vec3<double>& pos) {
+                    // One verdict source for the whole ramp: the depth snapshot lags it, and a label the two disagree on blinks.
+                    if (terrainOptions->getFlattenRatio() > 0.0f) {
+                        return rayTest(pos);
+                    }
                     auto mapRenderer = mapRendererWeak.lock();
                     if (!mapRenderer) {
                         return false;

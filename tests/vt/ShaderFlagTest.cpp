@@ -54,6 +54,11 @@ void testShaderFlags() {
     TEST_CHECK(flags.size() == flagDefineMap.size(),
                "a new flag is listed here too - the count is what catches a collided one");
 
+    TEST_CHECK((receiver3DFlags(0.0f) & SHADOW_SINGLE_TAP_FLAG) != 0 && (receiver3DFlags(0.0f) & SHADOW_RECEIVER_3D_FLAG) != 0,
+               "softness 0 is the hard edge: an extrusion keeps its single tap");
+    TEST_CHECK((receiver3DFlags(0.5f) & SHADOW_SINGLE_TAP_FLAG) == 0 && (receiver3DFlags(0.5f) & SHADOW_RECEIVER_3D_FLAG) != 0,
+               "any softness above 0 gives an extrusion the ground's kernel, or the setting would not reach it");
+
     for (const std::pair<unsigned int, std::string>& flag : flags) {
         std::map<unsigned int, std::string>::const_iterator it = flagDefineMap.find(flag.first);
         TEST_CHECK(it != flagDefineMap.end() && it->second == flag.second,

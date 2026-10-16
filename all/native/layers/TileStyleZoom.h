@@ -50,6 +50,23 @@ namespace massif {
     }
 
     /**
+     * The same for a free roam camera, which has no zoom to ask for (it is the distance to wherever the view ray
+     * lands): the tile's own view zoom, the zoom a top-down camera at its distance would be at.
+     */
+    inline int calculateViewStyleTileZoom(int tileZoom, double viewZoom, int maxZoomLift) {
+        if (!(viewZoom > tileZoom)) {
+            return tileZoom;
+        }
+        return viewZoom >= tileZoom + maxZoomLift ? tileZoom + maxZoomLift : static_cast<int>(std::floor(viewZoom));
+    }
+
+    /** Whether a tile decoded at styleTileZoom matches its view zoom, give or take the hysteresis. */
+    inline bool isViewStyleTileZoomCurrent(int tileZoom, int styleTileZoom, double viewZoom, int maxZoomLift, double hysteresis) {
+        return calculateViewStyleTileZoom(tileZoom, viewZoom - hysteresis, maxZoomLift) <= styleTileZoom &&
+               styleTileZoom <= calculateViewStyleTileZoom(tileZoom, viewZoom + hysteresis, maxZoomLift);
+    }
+
+    /**
      * Whether a tile decoded at styleTileZoom still matches the camera: in-flight tasks survive a
      * target-zoom change and land fresh, so validity alone cannot tell.
      */

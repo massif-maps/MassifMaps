@@ -290,7 +290,7 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _spanReferenceCache.find(tileId);
         if (it != _spanReferenceCache.end()) {
-            return styleTileZoomCurrent(it->second);
+            return styleTileZoomCurrent(tileId, it->second);
         }
         TileInfo tileInfo;
         if (preloadingCache) {
@@ -304,11 +304,11 @@ namespace massif {
             }
             _visibleCache.peek(tileId, tileInfo);
         }
-        return styleTileZoomCurrent(tileInfo);
+        return styleTileZoomCurrent(tileId, tileInfo);
     }
 
-    bool VectorTileLayer::styleTileZoomCurrent(const TileInfo& tileInfo) const {
-        return isStyleTileZoomCurrent(tileInfo.getTileZoom(), tileInfo.getStyleTileZoom(), getTargetTileZoom(), getTileStyleZoomLift());
+    bool VectorTileLayer::styleTileZoomCurrent(long long tileId, const TileInfo& tileInfo) const {
+        return isTileStyleZoomCurrent(tileId, tileInfo.getTileZoom(), tileInfo.getStyleTileZoom());
     }
 
     bool VectorTileLayer::prefetchTile(long long tileId, bool preloadingTile) {
@@ -881,7 +881,7 @@ namespace massif {
 
         // Read at decode, not at queue time: after a zoom-out a stale target would style a coarse
         // tile for the near field over 4^lift the ground.
-        _styleTileZoom = calculateStyleTileZoom(_tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift());
+        _styleTileZoom = layer->calculateTileStyleZoom(_tileId, _tile.getZoom());
         std::shared_ptr<const std::regex> layerFilter;
         {
             std::lock_guard<std::recursive_mutex> lock(layer->_mutex);

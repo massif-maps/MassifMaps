@@ -16,9 +16,9 @@
 namespace massif {
 
     /**
-     * The free roam raster cut (02-tiles.md, "Free roam: the zoom follows the distance"). A tile splits while it spans
-     * more than a pixel budget on screen as seen from its NEAREST point, so the level falls one per doubling of the
-     * distance whatever way the camera looks. Every tile carries the budget scale it stops splitting at (`critical`),
+     * The tile cut of every planar layer (02-tiles.md, "The zoom follows the distance"). A tile splits while it spans
+     * more than a pixel budget on screen as seen from its NEAREST point, so the level falls with the distance whatever
+     * way the camera looks. Every tile carries the budget scale it stops splitting at (`critical`),
      * and the scale that fits the tile budget is read off the finished tree: a pure function of the view, with no
      * state carried between culls.
      */
@@ -34,12 +34,87 @@ namespace massif {
         static constexpr std::size_t DEFAULT_BUDGET = 112;
         static constexpr std::size_t MIN_BUDGET = 24;
 
+        static constexpr int NO_VIEW_CAP = 1000; // Limits::capOffset of a cut no zoom of the view caps
+        static constexpr double FAR_COARSENING = 0.5; // the area rule's grazing slope: 1.5 levels per doubling over the ground
+        static constexpr double MIN_GRAZING = 1.0 / 16.0; // vertical over slant distance, under which a tile reads as edge on
+
+        /** What one cull measures a tile with. */
+        struct View {
+            double focalPixels = 0; // pixels one world unit spans at distance 1: projection(1,1) * half height
+            double maxEdgePixels = 0; // what a tile may span; 0 splits to the cap
+            double zoom0Distance = 0; // the eye-to-focus distance at zoom 0 (ViewState::getZoom0Distance)
+            double zoomShift = 0; // from the camera's zoom to a tile level: Options::ZoomOffset + the layer's bias
+            double farCoarsening = 0; // exponent of the extra pixels a tile may span, over its slant distance per vertical one
+        };
+
+        /**
+         * The levels a tile is held to, whatever the rule says. The view level of a tile is the zoom a top-down
+         * camera at its nearest distance would be at: no camera zoom enters, which under a terrain or free roam
+         * camera follows wherever the view ray meets the ground.
+         */
+        struct Limits {
+            int minZoom = 0; // the layer's own: coarser always splits
+            int maxZoom = 0; // the data's, plus overzoom: never split from here on
+            int capOffset = 0; // levels over the view level a tile may go, NO_VIEW_CAP for any
+            int coarsening = -1; // levels under the view level a tile may be coarser, negative for any (terrain occluders)
+            int floorCap = std::numeric_limits<int>::max(); // the coarsening floor never above this level
+        };
+
         /** The scale a tile stops splitting at: its edge on screen, over the pixels a tile may span. */
         static double criticalScale(double tileEdge, double nearestDistance, double focalPixels, double maxEdgePixels) {
             if (!(maxEdgePixels > 0) || !(nearestDistance > 0)) {
                 return std::numeric_limits<double>::infinity();
             }
             return tileEdge * focalPixels / (nearestDistance * maxEdgePixels);
+        }
+
+        /**
+         * The zoom a top-down camera `distance` from the ground would be at: the camera's own zoom at its focus
+         * distance, falling one per doubling. A tile's view zoom is the one to match its style's zoom gates at.
+         */
+        static double viewZoom(const View& view, double distance) {
+            if (!(distance > 0) || !(view.zoom0Distance > 0)) {
+                return std::numeric_limits<double>::infinity();
+            }
+            return std::log2(view.zoom0Distance / distance) + view.zoomShift;
+        }
+
+        /** The whole level of the view zoom, bounded so that an eye inside the tile still has one. */
+        static int viewLevel(const View& view, double distance) {
+            double zoom = viewZoom(view, distance);
+            return std::isnan(zoom) ? 0 : static_cast<int>(std::max(-NO_VIEW_CAP * 1.0, std::min(NO_VIEW_CAP * 1.0, std::floor(zoom))));
+        }
+
+        /**
+         * The pixels a tile may span grow with the slant distance per vertical one, to the exponent: a ground seen
+         * at a grazing angle is read at a coarser level, as the area it projects falls with the angle. A function of
+         * the tile and the eye alone, and one at a top-down view (slant = vertical), where it is 1.
+         */
+        static double farAllowance(const View& view, double distance, double verticalDistance) {
+            if (!(view.farCoarsening > 0) || !(distance > 0)) {
+                return 1.0;
+            }
+            double slant = distance / std::max(verticalDistance, distance * MIN_GRAZING);
+            return std::pow(std::max(1.0, slant), view.farCoarsening);
+        }
+
+        /**
+         * The scale a tile of `zoom` and `tileEdge` world units stops splitting at, `distance` from the eye at its
+         * nearest point and `verticalDistance` from it along the vertical.
+         */
+        static double nodeCritical(const View& view, const Limits& limits, int zoom, double tileEdge, double distance, double verticalDistance) {
+            if (zoom < limits.minZoom) {
+                return std::numeric_limits<double>::infinity();
+            }
+            int level = viewLevel(view, distance);
+            int cap = limits.capOffset >= NO_VIEW_CAP ? limits.maxZoom : std::min(limits.maxZoom, level + limits.capOffset);
+            if (zoom >= cap) {
+                return 0.0;
+            }
+            if (limits.coarsening >= 0 && zoom < std::min(level - limits.coarsening, limits.floorCap)) {
+                return std::numeric_limits<double>::infinity();
+            }
+            return criticalScale(tileEdge, distance, view.focalPixels, view.maxEdgePixels * farAllowance(view, distance, verticalDistance));
         }
 
         static bool isLeaf(const Node& node, double scale) {

@@ -336,8 +336,9 @@ namespace massif {
         float getTileLODFactor() const;
         /**
          * Sets how big a tile may get on screen before the next zoom level is used, as a factor on tangram's
-         * rule (refine while the tile covers at least a 2x2 block of nominal tiles): 1 is that rule, larger is
-         * coarser, smaller finer. On a tilted view this, not the draw distance, decides the horizon's detail.
+         * rule (refine while the tile covers at least a 2x2 block of nominal tiles; on a plane, seen from its
+         * nearest point): 1 is that rule, larger is coarser, smaller finer. On a tilted view this, not the draw
+         * distance, decides the horizon's detail.
          * @param factor The new tile LOD factor. The default is 0.5.
          */
         void setTileLODFactor(float factor);
@@ -351,6 +352,7 @@ namespace massif {
          * Sets how many distinct zoom levels the frame may spread over with the horizon at the top of the
          * screen (maplibre's maxZoomLevelsOnScreen). Higher coarsens the far field faster and costs fewer
          * tiles, lower keeps it finer. The default matches the screen-area rule. Replaces TileLODForeshorteningLimit.
+         * Only a globe uses it: on a plane the level falls with the distance alone, one per doubling.
          * @param levels The zoom levels on screen. The default is 9.314.
          */
         void setTileLODMaxZoomLevelsOnScreen(float levels);
@@ -363,7 +365,8 @@ namespace massif {
         /**
          * Sets the cap on how many more tiles a tilted view may load than a top-down one (maplibre's
          * tileCountMaxMinRatio); past it the level is lowered uniformly. Inert at the default
-         * TileLODMaxZoomLevelsOnScreen: it only binds when that asks for a gentler far field.
+         * TileLODMaxZoomLevelsOnScreen: it only binds when that asks for a gentler far field. Globe only, as
+         * TileLODMaxZoomLevelsOnScreen is.
          * @param ratio The ratio. The default is 3.
          */
         void setTileLODTileCountRatio(float ratio);

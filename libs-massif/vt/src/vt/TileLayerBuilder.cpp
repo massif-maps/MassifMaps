@@ -346,11 +346,8 @@ namespace massif::vt {
             std::size_t indexStart = _indices.size();
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
             if (stroke && strokeMap && _indices.size() > indexStart) {
-                // The pattern's u runs from the start of the SOURCE line. Under deep overzoom that start is
-                // hundreds of tiles before the piece this tile draws, and packGeometry fits ONE int16 scale
-                // to the largest u the triangles use: with u in the millions the step is tens of texels, and
-                // a dash - a tram tie - comes out stretched and smeared. The atlas row repeats every `width`
-                // texels, so whole periods can go without changing a pixel.
+                // u counts from the SOURCE line's start, millions under deep overzoom, and packGeometry's one int16
+                // scale then steps tens of texels: drop whole atlas periods, which changes no pixel.
                 float period = static_cast<float>(strokeMap->getWidth());
                 float minU = _texCoords[_indices[indexStart]](0);
                 for (std::size_t k = indexStart + 1; k < _indices.size(); k++) {

@@ -124,10 +124,28 @@ sky, or when the scattering costs too much on a target device.
 | `AtmosphereColor` / `HaloColor` | opaque white | Tints on the Rayleigh and Mie terms (`sky-atmosphere-color` / `-halo-color`). Alpha scales the term, so a lower alpha thins the atmosphere. |
 | `AtmosphereLuminance` | `1` | Exposure. Lower brightens the sky — what a night or a heavily tinted atmosphere needs. |
 | `SkyColor` / `HorizonColor` | blue / pale blue | Zenith and horizon of the `GRADIENT` type. |
-| `GroundColor` | horizon color | Only shows in the wedge between the drawn map and the mathematical horizon. Transparent leaves the clear color. |
+| `GroundColor` | unset (the sky's horizon) | What a ray below the mathematical horizon sees where no map is drawn. Left unset it continues the sky's own horizon colour, so there is no band; set, it is used as is (see below). Transparent leaves the clear color. |
 | `HorizonBlend` | `12` | Degrees of blend between horizon and sky, `GRADIENT` only. |
 | `SunDiscEnabled` | `true` | Draw the sun disc and its glow. Both types. |
 | `ShaderSource` | — | Replace the whole appearance (below). |
+
+### No band under the sky
+
+A ray below the mathematical horizon never meets sky. It sees the map, or - past the view distance,
+or where a tile has not loaded yet - nothing. That gap used to be filled with a fixed `GroundColor`
+(a light blue). Against a scattered or fogged horizon of any other colour (grey-brown at dusk, a
+white haze) it showed as a flat band between the sky gradient and the far hills.
+
+`GroundColor` is now **unset** by default: such a ray takes the colour of the sky a hair above the
+horizon (for `ATMOSPHERE` the scattered horizon, for `GRADIENT` the `HorizonColor`), with the fog
+applied on top as everywhere else, so the sky simply continues down behind the far terrain. The sun
+disc is not repeated below the horizon. Nothing to configure, in 3D terrain or a panorama, with the
+fog on or off.
+
+Calling `setGroundColor` makes it explicit and the old behaviour applies: that exact colour fills the
+gap. Do that only for a deliberately flat floor, and then match it to the fog colour (or the horizon
+colour with fog off) or the band comes back. `getGroundColor` reports the horizon colour while it is
+unset. There is no way back to unset on an existing `SkyOptions`; create a new one.
 
 A style sets the sky from its `Map` block too — `sky-type` (0 gradient, 1 atmosphere),
 `sky-atmosphere-sun-intensity`, `sky-atmosphere-color`, `sky-atmosphere-halo-color`,
@@ -149,6 +167,13 @@ vec4 skyColor(vec3 rayDir) {          // rayDir: world-space view ray, x east, y
 applies to the ground, once, so the two still meet at the skyline — and a custom fog shader reaches
 a custom sky too.
 
+**Below the horizon** the wrapper hands your `skyColor` a ray already tipped up to just above the
+horizon (azimuth kept) whenever `GroundColor` is unset, so the sky continues down on its own and a
+`if (rayDir.z < 0.0) return groundBelowHorizon(rayDir);` branch is never taken. Only when the app set
+`GroundColor` do you see the true ray, and `groundBelowHorizon` returns that colour. `sunDisc` draws
+nothing for a tipped ray; a sun you draw yourself would repeat down it as a stripe, so keep it to
+`rayDir.z > 0.002`.
+
 The wrapper already declares the uniforms and the helpers `atmosphereTint`, `starAmount`,
 `sunDisc`, `groundBelowHorizon` (plus `atmosphere` and `tonemap` under `SKY_TYPE_ATMOSPHERE`) —
 **redeclaring any of them is a compile error and the renderer silently falls back to the built-in
@@ -158,7 +183,8 @@ sky**, which is the usual reason a custom sky "does nothing".
 |---|---|
 | `vec3 u_sunDir` | unit vector towards the sun, world space |
 | `vec4 u_sunColor`, `float u_sunIntensity` | from `LightOptions` |
-| `vec4 u_skyColor`, `u_horizonColor`, `u_groundColor` | the configured colours |
+| `vec4 u_skyColor`, `u_horizonColor`, `u_groundColor` | the configured colours; `u_groundColor` is the horizon colour while the ground colour is unset |
+| `float u_groundAuto` | 1 while `GroundColor` is unset (rays below the horizon arrive tipped up), 0 once set |
 | `float u_horizonBlend`, `u_sunDisc` | the configured blend / sun-disc switch |
 | `vec4 u_atmosphere`, `u_atmosphereColor`, `u_haloColor` | scattering sun intensity and exposure, and the two tints |
 | `float u_starIntensity` | the star field's brightness |

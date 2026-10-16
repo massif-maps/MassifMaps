@@ -84,6 +84,16 @@ void testSkyOptions() {
     TEST_CHECK(sky->getAtmosphereLuminance() > 0.0f, "the atmosphere luminance never reaches 0");
     sky->setAtmosphereSunIntensity(-5.0f);
     TEST_CHECK(nearly(sky->getAtmosphereSunIntensity(), 0.0f), "a negative sun intensity clamps to 0");
+
+    // Unset, the ground follows the horizon (the renderer carries the sky's horizon down); set, it is
+    // used as given - even when it equals the horizon color it was following.
+    Color horizon(10, 20, 30, 255);
+    sky->setHorizonColor(horizon);
+    TEST_CHECK(sky->getGroundColor().getARGB() == horizon.getARGB(), "an unset ground color follows the horizon color");
+    Color ground(200, 100, 50, 255);
+    sky->setGroundColor(ground);
+    sky->setHorizonColor(Color(1, 2, 3, 255));
+    TEST_CHECK(sky->getGroundColor().getARGB() == ground.getARGB(), "an explicit ground color wins over the horizon color");
 }
 
 /**

@@ -1555,12 +1555,18 @@ Pick it for a flat or brand-coloured sky, or as the A/B when measuring what the 
 ### The custom sky shader
 
 `SkyOptions::setShaderSource` replaces `vec4 skyColor(vec3 rayDir)`. The wrapper declares
-`u_sunDir`, `u_sunColor`, `u_skyColor`, `u_horizonColor`, `u_groundColor`, `u_horizonBlend`,
+`u_sunDir`, `u_sunColor`, `u_skyColor`, `u_horizonColor`, `u_groundColor`, `u_groundAuto`, `u_horizonBlend`,
 `u_sunIntensity`, `u_sunDisc`, `u_atmosphere`, `u_atmosphereColor`, `u_haloColor`, `u_time`,
 `u_zoom`, `u_cameraHeight`, `u_localFrame`, `u_resolution`, `u_starIntensity`, the whole fog block, and the helpers
 `atmosphereTint`, `starAmount`, `sunDisc`, `groundBelowHorizon` (and `atmosphere` / `tonemap` when
 the type is `ATMOSPHERE`) — **redeclaring any of them is a compile error and the renderer silently
 falls back to the built-in sky**, which is the usual reason a custom sky "does nothing".
+
+Below the horizon, with `GroundColor` unset (`u_groundAuto` 1), `main()` calls `skyColor` with the
+ray tipped up to z = 0.001 (azimuth kept) and sets the global `skyBelowHorizon` so `sunDisc` draws
+nothing; the haze still takes the REAL ray, whose horizon term is 1 below the horizon. That is what
+removes the band between the sky and the far terrain, for the built-in and for a custom `skyColor`
+alike. An explicit `GroundColor` skips the tipping and `groundBelowHorizon` paints it.
 
 A custom sky must NOT fog itself: `main()` applies `skyFog` once to whatever `skyColor` returns, so
 a custom fog shader reaches a custom sky too.

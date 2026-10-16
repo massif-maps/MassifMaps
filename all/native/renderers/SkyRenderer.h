@@ -75,6 +75,7 @@ namespace massif {
         GLint _u_skyColor;
         GLint _u_horizonColor;
         GLint _u_groundColor;
+        GLint _u_groundAuto;
         GLint _u_horizonBlend;
         GLint _u_sunIntensity;
         GLint _u_sunDisc;

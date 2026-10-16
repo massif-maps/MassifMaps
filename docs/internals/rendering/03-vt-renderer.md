@@ -177,11 +177,21 @@ These details are what make it usable rather than a triangle stuck on the end:
   test is maplibre's for symbol anchors (`symbol_layout.ts`): the last vertex must lie in the
   half-open tile `[0, 1)`, so an end on a shared edge is drawn by exactly one tile. Without it a
   maneuver arrow crossing z18 tile edges grew a head at every crossing.
-- **A tile edge clips the head only under stencil masks.** Under the shared ground the line shader
-  discards by the CENTRE-line position (`lineFsh`, `vTileUnit`), and every vertex of a head sits on
-  its last vertex, so a head owned by a tile is never cut. In the stencil-mask path (no terrain) the
-  owner's mask cuts a head that overhangs the tile's edge, and the neighbour has none to complete it.
-  A neighbour whose buffer holds the end draws the shaft without the pull-back and with a cap.
+- **A tile edge must not clip the head, nor a neighbour's shaft cover it.** Under the shared ground
+  the line shader discards by the CENTRE-line position (`lineFsh`, `vTileUnit`), and every vertex of
+  a head sits on its last vertex, so a head owned by a tile is never cut. In the stencil-mask path
+  (no terrain, or a terrain that is flattened) the owner's mask cut a head that overhangs the tile's
+  edge, and the neighbour has none to complete it. A neighbour whose buffer holds the end draws the
+  shaft without the pull-back and with a cap, and drawn after the owner it painted that stub over the
+  part of the head lying in its tile (the head "under its shaft", the road casings of the base map
+  showing where the head should be, and only the ghost of `line-occlusion-opacity`, which has no mask,
+  drawing the whole head). So `renderGeometry2D` draws a style layer in two passes when it holds a
+  `line-arrow-only` slot (`ArrowHeadPass.h`): every tile with the head slots collapsed to nothing, then
+  every tile again with only the head slots, the tile mask off. The head is on top of every shaft of
+  the layer, whichever tile owns which. A flat map draws a geometry once per target tile it overzooms
+  into, so the head pass draws each geometry once; a stand-in tile under a live one skips it. A
+  `line-arrow-only` slot never shares a slot with a plain line of the same colour and width
+  (`TileGeometry::StyleParameters::arrowOnly`), or the pass could not tell the head from the shaft.
 
 - **The head hangs on its incenter**, and the line is pulled back to the head's base by the same
   amount. A homothety about the incenter moves every edge of a triangle by the same distance, so

@@ -17,6 +17,7 @@
 #include "Tile.h"
 #include "TileId.h"
 #include "SpanResolver.h"
+#include "ArrowHeadPass.h"
 #include "DrawOnceOrder.h"
 #include "TileTransformer.h"
 #include "TileBitmap.h"
@@ -842,6 +843,7 @@ namespace massif::vt {
         float _terrainLineClearance = 0.0f;      // world units a draped line clears the ground by, constant in metres at any range
         float _terrainDrawClearance = 0.0f;      // per-draw METRE-constant clearance in world units (applyDepthBias); non-zero only for content that chords over the ground
         int _ghostStyle = -1;                    // ghost pass: draw only this style of a batch (-1 = all)
+        ArrowHeadPass _arrowHeadPass = ArrowHeadPass::ALL; // 2D pass: the arrow-only slots of a line batch, or all the others
         DrawOncePass _drawOncePass = DrawOncePass::NONE; // the draw-once pass the 2D layer being drawn is in
         static constexpr GLuint DRAW_ONCE_STENCIL_BIT = 0x80; // tile mask values stay below it
         static constexpr GLuint BUILDING_STENCIL_BIT = 0x40; // 3D pass only: an extrusion won the depth test here (the ghost pass reads it)

@@ -3693,7 +3693,34 @@ namespace massif::vt {
                 }
             }
 
+            // The heads of `line-arrow-only` styles come last, over every tile's shafts and unmasked: see ArrowHeadPass.h.
+            auto hasArrowOnlySlot = [](const std::shared_ptr<TileGeometry>& geometry) {
+                const TileGeometry::StyleParameters& styleParams = geometry->getStyleParameters();
+                return geometry->getType() == TileGeometry::Type::LINE && std::any_of(styleParams.arrowOnly.begin(), styleParams.arrowOnly.begin() + styleParams.parameterCount, [](bool arrowOnly) { return arrowOnly; });
+            };
+            bool anyArrowOnlySlot = std::any_of(renderLayers.begin(), renderLayers.end(), [&hasArrowOnlySlot](const RenderTileLayer* renderLayer) {
+                const std::vector<std::shared_ptr<TileGeometry>>& geometries = renderLayer->layer->getGeometries();
+                return std::any_of(geometries.begin(), geometries.end(), hasArrowOnlySlot);
+            });
+            int arrowPasses = arrowHeadPassCount(anyArrowOnlySlot, drawOncePass == DrawOncePass::NONE && layerDrawOnceGroup.empty() && !layer->getCompOp());
+            std::set<const TileGeometry*> headsDrawn; // a flat map draws a tile's geometry once per target tile it overzooms into
+            for (int arrowPass = 0; arrowPass < arrowPasses; arrowPass++) {
+            _arrowHeadPass = arrowPasses == 1 ? ArrowHeadPass::ALL : (arrowPass == 0 ? ArrowHeadPass::SHAFTS : ArrowHeadPass::HEADS);
+            bool headsPass = _arrowHeadPass == ArrowHeadPass::HEADS;
+            if (headsPass && maskStencilBits > 0) {
+                glDisable(GL_STENCIL_TEST); // the head overhangs its tile: the mask cut it at the tile edge
+            }
             for (const RenderTileLayer* renderLayer : renderLayers) {
+                if (headsPass) {
+                    // A stand-in or fading-out tile under a live one: its head would sit beside the live one's.
+                    bool standIn = !renderLayer->active && std::any_of(renderLayers.begin(), renderLayers.end(), [this, renderLayer](const RenderTileLayer* liveLayer) {
+                        return liveLayer->active && (tileCovers(liveLayer->targetTileId, renderLayer->targetTileId) || tileCovers(renderLayer->targetTileId, liveLayer->targetTileId));
+                    });
+                    const std::vector<std::shared_ptr<TileGeometry>>& layerGeometries = renderLayer->layer->getGeometries();
+                    if (standIn || !std::any_of(layerGeometries.begin(), layerGeometries.end(), hasArrowOnlySlot)) {
+                        continue;
+                    }
+                }
                 if (maskStencilBits > 0) {
                     int stencilValue = 0;
                     for (TileId targetTileId = renderLayer->targetTileId; targetTileId.zoom >= 0; targetTileId = targetTileId.getParent()) {
@@ -3746,7 +3773,7 @@ namespace massif::vt {
                 const std::vector<TileId>& groundTiles = collectGroundLeaves(renderLayer->targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
                     // Draped native backgrounds are baked into the surface texture already.
-                    if (drapedTile || _drawOncePass == DrawOncePass::CORE) {
+                    if (drapedTile || _drawOncePass == DrawOncePass::CORE || headsPass) {
                         continue;
                     }
                     CompOp backgroundCompOp = CompOp::SRC_OVER;
@@ -3769,7 +3796,7 @@ namespace massif::vt {
 
                 for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer->layer->getBitmaps()) {
                     // Draped rasters (hillshade, imagery) are baked into the drape texture already.
-                    if (drapedTile || _drawOncePass == DrawOncePass::CORE) {
+                    if (drapedTile || _drawOncePass == DrawOncePass::CORE || headsPass) {
                         continue;
                     }
                     CompOp bitmapCompOp = CompOp::SRC_OVER;
@@ -3817,6 +3844,9 @@ namespace massif::vt {
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                    if (headsPass && (!hasArrowOnlySlot(geometry) || (!terrainVTF && !headsDrawn.insert(geometry.get()).second))) {
+                        continue;
+                    }
                     // BEFORE the drape test, which asks whether the chord resolved: else a draped span
                     // never lifts - baked because unlifted, unlifted because baked.
                     bool span = !geometry->getSpanRecords().empty();
@@ -3868,6 +3898,11 @@ namespace massif::vt {
                     }
                 }
             }
+            if (headsPass && maskStencilBits > 0) {
+                glEnable(GL_STENCIL_TEST);
+            }
+            }
+            _arrowHeadPass = ArrowHeadPass::ALL;
 
             if (layer->getCompOp()) {
                 if (!_overlayBuffer2D.depthStencilAttachments.empty()) {
@@ -7520,6 +7555,14 @@ namespace massif::vt {
                     borderWidths[i] = (borderHalf > 0.0f && widths[i] > 0.0f ? widths[i] + borderHalf : 0.0f);
                     borderGapWidths[i] = std::max(0.0f, gapWidths[i] - borderHalf);
                     borderColors[i] = evaluateStyleColor(styleParams.borderColorFuncs[i], i);
+                }
+            }
+            // The head slots of a style layer draw once its shafts are all down (renderGeometry2D).
+            if (_arrowHeadPass != ArrowHeadPass::ALL) {
+                for (int i = 0; i < styleParams.parameterCount; i++) {
+                    if (!arrowSlotDrawn(_arrowHeadPass, styleParams.arrowOnly[i])) {
+                        widths[i] = 0.0f;
+                    }
                 }
             }
             // The ghost pass draws one style of the batch at a time: the others collapse to nothing.

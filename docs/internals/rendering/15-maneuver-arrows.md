@@ -105,6 +105,14 @@ zoom, re-evaluated every frame, not the tile's zoom — and the head is a multip
 shaft, head and border shrink together as the map zooms out. The arrow stays an arrow instead of
 swallowing the junction, and no second rule has to be kept in sync.
 
+**The heads draw after every tile's shafts.** An attachment is a draw of a tile's geometry, and tiles
+draw one after another, so a head that overhangs the edge of the tile holding it lay under the next
+tile's draw: a neighbour whose buffer holds the end of the arrow draws the shaft without a pull-back, and
+on a flat map the tile mask cut the head at the edge besides. The renderer therefore draws the
+`line-arrow-only` attachments (`headcase`, `head`) in a second pass over the style layer, unmasked
+([03-vt-renderer.md](03-vt-renderer.md#line-end-arrows)). Seen on a street crossing a z18 tile edge, with
+3D buildings: the head was a ghost outline under the shaft before, and is drawn whole over it now.
+
 ## Why not a marker for the head
 
 A `marker-file` / `marker-type: arrow` symbol rotated by a `bearing` property was built first — it

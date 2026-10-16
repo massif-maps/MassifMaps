@@ -139,6 +139,24 @@ namespace massif::mvt {
         _zoomRuleMapCalculated = true;
     }
 
+    void Style::flattenAndPredicate(const Predicate& pred, std::vector<Predicate>& conjuncts) {
+        if (auto andPred = std::get_if<std::shared_ptr<AndPredicate>>(&pred)) {
+            flattenAndPredicate((*andPred)->getPredicate1(), conjuncts);
+            flattenAndPredicate((*andPred)->getPredicate2(), conjuncts);
+        }
+        else {
+            conjuncts.push_back(pred);
+        }
+    }
+
+    Predicate Style::buildAndPredicate(const std::vector<Predicate>& conjuncts) {
+        Predicate result = conjuncts.front();
+        for (std::size_t i = 1; i < conjuncts.size(); i++) {
+            result = std::make_shared<AndPredicate>(result, conjuncts[i]);
+        }
+        return result;
+    }
+
     std::optional<Predicate> Style::buildOptimizedOrPredicate(const std::optional<Predicate>& pred1, const std::optional<Predicate>& pred2) {
         // X or true = true
         if (!pred1 || !pred2) {
@@ -163,19 +181,28 @@ namespace massif::mvt {
             }
         }
 
-        // (X & Y) or (X & Z) = X & (Y or Z)
-        if (auto andPred1 = std::get_if<std::shared_ptr<AndPredicate>>(&*pred1)) {
-            std::array<const Predicate*, 2> subPreds1 = { &(*andPred1)->getPredicate1(), &(*andPred1)->getPredicate2() };
-            if (auto andPred2 = std::get_if<std::shared_ptr<AndPredicate>>(&*pred2)) {
-                std::array<const Predicate*, 2> subPreds2 = { &(*andPred2)->getPredicate1(), &(*andPred2)->getPredicate2() };
-                for (int i1 = 0; i1 < 2; i1++) {
-                    for (int i2 = 0; i2 < 2; i2++) {
-                        if (std::visit(PredicateDeepEqualsChecker(), *subPreds1[i1], *subPreds2[i2])) {
-                            return std::make_shared<AndPredicate>(*subPreds1[i1], std::make_shared<OrPredicate>(*subPreds1[i1 ^ 1], *subPreds2[i2 ^ 1]));
-                        }
-                    }
-                }
+        // (X & Y) or (X & Z) = X & (Y or Z), for every conjunct the two share. A filter that excludes a long
+        // list of classes repeats the list in every OR branch, and this keeps it once.
+        std::vector<Predicate> conjuncts1, conjuncts2;
+        flattenAndPredicate(*pred1, conjuncts1);
+        flattenAndPredicate(*pred2, conjuncts2);
+        std::vector<Predicate> common;
+        for (auto it1 = conjuncts1.begin(); it1 != conjuncts1.end(); ) {
+            auto it2 = std::find_if(conjuncts2.begin(), conjuncts2.end(), [&](const Predicate& conjunct2) { return std::visit(PredicateDeepEqualsChecker(), *it1, conjunct2); });
+            if (it2 == conjuncts2.end()) {
+                it1++;
+                continue;
             }
+            common.push_back(*it1);
+            it1 = conjuncts1.erase(it1);
+            conjuncts2.erase(it2);
+        }
+        if (!common.empty()) {
+            // X or (X & Y) = X, already the case when one side has nothing left
+            if (!conjuncts1.empty() && !conjuncts2.empty()) {
+                common.push_back(std::make_shared<OrPredicate>(buildAndPredicate(conjuncts1), buildAndPredicate(conjuncts2)));
+            }
+            return buildAndPredicate(common);
         }
 
         // Just combine

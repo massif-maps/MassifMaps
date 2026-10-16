@@ -52,6 +52,8 @@ namespace massif::mvt {
     private:
         void calculateZoomRuleMap() const;
 
+        static void flattenAndPredicate(const Predicate& pred, std::vector<Predicate>& conjuncts);
+        static Predicate buildAndPredicate(const std::vector<Predicate>& conjuncts);
         static std::optional<Predicate> buildOptimizedOrPredicate(const std::optional<Predicate>& pred1, const std::optional<Predicate>& pred2);
 
         const std::string _name;

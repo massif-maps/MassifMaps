@@ -1822,23 +1822,7 @@ namespace massif::vt {
         }
 
         if (geom2D) {
-            GLint stencilBits = 0;
-            GLint currentFBO = 0;
-            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
-            if (currentFBO != 0) {
-                GLint stencilRB = 0;
-                glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &stencilRB);
-                if (stencilRB != 0) {
-                    GLint currentRB = 0;
-                    glGetIntegerv(GL_RENDERBUFFER_BINDING, &currentRB);
-                    glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
-                    glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_STENCIL_SIZE, &stencilBits);
-                    glBindRenderbuffer(GL_RENDERBUFFER, currentRB);
-                }
-            } else {
-                glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
-            }
-
+            GLint stencilBits = boundStencilBits();
 
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -3861,6 +3845,16 @@ namespace massif::vt {
         _drawOncePass = DrawOncePass::NONE;
     }
     
+    namespace {
+        // Renderers that finished their 3D pass this frame, in stack order, waiting for the ghost pass.
+        std::vector<std::shared_ptr<GLTileRenderer>>& occludedQueue() {
+            static std::vector<std::shared_ptr<GLTileRenderer>> queue;
+            return queue;
+        }
+        // An extrusion or a model was drawn into the main buffer this frame: something that can hide a line.
+        bool gExtrusionsDrawn = false;
+    }
+
     void GLTileRenderer::renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity) {
         std::map<int, std::vector<const RenderTileLayer*>> renderLayerMap;
         for (const RenderTile& renderTile : renderTiles) {
@@ -3903,6 +3897,7 @@ namespace massif::vt {
             return std::max(static_cast<float>(maxVisibleZoom - renderLayer->targetTileId.zoom), TERRAIN_PROXY_DEPTH_UNITS);
         };
 
+        bool stampBuildingsEnabled = boundStencilBits() >= 8;
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             const std::vector<const RenderTileLayer*>& renderLayers = it->second;
             if (renderLayers.empty()) {
@@ -3944,6 +3939,23 @@ namespace massif::vt {
                 _terrainDrawLayerOffset = 0.0f;
             }
             };
+            // Where an extrusion passes the depth test it hides whatever line is behind it: stamp the pixel, so
+            // renderOccludedGeometry ghosts exactly there whatever the layers' depth pulls. Not into an overlay.
+            bool stampBuildings = stampBuildingsEnabled && !pass.useOverlay;
+            if (!pass.useOverlay && std::any_of(renderLayers.begin(), renderLayers.end(), [](const RenderTileLayer* renderLayer) {
+                    const std::vector<std::shared_ptr<TileGeometry>>& geometries = renderLayer->layer->getGeometries();
+                    return !renderLayer->layer->getModels().empty() || std::any_of(geometries.begin(), geometries.end(), [](const std::shared_ptr<TileGeometry>& geometry) {
+                        return geometry->getType() == TileGeometry::Type::POLYGON3D;
+                    });
+                })) {
+                gExtrusionsDrawn = true;
+            }
+            if (stampBuildings) {
+                glEnable(GL_STENCIL_TEST);
+                glStencilFunc(GL_ALWAYS, BUILDING_STENCIL_BIT, BUILDING_STENCIL_BIT);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+                glStencilMask(BUILDING_STENCIL_BIT);
+            }
             if (pass.translucentExtrusions) {
                 glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 drawTileLayers(true);
@@ -3956,22 +3968,59 @@ namespace massif::vt {
             } else {
                 drawTileLayers(false);
             }
+            if (stampBuildings) {
+                glDisable(GL_STENCIL_TEST);
+                glStencilMask(255);
+            }
 
             end3DPass(pass);
         }
     }
 
-    void GLTileRenderer::renderOccludedGeometry() {
-        std::lock_guard<std::mutex> lock(_mutex);
 
-        resetProgramState(); // another renderer may have bound its own program since the last draw
+    void GLTileRenderer::clearBuildingStamp() {
+        occludedQueue().clear(); // a frame that threw before its flush leaves none behind
+        gExtrusionsDrawn = false;
+        // Only this bit: the 2D passes' tile masks are done with, but the clear is cheap to keep narrow.
+        glStencilMask(BUILDING_STENCIL_BIT);
+        glClearStencil(0);
+        glClear(GL_STENCIL_BUFFER_BIT);
+        glStencilMask(255);
+    }
 
-        if (!_visibleRenderTiles) {
-            return;
+    GLint GLTileRenderer::boundStencilBits() {
+        GLint stencilBits = 0;
+        GLint currentFBO = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+        if (currentFBO != 0) {
+            GLint stencilRB = 0;
+            glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &stencilRB);
+            if (stencilRB != 0) {
+                GLint currentRB = 0;
+                glGetIntegerv(GL_RENDERBUFFER_BINDING, &currentRB);
+                glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
+                glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_STENCIL_SIZE, &stencilBits);
+                glBindRenderbuffer(GL_RENDERBUFFER, currentRB);
+            }
+        } else {
+            glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
         }
+        return stencilBits;
+    }
 
-        std::map<int, std::vector<const RenderTileLayer*>> renderLayerMap;
+    void GLTileRenderer::queueOccludedGeometry(const std::shared_ptr<GLTileRenderer>& renderer) {
+        std::vector<std::shared_ptr<GLTileRenderer>>& queue = occludedQueue();
+        if (std::find(queue.begin(), queue.end(), renderer) == queue.end()) {
+            queue.push_back(renderer);
+        }
+    }
+
+    // The layers of this renderer with a ghosted line, by style layer index (draw order).
+    int GLTileRenderer::collectOccludedLayers(std::map<int, std::vector<const RenderTileLayer*>>& renderLayerMap) const {
         int maxVisibleZoom = 0;
+        if (!_visibleRenderTiles) {
+            return maxVisibleZoom;
+        }
         for (const RenderTile& renderTile : *_visibleRenderTiles) {
             if (!renderTile.visible) {
                 continue;
@@ -3987,6 +4036,126 @@ namespace massif::vt {
                 }
             }
         }
+        // A stand-in or fading-out tile under a live one: the 2D pass hides its line by depth, the ghost has no such
+        // test, so it showed a second, differently simplified copy of the line beside the live one.
+        for (auto& [styleIndex, layers] : renderLayerMap) {
+            std::vector<const RenderTileLayer*> live;
+            for (const RenderTileLayer* renderLayer : layers) {
+                if (renderLayer->active) {
+                    live.push_back(renderLayer);
+                }
+            }
+            layers.erase(std::remove_if(layers.begin(), layers.end(), [this, &live](const RenderTileLayer* renderLayer) {
+                return !renderLayer->active && std::any_of(live.begin(), live.end(), [this, renderLayer](const RenderTileLayer* liveLayer) {
+                    return tileCovers(liveLayer->targetTileId, renderLayer->targetTileId) || tileCovers(renderLayer->targetTileId, liveLayer->targetTileId);
+                });
+            }), layers.end());
+        }
+        return maxVisibleZoom;
+    }
+
+    bool GLTileRenderer::hasOccludedGeometry() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        std::map<int, std::vector<const RenderTileLayer*>> renderLayerMap;
+        collectOccludedLayers(renderLayerMap);
+        return !renderLayerMap.empty();
+    }
+
+    // The ghost pass of line-occlusion-opacity (01-frame.md). It runs once per frame after EVERY layer's 3D pass, over
+    // the renderers in stack order, so the ghost of the topmost layer is on top: they are translucent, and drawn
+    // from inside each layer's own pass the route's ghost lay over the arrow's, whatever the layers' order.
+    //
+    // With a stencil buffer all ghosts of the frame are one draw-once group (03-vt-renderer.md): bit 0x80 is cleared
+    // once, then each pass runs over the WHOLE stack, top renderer first and top style layer first within it, so a
+    // pixel takes the colour of the topmost ghost that covers it, at the one faint opacity: a casing never tints its
+    // fill and a lower layer never shows through a higher one. Without one the ghosts draw in stack order.
+    void GLTileRenderer::flushOccludedGeometry() {
+        std::vector<std::shared_ptr<GLTileRenderer>> renderers;
+        renderers.swap(occludedQueue());
+        renderers.erase(std::remove_if(renderers.begin(), renderers.end(), [](const std::shared_ptr<GLTileRenderer>& renderer) { return !renderer->hasOccludedGeometry(); }), renderers.end());
+        if (renderers.empty()) {
+            return;
+        }
+        bool ghostOnce = boundStencilBits() >= 8;
+        bool anyTerrain = std::any_of(renderers.begin(), renderers.end(), [](const std::shared_ptr<GLTileRenderer>& renderer) { return renderer->_terrainMode; });
+        int sweeps = ghostSweeps(ghostOnce, gExtrusionsDrawn, anyTerrain);
+        if (sweeps == 0) {
+            return; // nothing in front of any line: no clear, no draw
+        }
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendEquation(GL_FUNC_ADD);
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(-3.0f, -12.0f);
+        if (ghostOnce) {
+            glEnable(GL_STENCIL_TEST);
+            glStencilMask(DRAW_ONCE_STENCIL_BIT);
+            glClearStencil(0);
+            glClear(GL_STENCIL_BUFFER_BIT);
+            glStencilMask(0);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        } else {
+            glDisable(GL_STENCIL_TEST);
+            glStencilMask(0);
+        }
+
+        // Two sweeps with a stencil buffer. First the pixels an extrusion stamped (BUILDING_STENCIL_BIT): there it
+        // won the depth test against the lines, i.e. it hides them, so the ghost is wanted whatever the depth pulls
+        // of the layers are (the building's own ordinal is lower than the lines' - a low or flattened roof hides a
+        // line yet sits nearer than the ghost's depth by less than the pulls differ). Then the depth test as before,
+        // for what no extrusion stamped: a ridge. The draw-once bit makes each pixel belong to one sweep.
+        for (int sweep = 0; sweep < 2; sweep++) {
+            bool stampSweep = sweep == 0;
+            if (!(sweeps & (stampSweep ? GHOST_SWEEP_STAMP : GHOST_SWEEP_DEPTH))) {
+                continue;
+            }
+            if (ghostOnce) {
+                if (stampSweep) {
+                    glStencilFunc(GL_EQUAL, BUILDING_STENCIL_BIT, BUILDING_STENCIL_BIT | DRAW_ONCE_STENCIL_BIT);
+                } else {
+                    glStencilFunc(GL_EQUAL, 0, DRAW_ONCE_STENCIL_BIT);
+                }
+            }
+            glDepthFunc(stampSweep ? GL_ALWAYS : GL_GREATER);
+            if (ghostOnce) {
+                for (DrawOncePass pass : { DrawOncePass::CORE, DrawOncePass::RIM }) {
+                    for (auto it = renderers.rbegin(); it != renderers.rend(); it++) {
+                        (*it)->drawOccludedGeometry(pass);
+                    }
+                }
+            } else {
+                for (const std::shared_ptr<GLTileRenderer>& renderer : renderers) {
+                    renderer->drawOccludedGeometry(DrawOncePass::NONE);
+                }
+            }
+        }
+
+        glDisable(GL_STENCIL_TEST);
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(0.0f, 0.0f);
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendEquation(GL_FUNC_ADD);
+        glStencilMask(255);
+        checkGLError();
+    }
+
+    // One pass of this renderer's ghosts, with the GL state flushOccludedGeometry set up. Top style layer first in a
+    // draw-once pass, bottom first otherwise.
+    void GLTileRenderer::drawOccludedGeometry(DrawOncePass drawOncePass) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        resetProgramState(); // another renderer may have bound its own program since the last draw
+
+        std::map<int, std::vector<const RenderTileLayer*>> renderLayerMap;
+        int maxVisibleZoom = collectOccludedLayers(renderLayerMap);
         if (renderLayerMap.empty()) {
             return;
         }
@@ -3998,29 +4167,26 @@ namespace massif::vt {
             return std::max(static_cast<float>(maxVisibleZoom - renderLayer->targetTileId.zoom), TERRAIN_PROXY_DEPTH_UNITS);
         };
 
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-        // GREATER passes only where something nearer than the line wrote depth. The ghost is drawn at the
-        // stack's top ordinal, so no later layer's decal passes it. See 01-frame.md.
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_GREATER);
-        glDepthMask(GL_FALSE);
-        glDisable(GL_STENCIL_TEST);
-        glStencilMask(0);
         if (_terrainMode) {
             glDisable(GL_CULL_FACE);
         } else {
             glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);
         }
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(-3.0f, -12.0f);
 
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
         std::optional<CompOp> currentCompOp;
         _drapeMaskTexture = 0;
+        std::vector<decltype(renderLayerMap)::iterator> layerOrder;
+        layerOrder.reserve(renderLayerMap.size());
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            layerOrder.push_back(it);
+        }
+        if (drawOncePass != DrawOncePass::NONE) {
+            std::reverse(layerOrder.begin(), layerOrder.end());
+        }
+        _drawOncePass = drawOncePass;
+        for (const auto& it : layerOrder) {
             int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
             for (const RenderTileLayer* renderLayer : it->second) {
                 // The state the 2D pass drew this layer's lines in, or the two depths would not match.
@@ -4036,7 +4202,13 @@ namespace massif::vt {
                     }
                 }
                 float geometryOpacity = (renderLayer->layer->getOpacityFunc())(_viewState);
-                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                // The attachments of one rule set (a maneuver arrow's case, fill, headcase and head) are geometries of
+                // ONE layer, in draw order: a draw-once pass wants the topmost of them first too.
+                std::vector<std::shared_ptr<TileGeometry>> geometries = renderLayer->layer->getGeometries();
+                if (drawOncePass != DrawOncePass::NONE) {
+                    std::reverse(geometries.begin(), geometries.end());
+                }
+                for (const std::shared_ptr<TileGeometry>& geometry : geometries) {
                     const std::optional<float>& occlusionOpacity = geometry->getStyleParameters().occlusionOpacity;
                     if (!occlusionOpacity || geometry->getType() != TileGeometry::Type::LINE || !geometry->getSpanRecords().empty()) {
                         continue;
@@ -4049,25 +4221,26 @@ namespace massif::vt {
                     if (terrainVTF) {
                         _terrainDrawClearance = _terrainLineClearance;
                     }
-                    renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
+                    if (drawOncePass == DrawOncePass::NONE) {
+                        renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
+                    } else {
+                        // One geometry batches the styles of several rules (a maneuver arrow's four attachments, a
+                        // `back/` line and its main line), drawn in style order by the index buffer. A pixel is
+                        // stamped by the first fragment, so draw the batch once per style, the topmost first.
+                        for (int style = geometry->getStyleParameters().parameterCount - 1; style >= 0; style--) {
+                            _ghostStyle = style;
+                            renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
+                        }
+                        _ghostStyle = -1;
+                    }
                     _terrainDrawClearance = 0.0f;
                 }
                 _terrainDrawLayerOffset = 0.0f;
             }
         }
-
+        _drawOncePass = DrawOncePass::NONE;
         _terrainDrawDepthBias = _terrainDepthBias;
         _terrainDrawDepthClipUnits = 0.0f;
-        glDisable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(0.0f, 0.0f);
-        glDepthFunc(GL_LESS);
-        glDepthMask(GL_TRUE);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-        glStencilMask(255);
-        checkGLError();
     }
 
     GLTileRenderer::Pass3DState GLTileRenderer::begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline, float layerOpacity) {
@@ -7289,6 +7462,14 @@ namespace massif::vt {
                     borderWidths[i] = (borderHalf > 0.0f && widths[i] > 0.0f ? widths[i] + borderHalf : 0.0f);
                     borderGapWidths[i] = std::max(0.0f, gapWidths[i] - borderHalf);
                     borderColors[i] = evaluateStyleColor(styleParams.borderColorFuncs[i], i);
+                }
+            }
+            // The ghost pass draws one style of the batch at a time: the others collapse to nothing.
+            if (_ghostStyle >= 0) {
+                for (int i = 0; i < styleParams.parameterCount; i++) {
+                    if (i != _ghostStyle) {
+                        widths[i] = 0.0f;
+                    }
                 }
             }
             VT_STAT_SPLIT(geomStyleEvalNs, statClock);

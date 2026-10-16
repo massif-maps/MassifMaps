@@ -41,4 +41,12 @@ void testGhostDepth() {
     TEST_CHECK(ghostLayerOffset(0.0f, 3, 0) == -3.0f, "a top not published yet keeps the layer's own ordinal");
     TEST_CHECK(ghostLayerOffset(0.0f, 9, 4) == -9.0f, "a stale top below the layer's own never pushes the ghost back");
     TEST_CHECK(ghostLayerOffset(2.0f, 3, 12) == 2.0f - 12.0f, "a stand-in tile's ghost stays pushed back by its proxy depth");
+
+    // The sweeps that can show anything: nothing in front of a line, nothing to draw.
+    TEST_CHECK(ghostSweeps(true, false, false) == 0, "flat map, no extrusion drawn: no ghost pass at all");
+    TEST_CHECK(ghostSweeps(false, false, false) == 0, "and none without a stencil buffer either");
+    TEST_CHECK(ghostSweeps(true, true, false) == GHOST_SWEEP_STAMP, "buildings on a flat map: the stamp sweep only");
+    TEST_CHECK(ghostSweeps(true, false, true) == GHOST_SWEEP_DEPTH, "terrain without buildings: the ridges, by depth");
+    TEST_CHECK(ghostSweeps(true, true, true) == (GHOST_SWEEP_STAMP | GHOST_SWEEP_DEPTH), "terrain with buildings: both");
+    TEST_CHECK(ghostSweeps(false, true, false) == GHOST_SWEEP_DEPTH, "without a stencil buffer the depth test serves buildings too");
 }

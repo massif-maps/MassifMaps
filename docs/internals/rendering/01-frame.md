@@ -124,8 +124,9 @@ the 3D pass and overwrite it. A rule that sets `line-occlusion-opacity` (CartoCS
 2. `GLTileRenderer::isDrapeableGeometry` refuses such a line, so it is neither baked into the drape
    nor skipped by the 2D loop: it draws live in the 2D pass like any line of a `NoDrapeLayerFilter`
    layer (decal offset, line clearance, the layer's ordinal).
-3. `TileRenderer::onDrawFrame3D` calls `GLTileRenderer::renderOccludedGeometry()` right after the
-   layer's extrusions. It draws only the flagged `LINE` geometries again with the state the 2D loop
+3. `TileRenderer::onDrawFrame3D` queues its renderer (`GLTileRenderer::queueOccludedGeometry`) after
+   the layer's extrusions, and `MapRenderer` calls `GLTileRenderer::flushOccludedGeometry()` once after
+   the last layer's 3D pass (and after the overlay layers'), which draws the queue in stack order. It draws only the flagged `LINE` geometries again with the state the 2D loop
    used, `glDepthFunc(GL_GREATER)`, depth writes off, and a polygon offset one slope unit and four
    depth units further forward than the decal's `(-2, -8)`, with alpha times the property. Under
    the shared ground its ordinal is the stack's TOP one, whatever the layer's own (`ghostLayerOffset`,
@@ -150,6 +151,56 @@ overlay (layer opacity below 1: not in the main depth buffer), a span. Not honou
 tile stencil masks and the drape coverage mask. Not used: a stencil bit set by the
 extrusion pass. The 2D pass's tile masks and the draw-once groups own the stencil bits, and a ridge
 would need the ground to set it too.
+
+**Where it is wanted: the extrusion's stamp.** The ghost's depth is the stack's TOP ordinal, while the
+building was drawn at its own, lower one. Each ordinal is a flat 0.02 clip units, ~0.8 m of eye depth, so
+the depth test only passes where the building is nearer than the line by the difference of the two pulls
+(several metres for a navigation layer over a base map) while the building already HIDES the line where
+it is nearer than the line's own pull. In that gap the line is gone with no ghost, and the gap is
+crossed by height / cos(angle off the vertical): a style that flattens buildings near the top-down view
+(`building-height-view-scale`) shows the ghost at some tilts and not at others. So an inline extrusion
+now stamps stencil bit `0x40` wherever it passes the depth test (`renderGeometry3D`; it passed against
+every decal, so it hides whatever line is there), `MapRenderer` clears the bit before the first layer's
+3D pass (`clearBuildingStamp`), and the ghost pass sweeps twice: first the stamped pixels with the depth
+test off, then the depth test as before for what no extrusion stamped (a ridge). The draw-once bit makes
+a pixel belong to one sweep. An extrusion drawn into an overlay (translucent layer) does not stamp.
+
+**One blend per pixel.** The ghosts are translucent, so drawing them in style order let each one
+show through the next: a maneuver arrow's casing ghost (blue) under its fill ghost (white) tinted the
+white inner blue, the head's casing the head's, and a round join or a tile edge blended twice. The
+ghosts of the frame therefore run as ONE draw-once group ([03-vt-renderer.md](03-vt-renderer.md#translucent-layers-draw-once-groups-opt-in)):
+a core and a rim pass over the WHOLE stack, the topmost renderer first and its top style layer first,
+stencil bit `0x80` cleared once at the start of the flush (that bit only; the 2D passes clear it again
+themselves). A pixel gets the colour of the topmost ghost that covers it, at the one faint opacity, so
+the ghost reads as the visible line seen through glass: white inner, blue edge. Like every draw-once
+group, a line with `line-border-*` draws in the rim pass only, and without an 8-bit stencil buffer the
+ghosts keep style order, renderers bottom first.
+
+**One draw call holds several styles.** The tile builder batches the lines of several rules into one
+geometry (a style index per vertex) and the index buffer draws them in style order: a maneuver arrow's
+case, fill, headcase and head, or a `back/` line and its main line. A draw-once pass stamps a pixel with the
+FIRST fragment drawn, so ordering layers and geometries was not enough: the casing, first in the buffer,
+won every pixel it covered, the fill's included, and the ghost came out a solid blue wedge (or, with a
+`back/` rule also ghosted, only the white backing). The ghost pass draws such a batch once per style, the
+topmost first, with the other styles' widths collapsed to zero in the width table (`_ghostStyle`).
+A stand-in or fading tile that a live tile of the same style layer overlaps is not ghosted (its line is
+hidden by depth in the 2D pass, and the ghost has no such test: a second, differently simplified copy of the
+line showed beside the live one).
+
+**What a frame pays, and when it is skipped.** `flushOccludedGeometry` runs `ghostSweeps` (`GhostDepth.h`):
+without a stencil buffer one depth sweep; with one, the stamp sweep when an extrusion or a model was drawn into
+the main buffer this frame (`gExtrusionsDrawn`, set by `renderGeometry3D`, cleared by `clearBuildingStamp`) and
+the depth sweep when a ghosted renderer is in terrain mode (a ridge is the only thing the stamp cannot see). With
+neither, the flush returns before the stencil clear: a flat map with no building, model or terrain in view pays
+nothing. Each sweep is a core and a rim pass over every ghosted tile layer, a batch drawn once per style
+(`_ghostStyle`), so up to `4 x styles` draws per batch and tile. Measured cost and advice:
+[3d-terrain.md](../../features/3d-terrain.md#cost-of-line-occlusion-opacity).
+
+**After every layer, not inside each.** The ghost used to be drawn from each layer's own 3D pass. Then a
+lower layer's ghost (the route) was drawn first and a higher one's (the arrow on it) over it, with nothing
+shared between them, so behind a building the route's blue lay across the arrow's head whichever layer
+was on top. The flush also sees the extrusions and stamps of every layer, not only those up to its own.
+It draws over the 3D labels of the layers, which are faint lines under billboards anyway.
 
 ## What causes a frame
 

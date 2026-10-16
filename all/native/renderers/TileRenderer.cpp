@@ -1323,8 +1323,8 @@ namespace massif {
                 // Inline (tangram's way): nothing after the extrusions depth-tests against them.
                 tileRenderer->renderGeometry(false, true, isInline3DEnabled(), _layerOpacity);
             }
-            // Over the extrusions this layer or an earlier one wrote into the depth buffer.
-            tileRenderer->renderOccludedGeometry();
+            // Over the extrusions of every layer: drawn once the last layer's pass is done, topmost ghost on top.
+            vt::GLTileRenderer::queueOccludedGeometry(tileRenderer);
             VT_STAT_SPLIT(pass3DGeometryNs, passClock);
             if (_labelOrder >= 0 && drawsBillboardLabelsHere(1)) {
                 tileRenderer->renderLabels(false, true, _layerOpacity);

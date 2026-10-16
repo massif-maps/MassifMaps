@@ -613,7 +613,8 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
             
-            // No ground hit required: zooms about the focus, so it also works where the fingers' rays miss the ground.
+            // Zooms about the double tap under PIVOT_MODE_TOUCHPOINT (a pin that stays put), else about the
+            // focus, which needs no ground hit and so also works where the fingers' rays miss the ground.
             float dpi = _options->getDPI();
             cglib::vec2<float> tempSwipe1(screenPos.getX() - _prevScreenPos1.getX(), screenPos.getY() - _prevScreenPos1.getY());
             _swipe1 += tempSwipe1 * (1.0f / dpi);
@@ -622,6 +623,13 @@ namespace massif {
 
             CameraZoomEvent cameraEvent;
             cameraEvent.setZoomDelta(delta);
+            // not in free roam: there the zoom is the camera's dolly about the focus, and pinning a ground point
+            // would only change the zoom level (and with it the tile detail) without moving the camera
+            if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_OFF && _options->getPivotMode() == PivotMode::PIVOT_MODE_TOUCHPOINT && isValidScreenPosition(_zoomAnchorScreenPos, viewState)) {
+                updateGestureAnchorHeight(_zoomAnchorScreenPos, viewState);
+                cameraEvent.setTargetPos(calculatePivotPos(_zoomAnchorScreenPos, viewState));
+                cameraEvent.setPinTarget(true);
+            }
             _cameraEvents.fetch_or(CAMERA_ZOOM);
             _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
@@ -920,6 +928,7 @@ namespace massif {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
             _swipe1 = cglib::vec2<float>(0, 0);
             _prevScreenPos1 = screenPos;
+            _zoomAnchorScreenPos = screenPos;
             _gestureMode = SINGLE_POINTER_ZOOM;
         } else if (_options->isClickTypeDetection()) {
             ClickInfo clickInfo(ClickType::CLICK_TYPE_DOUBLE, static_cast<float>(duration.count()) / 1000.0f);

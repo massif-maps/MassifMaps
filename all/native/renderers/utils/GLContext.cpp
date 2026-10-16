@@ -6,6 +6,17 @@
 
 namespace massif {
 
+    std::atomic<GLContext::CurrentContextProvider> GLContext::_CurrentContextProvider(nullptr);
+
+    void GLContext::SetCurrentContextProvider(CurrentContextProvider provider) {
+        _CurrentContextProvider = provider;
+    }
+
+    void* GLContext::GetCurrentContext() {
+        CurrentContextProvider provider = _CurrentContextProvider;
+        return provider ? provider() : nullptr;
+    }
+
     bool GLContext::HasGLExtension(const char* extension) {
         std::lock_guard<std::recursive_mutex> lock(_Mutex);
     

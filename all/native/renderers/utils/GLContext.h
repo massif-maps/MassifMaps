@@ -37,6 +37,12 @@ namespace massif {
 
         static void CheckGLError(const char* place);
 
+        // Identity of the GL context current on the calling thread, nullptr when the platform
+        // registered no provider. Only needed where several views share one thread (iOS).
+        typedef void* (*CurrentContextProvider)();
+        static void SetCurrentContextProvider(CurrentContextProvider provider);
+        static void* GetCurrentContext();
+
         static void InvalidateFramebuffer(GLenum target, GLsizei numAttachments, const GLenum* attachments);
 
     private:
@@ -45,6 +51,8 @@ namespace massif {
         static std::unordered_set<std::string> _ExtensionCache;
 
         static std::recursive_mutex _Mutex;
+
+        static std::atomic<CurrentContextProvider> _CurrentContextProvider;
     };
 
 }

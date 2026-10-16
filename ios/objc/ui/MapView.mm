@@ -3,6 +3,7 @@
 #import "MSFPolymorphicClasses.h"
 #import "ui/MapRedrawRequestListener.h"
 #import "ui/BaseMapView.h"
+#include "renderers/utils/GLContext.h"
 #include "utils/Const.h"
 #include "utils/IOSUtils.h"
 #include "utils/Log.h"
@@ -159,6 +160,13 @@ static BOOL IsStalePointer(UITouch* pointer, NSSet* touches, UIEvent* event) {
     if (_baseMapView) {
         return;
     }
+    // Every MapView draws on the main thread with its own GL context: the renderers need to tell which is current
+    static dispatch_once_t contextProviderOnce;
+    dispatch_once(&contextProviderOnce, ^{
+        massif::GLContext::SetCurrentContextProvider([]() -> void* {
+            return (__bridge void*)[MSFGLContext currentContext];
+        });
+    });
     _active = NO;
     _surfaceCreated = NO;
     _activeDrawableSize = CGSizeMake(0, 0);

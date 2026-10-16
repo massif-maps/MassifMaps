@@ -615,8 +615,10 @@ namespace massif::vt {
             std::map<int, std::unordered_map<long long, std::pair<long long, int>>> signatures;
             std::map<int, GlobalIdLabelMap> labelMap;
             std::map<int, std::unordered_set<long long>> reusedIds;
+            std::unordered_set<const Tile*> standInTiles; // drawn only in place of a finer tile still loading
+            std::map<int, std::unordered_set<long long>> standInIds; // labels no other tile contributes to
         };
-        static long long calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles);
+        static long long calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::unordered_set<const Tile*>& standInTiles);
         void prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const;
         void commitLabelMaps(LabelMapBuild& build);
         bool updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const;
@@ -936,6 +938,7 @@ namespace massif::vt {
         std::vector<std::weak_ptr<const GLTileRenderer>> _extrusionPeers;
         std::size_t _roofSignature = 0;
         // Dirties the z-elevated labels when the roofs moved; false when nothing changed.
+        static bool isRoofGeometry(const TileGeometry& geometry);
         bool refreshRoofSurfaces();
         // Under the lock only: a roof reads the extrusion bases the render thread resolves.
         std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> anchorFunc) const;
@@ -1017,6 +1020,10 @@ namespace massif::vt {
         std::atomic<bool> _snapLabelTransition = false; // commit the next placement without a fade
         std::size_t _labelCullCursor = 0; // how far the current placement cycle got through _labels
         std::atomic<bool> _labelsReanchored { false }; // see consumeLabelsReanchored
+        float _labelOcclusionStep = 1.0f; // this frame's fade step, which building occlusion eases by too
+        bool _labelOcclusionEasing = false; // a label's occlusion has not reached its verdict: draw another frame
+        bool _hasZElevatedLabels = false; // a label of the set stands on a roof (refreshRoofSurfaces)
+        unsigned int _roofBasesVersion = 0; // the base versions refreshRoofSurfaces last resolved roofs at
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
         // The label tile set the maps were last built from; prepareLabelMaps depends on nothing else.

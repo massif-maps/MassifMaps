@@ -73,6 +73,20 @@ a depth test, so it could only float them - a marker sat metres above a flattene
 occlusion already gives a terrain anchor `MIN_OCCLUSION_TOLERANCE` of slack. 3D models are
 depth-tested and keep it.
 
+**Billboards stand on the drawn ground.** A draw data's height is baked on the fetch thread from
+`ElevationManager`'s grid cache (`TerrainProjectionSurface::calculatePosition`), and rebuilt only
+by the elevation-version refresh, debounced to `ELEVATION_REFRESH_DELAY` (500 ms). That grid is not
+the one the ground is drawn from, and while DEM tiles land it walks through coarser ancestors (0
+when nothing is cached), so a marker - the user location, a selection - stepped up and down and
+floated off or sank into the visible ground each time. `BillboardRenderer::anchorOnDrawnTerrain`
+now re-resolves every marker's height on the GL thread from what the frame draws, as tile labels
+do (`ElevationTextureCache::getDrawnDisplayHeight`, then the texture cache's own grid without a
+fetch), whenever the drawn version, the exaggeration or the integer zoom changes - the events tile
+labels re-anchor on, so the two agree. Off the drawn ground the baked height stands. NML models
+(placed by their frame matrix) and labels attached to another billboard (placed from it) are left
+alone. Lines and polygons still take the baked height. The placement worker reads the position on
+its own thread, so `BillboardDrawData::getPos` returns a copy taken under `_posMutex`.
+
 If a vector line disappears into the terrain or shows through it, read
 [05-depth-model.md](05-depth-model.md) before touching any constant here.
 

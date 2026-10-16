@@ -63,6 +63,12 @@ tiles. Labels with the same `globalId` from different tiles are merged (`mergeGe
 geometry copy per tile, identified by `(tileId, localId)`), and visibility, opacity and placement
 are carried over from the previous object via `snapPlacement`.
 
+The previous objects are released first, all those faded out to opacity 0 — **except one shown and
+not yet faded in**. A pass that has just placed a label leaves it visible at opacity 0 until the next
+frame, and a tile arriving in between released it: its rebuild started hidden and waited for the
+next pass, 300 ms or more (below), with every tile of a zoom out reopening that window. It is kept
+for one more rebuild, inactive, so the next one still finds it.
+
 **A point label whose id changed but whose anchor did not is carried over too** (`LabelSpot`, same
 layer, the 2^-28 cell below). The shield text is hashed into the id, and Massif draws most POIs
 icon-only below a label minzoom (`shield-name: ''`), so at the tile level a name appears the same POI
@@ -145,6 +151,21 @@ grid.
 
 A visible label keeps its slot unless a strictly higher-priority label overlaps it — that hysteresis
 is what stops labels flickering when the camera moves slightly.
+
+**A stand-in tile's labels sort after all others, whatever their priority.** While a tile loads,
+`TileLayer` draws an ancestor up to `MaxStandInLevel` levels coarser under it
+([02-tiles.md](02-tiles.md#substitution-preloading-caching)), and that tile's labels join the set
+like any other — a decode several levels coarser, with what that zoom's style names and how it ranks
+it. A name it draws under another text is another `globalId`, so nothing merges it with the real one.
+Ranked above a label on screen, one evicted it until the real tile landed and the stand-in went,
+and the evicted label came back — a name blinking in place on a zoom out (read from the code; not
+yet measured on a device). `setVisibleTiles` now tells a stand-in apart — keyed by the finer tile it
+stands in for, never by its own id — and a label no other tile contributes to (`Label::isStandIn`)
+is ranked after every other label of its map layer (the culler sorts per layer) and reserves no
+room, so it only fills what is free. Alone, as over a tile that never loads, it is placed as before.
+A stand-in that becomes a real tile (the zoom reached it) changes the label tile signature, so the
+flag is recomputed. `standIn` in the stats line counts these labels per pass; `LabelYieldTest` pins
+the ordering.
 
 Fork-specific rules, all comparing the **placement's** `localId` (hence the stability invariant
 above): `allowOverlapSameFeatureId`, `sameFeatureIdDependent`, and group ids with
@@ -607,6 +628,18 @@ Everything below rests on that split — the icon stays on the feature, only the
   `MIN_PLACEMENT_INTERVAL` too, and the terrain-occlusion verdict comes from the elevation ray alone
   while `FlattenRatio > 0`: the depth snapshot lags the ramp and disagrees with the ray on the same
   label (`TileRenderer::updateLabelOcclusionTest`). Labels blinked through every switch before this.
+  The exaggeration is compared in `TileRenderer::prepareFrame`, before `startFrame` anchors: compared
+  in `onDrawFrame`, the frame a ramp starts or stalls on drew every label a step behind the ground the
+  camera already stood on — a 76 px drop and return on one 75 ms frame, in the roof probe below.
+  The label elevation provider is pushed there too: installed only in `onDrawFrame`, the first frame
+  of a rise had none at `startFrame`, so every CPU-anchored label — the roof POIs — stayed flat for a
+  frame over a ground already rising (8-10 px down and back, measured on the same probe). So is the
+  extrusion elevation provider, withdrawn while flat: without it the first frame measured the roofs
+  on the flat map, and a roof POI stood barely over the risen ground — its height over the ground read
+  0.52, then 0.07 on that frame, then 0.59 (8-16 px down and back). The fall back to 2D had the
+  mirror fault: the labels were dropped flat on roofs still standing on the last ramp step's bases,
+  so roof POIs hung ~3% of the relief over the flat map for a frame (1-7 px near the centre). The
+  extrusion provider is now withdrawn first and the roofs re-measured flat before the drop.
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran
@@ -1166,6 +1199,17 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   (`Label::isElevationStale`) — the same rule as an un-anchored one, since its height is a previous
   step's.
 
+  **Not judging is not "in the clear": the last verdict stands** (`Label::isTerrainOccluded`). Both
+  the culler and `updateLabel` used to treat an unjudgeable label as unoccluded, so every elevation
+  arrival, ramp step or tile rebuild that left a hidden label un-anchored or stale for a moment faded
+  it in, and the culler let it take the slot of the label beside it; once its height landed it was
+  hidden again and the neighbour came back. Both blinked without moving while elevation streamed in.
+  The verdict is carried to a label rebuilt on a tile-set change, dropped when the culler re-places
+  the label elsewhere, and cleared while no occlusion test is set (flat map), so a switch back to 3D
+  does not hide labels on a verdict from another camera. A label never judged still counts as in the
+  clear. `LabelOcclusionKeepTest` pins the culler's half; `occKept` / `occFlips` in the stats line
+  count the verdicts kept by the culler and the per-frame verdict changes on the GL thread.
+
   **The slack is 5% of the distance (`billboardOcclusionTolerance`), not 20%.** At 0.2 the
   Matterhorn's Zmuttgrat kept its name seen from the Italian side: anchor at w 225, the south face
   at its pixel 193 — 900 m in front of it, and inside the 20%. Measured on the web build over 360°
@@ -1295,7 +1339,12 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   invalidation bumps `_labelElevationGeneration`; a label records the generation its height was
   sampled at, and `anchorDirtyLabels` re-dirties any label behind it, every frame. The flag alone
   lost re-anchors: the cull thread's off-lock sample landed after a ramp step the render thread had
-  already consumed, and marked the label clean at the old height. And `setVisibleTiles` used to clear
+  already consumed, and marked the label clean at the old height. The generation re-dirtied it on the
+  next frame, but the frame in between still drew it at the sample's height — taken before the cull
+  thread walked every new label, so often several ramp steps back: through a 2D/3D switch, with the
+  tiles re-decoding for 3D, labels dropped back and rose again. The cull thread now drops a sample
+  whose generation has moved (`labelAnchorStale` counts them) and leaves the label to the frame's
+  `anchorDirtyLabels`, which re-anchors the whole set on every ramp step anyway. And `setVisibleTiles` used to clear
   `_labels` before an unchanged label set skipped its commit (#255): the labels stayed drawn but left
   the cull and anchor list until the set changed — frozen at whatever height they had.
 
@@ -1340,6 +1389,10 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   restores the in-frame path for an A/B — on the emulator it was 19–31 `prepare` spikes of
   130–190 ms per pan against none. Like `debug.massif.linesourcedensity` below, it is read only by a
   `MASSIF_DEBUG_PROPERTIES` build ([runtime switches](10-performance.md#runtime-switches-no-rebuild)).
+  That sample reads `ElevationTextureCache`, whose entries the GL thread inserts and evicts every
+  frame, and the cache had no lock: a data race on the cull thread (as for the building and span
+  bases read the same way). Its height queries now take `_cacheMutex` around every entry lookup; the
+  GL thread, the only writer, takes it only around its writes (a texture lookup's LRU stamp included).
   A label that has already been anchored and is neither placed nor on screen then **defers** its
   re-anchor (`Label::isElevationDirty`): it keeps the heights it has, at worst one LOD step out,
   and reports itself dirty again the moment the culler gives it a placement. A label that has never
@@ -1630,6 +1683,17 @@ sorts after all unoccluded labels of its layer, whatever their priorities, and r
 blocked keeps that value, and its low rank, until it is drawn again: sticky, but it cannot flip
 every pass, which treating an unknown occlusion as clear does.
 
+**The occlusion eases; it is not set.** Each frame's verdict comes from four taps against the
+extrusions drawn that frame, and while building tiles load that set moves under a still camera: tiles
+swap, buildings grow in (`renderLayer.blend`), and a building whose base is not resolved yet blocks
+nothing. Applied outright, the verdict jumped by quarters from frame to frame - a half-hidden POI
+flickered, and through the ranking above it lost and won its slot pass after pass, seen as POIs
+showing and hiding while rotating over 3D terrain with 3D buildings until the tiles settled. The
+value now moves toward the verdict at the label fade step (`_labelOcclusionStep`; `endFrame` asks
+for frames while one still moves), a rebuilt label carries it over, and "partly occluded" holds
+only once it has eased a quarter of the way to its occluded opacity - one tap of four, settled - so
+a passing dip cannot re-rank it. `LabelYieldTest` pins the threshold.
+
 **A line run collides by its glyphs**, as maplibre's by collision circles along the line
 (`Label::calculateEnvelope`'s glyphEnvelopes): the bounds of a run round a bend covered the corner
 beside it (405x320 device px for Place Grenette, tilt 60) and hid what stood there. Neighbouring glyphs
@@ -1643,7 +1707,20 @@ every loaded roof at full growth (`refreshRoofSurfaces`); when that set or the b
 moves, the z-elevated labels are re-anchored on the render thread with `roofAt` over their terrain
 height, and flagged absolute so `labelVsh` keeps the roof height. Not in the cull thread's bulk
 anchoring: a roof reads extrusion bases the render thread resolves. A flat map anchors these labels
-too, and nothing else. A building growing in carries its label at the full height from the start. Such a label, once on
+too, and nothing else. A building growing in carries its label at the full height from the start.
+
+**The roof is measured on this frame's bases.** A base carries the exaggeration, and it is resolved
+when its building is drawn — after `startFrame` has anchored the roof labels. Through a 2D/3D ramp
+a roof label therefore stood on the ground of this step and on the roof of the last one; a step
+(~0.4 internal units at Grenoble) is taller than a house (~0.27), so `max(ground, roof)` flipped
+between a lagging roof and the bare ground every frame, and the label leapt to the real roof when
+the ramp stopped. Measured with a per-frame probe on the Mac Catalyst app (Grenoble, tilt-triggered
+switch): roof POIs moved ±10-25 px a frame at a constant tilt while ground labels held still, and
+their height over the ground read 0, .36, .26, .27, .33, .27, .05, .27, .22, then .71 at rest.
+`refreshRoofSurfaces` now resolves the on-screen bases of this renderer and its peers first, when
+it has a z-elevated label; the draw then finds them current.
+
+Such a label, once on
 its roof, is tested over the box it is **drawn** in (`Label::calculateEnvelope`, the four taps at
 half its extent, none below the roof plane) rather than over a square at its anchor. Tested at the
 anchor, it lost most of them at street tilt: measured on the emulator at Grenoble z19.2 tilt 23, the

@@ -58,6 +58,7 @@ add_executable(vt_tests
   LabelNormalBuildTest.cpp
   NormalMapSlopeTest.cpp
   LabelYieldTest.cpp
+  LabelOcclusionKeepTest.cpp
   LabelGroupDistanceTest.cpp
   GLBParserTest.cpp
   ModelInstancesTest.cpp

@@ -223,6 +223,7 @@ namespace massif::vt {
 
             if (label->updatePlacement(_viewState)) {
                 label->setOpacity(0);
+                label->setTerrainOccluded(false); // a verdict for the old spot
             }
             // A first-time label has no centre until updatePlacement; at distance 0 it would outrank nearer ones.
             if (measurable && !measured && !measureDistance()) {
@@ -234,9 +235,14 @@ namespace massif::vt {
             }
             // Hidden by the terrain: take no collision slot (see setOcclusionTest). After updatePlacement
             // because most considered labels are off-screen and the test is not cheap.
-            if (label->isValid() && _occlusionTest && label->isElevationAnchored() && !label->isElevationStale()) {
+            if (label->isValid() && _occlusionTest) {
                 cglib::vec3<double> anchor(0, 0, 0);
-                if (label->calculateCenter(anchor) && _occlusionTest(anchor)) {
+                if (label->isElevationAnchored() && !label->isElevationStale() && label->calculateCenter(anchor)) {
+                    label->setTerrainOccluded(_occlusionTest(anchor));
+                } else {
+                    VT_STAT_INC(cullerOcclusionKept);
+                }
+                if (label->isTerrainOccluded()) {
                     VT_STAT_INC(cullerOccluded);
                     label->setVisible(false);
                     continue;
@@ -268,7 +274,10 @@ namespace massif::vt {
                     record.allowOverlapSameFeatureId = label->allowOverlapSameFeatureId();
                 }
                 int variantIndex = std::min(static_cast<int>(variants.size()) - 1, std::max(0, label->getVariantIndex()));
-                validLabelList.push_back({ valid, wasVisible, label->isPartlyOccluded(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
+                if (label->isStandIn()) {
+                    VT_STAT_INC(cullerStandIn);
+                }
+                validLabelList.push_back({ valid, wasVisible, label->isPartlyOccluded(), label->isStandIn(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
                                            variants.size() > 1 ? variants : std::vector<CullRecord>() });
             }
         }
@@ -283,6 +292,9 @@ namespace massif::vt {
         // Previously visible labels go before new ones of equal priority (MapLibre's committed placement);
         // wasVisible, not opacity, since updatePlacement() can reset the opacity of a visible label.
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
+            if (labelInfo1.standIn != labelInfo2.standIn) {
+                return labelInfo2.standIn;
+            }
             // A label a building half hides gives way to any label in the clear, whatever their priorities.
             if (labelInfo1.occluded != labelInfo2.occluded) {
                 return labelInfo2.occluded;
@@ -351,7 +363,7 @@ namespace massif::vt {
         }
         for (std::size_t i = 0; i < validLabelList.size(); i++) {
             const LabelInfo& labelInfo = validLabelList[i];
-            if (labelInfo.valid && labelInfo.wasVisible && !labelInfo.occluded && labelInfo.label->getGroupId() >= 0) {
+            if (labelInfo.valid && labelInfo.wasVisible && !labelInfo.occluded && !labelInfo.standIn && labelInfo.label->getGroupId() >= 0) {
                 CullRecord record = labelInfo.cullRecord;
                 record.reservation = static_cast<int>(i);
                 addGridRecord(_reservedGrid, record);

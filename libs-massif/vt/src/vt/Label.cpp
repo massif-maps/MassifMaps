@@ -511,6 +511,11 @@ namespace massif::vt {
         // The elevation version moves for ANY tile decode; unchanged heights must not drop caches.
         // Anchored means the heights are known NOW: a miss after a 2D/3D ramp step leaves a vertex at another
         // exaggeration, so the GPU places the label until data lands.
+#if MASSIF_VT_RENDER_STATS
+        if (_elevationAnchored && !complete) {
+            VT_STAT_INC(labelAnchorMisses); // from its CPU height to the GPU's, which can differ
+        }
+#endif
         _elevationAnchored = complete;
         if (!changed) {
             return complete;

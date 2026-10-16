@@ -531,7 +531,7 @@ change measured).
   already does for the view state, the lighting and the ground AO. `terrainMode`, the regular grid
   and the elevation texture provider were missing from it, and `renderDrapedSurface` returns `-2`
   without all three: on the first frame of a 2D->3D switch every surface bailed and the map drew
-  with NO ground - sky through it, buildings still there, one frame. `pushTerrainDrapeState` sends
+  with NO ground - sky through it, buildings still there, one frame. `pushTerrainState` sends
   them early; `onDrawFrame` still sends the authoritative values later in the same frame.
 - **A VAO belongs to ONE program.** `CompiledGeometry` keeps a VAO per program, built on first use.
   A VAO records pointers per attribute INDEX, and one geometry is drawn by several programs whose

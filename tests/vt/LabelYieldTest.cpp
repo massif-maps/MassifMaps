@@ -7,6 +7,9 @@
  * And a label a building partly hides gives way to any label in the clear, whatever the priorities:
  * a half-transparent street name no longer keeps a POI off the screen until it is fully hidden.
  *
+ * And a label only an ancestor tile carries - drawn in place of a tile still loading - gives way to
+ * every other label: on a zoom out it evicted labels that came back once the tile landed.
+ *
  * NOT covered here: the rotation/pan churn this cuts (measured on the style preview, see
  * docs/internals/rendering/06-labels.mdx), and labels of different layers, which reserve nothing
  * across a layer boundary.
@@ -140,6 +143,35 @@ void testLabelYield() {
         cull({ poi, east, west });
         TEST_CHECK(poi->isVisible() && poi->getVariantIndex() == 0, "a POI with no icon-only layout is not hidden for yielding: it takes its first side");
         TEST_CHECK(!east->isVisible() && west->isVisible(), "and evicts only the neighbour that side covers");
+    }
+
+    for (bool shown : { true, false }) {
+        auto ancestor = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIcon(), {});
+        auto poi = buildLabel(2, 0, cglib::vec2<float>(1, 0), buildIcon(), {});
+        ancestor->setStandIn(true);
+        poi->setVisible(shown);
+        cull({ ancestor, poi });
+        TEST_CHECK(poi->isVisible() && !ancestor->isVisible(), shown ? "a stand-in tile's label does not evict a label on screen, whatever its rank" : "nor does it take the room a real tile's label wants");
+    }
+
+    {
+        auto ancestor = buildLabel(1, 0, cglib::vec2<float>(0, 0), buildIcon(), {});
+        ancestor->setStandIn(true);
+        cull({ ancestor });
+        TEST_CHECK(ancestor->isVisible(), "alone, a stand-in tile's label is placed");
+    }
+
+    {
+        // Building occlusion eases toward each frame's verdict: one frame's dip, as building tiles load, must not re-rank.
+        auto street = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), {});
+        auto poi = buildLabel(2, 0, cglib::vec2<float>(1, 0), buildIcon(), {});
+        street->setVisible(true);
+        street->setOcclusion(0.9f, 0.25f);
+        cull({ street, poi });
+        TEST_CHECK(street->isVisible() && !poi->isVisible(), "a name one easing step under clear keeps its rank over the POI");
+        street->setOcclusion(0.8125f, 0.25f);
+        cull({ street, poi });
+        TEST_CHECK(poi->isVisible() && !street->isVisible(), "eased to one blocked tap of four, it gives way");
     }
 
     for (float occlusion : { 1.0f, 0.5f }) {

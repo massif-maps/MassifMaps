@@ -320,7 +320,9 @@ namespace massif {
         bool _terrainPaintEnabled = false; // this renderer shades the DEM instead of drawing tiles
         bool _terrainPaintFullDetail = true; // shade from the DEM's own max zoom, not the mesh's level
         bool prepareFrameUnsafe(float deltaSeconds, const ViewState& viewState); // caller holds _mutex
-        void pushTerrainDrapeState(); // caller holds _mutex
+        void pushTerrainState(const ViewState& viewState); // caller holds _mutex
+        void pushLabelElevationProvider(vt::GLTileRenderer& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions); // caller holds _mutex
+        void pushExtrusionElevationProvider(vt::GLTileRenderer& tileRenderer, const std::shared_ptr<TerrainOptions>& terrainOptions); // caller holds _mutex
         void invalidateExtrusionBasesOnElevation(vt::GLTileRenderer& tileRenderer, unsigned int elevationVersion); // caller holds _mutex
         unsigned int _extrusionBasesElevationVersion = 0;
 
@@ -334,6 +336,17 @@ namespace massif {
         unsigned int _elevationVersion = 0;
         // Pushing the extrusion provider invalidates every base: only when this pair changes.
         std::pair<const void*, const void*> _extrusionProviderKey { nullptr, nullptr };
+        struct LabelProviderKey {
+            const void* manager = nullptr;
+            const void* textureCache = nullptr;
+            int labelZoom = -1;
+            bool firstPerson = false;
+            int firstPersonZoom = -1;
+            bool operator==(const LabelProviderKey& other) const {
+                return manager == other.manager && textureCache == other.textureCache && labelZoom == other.labelZoom && firstPerson == other.firstPerson && firstPersonZoom == other.firstPersonZoom;
+            }
+        };
+        LabelProviderKey _labelProviderKey; // what the pushed label elevation provider captured
         std::optional<std::chrono::steady_clock::time_point> _lastSurfaceResetTime;
         std::shared_ptr<LabelOcclusionState> _labelOcclusionState;
         mutable std::mutex _labelOcclusionTestMutex;

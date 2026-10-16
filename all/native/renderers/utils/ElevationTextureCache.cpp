@@ -171,6 +171,7 @@ namespace massif {
         for (MapTile tile = gridTile; ; tile = tile.getParent()) {
             auto it = _cache.find(tile.getTileId());
             if (it != _cache.end() && it->second.texture && it->second.texture->getTexId() != 0) {
+                std::lock_guard<std::mutex> lock(_cacheMutex);
                 it->second.lastUsed = ++_accessCounter;
                 it->second.lastUsedTime = _frameTime;
                 return &it->second;
@@ -274,6 +275,7 @@ namespace massif {
             // oldest jobs on overflow, and an entry that already claimed them would never ask again.
             // Re-requesting every frame is a failed insert into _encodePending, which is cheap.
         }
+        std::lock_guard<std::mutex> lock(_cacheMutex);
         it->second.lastUsed = ++_accessCounter;
         it->second.lastUsedTime = _frameTime;
         return it->second.texture && it->second.texture->getTexId() != 0;
@@ -457,7 +459,13 @@ namespace massif {
             }
             VT_STAT_SPLIT(demUploadNs, uploadClock);
             VT_STAT_INC(demUploads);
-            _cache.insert_or_assign(encoded.gridTileId, std::move(entry));
+            CacheEntry replaced; // freed after the lock: its bitmaps and textures are not the readers' business
+            {
+                std::lock_guard<std::mutex> lock(_cacheMutex);
+                CacheEntry& slot = _cache[encoded.gridTileId];
+                replaced = std::move(slot);
+                slot = std::move(entry);
+            }
             _drawnVersion++;
             if (encoded.grid) { _contentChanges.push_back(encoded.grid->getTile()); }
         }
@@ -543,7 +551,12 @@ namespace massif {
         if (lru == _cache.end()) {
             return false;
         }
-        _cache.erase(lru);
+        CacheEntry evicted; // freed after the lock
+        {
+            std::lock_guard<std::mutex> lock(_cacheMutex);
+            evicted = std::move(lru->second);
+            _cache.erase(lru);
+        }
         _drawnVersion++;
         return true;
     }
@@ -700,9 +713,16 @@ namespace massif {
             if (dataZoom - dataTile.getZoom() > maxAncestorLevels) {
                 return false;
             }
-            auto cacheIt = _cache.find(dataTile.getTileId());
-            if (cacheIt != _cache.end() && cacheIt->second.grid) {
-                double meters = cacheIt->second.grid->sampleNodeHeight(internalX, internalY); // the surface, as a chord must sit on it
+            std::shared_ptr<ElevationTileGrid> drawnGrid;
+            {
+                std::lock_guard<std::mutex> lock(_cacheMutex);
+                auto cacheIt = _cache.find(dataTile.getTileId());
+                if (cacheIt != _cache.end()) {
+                    drawnGrid = cacheIt->second.grid;
+                }
+            }
+            if (drawnGrid) {
+                double meters = drawnGrid->sampleNodeHeight(internalX, internalY); // the surface, as a chord must sit on it
                 height = meters * displayScale;
                 return true;
             }
@@ -736,18 +756,22 @@ namespace massif {
         };
         int finest = _elevationManager->getDetailDataTile(tileAt(_elevationManager->getDetailZoomLimit()), _detailLevels).getZoom();
         int coarsest = _elevationManager->getDetailDataTile(tileAt(zoom), _detailLevels).getZoom() - maxAncestorLevels;
-        int level = finestDrawnLevel(finest, coarsest, _lastFrameStartCounter, [&](int gridZoom, std::uint64_t& stamp) {
-            auto it = _cache.find(tileAt(gridZoom).getTileId());
-            if (it == _cache.end() || !it->second.grid) {
+        std::shared_ptr<ElevationTileGrid> grid;
+        {
+            std::lock_guard<std::mutex> lock(_cacheMutex);
+            int level = finestDrawnLevel(finest, coarsest, _lastFrameStartCounter, [&](int gridZoom, std::uint64_t& stamp) {
+                auto it = _cache.find(tileAt(gridZoom).getTileId());
+                if (it == _cache.end() || !it->second.grid) {
+                    return false;
+                }
+                stamp = it->second.lastUsed;
+                return true;
+            });
+            if (level < 0) {
                 return false;
             }
-            stamp = it->second.lastUsed;
-            return true;
-        });
-        if (level < 0) {
-            return false;
+            grid = _cache.find(tileAt(level).getTileId())->second.grid;
         }
-        const std::shared_ptr<ElevationTileGrid>& grid = _cache.find(tileAt(level).getTileId())->second.grid;
         height = grid->sampleNodeHeight(internalX, internalY) * _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
         return true;
     }
@@ -770,11 +794,12 @@ namespace massif {
 #if MASSIF_VT_RENDER_STATS
         // Accumulated, not stored: there is one of these per tile layer, and a store let an empty
         // cache overwrite a busy one's count - reading 0 while textures were plainly being uploaded.
-        vt::RenderStats::demDetailMask.fetch_or(1LL << std::min(std::max(_detailLevels, 0), 15));
+        vt::RenderStats::demDetailMask.fetch_or(1LL << std::min(std::max(_detailLevels.load(), 0), 15));
         vt::RenderStats::demTexturesLive.fetch_add(static_cast<long long>(_cache.size()));
         vt::RenderStats::demTexturesResolved.fetch_add(static_cast<long long>(_frameResolved.size()));
 #endif
         _frameResolved.clear();
+        std::lock_guard<std::mutex> lock(_cacheMutex);
         _lastFrameStartCounter = _frameStartCounter;
         _frameStartCounter = _accessCounter;
     }
@@ -784,7 +809,11 @@ namespace massif {
     }
 
     void ElevationTextureCache::clear() {
-        _cache.clear();
+        std::map<long long, CacheEntry> cleared; // freed after the lock
+        {
+            std::lock_guard<std::mutex> lock(_cacheMutex);
+            cleared.swap(_cache);
+        }
         _frameResolved.clear();
         {
             std::lock_guard<std::mutex> lock(_encodeMutex);

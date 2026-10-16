@@ -65,11 +65,15 @@ namespace massif::vt {
         float getTextOpacity() const { return _textOpacity; }
         void setTextOpacity(float opacity) { _textOpacity = opacity; }
 
-        // What 3D occluders leave of the label this frame, multiplied into both opacities (1 = unoccluded).
-        void setOcclusion(float occlusion) { _occlusion = occlusion; }
+        // What 3D occluders leave of the label, multiplied into both opacities (1 = unoccluded); floor is the
+        // occluded opacity it eases down to.
+        void setOcclusion(float occlusion, float floor = 0.0f) { _occlusion = occlusion; _occlusionFloor = floor; }
+        float getOcclusion() const { return _occlusion; }
+        float getOcclusionFloor() const { return _occlusionFloor; }
         // Wholly hidden by 3D content on the last frame drawn: kept, but it claims no room from the labels in front.
         bool isFullyOccluded() const { return _occlusion <= 0.0f; }
-        bool isPartlyOccluded() const { return _occlusion < 1.0f; }
+        // One of its four taps blocked once eased, a quarter of the way to its floor: a passing verdict does not re-rank it.
+        bool isPartlyOccluded() const { return _occlusion < 1.0f && _occlusion <= 1.0f - (1.0f - _occlusionFloor) * 0.25f + 1.0e-4f; }
         // The anchor the occlusion rays aim at, world coordinates; null before placement.
         const cglib::vec3<double>* getAnchorPosition() const { return _placement ? &_placement->position : nullptr; }
         // A point label's anchor before it is placed (its first tile's copy); false for a label on a line.
@@ -80,6 +84,11 @@ namespace massif::vt {
 
         bool isActive() const { return _active; }
         void setActive(bool active) { _active = active; }
+
+        // Carried only by an ancestor drawn in place of a loading tile: it yields to every other label,
+        // or it evicts labels that come back once that tile lands.
+        bool isStandIn() const { return _standIn; }
+        void setStandIn(bool standIn) { _standIn = standIn; }
 
         // Which of the style's sides the text is laid out on. Owned by LabelCuller, the only place that
         // knows what else is on screen; carried over by snapPlacement, or a label rebuilt on a tile-set
@@ -136,6 +145,10 @@ namespace massif::vt {
         bool hasAbsoluteHeight() const { return _absoluteHeight; }
         void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
+        // The last terrain occlusion verdict. It stands while the height is unknown or stale: judging a
+        // label behind a ridge visible until its elevation lands made it blink in and out.
+        bool isTerrainOccluded() const { return _terrainOccluded; }
+        void setTerrainOccluded(bool occluded) { _terrainOccluded = occluded; }
         // The renderer's whole-set invalidation count the height was sampled at; behind it, it is re-anchored.
         unsigned int getElevationGeneration() const { return _elevationGeneration; }
         void setElevationGeneration(unsigned int generation) { _elevationGeneration = generation; }
@@ -460,11 +473,14 @@ namespace massif::vt {
         float _opacity = 0.0f;
         float _textOpacity = 0.0f;
         float _occlusion = 1.0f;
+        float _occlusionFloor = 0.0f;
         bool _visible = false;
         bool _active = false;
+        bool _standIn = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame
         unsigned int _elevationGeneration = 0;
         bool _elevationAnchored = false; // its last sample had every height, so a re-anchor may wait
+        bool _terrainOccluded = false;
         bool _absoluteHeight = false;    // anchored on a deck chord, not on the terrain
         long long _geometryHash = 0;
         int _geometryCount = 0;

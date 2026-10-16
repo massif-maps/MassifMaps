@@ -29,6 +29,7 @@
 #include <cstring>
 #include <limits>
 #include <set>
+#include <utility>
 
 namespace {
     const GLvoid* bufferGLOffset(int offset) {
@@ -1135,6 +1136,8 @@ namespace massif::vt {
         // Going flat withdraws the provider after the ramp's last anchoring, above 0: nothing would
         // anchor the labels again, so drop them to the flat ground here.
         if (had && !_labelElevationProvider) {
+            // Else the roofs still stand on the last ramp step's bases, and roof POIs hang over the flat map for a frame.
+            refreshRoofSurfaces();
             std::shared_ptr<const TileTransformer> transformer = _transformer;
             std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> flat = [transformer](const cglib::vec3<double>& pos, int) { return transformer->calculateElevatedPos(pos, 0.0); };
             std::function<cglib::vec3<double>(const cglib::vec3<double>&, int)> flatRoof = roofAnchorFunc(flat);
@@ -1342,18 +1345,35 @@ namespace massif::vt {
                 labelTiles.insert(it, tile);
             }
         };
+        // An ancestor drawn under a tile still loading is keyed by that finer tile; under its own id it is real.
+        std::unordered_map<const Tile*, bool> standIns;
+        auto addStandIn = [&standIns](const TilePair& tilePair) {
+            if (!tilePair.second) {
+                return;
+            }
+            bool standIn = tilePair.first.zoom > tilePair.second->getTileId().zoom;
+            auto it = standIns.emplace(tilePair.second.get(), standIn).first;
+            it->second = it->second && standIn;
+        };
         for (TilePair tilePair : tiles) {
             tileIds.insert(tilePair.first);
             addLabelTile(tilePair.second);
+            addStandIn(tilePair);
         }
         // Labels only: no tileId, so no surface and no render tile - see setVisibleTiles' comment.
         for (TilePair tilePair : labelOnlyTiles) {
             addLabelTile(tilePair.second);
+            addStandIn(tilePair);
         }
 
         // The expensive label map rebuild runs off the mutex against a snapshot; an unchanged set skips the snapshot.
         LabelMapBuild labelBuild;
-        labelBuild.signature = calculateLabelTilesSignature(labelTiles);
+        for (const std::pair<const Tile* const, bool>& standIn : standIns) {
+            if (standIn.second) {
+                labelBuild.standInTiles.insert(standIn.first);
+            }
+        }
+        labelBuild.signature = calculateLabelTilesSignature(labelTiles, labelBuild.standInTiles);
         {
             std::lock_guard<std::mutex> lock(_mutex);
             labelBuild.unchanged = (labelBuild.signature == _labelTilesSignature && !_layerLabelMap.empty());
@@ -1392,6 +1412,7 @@ namespace massif::vt {
                 rebuild.signature = labelBuild.signature;
                 rebuild.generation = _labelMapGeneration;
                 rebuild.transformer = _transformer;
+                rebuild.standInTiles = labelBuild.standInTiles;
                 prepareLabelMaps(labelTiles, _layerLabelMap, _rendererLayerFilter, rebuild);
                 commitLabelMaps(rebuild);
             } else {
@@ -1435,7 +1456,14 @@ namespace massif::vt {
                 positions[i] = dirtyLabels[i]->sampleElevation(anchorFunc);
             }
             std::lock_guard<std::mutex> lock(_mutex);
+            // A ramp step since the sample: its heights are several steps old and would be drawn until the
+            // next frame re-anchors - labels dropping back and rising again through a 2D/3D switch.
+            bool stale = (labelElevationGeneration != _labelElevationGeneration);
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
+                if (stale) {
+                    VT_STAT_INC(labelAnchorStale);
+                    continue; // still dirty: the frame's anchorDirtyLabels samples it at the current step
+                }
                 if (dirtyLabels[i]->isElevationDirty()) {
                     // Cleared even without elevation: markPendingLabelsDirty re-dirties it when data
                     // arrives, and isElevationAnchored() is what carries "height unknown".
@@ -1653,6 +1681,7 @@ namespace massif::vt {
             _visiblePassLabels[pass].reset();
         }
         _labels.clear();
+        _hasZElevatedLabels = false;
         _layerLabelMap.clear();
         _labelMapGeneration++; // invalidates a prepare running off the mutex
     }
@@ -1732,6 +1761,7 @@ namespace massif::vt {
         _visiblePassLabels = _passLabels;
         // A forced placement replaces the whole screen: a crossfade would double every label (mapbox: fadeDuration 0).
         float dOpacity = labelOpacityStep(dt, _labelBlendingSpeed, _snapLabelTransition.exchange(false));
+        _labelOcclusionStep = dOpacity;
         for (int pass = 0; pass < 2; pass++) {
             for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
                 fading = updateLabel(label, dOpacity) || fading;
@@ -2032,8 +2062,10 @@ namespace massif::vt {
     bool GLTileRenderer::endFrame() {
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_CLOCK(statClock);
+        // An occlusion still easing wants the next frame, as a fade does.
+        bool occlusionEasing = std::exchange(_labelOcclusionEasing, false);
         if (--_resourceSweepCounter > 0) {
-            return false;
+            return occlusionEasing;
         }
         _resourceSweepCounter = RESOURCE_SWEEP_INTERVAL_FRAMES;
         VT_STAT_ADD(endFrameSwept, _compiledBitmapMap.size() + _compiledTileBitmapMap.size() + _compiledTileSurfaceMap.size() + _compiledTileGeometryMap.size());
@@ -2096,7 +2128,7 @@ namespace massif::vt {
 
         // Unused label batches are kept: they are unlikely to be big and can be reused.
         VT_STAT_SPLIT(endFrameNs, statClock);
-        return false;
+        return occlusionEasing;
     }
 
     void GLTileRenderer::snapLabelTransition() {
@@ -2949,11 +2981,12 @@ namespace massif::vt {
         return static_cast<long long>(hash);
     }
 
-    // Keyed on the tile objects: a re-decoded tile can re-serve the same id and must rebuild.
-    long long GLTileRenderer::calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
+    // Keyed on the tile objects: a re-decoded tile can re-serve the same id and must rebuild, and so
+    // must a tile that stops standing in, as its labels' rank changes.
+    long long GLTileRenderer::calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::unordered_set<const Tile*>& standInTiles) {
         long long signature = static_cast<long long>(labelTiles.size());
         for (const std::shared_ptr<const Tile>& labelTile : labelTiles) {
-            signature += calculateLabelGeometryHash(labelTile.get(), 0); // order-independent, as pass 1 is
+            signature += calculateLabelGeometryHash(labelTile.get(), standInTiles.count(labelTile.get()) > 0 ? 1 : 0); // order-independent, as pass 1 is
         }
         return signature;
     }
@@ -2988,6 +3021,33 @@ namespace massif::vt {
                     std::pair<long long, int>& signature = signatureMap[tileLabel->getGlobalId()];
                     signature.first += calculateLabelGeometryHash(tile.get(), tileLabel->getLocalId());
                     signature.second++;
+                }
+            }
+        }
+        // Stand-in tiles first: with none, as at rest, the real tiles cost no lookup.
+        for (const std::shared_ptr<const Tile>& tile : labelTiles) {
+            if (build.standInTiles.count(tile.get()) == 0) {
+                continue;
+            }
+            for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                if (testLayerFilter(layer->getLayerName(), layerFilter)) {
+                    for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
+                        build.standInIds[layer->getLayerIndex()].insert(tileLabel->getGlobalId());
+                    }
+                }
+            }
+        }
+        for (const std::shared_ptr<const Tile>& tile : labelTiles) {
+            if (build.standInIds.empty() || build.standInTiles.count(tile.get()) > 0) {
+                continue;
+            }
+            for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                auto standInIt = build.standInIds.find(layer->getLayerIndex());
+                if (standInIt == build.standInIds.end() || !testLayerFilter(layer->getLayerName(), layerFilter)) {
+                    continue;
+                }
+                for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
+                    standInIt->second.erase(tileLabel->getGlobalId());
                 }
             }
         }
@@ -3071,7 +3131,8 @@ namespace massif::vt {
             GlobalIdLabelMap& oldLabelMap = oldLayerLabelIt->second;
             for (auto oldLabelIt = oldLabelMap.begin(); oldLabelIt != oldLabelMap.end(); ) {
                 const std::shared_ptr<Label>& oldLabel = oldLabelIt->second;
-                if (oldLabel->getOpacity() <= 0) {
+                // Shown but not yet faded in (a pass just placed it): its rebuild would start hidden until the next pass.
+                if (oldLabel->getOpacity() <= 0 && !(oldLabel->isVisible() && oldLabel->isActive())) {
                     oldLabelIt = oldLabelMap.erase(oldLabelIt);
                 }
                 else {
@@ -3120,8 +3181,10 @@ namespace massif::vt {
             const GlobalIdLabelMap& newLabelMap = newLayerLabelIt->second;
             GlobalIdLabelMap& labelMap = _layerLabelMap[newLayerLabelIt->first];
             const std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[newLayerLabelIt->first];
+            auto standInIt = build.standInIds.find(newLayerLabelIt->first);
             for (auto newLabelIt = newLabelMap.begin(); newLabelIt != newLabelMap.end(); newLabelIt++) {
                 const std::shared_ptr<Label>& newLabel = newLabelIt->second;
+                newLabel->setStandIn(standInIt != build.standInIds.end() && standInIt->second.count(newLabelIt->first) > 0);
                 std::shared_ptr<Label>& label = labelMap[newLabelIt->first];
                 // A reused object IS the previous label, already current. Not decidable from the map
                 // entry: the release pass erases entries whose label has faded out.
@@ -3132,12 +3195,16 @@ namespace massif::vt {
                     newLabel->setVisible(label->isVisible());
                     newLabel->setOpacity(label->getOpacity());
                     newLabel->setTextOpacity(label->getTextOpacity());
+                    newLabel->setTerrainOccluded(label->isTerrainOccluded());
+                    newLabel->setOcclusion(label->getOcclusion(), label->getOcclusionFloor());
                     newLabel->snapPlacement(*label);
                 }
                 else if (std::shared_ptr<Label> oldLabel = takeOldSpot(*newLabel)) {
                     newLabel->setVisible(oldLabel->isVisible());
                     newLabel->setOpacity(oldLabel->getOpacity());
                     newLabel->setTextOpacity(0);
+                    newLabel->setTerrainOccluded(oldLabel->isTerrainOccluded());
+                    newLabel->setOcclusion(oldLabel->getOcclusion(), oldLabel->getOcclusionFloor());
                     newLabel->snapPlacement(*oldLabel);
                     oldLabel->setOpacity(0); // the new one draws its icon now; two would overlap
                     oldLabel->setTextOpacity(0);
@@ -3197,6 +3264,7 @@ namespace massif::vt {
             });
         }
 
+        _hasZElevatedLabels = std::any_of(labels.begin(), labels.end(), [](const std::shared_ptr<Label>& label) { return label->isZElevated(); });
         _labels = std::move(labels);
         _passLabels = std::move(passLabels);
         VT_STAT_SPLIT(labelListNs, labelMapClock);
@@ -3206,14 +3274,21 @@ namespace massif::vt {
     bool GLTileRenderer::updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const {
         bool refresh = false;
         if (label->isValid()) {
-            bool occluded = false;
             // Not while the height is unknown: the flat decode height would hide it under the ground.
             if (_labelOcclusionTest && label->isVisible() && label->isActive() && label->isElevationAnchored() && !label->isElevationStale()) {
                 cglib::vec3<double> center(0, 0, 0);
                 if (label->calculateCenter(center)) {
-                    occluded = _labelOcclusionTest(center);
+                    bool occluded = _labelOcclusionTest(center);
+                    if (occluded != label->isTerrainOccluded()) {
+                        VT_STAT_INC(labelOcclusionFlips);
+                        label->setTerrainOccluded(occluded);
+                    }
                 }
             }
+            else if (!_labelOcclusionTest) {
+                label->setTerrainOccluded(false); // flat: back in 3D an old verdict would hide it until anchored
+            }
+            bool occluded = _labelOcclusionTest && label->isTerrainOccluded();
             bool shown = label->isVisible() && label->isActive() && !occluded;
             if (shown) {
                 float opacity = std::min(1.0f, label->getOpacity() + dOpacity);
@@ -4369,9 +4444,16 @@ namespace massif::vt {
             }
             VT_STAT_SPLIT(labelPassStyleNs, styleClock);
 
-            // The style layer's occluded opacity, else this layer's default.
-            float occludedOpacity = labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity);
-            label->setOcclusion(occludedOpacity < 1.0f ? occludedOpacity + (1.0f - occludedOpacity) * calculateLabelVisibility(*label) : 1.0f);
+            // The style layer's occluded opacity, else this layer's default. Eased like a fade: the occluders change
+            // as building tiles load and grow in, and an instant verdict flickered a half-hidden name.
+            if (pass != Label::DrawPass::CALLOUT_LINE) {
+                float occludedOpacity = std::min(1.0f, labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity));
+                float target = occludedOpacity < 1.0f ? occludedOpacity + (1.0f - occludedOpacity) * calculateLabelVisibility(*label) : 1.0f;
+                float occlusion = label->getOcclusion();
+                occlusion = target > occlusion ? std::min(target, occlusion + _labelOcclusionStep) : std::max(target, occlusion - _labelOcclusionStep);
+                label->setOcclusion(occlusion, occludedOpacity);
+                _labelOcclusionEasing = _labelOcclusionEasing || occlusion != target;
+            }
 
             VT_STAT_CLOCK(statClock);
             std::size_t labelVertexOffset = _labelVertices.size();
@@ -5837,6 +5919,11 @@ namespace massif::vt {
         return visible * 0.25f;
     }
 
+    // What a z-elevated label can stand on: a deck stands on its chord, and a translated layer is drawn elsewhere.
+    bool GLTileRenderer::isRoofGeometry(const TileGeometry& geometry) {
+        return geometry.getOccluder() && geometry.getSpanRecords().empty() && !geometry.getStyleParameters().translate;
+    }
+
     bool GLTileRenderer::refreshRoofSurfaces() {
         std::vector<RoofSurface> roofs;
         if (_transformer->isSpherical()) {
@@ -5845,11 +5932,36 @@ namespace massif::vt {
             _roofSignature = 0;
             return moved;
         }
+        // Bases carry the exaggeration but are resolved when drawn, after this: a roof label stood on the
+        // previous 2D/3D ramp step's roof, under the ground of this one, and dropped to it between steps.
+        unsigned int baseVersions = _extrusionBaseVersion.load(std::memory_order_relaxed);
+        for (const std::weak_ptr<const GLTileRenderer>& weakPeer : _extrusionPeers) {
+            if (std::shared_ptr<const GLTileRenderer> peer = weakPeer.lock()) {
+                baseVersions = baseVersions * 31 + peer->_extrusionBaseVersion.load(std::memory_order_relaxed);
+            }
+        }
+        if (_hasZElevatedLabels && baseVersions != _roofBasesVersion) {
+            _roofBasesVersion = baseVersions;
+            auto resolveBases = [](const GLTileRenderer& owner) {
+                owner.forEachVisibleExtrusion(nullptr, false, [&owner](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+                    if (isRoofGeometry(*geometry)) {
+                        owner.resolveExtrusionBases(renderLayer.sourceTileId, renderLayer.targetTileId, geometry);
+                    }
+                    return true;
+                });
+            };
+            resolveBases(*this);
+            for (const std::weak_ptr<const GLTileRenderer>& weakPeer : _extrusionPeers) {
+                if (std::shared_ptr<const GLTileRenderer> peer = weakPeer.lock()) {
+                    resolveBases(*peer);
+                }
+            }
+        }
         float growth = buildingHeightScale(1.0f);
         std::size_t signature = std::hash<float>()(growth) ^ (static_cast<std::size_t>(_extrusionBaseVersion.load(std::memory_order_relaxed)) << 1) ^ (_extrusionElevationProvider ? 1 : 0);
         // Off-screen tiles too: the set then moves as tiles load, not with every pan.
         forEachLabelExtrusion(true, [&](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
-            if (!geometry->getOccluder() || !geometry->getSpanRecords().empty() || geometry->getStyleParameters().translate) {
+            if (!isRoofGeometry(*geometry)) {
                 return true;
             }
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId, 1.0f);

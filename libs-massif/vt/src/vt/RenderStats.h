@@ -325,6 +325,16 @@ namespace massif::vt {
         static inline std::atomic<long long> cullerCollided{0};
         // Hidden by 3D content during placement, so it reserved no grid slot.
         static inline std::atomic<long long> cullerOccluded{0};
+        // Terrain verdicts the culler could not judge (height unknown or stale), so the last one stood.
+        static inline std::atomic<long long> cullerOcclusionKept{0};
+        // Terrain verdicts that changed on the GL thread: each is a label starting to fade in or out.
+        static inline std::atomic<long long> labelOcclusionFlips{0};
+        // Sorted labels only a stand-in tile carries, ranked after every other one.
+        static inline std::atomic<long long> cullerStandIn{0};
+        // Cull-thread label anchor samples dropped because a 2D/3D ramp step outdated them.
+        static inline std::atomic<long long> labelAnchorStale{0};
+        // Labels that lost their CPU height (a vertex with no elevation) and fell back to the GPU's.
+        static inline std::atomic<long long> labelAnchorMisses{0};
     };
 }
 

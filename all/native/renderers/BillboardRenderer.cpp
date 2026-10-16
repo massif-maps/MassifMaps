@@ -1,8 +1,11 @@
 #include "BillboardRenderer.h"
+#include "components/Options.h"
+#include "components/TerrainOptions.h"
 #include "graphics/Bitmap.h"
 #include "graphics/ViewState.h"
 #include "layers/VectorLayer.h"
 #include "renderers/MapRenderer.h"
+#include "renderers/utils/ElevationTextureCache.h"
 #include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
@@ -15,6 +18,8 @@
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/NMLResources.h"
 #include "styles/AnimationStyle.h"
+#include "terrain/ElevationManager.h"
+#include "terrain/TerrainProjectionSurface.h"
 #include "utils/Const.h"
 #include "utils/Log.h"
 #include "vectorelements/Billboard.h"
@@ -88,6 +93,8 @@ namespace massif {
             return false;
         }
     
+        anchorOnDrawnTerrain(viewState);
+
         // Billboards can't be rendered in layer order, they have to be sorted globally and drawn from back to front
         bool refresh = false;
         for (auto it = _elements.begin(); it != _elements.end(); ) {
@@ -116,6 +123,55 @@ namespace massif {
         return refresh;
     }
     
+    void BillboardRenderer::anchorOnDrawnTerrain(const ViewState& viewState) {
+        // The draw data's height is baked on the fetch thread from the manager's grid cache: another
+        // level than the ground drawn, refreshed 500 ms late, so a marker stepped up and down as DEM landed.
+        std::shared_ptr<Options> options = _options.lock();
+        std::shared_ptr<TerrainOptions> terrainOptions = (options ? options->getTerrainOptions() : std::shared_ptr<TerrainOptions>());
+        std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
+        if (!terrainOptions || !terrainOptions->isActive() || !mapRenderer) {
+            return;
+        }
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        std::shared_ptr<ElevationTextureCache> elevationTextureCache = mapRenderer->getElevationTextureCache(elevationManager);
+        if (!elevationTextureCache) {
+            return;
+        }
+        // Not on every camera move: tile labels re-anchor on the same events, and markers must agree with them.
+        int zoom = static_cast<int>(viewState.getZoom());
+        if (_anchorCache.lock() != elevationTextureCache || _anchorDrawnVersion != elevationTextureCache->getDrawnVersion() ||
+            _anchorExaggeration != elevationManager->getExaggeration() || _anchorZoom != zoom) {
+            _anchorCache = elevationTextureCache;
+            _anchorDrawnVersion = elevationTextureCache->getDrawnVersion();
+            _anchorExaggeration = elevationManager->getExaggeration();
+            _anchorZoom = zoom;
+            _anchorGeneration++;
+        }
+
+        for (const std::shared_ptr<Billboard>& element : _elements) {
+            std::shared_ptr<BillboardDrawData> drawData = element->getDrawData();
+            if (!drawData || drawData->getTerrainAnchorGeneration() == _anchorGeneration) {
+                continue;
+            }
+            drawData->setTerrainAnchorGeneration(_anchorGeneration);
+            // A model is placed by its frame matrix, an attached label by its base billboard.
+            auto terrainSurface = std::dynamic_pointer_cast<TerrainProjectionSurface>(drawData->getProjectionSurface());
+            MapPos internalPos;
+            if (!terrainSurface || std::dynamic_pointer_cast<NMLModelDrawData>(drawData) || drawData->getBaseBillboard().lock() || !drawData->getInternalPos(internalPos)) {
+                continue;
+            }
+            // Off the drawn ground, the height it was built with stands: no fetch for a marker nobody sees.
+            double height = 0;
+            double wrappedX = internalPos.getX() - Const::WORLD_SIZE * std::floor(internalPos.getX() / Const::WORLD_SIZE + 0.5); // the cache's world copy
+            if (elevationTextureCache->getDrawnDisplayHeight(wrappedX, internalPos.getY(), zoom, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, height) ||
+                elevationTextureCache->getDisplayHeight(wrappedX, internalPos.getY(), zoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS, false)) {
+                drawData->setTerrainPos(terrainSurface->calculatePositionOnGround(internalPos, height));
+            } else {
+                drawData->resetTerrainPos(); // not a height from another exaggeration or zoom
+            }
+        }
+    }
+
     void BillboardRenderer::onDrawFrameSorted(float deltaSeconds,
                                               const std::vector<std::shared_ptr<BillboardDrawData> >& billboardDrawDatas,
                                               const ViewState& viewState)

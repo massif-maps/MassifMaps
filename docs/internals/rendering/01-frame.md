@@ -111,6 +111,46 @@ An app's own billboards (markers, popups) are drawn after every layer, over ever
 labels. A layer with `Layer::setBillboardsUnderLabels(true)` has them drawn between the two passes
 instead: over the layers' ground, under the labels and extrusions a tile layer renders `LAST`.
 
+### The ghost pass: line-occlusion-opacity
+
+A line cannot be seen through an extrusion by drawing it later: the extrusions are the last thing in
+the 3D pass and overwrite it. A rule that sets `line-occlusion-opacity` (CartoCSS, mapnik
+`occlusion-opacity` on a `line` symbolizer) is therefore drawn twice, and does not drape:
+
+1. `LineSymbolizer` puts the value in `LineStyle::occlusionOpacity`. `TileLayerBuilder` copies it to
+   `TileGeometry::StyleParameters::occlusionOpacity`; it is one value per geometry, so a different
+   value splits the batch (as `elevationMode` does), and a fill never joins a ghosted batch.
+   `TileLayer::hasOcclusionGeometry()` answers once, at decode, whether a layer has any.
+2. `GLTileRenderer::isDrapeableGeometry` refuses such a line, so it is neither baked into the drape
+   nor skipped by the 2D loop: it draws live in the 2D pass like any line of a `NoDrapeLayerFilter`
+   layer (decal offset, line clearance, the layer's ordinal).
+3. `TileRenderer::onDrawFrame3D` calls `GLTileRenderer::renderOccludedGeometry()` right after the
+   layer's extrusions. It draws only the flagged `LINE` geometries again with the state the 2D loop
+   used, `glDepthFunc(GL_GREATER)`, depth writes off, and a polygon offset one slope unit and four
+   depth units further forward than the decal's `(-2, -8)`, with alpha times the property. Under
+   the shared ground its ordinal is the stack's TOP one, whatever the layer's own (`ghostLayerOffset`,
+   `GhostDepth.h`; `MapRenderer` publishes the top beside each layer's base).
+
+`GL_GREATER` passes where the depth buffer holds something *nearer than the line*: an extrusion
+written by this or an earlier layer's 3D pass, or a ridge. Where the line is visible, the buffer
+holds the line's own 2D depth (terrain) or the clear value (flat), the same fragment fails by the
+extra offset, and the ghost does not double the line. Depth is not written, so billboards and
+later layers are unaffected.
+
+What decides how much is ghosted is the same ordinal model as the hiding
+([05-depth-model.md](05-depth-model.md)): the ghost covers exactly the pixels where an extrusion
+beat a line of the topmost layer. Every 2D pass has run before the first 3D pass, so the depth buffer
+holds every layer's decals, each pulled forward by its ordinal. A ghost at its own layer's ordinal
+passed against all LATER ones (the route's ghost over a maneuver arrow, an arrow's casing ghost over
+its own fill) and tinted the visible line with its translucent colour; at the top ordinal nothing in
+the stack is nearer, so only an extrusion or a ridge can pass it. The price is the pull of the
+ordinals above the layer, a few clip-space steps for the navigation layers, which sit at the top.
+Skipped: a layer with a `comp-op` (overlay buffer), an extrusion layer whose buildings went to the
+overlay (layer opacity below 1: not in the main depth buffer), a span. Not honoured: the 2D pass's
+tile stencil masks and the drape coverage mask. Not used: a stencil bit set by the
+extrusion pass. The 2D pass's tile masks and the draw-once groups own the stencil bits, and a ridge
+would need the ground to set it too.
+
 ## What causes a frame
 
 The renderer is **not** a free-running loop. A frame is drawn when something calls

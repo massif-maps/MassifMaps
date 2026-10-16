@@ -448,11 +448,11 @@ namespace massif {
         return 0;
     }
 
-    void TileRenderer::setTerrainLayerOrdinalBase(int base) {
+    void TileRenderer::setTerrainLayerOrdinalBase(int base, int top) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            tileRenderer->setTerrainLayerOrdinalBase(base);
+            tileRenderer->setTerrainLayerOrdinalBase(base, top);
         }
     }
 
@@ -1298,6 +1298,8 @@ namespace massif {
                 // Inline (tangram's way): nothing after the extrusions depth-tests against them.
                 tileRenderer->renderGeometry(false, true, isInline3DEnabled(), _layerOpacity);
             }
+            // Over the extrusions this layer or an earlier one wrote into the depth buffer.
+            tileRenderer->renderOccludedGeometry();
             VT_STAT_SPLIT(pass3DGeometryNs, passClock);
             if (_labelOrder >= 0 && drawsBillboardLabelsHere(1)) {
                 tileRenderer->renderLabels(false, true, _layerOpacity);

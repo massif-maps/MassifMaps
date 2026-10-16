@@ -192,6 +192,10 @@ namespace massif::vt {
         // See LineElevationMode; default DRAPE.
         LineElevationMode elevationMode;
 
+        // mapbox's line-occlusion-opacity: set = the line is live (never draped) and is drawn a second time
+        // at this opacity where 3D content hides it. Unset = hidden there. Not in the ctor, like the label's.
+        std::optional<float> occlusionOpacity;
+
         bool hasEndArrow() const { return (endArrowWidth > 0 && endArrowLength > 0) || (endArrowShape && endArrowShape->size() >= 3); }
 
         explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, FloatFunction offsetFunc, float splitDotLimit, float miterDotLimit, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform, float endArrowWidth = 0, float endArrowLength = 0, bool endArrowOnly = false, std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape = std::shared_ptr<const std::vector<cglib::vec2<float>>>(), FloatFunction gapWidthFunc = FloatFunction(0), FloatFunction blurFunc = FloatFunction(0), FloatFunction emissiveFunc = FloatFunction(1.0f), ColorFunction borderColorFunc = ColorFunction(), FloatFunction borderWidthFunc = FloatFunction(0), LineElevationMode elevationMode = LineElevationMode::DRAPE) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), emissiveFunc(std::move(emissiveFunc)), widthFunc(std::move(widthFunc)), offsetFunc(std::move(offsetFunc)), gapWidthFunc(std::move(gapWidthFunc)), blurFunc(std::move(blurFunc)), borderColorFunc(std::move(borderColorFunc)), borderWidthFunc(std::move(borderWidthFunc)), splitDotLimit(splitDotLimit), miterDotLimit(miterDotLimit), strokePattern(std::move(strokePattern)), transform(transform), endArrowWidth(endArrowWidth), endArrowLength(endArrowLength), endArrowOnly(endArrowOnly), endArrowShape(std::move(endArrowShape)), elevationMode(elevationMode) { }

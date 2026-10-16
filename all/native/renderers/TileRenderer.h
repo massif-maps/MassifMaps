@@ -102,7 +102,7 @@ namespace massif {
         void setExternalDrapeTiles(const std::vector<vt::TileId>& tileIds);
         void setTerrainGroundTiles(const std::vector<vt::TileId>& tileIds, const std::vector<int>& proxyDepths);
         void setTerrainSkirtDrops(const std::map<vt::TileId, cglib::vec4<float>>& drops);
-        void setTerrainLayerOrdinalBase(int base);
+        void setTerrainLayerOrdinalBase(int base, int top);
         int getStyleLayerCount() const;
         /**
          * Per-tile drape bake resolution: the option's value, else derived from the screen. Static so

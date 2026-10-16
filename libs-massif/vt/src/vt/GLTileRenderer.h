@@ -161,7 +161,7 @@ namespace massif::vt {
         void setTerrainMode(bool enabled, float depthBias);
         void setTerrainRegularGrid(bool enabled, int resolution);
         // First stack-wide depth ordinal of this renderer's style layers, or every renderer claims 0.
-        void setTerrainLayerOrdinalBase(int base);
+        void setTerrainLayerOrdinalBase(int base, int top);
         // Style layers drawn last frame, so the owner numbers the stack densely: the ordinal's eye
         // tolerance grows as distance^2, and gaps push it into the range that sees through ridges.
         int getStyleLayerCount() const;
@@ -388,6 +388,8 @@ namespace massif::vt {
         bool startFrame(float dt);
         // layerOpacity: the SDK layer's, for a pass no screen-space blend wraps (the 3D pass).
         void renderGeometry(bool geom2D, bool geom3D, bool inline3D = false, float layerOpacity = 1.0f);
+        // The second draw of every line carrying line-occlusion-opacity, once the extrusions have written depth.
+        void renderOccludedGeometry();
         void renderLabels(bool labels2D, bool labels3D, float layerOpacity = 1.0f);
         bool endFrame();
 
@@ -830,6 +832,7 @@ namespace massif::vt {
         DrawOncePass _drawOncePass = DrawOncePass::NONE; // the draw-once pass the 2D layer being drawn is in
         static constexpr GLuint DRAW_ONCE_STENCIL_BIT = 0x80; // tile mask values stay below it
         int _terrainLayerOrdinalBase = 0;        // first style-layer ordinal of this renderer in the stack
+        int _terrainLayerOrdinalTop = 0;         // last ordinal of the whole stack
         std::set<int> _terrainStyleLayerIndices; // every style layer index this renderer has drawn - the stable order list
         int _terrainStyleLayersDrawn = 0;        // size of the order list above (the owner's dense numbering)
         bool _terrainDrapeFills = false;         // maplibre-style: bake polygon fills flat to a per-tile texture, sampled on the surface

@@ -102,7 +102,11 @@ namespace massif::mvt {
         }
 
         vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape, gapWidthFunc, blurFunc, _strokeEmissive.getFunction(exprContext), _borderColorFuncBuilder.createColorOpacityFunction(_borderColor.getFunction(exprContext), strokeOpacityFunc), borderWidthFunc, elevationMode);
-        
+        float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
+        if (occlusionOpacity > 0.0f) {
+            style.occlusionOpacity = std::min(occlusionOpacity, 1.0f);
+        }
+
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 
         return [style, strokeMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {

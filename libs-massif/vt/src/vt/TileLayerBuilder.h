@@ -145,6 +145,8 @@ namespace massif::vt {
             // See TileGeometry::StyleParameters::polygon3DEmissiveFunc. One uniform per draw, so a
             // change splits the batch like elevationMode does.
             std::optional<FloatFunction> polygon3DEmissiveFunc;
+            // See TileGeometry::StyleParameters::occlusionOpacity.
+            std::optional<float> occlusionOpacity;
 
             // patternUsed defaults to TRUE so every path that does not manage it (lines, points)
             // keeps sampling its pattern; only the polygon processor sets it per slot.

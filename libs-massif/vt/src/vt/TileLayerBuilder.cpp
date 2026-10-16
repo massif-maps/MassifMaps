@@ -309,11 +309,12 @@ namespace massif::vt {
         else if (!(_builderParameters.type == TileGeometry::Type::LINE || (_builderParameters.type == TileGeometry::Type::POLYGON && !_builderParameters.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
             appendGeometry();
         }
-        else if (_builderParameters.elevationMode != style.elevationMode) {
-            appendGeometry(); // the span slot is per geometry - see BuilderParameters
+        else if (_builderParameters.elevationMode != style.elevationMode || _builderParameters.occlusionOpacity != style.occlusionOpacity) {
+            appendGeometry(); // the span slot and the ghost pass are per geometry - see BuilderParameters
         }
         _builderParameters.type = TileGeometry::Type::LINE;
         _builderParameters.elevationMode = style.elevationMode;
+        _builderParameters.occlusionOpacity = style.occlusionOpacity;
         _builderParameters.strokeMap = strokeMap;
         _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
@@ -408,8 +409,8 @@ namespace massif::vt {
         else if (!(_builderParameters.type == TileGeometry::Type::POLYGON || (_builderParameters.type == TileGeometry::Type::LINE && !style.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
             appendGeometry();
         }
-        else if (_builderParameters.elevationMode != style.elevationMode) {
-            appendGeometry(); // a span leaves the drape bake, so it cannot share a batch with a draped fill
+        else if (_builderParameters.elevationMode != style.elevationMode || _builderParameters.occlusionOpacity) {
+            appendGeometry(); // a span leaves the drape bake, and a ghosted line batch is all line: neither takes a fill
         }
         else {
             type = _builderParameters.type;
@@ -1046,6 +1047,7 @@ namespace massif::vt {
         styleParameters.compOp = _builderParameters.compOp;
         styleParameters.glyphRenderSize = _builderParameters.glyphRenderSize;
         styleParameters.polygon3DEmissiveFunc = _builderParameters.polygon3DEmissiveFunc;
+        styleParameters.occlusionOpacity = _builderParameters.occlusionOpacity;
 
         if (_builderParameters.strokeMap) {
             bool strokeUsed = std::any_of(_builderParameters.lineStrokeIds.begin(), _builderParameters.lineStrokeIds.begin() + _builderParameters.parameterCount, [](StrokeMap::StrokeId strokeId) { return strokeId != 0; });

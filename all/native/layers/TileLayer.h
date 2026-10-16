@@ -479,7 +479,7 @@ class ProjectionSurface;
         void setTerrainSkirtDrops(const std::map<vt::TileId, cglib::vec4<float> >& drops);
         // Where this layer's style layers start in the stack's depth ordering: the stack is several renderers,
         // so the owner numbers them in draw order, or a composite's children all claim ordinal 0.
-        void setTerrainLayerOrdinalBase(int base);
+        void setTerrainLayerOrdinalBase(int base, int top);
         int getStyleLayerCount() const;
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;

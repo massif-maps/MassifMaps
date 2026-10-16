@@ -218,6 +218,50 @@ At low zoom, `VectorLayer` **element** lines (e.g. long routes) can still leak t
 they are CPU-baked to a fine bilinear surface while the low-zoom occluder is coarse, and no depth
 bias wins that case. The fix (render-to-texture element draping across layers) is on the roadmap.
 
+On a face steeper than about 65 degrees the draped map is blurred (fully by 80 degrees), because a
+top-down drape stretches along the fall line: a cliff line or hachure would otherwise hang down the
+whole wall. A trail or road drawn across such a face fades with it. Contour lines fade the same way
+from 55 degrees (gone at 70), since a face is where their levels pile into a solid band.
+
+## Lines behind buildings: `line-occlusion-opacity`
+
+With 3D buildings on, an extrusion drawn in front of a line hides it. A route or a maneuver arrow
+that goes behind a building disappears. `line-occlusion-opacity` (mapbox's property of the same
+name) keeps it as a ghost:
+
+```css
+#navigation[class='route'] {
+    line-color: #2a6fdb;
+    line-width: 6;
+    line-occlusion-opacity: 0.35;   /* 0 (default) = hidden there, as before; 1 = as visible as the rest */
+}
+```
+
+The line draws as usual, and where an extrusion (or a ridge) is in front of it, a second draw at
+that fraction of its opacity shows through. Not a separate colour: it is the line's own colour and
+alpha times the property.
+
+- **The line stops draping.** A draped line is baked into the ground texture and has nothing to be
+  occluded by, so a rule that sets the property is drawn live, like a layer matched by
+  `NoDrapeLayerFilter`: sharper, but a live line over steep relief can show small gaps a draped one
+  does not. Other lines in the same layer keep draping.
+- **It is the extrusions that must be in front.** Use it on a line in a layer drawn *after* the
+  buildings' layer (a navigation layer over the base map). The ghost is tested against the depth
+  buffer at the end of that layer's 3D pass, which holds the buildings of every layer below it and
+  its own.
+- **Ridges ghost it too.** The test is "something nearer wrote depth here", so a line going behind
+  a ridge shows faintly through it, exactly as through a building.
+- **Content of a later layer over the line** (a maneuver arrow drawn on the route) is also nearer
+  than the line's own depth, so it takes a faint tint of the ghost. Set the property on the
+  topmost line only if that reads badly.
+- **Not applied** to a layer with a `comp-op` (it draws into an overlay with no depth), nor to an
+  extrusion layer faded by layer opacity below 1 (its buildings are in a separate buffer). Where
+  two tiles of different zoom overlap during a zoom transition, the ghost may blend twice for a
+  moment: the 2D pass's stencil masks do not apply to it.
+- Where a line crosses itself or turns sharply, the overlapping join geometry may blend twice at a low property value.
+
+The renderer side is in [the frame](/docs/internals/rendering/frame#the-ghost-pass-line-occlusion-opacity).
+
 ## Styling differently in 3D
 
 A style reads `[render::3d]` to branch on whether it is drawn on terrain — flat labels in 2D,

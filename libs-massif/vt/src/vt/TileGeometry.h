@@ -63,6 +63,9 @@ namespace massif::vt {
             // An extrusion's emissive, one uniform for the whole geometry: folding it into the colour
             // on the CPU like emissiveFuncs would grade it and then light it again.
             std::optional<FloatFunction> polygon3DEmissiveFunc;
+            // A LINE geometry only: see LineStyle::occlusionOpacity. One value per geometry, so a
+            // different one splits the batch.
+            std::optional<float> occlusionOpacity;
 
             StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };

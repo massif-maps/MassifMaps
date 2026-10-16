@@ -496,6 +496,16 @@
       "baked": true
     },
     {
+      "cartocss": "line-occlusion-opacity",
+      "mapnik": "occlusion-opacity",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": true
+    },
+    {
       "cartocss": "line-offset",
       "mapnik": "offset",
       "symbolizer": "line",

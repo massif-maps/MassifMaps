@@ -27,6 +27,11 @@ namespace massif::mvt {
         virtual std::shared_ptr<pugi::xml_document> generateMap(const Map& map) const;
 
     protected:
+        // Shorter values are not worth a <Define> of their own
+        static constexpr std::size_t INTERN_MIN_LENGTH = 40;
+
+        static void internAttributes(pugi::xml_node mapNode);
+
         std::string generateTypeString(const Value& value) const;
         std::string generateValueString(const Value& value) const;
 

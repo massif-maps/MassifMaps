@@ -121,6 +121,12 @@ namespace massif::mvt {
             map->addFontSet(fontSet);
         }
 
+        // Defines: long attribute values a style repeats, written once and referred to as "@@<id>"
+        std::map<std::string, std::string> defines;
+        for (pugi::xml_node defineNode : mapNode.child("Defines").children("Define")) {
+            defines[defineNode.attribute("id").as_string()] = defineNode.attribute("value").as_string();
+        }
+
         // Styles
         pugi::xpath_node_set styleNodes = pugi::xpath_query("Style").evaluate_node_set(mapNode);
         for (pugi::xpath_node_set::const_iterator styleIt = styleNodes.begin(); styleIt != styleNodes.end(); ++styleIt) {
@@ -195,6 +201,19 @@ namespace massif::mvt {
                         filter = std::make_shared<Filter>(Filter::Type::ALSOFILTER, std::optional<Predicate>());
                     }
                     else {
+                        // Expanded on a copy: the document is the caller's
+                        pugi::xml_document expandedDoc;
+                        if (!defines.empty()) {
+                            node = expandedDoc.append_copy(node);
+                            for (pugi::xml_attribute attr : node.attributes()) {
+                                if (attr.value()[0] == '@' && attr.value()[1] == '@') {
+                                    auto defineIt = defines.find(attr.value() + 2);
+                                    if (defineIt != defines.end()) {
+                                        attr.set_value(defineIt->second.c_str());
+                                    }
+                                }
+                            }
+                        }
                         std::ostringstream os;
                         node.print(os, "", pugi::format_raw, pugi::encoding_utf8);
                         std::string symbolizerStr = os.str();

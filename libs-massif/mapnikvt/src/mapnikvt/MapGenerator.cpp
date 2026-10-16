@@ -15,6 +15,11 @@
 #include "ScaleUtils.h"
 #include "Logger.h"
 
+#include <algorithm>
+#include <cstring>
+#include <map>
+#include <vector>
+
 #include <boost/lexical_cast.hpp>
 
 namespace massif::mvt {
@@ -184,7 +189,71 @@ namespace massif::mvt {
             }
         }
 
+        internAttributes(mapNode);
+
         return doc;
+    }
+
+    void MapGenerator::internAttributes(pugi::xml_node mapNode) {
+        // A style repeats the same long expressions in every rule (a POI colour is 400 characters, written
+        // 200 times). Each one is written once, under <Defines>, and referred to as "@@<id>"; MapParser
+        // expands them back before it reads a symbolizer.
+        struct Use {
+            std::size_t count = 0;
+            std::string id;
+        };
+        std::map<std::string, Use> uses;
+        std::vector<pugi::xml_attribute> candidates;
+        for (pugi::xml_node styleNode : mapNode.children("Style")) {
+            for (pugi::xml_node ruleNode : styleNode.children("Rule")) {
+                for (pugi::xml_node symbolizerNode : ruleNode.children()) {
+                    std::string nodeName = symbolizerNode.name();
+                    if (nodeName == "Filter" || nodeName == "ElseFilter" || nodeName == "AlsoFilter" || nodeName == "MinScaleDenominator" || nodeName == "MaxScaleDenominator") {
+                        continue;
+                    }
+                    for (pugi::xml_attribute attr : symbolizerNode.attributes()) {
+                        if (std::strlen(attr.value()) >= INTERN_MIN_LENGTH) {
+                            uses[attr.value()].count++;
+                            candidates.push_back(attr);
+                        }
+                    }
+                }
+            }
+        }
+
+        // The most repeated first, so they get the shortest ids
+        std::vector<std::map<std::string, Use>::iterator> shared;
+        for (auto it = uses.begin(); it != uses.end(); it++) {
+            if (it->second.count >= 2) {
+                shared.push_back(it);
+            }
+        }
+        if (shared.empty()) {
+            return;
+        }
+        std::sort(shared.begin(), shared.end(), [](const auto& it1, const auto& it2) { return it1->second.count > it2->second.count; });
+
+        pugi::xml_node definesNode = mapNode.insert_child_before("Defines", mapNode.child("Style"));
+        std::size_t index = 0;
+        for (const auto& it : shared) {
+            std::string id;
+            for (std::size_t n = index++; ; n /= 36) {
+                id.insert(id.begin(), "0123456789abcdefghijklmnopqrstuvwxyz"[n % 36]);
+                if (n < 36) {
+                    break;
+                }
+            }
+            it->second.id = id;
+            pugi::xml_node defineNode = definesNode.append_child("Define");
+            defineNode.append_attribute("id").set_value(id.c_str());
+            defineNode.append_attribute("value").set_value(it->first.c_str());
+        }
+        for (pugi::xml_attribute attr : candidates) {
+            auto it = uses.find(attr.value());
+            if (it != uses.end() && it->second.count >= 2) {
+                attr.set_value(("@@" + it->second.id).c_str());
+            }
+        }
     }
 
     std::string MapGenerator::generateTypeString(const Value& value) const {

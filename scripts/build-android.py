@@ -66,7 +66,7 @@ def buildAndroidSO(args, abi):
     "-DCMAKE_ANDROID_ARCH_ABI='%s'" % abi,
     "-DWRAPPER_DIR=%s" % ('%s/generated/android-java/wrappers' % baseDir),
     "-DSINGLE_LIBRARY:BOOL=ON",
-    "-DANDROID_STL='c++_static'",
+    "-DANDROID_STL='c++_shared'",
     "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
     "-DANDROID_NDK='%s'" % args.androidndkpath,
     "-DANDROID_ABI='%s'" % abi,

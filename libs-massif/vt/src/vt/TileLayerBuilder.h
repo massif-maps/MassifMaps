@@ -132,6 +132,7 @@ namespace massif::vt {
             std::array<ColorFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> borderColorFuncs;
             std::array<FloatFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> borderWidthFuncs;
             std::array<StrokeMap::StrokeId, TileGeometry::StyleParameters::MAX_PARAMETERS> lineStrokeIds;
+            std::array<bool, TileGeometry::StyleParameters::MAX_PARAMETERS> arrowOnly; // this slot is a `line-arrow-only` style
             std::array<bool, TileGeometry::StyleParameters::MAX_PARAMETERS> patternUsed; // this slot is a patterned fill
             std::shared_ptr<const StrokeMap> strokeMap;
             std::shared_ptr<const GlyphMap> glyphMap;
@@ -150,7 +151,7 @@ namespace massif::vt {
 
             // patternUsed defaults to TRUE so every path that does not manage it (lines, points)
             // keeps sampling its pattern; only the polygon processor sets it per slot.
-            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), lineStrokeIds(), patternUsed(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternUsed.fill(true); emissiveFuncs.fill(FloatFunction(1.0f)); }
+            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), lineStrokeIds(), arrowOnly(), patternUsed(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternUsed.fill(true); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
         // What a span vertex knows about its own feature, stamped per vertex and folded into

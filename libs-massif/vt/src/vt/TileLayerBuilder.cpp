@@ -322,7 +322,7 @@ namespace massif::vt {
         const StrokeMap::Stroke* stroke = (strokeId != 0 ? strokeMap->getStroke(strokeId) : nullptr);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.emissiveFuncs[styleIndex] == style.emissiveFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.offsetFuncs[styleIndex] == style.offsetFunc && _builderParameters.gapWidthFuncs[styleIndex] == style.gapWidthFunc && _builderParameters.blurFuncs[styleIndex] == style.blurFunc && _builderParameters.borderColorFuncs[styleIndex] == style.borderColorFunc && _builderParameters.borderWidthFuncs[styleIndex] == style.borderWidthFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.emissiveFuncs[styleIndex] == style.emissiveFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.offsetFuncs[styleIndex] == style.offsetFunc && _builderParameters.gapWidthFuncs[styleIndex] == style.gapWidthFunc && _builderParameters.blurFuncs[styleIndex] == style.blurFunc && _builderParameters.borderColorFuncs[styleIndex] == style.borderColorFunc && _builderParameters.borderWidthFuncs[styleIndex] == style.borderWidthFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId && _builderParameters.arrowOnly[styleIndex] == style.endArrowOnly) {
                 break;
             }
         }
@@ -337,6 +337,7 @@ namespace massif::vt {
             _builderParameters.borderColorFuncs[styleIndex] = style.borderColorFunc;
             _builderParameters.borderWidthFuncs[styleIndex] = style.borderWidthFunc;
             _builderParameters.lineStrokeIds[styleIndex] = strokeId;
+            _builderParameters.arrowOnly[styleIndex] = style.endArrowOnly;
         }
         registerStyleVariantSlot(styleIndex);
 
@@ -426,7 +427,7 @@ namespace massif::vt {
         bool patternUsed = static_cast<bool>(style.pattern);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.emissiveFuncs[styleIndex] == style.emissiveFunc && _builderParameters.widthFuncs[styleIndex] == FloatFunction(0) && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0) && _builderParameters.lineStrokeIds[styleIndex] == 0 && _builderParameters.patternUsed[styleIndex] == patternUsed) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.emissiveFuncs[styleIndex] == style.emissiveFunc && _builderParameters.widthFuncs[styleIndex] == FloatFunction(0) && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0) && _builderParameters.lineStrokeIds[styleIndex] == 0 && !_builderParameters.arrowOnly[styleIndex] && _builderParameters.patternUsed[styleIndex] == patternUsed) {
                 break;
             }
         }
@@ -1040,6 +1041,7 @@ namespace massif::vt {
             }
             styleParameters.strokeScales[i] = (stroke ? stroke->scale : 0);
             styleParameters.patternScales[i] = (_builderParameters.patternUsed[i] ? 1.0f : 0.0f);
+            styleParameters.arrowOnly[i] = _builderParameters.arrowOnly[i];
         }
         if (_builderParameters.translate != cglib::vec2<float>(0, 0)) {
             styleParameters.translate = _builderParameters.translate * (1.0f / _tileSize);

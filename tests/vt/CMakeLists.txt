@@ -36,6 +36,7 @@ add_executable(vt_tests
   ExtrusionEmissiveTest.cpp
   LineOcclusionOpacityTest.cpp
   GhostDepthTest.cpp
+  ArrowHeadPassTest.cpp
   ExtrusionGroupAnchorTest.cpp
   SpanGeometryTest.cpp
   SpanDrapeLightTest.cpp

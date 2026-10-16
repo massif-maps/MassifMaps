@@ -29,6 +29,7 @@ void testExtrusionAnchor();
 void testExtrusionEmissive();
 void testLineOcclusionOpacity();
 void testGhostDepth();
+void testArrowHeadPass();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 void testSpanResolver();
@@ -94,6 +95,7 @@ int main() {
     testExtrusionEmissive();
     testLineOcclusionOpacity();
     testGhostDepth();
+    testArrowHeadPass();
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
     testSpanResolver();

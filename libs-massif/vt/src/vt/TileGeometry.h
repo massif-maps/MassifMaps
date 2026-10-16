@@ -66,8 +66,11 @@ namespace massif::vt {
             // A LINE geometry only: see LineStyle::occlusionOpacity. One value per geometry, so a
             // different one splits the batch.
             std::optional<float> occlusionOpacity;
+            // for lines: the slot is a `line-arrow-only` style, which draws a head and nothing else.
+            // Drawn after the shafts of every tile of the layer (ArrowHeadPass.h).
+            std::array<bool, MAX_PARAMETERS> arrowOnly;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
+            StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64), arrowOnly() { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
         // A run of vertices a style parameter can repoint without a decode: styleIndices[1] while the

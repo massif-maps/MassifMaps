@@ -1694,6 +1694,51 @@ for frames while one still moves), a rebuilt label carries it over, and "partly 
 only once it has eased a quarter of the way to its occluded opacity - one tap of four, settled - so
 a passing dip cannot re-rank it. `LabelYieldTest` pins the threshold.
 
+**Hides fast, shows slowly, and a label is judged before it is shown.** Easing from "clear" had a
+cost of its own: a label's occlusion is only computed while it is drawn, so a new label (or one back
+from opacity 0, whose value had gone stale) started at 1 and eased down at the same step its opacity
+rose - a label wholly behind a building drew at up to a quarter opacity for a dozen frames before
+vanishing, seen as POIs blinking in 3D with buildings. Now (`easeLabelOcclusion`, `LabelFade.h`):
+a label whose occlusion was never judged, or not since it last stood at opacity 0
+(`Label::isOcclusionJudged`, cleared in `renderLabelPass`, carried over to a rebuilt label), takes
+its first verdict outright, so it starts at the verdict instead of at "clear". After that the value
+follows it through a first-order low-pass that hides faster than it shows (time constants about
+100 ms down, 330 ms up): a covered label is gone in a few frames, while a verdict that reads clear
+for a frame or two as building tiles swap or an unresolved base blocks nothing barely lifts it.
+
+**A half-hidden label holds still while the camera looks around.** The same verdict wobbles by a tap
+or two as rays move over a roof edge or the occluder set changes by a tile, and a linear slew
+followed every wobble. Three things now keep a semi-occluded label steady (`LabelFade.h`):
+the verdict is held through changes under a 0.15 dead band (`holdLabelOcclusionVerdict`; fully
+hidden and fully clear always pass); the low-pass above is exponential, so a verdict flipping every
+frame ripples the opacity by a few percent; and when the four corner taps disagree, five more
+(edge middles and centre) are cast, so the verdict moves in ninths, not quarters, as an edge sweeps
+the box. "Partly occluded" (the culler's rank) is a Schmitt trigger: it sets at one blocked tap of
+four and clears only when nearly clear, so a label hovering at the threshold no longer flips rank
+in every placement pass. `LabelFadeTest` and `LabelYieldTest` pin these.
+
+**A label is judged before it competes, not once drawn** (the Catalyst demo loop, `docs/internals/catalyst-demo-loop.md`:
+a 90-frame turn at 0.15 deg a frame, Grenoble z17.5 tilt 60, 3D buildings, counted 110 blink events).
+The cause was the placement, not the fade: a label's occlusion was judged only while it was drawn, so a
+label rebuilt on a tile-set change - or hidden for a while, its verdict stale - entered the next
+placement pass as "in the clear", ranked ahead of every settled label, took a free slot from a tree or a
+neighbouring POI, was then drawn once, judged behind a building and fell to the back of the next pass,
+which gave the slot back: the evicted label faded out and in again, and the POI itself flashed. In the
+turn log 1600 visibility flips in 90 frames, 590 of them hides by an overlap with exactly such a label.
+Two changes (`GLTileRenderer::judgeLabelOcclusion`, `startFrame`):
+- `startFrame` judges, within a budget of 32 labels a frame (a hidden label again every 60 frames), the on-screen labels nobody draws (hidden
+  or just built, unjudged or stale), so the culler's `isPartlyOccluded` / `isFullyOccluded` are current
+  for the pass that follows. A judgement carries a frame stamp (`Label::getOcclusionStamp`, carried to a
+  rebuilt label); a stamp older than 120 frames is replaced outright, not eased from.
+  Measured on the Catalyst loop (Grenoble z17.5 tilt 60, 3D buildings): about 8 us a judgement, the
+  pre-pass 0.05 ms a frame on average and 0.37 ms at p95 (it was 0.10 / 0.68 ms at a budget of 96);
+  drawing the labels already judged about 190 labels a frame for 0.45 ms.
+- a label never judged (`Label::isOcclusionKnown`) ranks after every judged label in the clear and
+  before the occluded ones, whatever its priority, so a rebuilt label of unknown standing cannot evict a
+  settled one in the frames before it is judged. `LabelYieldTest` pins it.
+The turn dropped to about 45 events (the rest is ordinary collision between moving labels: a street name
+sliding over a POI, a name falling back to its icon-only variant); the still camera stays at 0.
+
 **A line run collides by its glyphs**, as maplibre's by collision circles along the line
 (`Label::calculateEnvelope`'s glyphEnvelopes): the bounds of a run round a bend covered the corner
 beside it (405x320 device px for Place Grenette, tilt 60) and hid what stood there. Neighbouring glyphs

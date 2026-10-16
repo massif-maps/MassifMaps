@@ -138,6 +138,21 @@ namespace massif {
         static std::shared_ptr<CelestialEventListener> createCelestialEventBridge(
             int handle, const std::shared_ptr<CelestialEventListener>& chained);
 
+        /**
+         * The three below install a click bridge on a layer given by handle, chaining the listener
+         * already there, with the layer as the target the events are emitted on. They spare a binding
+         * from touching the Layer class just to call setXEventListener.
+         *
+         * @return False if the handle is not a layer of the matching kind.
+         */
+        static bool attachVectorTileEvents(int handle);
+
+        /** @copydoc MassifInterop::attachVectorTileEvents */
+        static bool attachVectorElementEvents(int handle);
+
+        /** @copydoc MassifInterop::attachCelestialEvents */
+        static bool attachCelestialEvents(int handle);
+
     private:
         MassifInterop();
     };

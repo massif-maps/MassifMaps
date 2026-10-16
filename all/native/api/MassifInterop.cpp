@@ -6,7 +6,10 @@
 #include "components/Options.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/VectorDataSource.h"
+#include "layers/CelestialLayer.h"
 #include "layers/Layer.h"
+#include "layers/VectorLayer.h"
+#include "layers/VectorTileLayer.h"
 #include "projections/Projection.h"
 #include "ui/BaseMapView.h"
 #include "ui/MapEventListener.h"
@@ -170,6 +173,36 @@ namespace massif { namespace api {
             int handle, const std::shared_ptr<CelestialEventListener>& chained) {
         return std::make_shared<CelestialEventBridge>(Context::GetDefault(),
                                                       static_cast<Handle>(handle), chained);
+    }
+
+    bool MassifInterop::attachVectorTileEvents(int handle) {
+        auto layer = std::dynamic_pointer_cast<VectorTileLayer>(getLayerByHandle(handle));
+        if (!layer) {
+            return false;
+        }
+        layer->setVectorTileEventListener(std::make_shared<VectorTileEventBridge>(
+            Context::GetDefault(), static_cast<Handle>(handle), layer->getVectorTileEventListener()));
+        return true;
+    }
+
+    bool MassifInterop::attachVectorElementEvents(int handle) {
+        auto layer = std::dynamic_pointer_cast<VectorLayer>(getLayerByHandle(handle));
+        if (!layer) {
+            return false;
+        }
+        layer->setVectorElementEventListener(std::make_shared<VectorElementEventBridge>(
+            Context::GetDefault(), static_cast<Handle>(handle), layer->getVectorElementEventListener()));
+        return true;
+    }
+
+    bool MassifInterop::attachCelestialEvents(int handle) {
+        auto layer = std::dynamic_pointer_cast<CelestialLayer>(getLayerByHandle(handle));
+        if (!layer) {
+            return false;
+        }
+        layer->setCelestialEventListener(std::make_shared<CelestialEventBridge>(
+            Context::GetDefault(), static_cast<Handle>(handle), layer->getCelestialEventListener()));
+        return true;
     }
 
 } }

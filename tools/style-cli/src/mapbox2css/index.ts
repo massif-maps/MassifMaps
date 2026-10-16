@@ -3997,9 +3997,16 @@ function reportSources(style: MapboxStyle, layers: MapboxLayer[], coverage: Cove
  * bare entry, which is every layer of a style that interleaves nothing.
  */
 export function projectEntries(drawOrder: DrawOrderEntry[]): string[] {
-    const sorted = drawOrder.map((entry, at) => ({ entry, at }))
+    const ordered = drawOrder.map((entry, at) => ({ entry, at }))
         .sort((a, b) => a.entry.index - b.entry.index || a.at - b.at)
         .map((item) => item.entry);
+    // An entry draws EVERY rule of its attachment, so a shared attachment MapBox draws at several
+    // depths (Massif's `poi`: landmarks, barriers, then the rest, with park labels and springs between)
+    // would be drawn, and compiled, once per depth. The last depth repaints what the earlier ones drew.
+    const lastAt = new Map<string, number>();
+    ordered.forEach(({ sourceLayer, attachment }, at) => lastAt.set(`${sourceLayer}::${attachment}`, at));
+    const sorted = ordered.filter(({ sourceLayer, attachment }, at) =>
+        attachment === '' || lastAt.get(`${sourceLayer}::${attachment}`) === at);
 
     const runs: Array<{ sourceLayer: string; attachments: string[] }> = [];
     for (const { sourceLayer, attachment } of sorted) {

@@ -25,7 +25,6 @@
     "park::poi",
     "poi::poi_spring_label",
     "poi::poi_spring",
-    "poi::poi",
     "poi::poi_tree_dot",
     "transportation_name::road_label_primary",
     "transportation_name::road_label_tertiary",

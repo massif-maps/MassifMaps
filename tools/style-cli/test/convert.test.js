@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-import { convert } from '../dist/mapbox2css/index.js';
+import { convert, projectEntries } from '../dist/mapbox2css/index.js';
 import { resolveSpriteUrl } from '../dist/mapbox2css/sprite.js';
 import { useMemorySpriteHost } from './sprite-host.js';
 
@@ -637,4 +637,15 @@ test('the Map block records the TileDrawSize its zoom numbers are written for', 
     const style = { layers: [{ id: 'l', type: 'line', 'source-layer': 'road', paint: { 'line-width': 1 } }] };
     assert.match(convert(style, table, { ...NO_PALETTE, tileDrawSize: 512 }).mss, /tile-draw-size: 512;/);
     assert.match(convert(style, table, NO_PALETTE).mss, /tile-draw-size: 256;/);
+});
+
+test('a shared attachment drawn at several depths is one project entry, at the last', () => {
+    const drawOrder = [
+        { sourceLayer: 'poi', attachment: 'poi', index: 1 },
+        { sourceLayer: 'park', attachment: 'label', index: 2 },
+        { sourceLayer: 'poi', attachment: 'spring', index: 3 },
+        { sourceLayer: 'park', attachment: 'name', index: 4 },
+        { sourceLayer: 'poi', attachment: 'poi', index: 5 },
+    ];
+    assert.deepEqual(projectEntries(drawOrder), ['park::label', 'poi::spring', 'park::name', 'poi::poi']);
 });

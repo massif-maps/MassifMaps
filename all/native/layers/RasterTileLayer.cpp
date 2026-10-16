@@ -476,7 +476,11 @@ namespace massif {
                 if (!isInvalidated()) {
                     if (layer->getTileTransformer() == tileTransformer) { // extra check that the tile is created with correct transformer. Otherwise simply drop it.
                         // A fetch is for a tile the cull uses: in the 10 MB preloading cache, arrivals evicted each other before the next refresh held them.
-                        layer->_visibleCache.put(_tileId, tileInfo, tileInfo.getSize());
+                        std::size_t capacity = layer->_visibleCache.capacity();
+                        if (putVisibleTile(layer->_visibleCache, _tileId, tileInfo, tileInfo.getSize())) {
+                            Log::Infof("RasterTileLayer: visible cache %d -> %d MB (%d tiles of %d KB in use)", static_cast<int>(capacity >> 20),
+                                       static_cast<int>(layer->_visibleCache.capacity() >> 20), static_cast<int>(layer->_visibleCache.keys().size()), static_cast<int>(tileInfo.getSize() >> 10));
+                        }
                         if (tileData->getMaxAge() >= 0) {
                             layer->_visibleCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));
                         }

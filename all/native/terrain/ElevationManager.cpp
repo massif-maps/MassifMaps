@@ -20,6 +20,7 @@
 #include <vt/RenderStats.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <unordered_set>
@@ -36,6 +37,8 @@ namespace massif {
     // resolution, and each one past the limit evicts one in use. See docs/internals/rendering/04-terrain.md.
     static const std::size_t MIN_CACHED_GRIDS = 192;
     static const int FAILED_TILE_TTL_MILLISECONDS = 30 * 1000;
+    static const long long BUMP_LOG_WINDOW_MS = 5000;
+    static const unsigned int BUMP_LOG_MIN_BUMPS = 20;
     static const int MAX_ANCESTOR_SEARCH_DEPTH = 8;
     // Must hold a panorama's whole cut (~320 tiles, meshCacheSize/2), or it is shed and re-pushed every frame.
     static const std::size_t MAX_PREFETCH_QUEUE_SIZE = 384;
@@ -521,6 +524,17 @@ namespace massif {
     }
 
     void ElevationManager::notifyDataChanged() const {
+        long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        long long startMs = _bumpWindowStartMs.load();
+        unsigned int version = _dataVersion.load();
+        if (startMs == 0 || nowMs - startMs >= BUMP_LOG_WINDOW_MS) {
+            if (_bumpWindowStartMs.compare_exchange_strong(startMs, nowMs)) {
+                unsigned int first = _bumpWindowFirstVersion.exchange(version);
+                if (startMs != 0 && version - first > BUMP_LOG_MIN_BUMPS) {
+                    Log::Infof("ElevationManager %llu: %u data version bumps in %.1f s", _instanceId, version - first, (nowMs - startMs) / 1000.0);
+                }
+            }
+        }
         std::function<void()> listener;
         {
             std::lock_guard<std::mutex> lock(_mutex);

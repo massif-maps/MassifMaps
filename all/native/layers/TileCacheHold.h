@@ -33,6 +33,23 @@ namespace massif {
         }
     }
 
+    /**
+     * Puts a fetched tile in the visible cache, which grows to take it: its content is bounded by the
+     * hold, and an arrival that evicted a tile still in use made the next cull fetch that one again.
+     * Returns true when the capacity had to grow.
+     */
+    template <typename Cache, typename Value>
+    bool putVisibleTile(Cache& visibleCache, long long tileId, const Value& value, std::size_t size) {
+        visibleCache.remove(tileId);
+        std::size_t needed = visibleCache.size() + size;
+        bool grown = needed > visibleCache.capacity();
+        if (grown) {
+            visibleCache.resize(needed + needed / 4);
+        }
+        visibleCache.put(tileId, value, size);
+        return grown;
+    }
+
     // maplibre's config.MAX_TILE_CACHE_ZOOM_LEVELS: the out-of-view cache holds this many viewports of tiles.
     const int VIEWPORT_CACHE_ZOOM_LEVELS = 5;
 

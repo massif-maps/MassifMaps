@@ -339,10 +339,27 @@ namespace massif::vt {
         }
         registerStyleVariantSlot(styleIndex);
 
-        return [style, transform, invTransTransform, styleIndex, stroke, this](long long id, const Vertices& vertices) {
+        return [style, transform, invTransTransform, styleIndex, stroke, strokeMap, this](long long id, const Vertices& vertices) {
             std::size_t i0 = _coords.size();
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
+            std::size_t texStart = _texCoords.size();
+            std::size_t indexStart = _indices.size();
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
+            if (stroke && strokeMap && _indices.size() > indexStart) {
+                // u counts from the SOURCE line's start, millions under deep overzoom, and packGeometry's one int16
+                // scale then steps tens of texels: drop whole atlas periods, which changes no pixel.
+                float period = static_cast<float>(strokeMap->getWidth());
+                float minU = _texCoords[_indices[indexStart]](0);
+                for (std::size_t k = indexStart + 1; k < _indices.size(); k++) {
+                    minU = std::min(minU, _texCoords[_indices[k]](0));
+                }
+                float shift = period * std::floor(minU / period);
+                if (shift != 0.0f) {
+                    for (std::size_t i = texStart; i < _texCoords.size(); i++) {
+                        _texCoords[i](0) -= shift;
+                    }
+                }
+            }
             if (style.elevationMode == LineElevationMode::SPAN && !vertices.empty()) {
                 // The tiler splits a way where structure/brunnel changes, so a bridge feature's first
                 // and last vertex ARE its portals - unless the TILE cut them. Tested against the tile,

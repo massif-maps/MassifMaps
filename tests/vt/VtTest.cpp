@@ -35,6 +35,7 @@ void testExtrusionOccluder();
 void testGridIndexOrder();
 void testSurfaceTransformerSwap();
 void testRenderTileBlend();
+void testAnimationProgress();
 void testRetainedLayerDedupe();
 void testGroundCover();
 void testLabelSlice();
@@ -96,6 +97,7 @@ int main() {
     testGridIndexOrder();
     testSurfaceTransformerSwap();
     testRenderTileBlend();
+    testAnimationProgress();
     testRetainedLayerDedupe();
     testGroundCover();
     testLabelSlice();

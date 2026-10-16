@@ -179,6 +179,39 @@ Two more consequences worth knowing:
   loop, and it will not look like a bug — it looks like battery drain. `TileRenderer` logs when it
   has been waiting many frames on a pending elevation rebuild for this reason.
 
+### What stops a frame: the animation that no longer moves
+
+Between frames a still map owes nothing; the only thing that keeps asking is a layer's
+`onDrawFrame` returning true. For a tile layer that is `GLTileRenderer::startFrame`, which says
+"another frame" while a tile is still blending, a label still fading, a label was just anchored onto
+terrain or a roof, or a spinning model was drawn. `MapRenderer::drawLayers` turns any true into `requestRedraw()`, and `requestRedraw()` owes
+the follow-up frame described above — so a layer that keeps saying true never lets the map idle: the
+iOS/Catalyst view is an `MGLKView` redrawn by `setNeedsDisplay` and nothing else (no display link, no
+continuous mode), so the frame rate at rest is simply the display's refresh (about 113 fps observed on a
+120 Hz ProMotion screen, 60 on a 60 Hz one) and every one of those frames comes from this chain. Measured
+on the Catalyst app: `300 frames drawn, 300 asked for by a layer, layer mask 0x00000001`, for minutes, with
+the camera still and nothing loading; mask bit 0 is the first layer, the base map.
+
+A real fade moves a little every frame and ends. `vt/AnimationProgress.h` is the guard for the ones that
+do not: `startFrame` hashes what its step moves (tile blends, label opacities, a spinning model's clock)
+and keeps the last four hashes; **a frame whose state equals one of them has not progressed**, so it is
+not asked for again (a stall asks nothing new, a flip between a few states is cut the same way). The
+frame that notices is still drawn, so the pixels on screen are those of the state it stopped on. A step with `dt <= 0` is never judged, and the history is
+dropped whenever a frame asks for nothing, so the next animation starts clean.
+
+The 300-frame log line says which source asked, per tile-renderer frame (so up to 7 x 300 with seven
+renderers):
+
+```
+MapRenderer: what kept the tile renderers asking, over 2100 of their frames - tile blend 0, label fade 0,
+label anchor 2100, spinning model 0, stalled and not passed on 2090
+```
+
+A map that is idle logs neither this line nor the `frames drawn` one for as long as nothing draws. A
+line with a non-zero `stalled` is the guard working: the source named on the same line is the bug to chase.
+A non-zero `spinning model` is legitimate (a wind turbine's rotor, see
+[19-models.md](19-models.md)) and is not capped yet — it redraws at the display rate.
+
 ## Camera animations
 
 `AnimationHandler` (all/native/renderers/components/) runs one animation per camera property — pan,

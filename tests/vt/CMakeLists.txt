@@ -45,6 +45,7 @@ add_executable(vt_tests
   GridIndexOrderTest.cpp
   SurfaceTransformerSwapTest.cpp
   RenderTileBlendTest.cpp
+  AnimationProgressTest.cpp
   GroundCoverTest.cpp
   LabelSliceTest.cpp
   LabelFadeTest.cpp

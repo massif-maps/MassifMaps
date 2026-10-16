@@ -1,4 +1,6 @@
-#if !defined(_WIN32) && !defined(_FILE_OFFSET_BITS)
+// Not on Android: with it, bionic only declares fseeko/ftello from API 24, which <fstream> needs.
+// There pread64 is used instead.
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(_FILE_OFFSET_BITS)
 #define _FILE_OFFSET_BITS 64 // pread offsets past 2 GB on 32-bit ABIs
 #endif
 
@@ -105,7 +107,11 @@ namespace massif {
         // pread keeps no file position, so concurrent tile reads need no lock
         uint64_t done = 0;
         while (done < length) {
+#ifdef __ANDROID__
+            ssize_t count = ::pread64(_fd, data.data() + done, length - done, static_cast<off64_t>(offset + done));
+#else
             ssize_t count = ::pread(_fd, data.data() + done, length - done, static_cast<off_t>(offset + done));
+#endif
             if (count <= 0) {
                 throw GenericException("Failed to read PMTiles data");
             }

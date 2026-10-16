@@ -42,6 +42,20 @@ it; `DemoMap.setManeuverArrow` is twenty lines of exactly that. A `ManeuverArrow
 in the SDK was written first and dropped: once the head became a style property an arrow is a single
 line feature, and a keyed feature set is not navigation-specific enough to earn a class.
 
+**The last segment is kept long.** The head hangs on the last vertex and points along the last segment
+([03-vt-renderer.md](03-vt-renderer.md#line-end-arrows)). The cut lands anywhere in a route segment, so
+that segment can be a few pixels long; with the head's setback (the casing head's incenter, ~0.6 casing
+widths) plus the casing's half width in front of it, the head then sits on the join before it and the
+join's round blob and outline stick out of the head, sheared or turned a few tens of degrees off the
+shaft (simulated by running `tesselateLine` for the four attachments: the break starts below ~1.25
+casing widths). `StraightenEnd` replaces the vertices of the last `END_RUN_FRACTION` (0.6) of the walk
+after the turn by one segment when none strays more than `END_RUN_DEVIATION` (10%) of that run from it.
+Both are shares of `lengthAfter` because the SDK knows no pixels: an app that sizes `lengthAfter` in
+screen units (head + a shaft stub) gets the 1.25 casing widths. A real corner in the stretch (a second
+turn) fails the deviation test and stays; its short last leg is then the route's. The same rule runs on the
+tail, reversed, against `lengthBefore`: a first segment of a few pixels followed by a bend is a correct stroke
+(a round cap, then a join whose inner corner has no room), and still reads as a step in the casing.
+
 Nothing simplifies the sliced geometry: the source's own `SimplifyTolerance` already applies at
 tiling time, in tile pixels, which is the unit that matters.
 

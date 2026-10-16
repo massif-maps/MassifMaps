@@ -12,12 +12,13 @@
 #include "datasources/TileDataSource.h"
 #include "datasources/components/PMTilesUtils.h"
 
-#include <map>
-#include <memory>
-#include <optional>
-#include <vector>
 #include <fstream>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <unordered_map>
+#include <vector>
 
 namespace massif {
     
@@ -71,20 +72,35 @@ namespace massif {
         virtual std::shared_ptr<TileData> loadTile(const MapTile& mapTile);
 
     private:
-        static pmtiles::Header ReadHeader(std::ifstream& file);
-        
-        std::vector<uint8_t> ReadTileData(uint64_t offset, uint32_t length);
-        bool FindTileEntry(uint64_t tileId, pmtiles::DirectoryEntry& outEntry);
-        std::vector<pmtiles::DirectoryEntry> LoadLeafDirectory(uint64_t offset, uint32_t length);
+        typedef std::vector<pmtiles::DirectoryEntry> Directory;
+
+        struct CachedLeaf {
+            std::shared_ptr<const Directory> directory;
+            std::list<uint64_t>::iterator position;
+        };
+
+        void openArchive();
+        std::vector<uint8_t> readRange(uint64_t offset, uint64_t length) const;
+        bool findTileEntry(uint64_t tileId, pmtiles::DirectoryEntry& outEntry);
+        std::shared_ptr<const Directory> getLeafDirectory(uint64_t offset, uint32_t length);
 
         std::string _path;
-        std::unique_ptr<std::ifstream> _file;
+#ifdef _WIN32
+        mutable std::ifstream _file;
+        mutable std::mutex _fileMutex;
+#else
+        int _fd = -1;
+#endif
         pmtiles::Header _header;
-        std::vector<pmtiles::DirectoryEntry> _rootDirectory;
+        Directory _rootDirectory;
         mutable std::optional<std::string> _cachedMetadata;
         mutable std::optional<MapBounds> _cachedDataExtent;
-        mutable std::unordered_map<uint64_t, std::vector<pmtiles::DirectoryEntry> > _leafDirectoryCache;
-        mutable std::recursive_mutex _mutex;
+        mutable std::mutex _cacheMutex;
+
+        std::unordered_map<uint64_t, CachedLeaf> _leafCache;
+        std::list<uint64_t> _leafOrder;
+        std::size_t _leafCacheEntries = 0;
+        std::mutex _leafMutex;
     };
     
 }

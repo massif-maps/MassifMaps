@@ -14,7 +14,7 @@ For what is drawn inside the layer pass see [03-vt-renderer.md](03-vt-renderer.m
 | Thread | Runs | Notes |
 |---|---|---|
 | **GL render thread** | `MapRenderer::onDrawFrame` and everything it calls | the only thread allowed to touch GL, except the two below |
-| tile loading pool | `TileLayer::loadData` → data source fetch → decode → `vt::Tile` | `Options::setTileThreadPoolSize`, default **1** (tangram uses 2) |
+| tile loading pool | `TileLayer::loadData` → data source fetch → decode → `vt::Tile` | `Options::setTileThreadPoolSize`, default **2** (tangram uses 2); on a Mac or Mac Catalyst half the cores, 2 to 8. Workers are created at the lowest priority, which `ThreadUtils.mm` keeps out of the macOS background band |
 | `CullWorker` | visible tile calculation per layer | `all/native/renderers/workers/CullWorker.cpp`, one per layer, debounced |
 | `VTLabelPlacementWorker` | label placement for every vector layer | see [06-labels.mdx](06-labels.mdx) |
 | `BillboardPlacementWorker` | billboard placement/visibility | kicked from `onDrawFrame` when `_billboardsChanged` |

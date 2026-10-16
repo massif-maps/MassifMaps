@@ -34,13 +34,12 @@ sharing one blob.
 MapTile(z,x,y)
   └─ zxyToTileId  ── Hilbert curve, not Z-order: better spatial locality,
                      so neighbouring tiles land near each other on disk
-  └─ FindTileEntry
-       ├─ scan the root directory
-       │    ├─ tile entry whose run contains the id  → hit
-       │    └─ leaf pointer with tileId <= id        → load (or reuse) that leaf, scan it
-       └─ miss  → z > minZoom: TileData{replaceWithParent}   (the layer overzooms the parent)
+  └─ findTileEntry     binary search of the root (sorted by tile id), then of the ONE leaf the
+       │                 pointer names - at most 3 leaf levels, as the spec allows
+       ├─ run holding the id                   → hit
+       └─ none  → z > minZoom: TileData{replaceWithParent}   (the layer overzooms the parent)
                   z == minZoom: null
-  └─ read entry.length bytes at tileDataOffset + entry.offset
+  └─ pread entry.length bytes at tileDataOffset + entry.offset
   └─ decompressData(header.tileCompression)
 ```
 
@@ -54,38 +53,43 @@ empty `TileData` flagged `isOverZoom`.
 (`header.internalCompression`) and the tile payloads (`header.tileCompression`). They are
 independent; an archive commonly gzips directories and leaves already-compressed PNG tiles raw.
 
+gzip inflates straight into one buffer sized from the stream's own trailer (the uncompressed size is
+its last four bytes), growing only if that claim is wrong or wrapped; an uncompressed payload is
+moved through, not copied.
+
 ## Concurrency and caching
 
-One `std::recursive_mutex` guards every public entry point, because the object owns a single
-`std::ifstream` and a seek/read pair is not atomic. Tiles are therefore fetched **serialised** even
-though `TileLayer` calls from a pool — the default pool (`Options::setTileThreadPoolSize`) has 2
-threads, so at most one waits; not measured as a bottleneck.
+Reads are `pread` on one descriptor (no shared file position), so the tile pool's threads read and
+inflate in parallel; nothing holds a lock across I/O or decompression. Windows keeps a mutexed
+`ifstream`. Only the two small caches below take a lock, and only for the lookup.
 
-Cached for the object's lifetime, none of it bounded:
+Cached for the object's lifetime: the root directory (decoded at construction), `_cachedMetadata`
+and `_cachedDataExtent` (first access). Leaf directories are cached by offset in an LRU bounded at
+`MAX_CACHED_LEAF_ENTRIES` (2^20 entries, ~25 MB; a Europe archive has ~4096 entries per leaf, so
+~250 leaves), handed out as `shared_ptr<const>` so a scan outlives its eviction.
 
-- the root directory (decoded once at construction),
-- `_cachedMetadata` and `_cachedDataExtent` (first access),
-- `_leafDirectoryCache`, keyed by leaf offset.
+The source caches **no tile bytes**. Past its max zoom every overzoomed child tile loads the same
+parent again; wrap the source in `MemoryCacheTileDataSource` when that matters.
 
-The source caches **no tile bytes**. Wrap it in `MemoryCacheTileDataSource` /
-`PersistentCacheTileDataSource` when that matters.
+:::note What the lookup used to cost
+The first version scanned the root linearly and, for **every** leaf pointer at or before the id,
+loaded, inflated and linearly scanned that leaf until it found the tile — all under one recursive
+mutex. A z14 tile of a 6.3 M-tile archive sits half way through 1538 leaves: the first load decoded
+~770 leaves (55 ms, ~75 MB of directories that never left the cache), and every later one still
+walked all of them. Measured on `europe.pmtiles` (z14, dense city tiles, Apple M5 Pro, Release):
+2.9 ms per warm tile and 468 tiles/s on four threads before, 0.14 ms and ~30 000 tiles/s after
+(the terrain archive 0.31 -> 0.002 ms). Same bytes: 20 000 random tiles of three archives hash
+identically before and after.
+:::
 
 ## What could be better
 
-Ordered by value, none of it measured yet on a real archive:
-
-1. **Directory lookup is a linear scan, twice.** `FindTileEntry` walks the whole root vector, and
-   `pmtiles::findTileEntry` walks the whole leaf vector. Entries are sorted by `tileId`, so both are
-   a `std::lower_bound` away from O(log n). On a large archive the root directory alone is thousands
-   of entries, scanned per tile request. *(An earlier version of this page claimed binary search was
-   already used — it is not.)*
-2. **Every leaf pointer with `tileId <= id` is loaded and scanned**, not just the one that can
-   contain the id. Bounding the candidate by the *next* leaf pointer's `tileId` turns a
-   worst-case multi-leaf read into a single one.
-3. **`_leafDirectoryCache` never evicts.** Fine for a city-sized archive, unbounded for a planet one.
-4. **`loadTile` logs at info level on every call** — noise in a normal session.
-5. **HTTP archives** go through the generic HTTP source rather than PMTiles range requests, so the
+1. **Two leaves can decode the same directory at once** on a cold start; the first insert wins. It
+   costs one redundant inflate, not correctness.
+2. **HTTP archives** go through the generic HTTP source rather than PMTiles range requests, so the
    directory structure buys nothing remotely; only local files get the random-access win.
+3. `loadTile` still logs one info line per tile ([performance-log](performance-log.md): ~0.6 us
+   through `os_log`, not a cost worth removing).
 
 ## Failure modes
 

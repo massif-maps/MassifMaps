@@ -580,7 +580,8 @@ namespace massif {
         int getEnvelopeThreadPoolSize() const;
         /**
          * Sets the number of threads used by the envelope task pool. More threads means more envelope tasks 
-         * are executed in parallel. This might speed up the data query, but may cause performance drops. Default is 1.
+         * are executed in parallel. This might speed up the data query, but may cause performance drops.
+         * Default is 2, and half the cores (2 to 8) on a Mac or Mac Catalyst build.
          * @param poolSize The new envelope task thread pool size.
          */
         void setEnvelopeThreadPoolSize(int poolSize);

@@ -605,7 +605,7 @@ invalidate a stored camera.
 | Option | Was | Now | Why |
 |---|---|---|---|
 | `Options.zoomGestures` | off | **on** | double-tap, two-finger tap and double-tap-drag zoom. Every other map SDK does these; an app that had to ask just looked broken |
-| `Options.tileThreadPoolSize` | 1 | **2** | tangram's `numTileWorkers`. One made tiles arrive late enough to be seen arriving |
+| `Options.tileThreadPoolSize` | 1 | **2** (Mac, Mac Catalyst: half the cores, 2 to 8) | tangram's `numTileWorkers`. One made tiles arrive late enough to be seen arriving. A Mac decodes four to eight tiles at once, see [performance log 45](internals/performance-log.md#45-a-catalyst-tile-pool-pinned-to-the-background-and-a-pmtiles-lookup-that-walked-every-leaf-2026-10-15) |
 | `Options.tileLODFactor` | 1.0 | **0.5** | half a nominal tile of screen area per level |
 | `TerrainOptions.meshResolution` | 32 | **64** | tangram's value. 32 leaves draped content visibly floating; 128 cost 8.5 fps against 15.2 |
 | `TerrainOptions.cameraClearance` | 200 m | **0** | 200 stopped a close approach short of the surface. It was 60 m here; it is now a floor added to mapbox's zoom-relative clearance (`cameraClearanceFraction`) |

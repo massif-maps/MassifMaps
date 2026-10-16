@@ -68,6 +68,9 @@ namespace pmtiles {
      */
     std::vector<uint8_t> decompressData(const std::vector<uint8_t>& data, uint8_t compression);
 
+    /** Same, but an uncompressed payload is moved through instead of copied. */
+    std::vector<uint8_t> decompressData(std::vector<uint8_t>&& data, uint8_t compression);
+
     /**
      * Decode a PMTiles directory from decompressed data.
      * @param data Decompressed directory data
@@ -93,7 +96,16 @@ namespace pmtiles {
     uint64_t zxyToTileId(int z, int x, int y);
 
     /**
-     * Find a tile entry in a directory.
+     * Binary-search a directory (sorted by tile id) for the entry covering a tile id.
+     * @param directory Directory entries to search
+     * @param tileId TileID to find
+     * @return The run of tiles holding the id, or the leaf directory pointer (runLength 0) whose range
+     *         starts at or before it, or null when neither does. Points into the directory.
+     */
+    const DirectoryEntry* findDirectoryEntry(const std::vector<DirectoryEntry>& directory, uint64_t tileId);
+
+    /**
+     * Find a tile entry in a directory. Leaf directory pointers never match.
      * @param directory Directory entries to search
      * @param tileId TileID to find
      * @param outEntry Output entry if found

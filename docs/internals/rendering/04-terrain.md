@@ -1220,6 +1220,12 @@ Three ways, in increasing order of control:
 The two durations are split because the directions are not alike: the rise is the one an app matches
 to a camera flight, and the one that waited for its tiles first.
 
+**A frame covers at most a sixth of the ramp** (`MapRenderer::TERRAIN_SWITCH_MIN_RAMP_FRAMES`,
+`FlattenSwitch::Input::maxRampStep`), so a slow frame stretches the switch instead of leaping through
+it. On the Crosscall the frame terrain switches on in took 182 ms, 60% of a 0.3 s rise in one step, and
+the camera, riding the ground, moved a sixth of its distance to it at once. At 60 fps a 0.3 s ramp
+steps less than that anyway, so a desktop's switch is unchanged.
+
 `FlattenRatio` is writable, and that is the only way two animations can be made to match **exactly** —
 a duration is a second timer, and two timers of the same length still drift when a frame is dropped.
 Writing it puts the switch in `MANUAL`, which suspends both its own ramp and auto-flattening, and
@@ -1437,6 +1443,16 @@ cached ground (a level view, a camera under the ground) falls back to the frame'
 sea level 4 shells above) left the zoom measured to sea level over high ground: at z16 over
 Grenoble (212 m) the camera hung tens of metres above the roofs, the drape a level short of the
 view.
+
+**Not during a 2D/3D ramp.** The hold is for a focus that moves over the ground; a ramp rescales the
+ground under a still one, so the pin keeps following it under a finger too, while `FlattenRatio` is
+strictly between 0 and 1 and on the frame it lands on either end. That last step is no detail on a
+slow phone: the Crosscall draws a 0.3 s ramp in 3-4 frames, and its final step (0.11 to 0) was a tenth
+of the relief, held until the finger lifted. Nor does the pin land the focus on the ramp's first frame when a
+finger had frozen it: a landing holds the camera and slides the focus down the view, so that step's
+rise of the ground (a sixth of the relief on the Crosscall) came at the camera for a frame. Held, a switch started by tilting (auto-flatten) rose the relief into a camera left at
+the flat map's height — on Android, where the tilt is a two-finger gesture; the 3D button and a
+desktop's trackpad tilt raise no gesture and never showed it.
 
 **Both work on the globe too.** They read a camera or focus position through
 `ProjectionSurface::calculateMapPos`, so a sphere's 3D point becomes the internal x/y an elevation

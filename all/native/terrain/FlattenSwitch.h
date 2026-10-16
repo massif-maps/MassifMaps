@@ -42,6 +42,7 @@ namespace massif {
             float flattenDuration = 0.0f; // 3D -> 2D, 0 switches instantly
             float riseDuration = 0.0f;    // 2D -> 3D
             float warmTimeout = 0.0f; // give up waiting for the tiles after this; 0 waits forever
+            float maxRampStep = 1.0f; // most of the ramp one frame may cover, so a stalled frame cannot leap
         };
 
         // Terrain decode survives a disabled terrain only when the app asked for it, so setEnabled never re-decodes.
@@ -97,7 +98,7 @@ namespace massif {
                 float target = input.flatten ? 1.0f : 0.0f;
                 // Separate durations: an app matches the rise to a flight.
                 float duration = input.flatten ? input.flattenDuration : input.riseDuration;
-                float step = duration > 0 ? delta / duration : 1.0f;
+                float step = duration > 0 ? std::min(delta / duration, std::max(0.0f, input.maxRampStep)) : 1.0f;
                 next.ratio = target > state.ratio ? std::min(target, state.ratio + step)
                                                   : std::max(target, state.ratio - step);
                 if (next.ratio >= 1.0f) {

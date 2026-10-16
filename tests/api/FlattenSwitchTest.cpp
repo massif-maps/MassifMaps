@@ -199,6 +199,31 @@ namespace {
         TEST_CHECK(state.phase == Phase::TERRAIN && up == 4, "and rising takes its own, longer one");
     }
 
+    void testStalledFrameCannotLeap() {
+        // A slow phone drew a 0.3 s rise in 2-3 frames, and its first took 182 ms: 60% of the ramp in one step.
+        FlattenSwitch::Input in = input(false, true, true, 0.25f);
+        in.maxRampStep = 0.25f;
+        FlattenSwitch::State state = flatState(false);
+        state = FlattenSwitch::step(state, in);  // FLAT -> WARMING
+        state = FlattenSwitch::step(state, in);  // WARMING -> RAMPING (tiles ready)
+        in.deltaSeconds = 1.0f;                  // a stall twice the ramp's whole duration
+        state = FlattenSwitch::step(state, in);
+        TEST_CHECK(state.phase == Phase::RAMPING && state.ratio == 0.75f, "a stalled frame covers at most maxRampStep of the ramp");
+        int frames = 1;
+        while (state.phase == Phase::RAMPING && frames < 10) {
+            state = FlattenSwitch::step(state, in);
+            frames++;
+        }
+        TEST_CHECK(state.phase == Phase::TERRAIN && frames == 4, "so the rise still spans 1 / maxRampStep frames");
+
+        in.maxRampStep = 1.0f;
+        state = flatState(false);
+        state = FlattenSwitch::step(state, in);
+        state = FlattenSwitch::step(state, in);
+        state = FlattenSwitch::step(state, in);
+        TEST_CHECK(state.phase == Phase::TERRAIN, "uncapped, the same stall ends the ramp in one frame, as before");
+    }
+
     void testManualRatio() {
         // The app driving the ratio off its own clock - a camera flight's progress - is the only way
         // two animations can be made to match exactly.
@@ -290,6 +315,7 @@ void testFlattenSwitch() {
     testInstantSwitch();
     testTerrainActiveFollowsTheRatio();
     testPerDirectionDurations();
+    testStalledFrameCannotLeap();
     testManualRatio();
     testManualRiseDoesNotFlapTheDecode();
     testManualRiseIsStillGatedOnTiles();

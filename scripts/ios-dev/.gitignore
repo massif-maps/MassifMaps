@@ -3,3 +3,5 @@
 MassifDemo/Info.plist
 .sdkproj
 .angle
+MassifDemoCatalyst.xcodeproj/
+.catalyst/

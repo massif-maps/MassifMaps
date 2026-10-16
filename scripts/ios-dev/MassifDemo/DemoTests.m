@@ -222,6 +222,101 @@ static MSFLocalVectorDataSource *sResults = nil;
 }
 
 // =================================================================================================
+// ROUTE FROM A FILE
+// =================================================================================================
+
++ (int)drawRouteFile:(NSString *)path demo:(DemoMap *)demo {
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    NSDictionary *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+    NSArray<NSArray<NSNumber *> *> *points = json[@"points"];
+    if (points.count < 3) {
+        NSLog(@"MassifDemo: -routeFile %@ unreadable", path);
+        return 0;
+    }
+    MSFMapPosVector *wgs = [[MSFMapPosVector alloc] init];
+    NSMutableArray<NSArray<NSNumber *> *> *coordinates = [NSMutableArray array];
+    for (NSArray<NSNumber *> *point in points) {
+        [wgs add:[[MSFMapPos alloc] initWithX:point[0].doubleValue y:point[1].doubleValue]];
+        [coordinates addObject:@[point[0], point[1]]];
+    }
+    // the navigation layer of the app's inner style: class=route
+    NSDictionary *geoJSON = @{ @"type": @"FeatureCollection", @"features": @[ @{
+        @"type": @"Feature",
+        @"properties": @{ @"class": @"route" },
+        @"geometry": @{ @"type": @"LineString", @"coordinates": coordinates } } ] };
+    NSData *geoJSONData = [NSJSONSerialization dataWithJSONObject:geoJSON options:0 error:nil];
+    MSFGeoJSONVectorTileDataSource *source = [demo routeSource];
+    int navigationLayer = [source createLayer:@"navigation"];
+    [source setLayerGeoJSONString:navigationLayer
+                          geoJSON:[[NSString alloc] initWithData:geoJSONData encoding:NSUTF8StringEncoding]];
+
+    // -itemsRandom "count,lengthMeters,seed": that many lines of the items style spread over the area, for load tests
+    NSString *itemsRandom = [DemoConfig stringFor:@"itemsRandom"];
+    if (itemsRandom.length) {
+        NSArray<NSString *> *parts = [itemsRandom componentsSeparatedByString:@","];
+        int count = parts.count > 0 ? parts[0].intValue : 0;
+        double length = parts.count > 1 ? parts[1].doubleValue : 100;
+        srand48(parts.count > 2 ? parts[2].intValue : 1);
+        NSMutableArray *features = [NSMutableArray array];
+        for (int i = 0; i < count; i++) {
+            double lon = 5.7215 + drand48() * 0.0105, lat = 45.1850 + drand48() * 0.0060;
+            double heading = drand48() * 2 * M_PI;
+            NSMutableArray *coordinates = [NSMutableArray array];
+            for (int k = 0; k < 4; k++) {
+                [coordinates addObject:@[@(lon), @(lat)]];
+                heading += (drand48() - 0.5) * 0.8;
+                double step = length / 3;
+                lon += step * cos(heading) / (111320.0 * cos(lat * M_PI / 180));
+                lat += step * sin(heading) / 111320.0;
+            }
+            [features addObject:@{ @"type": @"Feature", @"properties": @{ @"class": @"bicycle", @"id": @(100 + i) },
+                                   @"geometry": @{ @"type": @"LineString", @"coordinates": coordinates } }];
+        }
+        NSDictionary *items = @{ @"type": @"FeatureCollection", @"features": features };
+        int itemsLayer = [source createLayer:@"items"];
+        [source setLayerGeoJSONString:itemsLayer
+                              geoJSON:[[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:items options:0 error:nil] encoding:NSUTF8StringEncoding]];
+    }
+    NSString *itemsLine = [DemoConfig stringFor:@"itemsLine"];
+    if (itemsLine.length) {
+        NSMutableArray *itemCoordinates = [NSMutableArray array];
+        for (NSString *pair in [itemsLine componentsSeparatedByString:@";"]) {
+            NSArray<NSString *> *lonLat = [pair componentsSeparatedByString:@","];
+            if (lonLat.count == 2) {
+                [itemCoordinates addObject:@[@(lonLat[0].doubleValue), @(lonLat[1].doubleValue)]];
+            }
+        }
+        NSDictionary *items = @{ @"type": @"FeatureCollection", @"features": @[ @{
+            @"type": @"Feature",
+            @"properties": @{ @"class": @"bicycle", @"id": @1 },
+            @"geometry": @{ @"type": @"LineString", @"coordinates": itemCoordinates } } ] };
+        int itemsLayer = [source createLayer:@"items"];
+        [source setLayerGeoJSONString:itemsLayer
+                              geoJSON:[[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:items options:0 error:nil] encoding:NSUTF8StringEncoding]];
+    }
+
+    MSFManeuverArrowBuilder *builder = [self builderFor:demo
+                                                before:[DemoConfig floatFor:@"maneuverBefore"]
+                                                 after:[DemoConfig floatFor:@"maneuverAfter"]];
+    int arrows = 0;
+    for (int index = 1; index + 1 < (int)points.count; index++) {
+        double before = atan2(points[index][1].doubleValue - points[index - 1][1].doubleValue,
+                              (points[index][0].doubleValue - points[index - 1][0].doubleValue) * cos(points[index][1].doubleValue * M_PI / 180));
+        double after = atan2(points[index + 1][1].doubleValue - points[index][1].doubleValue,
+                             (points[index + 1][0].doubleValue - points[index][0].doubleValue) * cos(points[index][1].doubleValue * M_PI / 180));
+        double turn = fabs(fmod((after - before) * 180 / M_PI + 540, 360) - 180);
+        if (turn < 35) {
+            continue;
+        }
+        MSFFeatureCollection *arrow = [builder buildArrowAtIndex:nil points:wgs maneuverIndex:index];
+        NSLog(@"MassifDemo: arrow at point %d: before %.1f after %.1f turn %.0f deg, %d features", index, [builder getLengthBefore], [builder getLengthAfter], turn, [arrow getFeatureCount]);
+        [demo setManeuverArrow:arrows++ arrow:arrow];
+    }
+    NSLog(@"MassifDemo: route %@ drawn, %d arrows", path.lastPathComponent, arrows);
+    return arrows;
+}
+
+// =================================================================================================
 // ROUTING
 // =================================================================================================
 

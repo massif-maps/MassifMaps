@@ -44,6 +44,13 @@ label placement). For anything involving 3D extrusions — shadows above all —
 buildings arrive asynchronously, and **before they cast there are no shadows to be wrong**. A frame
 taken too early shows a clean scene that looks exactly like a fix.
 
+## The iOS demo as a Mac app
+
+`scripts/ios-dev` also builds as a native Mac Catalyst app that takes the same knobs as launch arguments and
+captures screenshots and frame bursts in-process, with the app's own Massif style and offline data, so a
+rendering bug reproduces in a minute without the simulator or NativeScript. See
+[the Catalyst demo loop](../internals/catalyst-demo-loop.md).
+
 ## The demo files
 
 | File (under `app/src/main/java/com/massifmaps/MassifDemo/`) | Role |

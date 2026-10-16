@@ -1,6 +1,7 @@
 #import "DemoMap.h"
 #import "DemoCameraPreview.h"
 #import "DemoCelestial.h"
+#import "DemoCfg.h"
 #import "DemoConfig.h"
 #import "DemoOrientation.h"
 #import "DemoSky.h"
@@ -64,6 +65,9 @@ static const DemoFeature LAYER_ORDER[] = {
     MSFTileDataSource *_cachedRaster;
     MSFTileDataSource *_cachedContourTiles;
     MSFGeoJSONVectorTileDataSource *_cachedManeuvers;
+MSFGeoJSONVectorTileDataSource *_cachedRoute;
+MSFLayer *_routeLayer;
+MSFLayer *_maneuversLayer;
     int _maneuverLayerIndex;
     MSFManeuverArrowBuilder *_maneuverBuilder;
     NSMutableDictionary<NSNumber *, MSFFeatureCollection *> *_maneuverArrows;
@@ -210,6 +214,7 @@ static const DemoFeature LAYER_ORDER[] = {
  */
 - (void)rebuildLayers {
     MSFLayerVector *vector = [[MSFLayerVector alloc] init];
+    int added = 0, maneuversIndex = -1;
     for (size_t i = 0; i < sizeof(LAYER_ORDER) / sizeof(LAYER_ORDER[0]); i++) {
         DemoFeature feature = LAYER_ORDER[i];
         if (![self isEnabled:feature]) {
@@ -223,9 +228,16 @@ static const DemoFeature LAYER_ORDER[] = {
             }
             _layers[@(feature)] = layer;
         }
+        if (feature == DemoFeatureManeuvers) {
+            maneuversIndex = added;
+        }
         [vector add:layer];
+        added++;
     }
     [[self.mapView getLayers] setAll:vector];
+    if (_routeLayer && maneuversIndex >= 0) {
+        [[self.mapView getLayers] insert:maneuversIndex layer:_routeLayer];
+    }
     // The sky objects are built with their layer, which happens here, so place them now that they
     // exist.
     [self updateSky];
@@ -281,6 +293,13 @@ static const DemoFeature LAYER_ORDER[] = {
         [[MSFCompositeVectorTileLayer alloc] initWithDataSource:[self vectorSource] decoder:_baseDecoder];
     [layer setLabelRenderOrder:MSF_VECTOR_TILE_RENDER_ORDER_LAST];
     [layer setTileCacheCapacity:cacheBytes];
+    if ([DemoConfig floatFor:@"layerBlendingSpeed"] >= 0) {
+        [layer setLayerBlendingSpeed:[DemoConfig floatFor:@"layerBlendingSpeed"]];
+    }
+    if ([DemoConfig floatFor:@"labelBlendingSpeed"] >= 0) {
+        [layer setLabelBlendingSpeed:[DemoConfig floatFor:@"labelBlendingSpeed"]];
+    }
+    [[self.mapView getOptions] setLayersLabelsProcessedInReverseOrder:[DemoConfig boolFor:@"labelsReverse"]];
     _compositeLayer = layer;
     _baseLayer = layer;
     [self syncCompositeSources];
@@ -522,16 +541,43 @@ static const DemoFeature LAYER_ORDER[] = {
  * layer of its own, it draws over everything below it in LAYER_ORDER and under every Marker.
  */
 - (MSFLayer *)createManeuversLayer {
-    MSFMBVectorTileDecoder *decoder = [[MSFMBVectorTileDecoder alloc] initWithCartoCSSStyleSet:
-        [[MSFCartoCSSStyleSet alloc] initWithCartoCSS:[DemoStyles maneuverStyle:[self maneuverHeadPath]]]];
+    MSFMBVectorTileDecoder *decoder = nil;
+    NSString *styleDir = [DemoConfig stringFor:@"maneuverStyleDir"];
+    if (styleDir.length) {
+        decoder = [[MSFMBVectorTileDecoder alloc] initWithCompiledStyleSet:
+            [[MSFCompiledStyleSet alloc] initWithAssetPackage:[[MSFDirAssetPackage alloc] initWithDirPath:styleDir]
+                                                    styleName:[DemoConfig stringFor:@"maneuverStyleName"]]];
+    } else {
+        decoder = [[MSFMBVectorTileDecoder alloc] initWithCartoCSSStyleSet:
+            [[MSFCartoCSSStyleSet alloc] initWithCartoCSS:[DemoStyles maneuverStyle:[self maneuverHeadPath]]]];
+    }
     MSFGeoJSONVectorTileDataSource *source = [self maneuverSource];
+    if (!_seededManeuvers && [DemoConfig stringFor:@"routeFile"].length) {
+        _seededManeuvers = YES;
+        [DemoTests drawRouteFile:[DemoConfig stringFor:@"routeFile"] demo:self];
+    }
     if (!_seededManeuvers) {
         // So the layer shows something without a routing package on the device. The routing test
         // overwrites these with the real turns of the route it computes.
         _seededManeuvers = YES;
         [DemoTests seedManeuverArrows:self];
     }
-    return [[MSFVectorTileLayer alloc] initWithDataSource:source decoder:decoder];
+    if (_cachedRoute) {
+        _routeLayer = [[MSFVectorTileLayer alloc] initWithDataSource:_cachedRoute decoder:decoder];
+    }
+    _maneuversLayer = [[MSFVectorTileLayer alloc] initWithDataSource:source decoder:decoder];
+    return _maneuversLayer;
+}
+
+/** The route's own source when -routeSeparate is on, else the arrows'. */
+- (MSFGeoJSONVectorTileDataSource *)routeSource {
+    if (![DemoConfig boolFor:@"routeSeparate"]) {
+        return [self maneuverSource];
+    }
+    if (!_cachedRoute) {
+        _cachedRoute = [[MSFGeoJSONVectorTileDataSource alloc] initWithMinZoom:0 maxZoom:24];
+    }
+    return _cachedRoute;
 }
 
 - (MSFGeoJSONVectorTileDataSource *)maneuverSource {
@@ -685,6 +731,9 @@ static const DemoFeature LAYER_ORDER[] = {
 }
 
 - (MSFTileDataSource *)vectorSource {
+    if (!_cachedVector && [DemoConfig stringFor:@"vectorFile"].length) {
+        _cachedVector = [[MSFPMTilesTileDataSource alloc] initWithPath:[DemoConfig stringFor:@"vectorFile"]];
+    }
     if (!_cachedVector) {
         _cachedVector = [self httpSourceWithURL:[DemoConfig stringFor:@"vectorUrl"]
                                         minZoom:0
@@ -699,6 +748,13 @@ static const DemoFeature LAYER_ORDER[] = {
  * contours, hypsometric tint), so each DEM tile is fetched and decoded once.
  */
 - (MSFTileDataSource *)demSource {
+    if (!_cachedDem && [DemoConfig stringFor:@"demFile"].length) {
+        MSFPMTilesTileDataSource *archive =
+            [[MSFPMTilesTileDataSource alloc] initWithPath:[DemoConfig stringFor:@"demFile"]];
+        [archive setMetaDataElement:@"dem_encoding"
+                            element:[[MSFVariant alloc] initWithString:[DemoConfig stringFor:@"demEncoding"]]];
+        _cachedDem = archive;
+    }
     if (!_cachedDem) {
         _cachedDem = [self httpSourceWithURL:[DemoConfig stringFor:@"demUrl"]
                                      minZoom:1
@@ -794,6 +850,9 @@ static const DemoFeature LAYER_ORDER[] = {
     [_terrainOptions setCameraClearance:[DemoConfig floatFor:@"clearance"]];
     [_terrainOptions setDrapeFillsEnabled:[DemoConfig boolFor:@"drape"]];
     [_terrainOptions setDrapeLinesEnabled:[DemoConfig boolFor:@"drapeLines"]];
+    if ([DemoConfig stringFor:@"noDrape"].length) {
+        [_terrainOptions setNoDrapeLayerFilter:[DemoConfig stringFor:@"noDrape"]];
+    }
     [_terrainOptions setDrapeResolution:[DemoConfig intFor:@"drapeResolution"]];
     [_terrainOptions setTileEdgeStitchingEnabled:[DemoConfig boolFor:@"stitch"]];
     [_terrainOptions setSeamlessTileEdgesEnabled:[DemoConfig boolFor:@"seamlessEdges"]];
@@ -984,7 +1043,7 @@ static const DemoFeature LAYER_ORDER[] = {
     [options setFreeRoamLookSensitivity:[DemoConfig floatFor:@"lookSensitivity"]];
     [options setFreeRoamMoveSpeed:[DemoConfig floatFor:@"moveSpeed"]];
     BOOL lookUp = ![freeRoam isEqualToString:@"off"] || [DemoConfig boolFor:@"starSky"];
-    float minTilt = lookUp ? -fmaxf(30, [DemoConfig floatFor:@"lookUp"]) : 30;
+    float minTilt = lookUp ? -fmaxf(30, [DemoConfig floatFor:@"lookUp"]) : [DemoCfg floatFor:@"tiltMin" defaultValue:30];
     [options setTiltRange:[[MSFMapRange alloc] initWithMin:minTilt max:90]];
 }
 

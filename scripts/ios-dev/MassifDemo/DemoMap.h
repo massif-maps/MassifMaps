@@ -115,6 +115,7 @@ typedef NS_ENUM(NSInteger, DemoFeature) {
 // --- maneuver arrows ---
 /** The arrow source, kept across layer rebuilds so the arrows survive a toggle. */
 - (MSFGeoJSONVectorTileDataSource *)maneuverSource;
+- (MSFGeoJSONVectorTileDataSource *)routeSource;
 /** Shows one arrow under an id, or removes it when the arrow is nil or empty. */
 - (void)setManeuverArrow:(int)arrowId arrow:(MSFFeatureCollection *)arrow;
 - (void)clearManeuverArrows;

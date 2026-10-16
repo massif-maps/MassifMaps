@@ -1,0 +1,129 @@
+name: MassifDemoCatalyst
+
+# The Mac Catalyst build of the demo: a native macOS process, so an SDK rendering bug can be
+# reproduced from the command line in seconds, with no NativeScript and no simulator.
+#
+# Unlike project.yml, the SDK is NOT built as a dependency here. It links the lib that
+# build-plugin-catalyst.sh already built, by absolute path (MASSIF_SDK_DIR, a build setting you can
+# override on the xcodebuild command line). A worktree has no build/ or generated/ of its own, so
+# this is what lets one checkout drive the demo while another one builds the lib.
+#
+#   ./run-catalyst-demo.sh      # generates this project when missing, builds, launches, shoots
+
+options:
+  bundleIdPrefix: com.massifmaps
+  deploymentTarget:
+    iOS: "13.1"
+  createIntermediateGroups: true
+
+targets:
+  MassifDemo:
+    type: application
+    platform: iOS
+    sources:
+      - path: MassifDemo
+        excludes:
+          - Info.plist
+      - path: ../../docs/examples/examples.json
+        buildPhase: resources
+      - path: ../../docs/examples/screenshots
+        buildPhase: resources
+        type: folder
+      - path: MassifDemo/Examples
+        buildPhase: resources
+        type: folder
+      - path: ../android-dev/app/src/main/assets/peak-finder
+        buildPhase: resources
+        type: folder
+    preBuildScripts:
+      - name: Zip the shared style projects
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          src="$SRCROOT/../android-dev/app/src/main/style-projects"
+          out="$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/styles"
+          mkdir -p "$out"
+          for project in "$src"/*/; do
+            name=$(basename "$project")
+            rm -f "$out/$name.zip"
+            (cd "$project" && zip -q -r -X "$out/$name.zip" .)
+          done
+          rm -f "$out/massif.zip"
+          (cd "$SRCROOT/../../styles/massif/carto" && zip -q -r -X "$out/massif.zip" .)
+    dependencies:
+      - sdk: Foundation.framework
+      - sdk: CoreGraphics.framework
+      - sdk: CoreText.framework
+      - sdk: CFNetwork.framework
+      - sdk: UIKit.framework
+      - sdk: QuartzCore.framework
+      - sdk: Metal.framework
+      - sdk: IOSurface.framework
+      - sdk: CoreVideo.framework
+      - sdk: AVFoundation.framework
+      - sdk: CoreMotion.framework
+      - sdk: libz.tbd
+    info:
+      path: .catalyst/Info.plist
+      properties:
+        NSCameraUsageDescription: The AR and star-sky modes draw the map over the live camera.
+        NSMotionUsageDescription: Following the device orientation points the camera where the phone points.
+        UILaunchScreen: {}
+        CFBundleURLTypes:
+          - CFBundleURLName: com.massifmaps.MassifDemo
+            CFBundleURLSchemes:
+              - massifdemo
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CFBundleDisplayName: MassifDemo
+    settings:
+      base:
+        # Where build/ and generated/ live: the checkout that built libmassif.a.
+        MASSIF_SDK_DIR: $(SRCROOT)/../..
+        MASSIF_LIB: $(MASSIF_SDK_DIR)/build/ios_metal-MACCATALYST-arm64/Release/libmassif.a
+        SUPPORTS_MACCATALYST: YES
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
+        # 1,2 = iPhone/iPad; Catalyst then runs it as iPad scaled to match (not "Optimize for Mac").
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        HEADER_SEARCH_PATHS:
+          - $(MASSIF_SDK_DIR)/generated/ios-objc/proxies
+          - $(MASSIF_SDK_DIR)/ios/objc
+          - $(MASSIF_SDK_DIR)/libs-external/angle-metal/include
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - $(inherited)
+          - _MASSIF_SEARCH_SUPPORT=1
+          - _MASSIF_OFFLINE_SUPPORT=1
+          - _MASSIF_EDITABLE_SUPPORT=1
+          - _MASSIF_PACKAGEMANAGER_SUPPORT=1
+          - _MASSIF_ROUTING_SUPPORT=1
+          - _MASSIF_VALHALLA_ROUTING_SUPPORT=1
+          - _MASSIF_GEOCODING_SUPPORT=1
+          - _MASSIF_USE_METALANGLE=1
+        OTHER_LDFLAGS:
+          - -ObjC
+          - -lc++
+          - $(MASSIF_LIB)
+        CLANG_ENABLE_OBJC_ARC: YES
+        GCC_C_LANGUAGE_STANDARD: gnu11
+        CLANG_CXX_LANGUAGE_STANDARD: c++17
+        ARCHS: arm64
+        ONLY_ACTIVE_ARCH: YES
+        # Ad-hoc: Catalyst refuses to launch an unsigned binary; no team, no profile.
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_BITCODE: NO
+
+schemes:
+  MassifDemo:
+    build:
+      targets:
+        MassifDemo: all
+    run:
+      config: Debug

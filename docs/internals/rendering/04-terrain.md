@@ -1969,6 +1969,23 @@ nothing draped.
 Note the filter matches the **vt layer name**, which comes from the style's own rule names — a style
 that calls its contour rules something else needs its own pattern.
 
+### Steep faces: what was tried and dropped
+
+A top-down drape stretches `1 / cos(slope)` along the fall line, so on a near-vertical face the baked
+hillshade, a hachure or a trail drawn at the foot streak down the wall. Three fixes were tried on
+the Neron cliff near Grenoble and **all three were reverted** (2026-10-15): a mip bias on the drape,
+then a mix toward a rock colour by the mesh slope (68 to 78 degrees), then a fade of the live traced
+contours (50 to 65 degrees). On a Mac Catalyst device the cliff became a smooth featureless
+surface where no contour and no road showed at all, which reads worse than the streaks: contours
+and trails are what a hiker reads a cliff by, and a rock colour cannot keep them because they ride in
+the same bake as the content it hides (the traced contours are live, so only the fade took them
+away). The draw is back to the plain drape and the plain live contours.
+
+If it is tried again, keep the lines: iso-height lines evaluated in the terrain fragment shader are
+exact on any slope, but they need the style's interval, colour and zoom ranks (all in CartoCSS today)
+and a fade by screen spacing so they do not merge into a band; a traced contour placed at its `ele`
+needs a per-vertex elevation the tile does not carry. Neither was built.
+
 ### Putting the live layer back in its style position
 
 Keeping a layer out of the bake also takes it out of the **order**. The drape composite for every

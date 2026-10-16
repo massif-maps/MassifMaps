@@ -125,3 +125,10 @@ from the local tiles by `make-grenoble-route.py` (no routing engine), as the app
 ARROWS=1 SETTLE=35 TILTS=90,75,60,45,30,15 SHOTDIR=/tmp/massifdemo-shots/arrows_tilts \
   ./run-catalyst-demo.sh -winW 800 -winH 600 -lon 5.7265 -lat 45.1880 -zoom 17.6 -tilt 90
 ```
+
+`-routeSeparate true` draws the route in a layer of its own under the arrows, as the app does (two tile
+layers, two renderers); in one source the route covers the arrow shafts. `-itemsLine "lon,lat;lon,lat;..."`
+adds a line of the app's saved-items style (`items`, with its `back/` attachment) beside it, to look at
+`line-occlusion-opacity` on named attachments across 3D buildings. The arrows are sized in metres
+(`-maneuverBefore/-After`): the app asks for 36 dp and about 58 dp, which is about 10 and 17 m at zoom 18.6 and
+3.5 pt per metre there (halve the pt per metre per zoom level down).

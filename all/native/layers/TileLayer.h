@@ -633,6 +633,7 @@ class ProjectionSurface;
         bool _freeRoamImagery = false; // ...free roam terrain imagery: no view-zoom cap, stand-ins fetched first, the drape cache's budget
         DistanceTileLOD::Limits _distanceLimits; // ...the levels it is held to
         DistanceTileLOD::View _distanceView; // ...what this cull measures a tile with
+        int _distanceZoomCapOffset = 0; // ...TerrainOptions::MaxTileZoomOffset, when set, over the reference level
         std::vector<DistanceTileLOD::Node> _distanceNodes; // ...every tile the cull visited, see DistanceTileLOD.h
         std::vector<MapTile> _distanceTiles; // ...and which tile each is
         std::vector<float> _distanceViewZooms; // ...and the zoom a top-down camera at its nearest point would be at

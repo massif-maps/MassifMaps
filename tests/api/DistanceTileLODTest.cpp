@@ -276,6 +276,7 @@ namespace {
         scene.rule = rule;
         scene.areaCap = static_cast<int>(zoom + 0.001);
         scene.limits.capOffset = 0;
+        scene.limits.zoomCap = scene.areaCap;
         scene.farCoarsening = DistanceTileLOD::FAR_COARSENING;
         double distance = makeView(camera).zoom0Distance / std::pow(2.0, zoom);
         double toHorizon = (camera.pitch + 90.0 + camera.fovY * 0.5) * PI / 180.0;
@@ -354,6 +355,7 @@ namespace {
         capped.farCoarsening = DistanceTileLOD::FAR_COARSENING;
         int compared = 0, flipped = 0, treesFlipped = 0, withTrees = 0, withoutTrees = 0, areaCompared = 0, areaFlipped = 0, areaTreesFlipped = 0;
         int budgetedCompared = 0, budgetedFlipped = 0, budgetedSkipped = 0;
+        int cappedCompared = 0, cappedFlipped = 0;
         for (double above : { 3.0, 80.0, 900.0 }) {
             for (double fov : { 30.0, 50.0 }) {
                 for (const double* size : SIZES) {
@@ -365,6 +367,12 @@ namespace {
                         treesFlipped += looks.treesFlipped;
                         withTrees += looks.withTrees;
                         withoutTrees += looks.withoutTrees;
+                        // The zoom cap of a classic map: the zoom of the eye's height over the ground, which no look moves.
+                        Scene referenced = *scene;
+                        referenced.limits.zoomCap = DistanceTileLOD::viewLevel(makeView(eye), eye.z - (scene->flat ? 0.0 : terrainHeight(eye.x, eye.y)));
+                        Looks referencedLooks = lookAround(eye, referenced, NO_BUDGET);
+                        cappedCompared += referencedLooks.compared;
+                        cappedFlipped += referencedLooks.flipped;
                         Looks budgeted = lookAround(eye, *scene, DistanceTileLOD::DEFAULT_BUDGET);
                         budgetedCompared += budgeted.compared;
                         budgetedFlipped += budgeted.flipped;
@@ -391,6 +399,7 @@ namespace {
         std::printf("      within the budget of %d: %d points compared, %d change level, %d looks left out for being coarsened by it\n",
                     static_cast<int>(DistanceTileLOD::DEFAULT_BUDGET), budgetedCompared, budgetedFlipped, budgetedSkipped);
         TEST_CHECK(budgetedCompared > 10000 && budgetedFlipped == 0, "the same holds under the budget, for every look it leaves alone");
+        TEST_CHECK(cappedCompared > 10000 && cappedFlipped == 0, "and under a zoom cap read off the eye's height over the ground");
     }
 
     void testTopDownIsTheOldCut() {
@@ -428,7 +437,7 @@ namespace {
 
     void testTheTileCountOfATiltedMap() {
         // Grenoble, z16 and a tilted map: how many tiles the area rule held and how many the distance rule asks for,
-        // before and after the budget. The distance rule keeps the far ground finer, which is the cost of it.
+        // before and after the budget.
         std::printf("      tiles held, classic z16 on a 1000 px screen (area rule | distance rule | within the budget of %d)\n", static_cast<int>(DistanceTileLOD::DEFAULT_BUDGET));
         for (double tilt : { 0.0, 30.0, 45.0, 60.0, 70.0, 75.0 }) {
             Camera camera = orbitCamera(16.0, 20.0, tilt, 36.87, 1000, 1000, 1.0);
@@ -438,10 +447,47 @@ namespace {
             std::size_t budgeted = cull(camera, classicScene(camera, 16.0, Rule::Distance), DistanceTileLOD::DEFAULT_BUDGET, scale, relaxedFactor).size();
             std::printf("      tilt %2.0f: %3d | %3d | %3d (scale %.2f)\n", tilt, static_cast<int>(area), static_cast<int>(distance), static_cast<int>(budgeted), scale);
             TEST_CHECK(budgeted <= DistanceTileLOD::DEFAULT_BUDGET || scale >= DistanceTileLOD::MAX_SCALE, "a tilted classic map fits the tile budget");
-            if (tilt <= 30.0) {
-                TEST_CHECK(distance <= area * 5 / 4 + 4, "a gentle tilt asks no more of the layer than the area rule did");
+        }
+    }
+
+    // The mean ratio of the tiles a rule holds to the area rule's, over zooms, screens and densities at one tilt.
+    double tileCountAgainstTheAreaRule(double tilt, bool fitted) {
+        double sum = 0;
+        int cases = 0;
+        for (double zoom : { 14.6, 15.8, 16.3, 17.3 }) {
+            for (const double* size : SIZES) {
+                for (double dpi : { 1.0, 1.8 }) {
+                    Camera camera = orbitCamera(zoom, 20.0, tilt, 36.87, size[0], size[1], dpi);
+                    double scale = 1, relaxedFactor = 0;
+                    Scene scene = classicScene(camera, zoom, Rule::Distance);
+                    if (!fitted) {
+                        scene.limits.zoomCap = std::numeric_limits<int>::max();
+                        scene.farCoarsening = 0.5;
+                    }
+                    double now = cull(camera, scene, std::numeric_limits<std::size_t>::max(), scale, relaxedFactor).size();
+                    double old = cull(camera, classicScene(camera, zoom, Rule::Area), std::numeric_limits<std::size_t>::max(), scale, relaxedFactor).size();
+                    sum += std::log(now / old);
+                    cases++;
+                }
             }
         }
+        return std::exp(sum / cases);
+    }
+
+    void testTheTileCountIsTheOldRules() {
+        // The Crosscall drew 2.2x the area rule's tiles at z16.3 and tilt 10 (SDK convention) with no zoom cap and the
+        // grazing exponent at 0.5. Tilt here is from straight down, 80 being that one.
+        std::printf("      tiles held against the area rule, mean ratio (fitted | no zoom cap, exponent 0.5)\n");
+        double worst = 0, unfitted = 0;
+        for (double tilt : { 0.0, 28.0, 45.0, 60.0, 70.0, 80.0 }) {
+            double ratio = tileCountAgainstTheAreaRule(tilt, true);
+            double first = tileCountAgainstTheAreaRule(tilt, false);
+            std::printf("      tilt %2.0f: %.2f | %.2f\n", tilt, ratio, first);
+            worst = std::max(worst, std::abs(std::log(ratio)));
+            unfitted = std::max(unfitted, first);
+        }
+        TEST_CHECK(worst < std::log(1.25), "a classic map holds the area rule's tile count to within 25 % at every tilt, 0 to 80");
+        TEST_CHECK(unfitted > 1.5, "where the cut without the cap and the fit held more than half as many again: the check can fail");
     }
 
     void testNodeRule() {
@@ -463,6 +509,8 @@ namespace {
                    "a cap offset lets the tiles go that many levels over the view level");
         TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 14, 0, -1, 99 }, 14, 1.0, at(20), at(20)) == 0.0, "the data's max zoom caps whatever the view level is");
         TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 14, DistanceTileLOD::NO_VIEW_CAP, -1, 99 }, 13, 1000.0, at(10), at(10)) != 0.0, "and with no view cap only the data caps");
+        TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 20, 0, -1, 99, 16 }, 16, 1.0, at(18), at(18)) == 0.0 && DistanceTileLOD::nodeCritical(view, { 5, 20, 0, -1, 99, 16 }, 15, 1.0, at(18), at(18)) > 0.0,
+                   "a zoom cap holds a tile at its level though the view level of its distance is two finer");
         TEST_CHECK(DistanceTileLOD::nodeCritical(view, { 5, 20, 0, -1, 99 }, 10, 200.0, at(14) * 0.5, at(14) * 0.5) == DistanceTileLOD::criticalScale(200.0, at(14) * 0.5, 2700.0, 512.0),
                    "in between it is the rule");
 
@@ -474,10 +522,10 @@ namespace {
         TEST_CHECK(DistanceTileLOD::viewLevel(view, 0.0) == DistanceTileLOD::NO_VIEW_CAP, "and its level is bounded");
 
         // The grazing allowance: a tile seen head on is judged by pixels alone, one seen at a grazing angle may span more.
-        view.farCoarsening = DistanceTileLOD::FAR_COARSENING;
+        view.farCoarsening = 0.5;
         TEST_CHECK(DistanceTileLOD::farAllowance(view, 1000.0, 1000.0) == 1.0, "straight below the eye the allowance is 1");
         TEST_CHECK(std::abs(DistanceTileLOD::farAllowance(view, 1000.0, 250.0) - 2.0) < 1e-9, "four times as far as high, a tile may span twice the pixels");
-        TEST_CHECK(std::abs(DistanceTileLOD::farAllowance(view, 1000.0, 0.0) - 4.0) < 1e-9, "level with the eye it is bounded, at two levels");
+        TEST_CHECK(std::abs(DistanceTileLOD::farAllowance(view, 1000.0, 0.0) - std::sqrt(1.0 / DistanceTileLOD::MIN_GRAZING)) < 1e-9, "level with the eye it is bounded, by the grazing floor");
         view.farCoarsening = 0.0;
         TEST_CHECK(DistanceTileLOD::farAllowance(view, 1000.0, 10.0) == 1.0, "and none with no exponent");
     }
@@ -637,4 +685,5 @@ void testDistanceTileLOD() {
     testTheLevelIsTheDistances();
     testTopDownIsTheOldCut();
     testTheTileCountOfATiltedMap();
+    testTheTileCountIsTheOldRules();
 }

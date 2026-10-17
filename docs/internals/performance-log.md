@@ -2632,3 +2632,62 @@ Not changed, ranked by what the logs say they cost:
 
 Not measured: the end-to-end time to a full screen of tiles after the pool and priority change, a
 Release lib with the change on a device.
+
+## The tile cull by eye distance held twice the tiles (2026-10-17)
+
+The cull by distance from the eye (#440, `f644bcf96`) was never measured on a device. At the demo's
+`TileLODFactor` 0.5 it loaded 2.2x the tiles of the area rule in the 2D scene and 2.1x in Neron. Crosscall
+HLTE556N (Adreno 610), interleaved A/B, 2 rounds, 28 one-second windows per cell, medians of windows
+<= 1.6 s, the counters of `RenderStats` divided by the frames of their window (an interval is a time, not
+a frame count). Parent `4f0fe7690`, the cull commit `f644bcf96`, and this change on top of `HEAD` with the
+sky bake `9d9ebf526` applied locally (not in this change). Scenes as in [the demo page](../contributing/demo-app.md):
+2D = z16.3 tilt 0, which the demo clamps to **tilt 10, the horizon in view**; Bastille and Neron = tilt 62, terrain.
+
+| scene | | tiles / frame | geomDraws | surfDraws | surfIndices | CPU `layers` ms | GPU `drape` ms |
+|---|---|---|---|---|---|---|---|
+| 2D | parent | 18.9 | 203 | 32.8 | 246 | 9.9 | |
+| | cull commit | 42.3 (+124%) | 430 (+112%) | 79.5 (+142%) | 555 (+126%) | 19.6 | |
+| | this change | 19.0 (+0.5%) | 204 (+0.1%) | 32.8 (0%) | 246 (0%) | 10.9 | |
+| Bastille | parent | 20.0 | 16 | 18 | 3.61 M | 5.0 | 14.1 |
+| | cull commit | 20.0 | 16 | 18 | 3.61 M | 4.9 | 14.2 |
+| | this change | 20.0 | 16 | 18 | 3.61 M | 2.7 | 14.3 |
+| Neron | parent | 11.7 | 0 | 11.8 | 1.59 M | 2.4 | 7.9 |
+| | cull commit | 24.3 (+107%) | 0 | 24.4 (+107%) | 4.79 M (+202%) | 3.5 | 21.8 (+176%) |
+| | this change | 10.0 (-15%) | 1 | 10.0 (-15%) | 1.43 M (-9%) | 2.2 | 8.6 (+9%) |
+
+Bastille was never regressed: its cut is the same 18 z16 tiles under every rule. Its CPU sections are lower
+in the last row, presumably because `HEAD` carries other commits than the parent (not isolated); the tile counts are equal.
+
+**Where the extra tiles came from**, by logging the visible tiles of the vector layer per zoom (the area
+rule run by forcing the globe path in the same binary):
+
+| 2D, z16.3 tilt 10 | tiles | by zoom |
+|---|---|---|
+| area rule | 16 | z10:1 z12:2 z13:4 z14:1 z15:2 z16:6 |
+| cull commit | 40 | z11:2 z12:6 z13:2 z14:6 z15:4 z16:8 **z17:9 z18:3** |
+| this change | 16 | z10:1 z12:2 z13:4 z14:1 z15:2 z16:6 |
+
+1. **The cap.** The old cap was the camera's zoom. The cull commit capped at the view zoom of each tile's own
+   nearest point instead, which is a level or two finer for any ground nearer than the focus: the bottom of a
+   tilted map (z17 and z18 at tilt 10) and a ridge nearer than the focus under terrain (Neron: z16 where the
+   camera's z15.8 gave z15, 12 -> 23 tiles). It is not a matter of the pixel scale: the top-down cut already
+   matched the area rule within a level (`DistanceTileLODTest`). `Limits::zoomCap` restores the camera's cap
+   from a reference no look moves: the camera distance without terrain, the eye's height over the ground with it.
+2. **The far field.** With the cap back, 2D still held 32 tiles against 16: the area rule loses the tile's
+   depth and the screen angle on top of the foreshortening the allowance models. The exponent 0.5 became 0.65
+   and the grazing floor 1/16 became 1/32, fitted on the device (2D: 0.5 -> 32 tiles, 0.6 -> 21, 0.65 -> 18, 0.8 -> 16
+   at the 1/16 floor; the 1/32 floor takes the last two far tiles; 0.7 coarsens Bastille 18 -> 12) and on the
+   host sweep.
+
+The `layers` CPU in 2D is 10.9 ms against 9.9 with the same draw counts: ~1 ms is not tiles (not chased).
+
+Looked at, after 90 s, `devtap shot` / `diff`, 2D z16.3, Bastille and Neron against the parent and the cull
+commit (`/tmp` only, not kept): geometry and ground colour match the parent; Bastille's upper bands are
+identical to the parent (the cull commit differed there by 2-4%). Labels differ from the parent in **both** the
+cull commit and this change (more far place names and street labels): the style zoom of a tile is its view
+zoom since #440, which this change keeps; it is not the tile count. Trees were not counted.
+
+Not measured: the globe (it keeps the area rule), free roam imagery (no cap, unchanged), iOS and the web,
+a gentle terrain tilt (the eye-height cap is up to a level over the camera's zoom at tilt 30, more tiles than
+the old cap there), `lodFactor` other than 0.5, a Release lib. fps in the table above is not used: the
+parent and the cull commit builds carry the sky regression of #447.

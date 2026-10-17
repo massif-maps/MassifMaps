@@ -776,6 +776,7 @@ namespace massif {
         // that distance would be at: the camera's own zoom follows where its view ray meets the ground (02-tiles.md).
         _distanceLod = false;
         _distanceLimits = DistanceTileLOD::Limits();
+        _distanceZoomCapOffset = 0;
         if (auto options = getOptions()) {
             _distanceLod = options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR;
             if (auto terrainOptions = options->getTerrainOptions()) {
@@ -784,6 +785,7 @@ namespace massif {
                     // coarse tile has blunted ridges that content shows through.
                     _terrainOverzoomTargets = true;
                     int zoomOffset = terrainOptions->getMaxTileZoomOffset();
+                    _distanceZoomCapOffset = zoomOffset < 100 ? zoomOffset : 0;
                     if (_distanceLod) {
                         // Free roam imagery is cut by distance alone, with no cap or floor from the view zoom.
                         _freeRoamImagery = usesDistanceTileZoom() && options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF;
@@ -919,6 +921,19 @@ namespace massif {
             _distanceView.zoom0Distance = viewState.getZoom0Distance();
             _distanceView.zoomShift = _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS;
             _distanceView.farCoarsening = _freeRoamImagery ? 0.0 : DistanceTileLOD::FAR_COARSENING;
+        }
+        if (_distanceLod && !_freeRoamImagery) {
+            // The camera's zoom cap from a reference no look moves: the camera distance on a plane, the eye's height
+            // over the ground under terrain, where a gesture slides the focus (02-tiles.md).
+            const ViewState& viewState = cullState->getViewState();
+            const cglib::vec3<double>& eye = viewState.getCameraPos();
+            double reference = cglib::length(eye - viewState.getFocusPos());
+            if (_lodElevationManager) {
+                reference = eye(2) - _lodElevationManager->getDisplayHeight(eye(0), eye(1), ElevationManager::LoadMode::CACHED_ONLY);
+            }
+            if (reference > 0) {
+                _distanceLimits.zoomCap = DistanceTileLOD::viewLevel(_distanceView, reference) + _distanceZoomCapOffset;
+            }
         }
         _distanceNodes.clear();
         _distanceTiles.clear();

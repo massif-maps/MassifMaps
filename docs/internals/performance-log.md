@@ -2633,6 +2633,27 @@ Not changed, ranked by what the logs say they cost:
 Not measured: the end-to-end time to a full screen of tiles after the pool and priority change, a
 Release lib with the change on a device.
 
+## Sky below the horizon: one colour per azimuth, not a raymarch per pixel (2026-10-17)
+
+Continuing the sky's horizon below it (`u_groundAuto`, [08](rendering/08-lighting-sky-fog.md)) ran the
+atmosphere raymarch for every pixel below the horizon, which the sky pass reaches too: the quad is not
+clipped when the draw distance cuts the ground, and it covers the whole screen in both benchmark
+scenes below. GPU `sky` section 8-17 ms -> ~47 ms, **~40% fewer fps in every scene**. Crosscall
+HLTE556N (Adreno 610), interleaved A/B, ~50 one-second windows per cell, medians of windows <= 1.6 s:
+
+| scene | baseline `4369e017b` | HEAD `9a8c2da55` | HEAD without the horizon commit | the bake |
+|---|---|---|---|---|
+| 2D (`tilt 0`, pan) | 22.8 fps, `sky` 17.5 ms | 12.8, 46.9 | 17.7, 17.5 | 17.2, 18.6 |
+| Bastille (`tilt 62`, rotate) | 22.9, 7.6 | 12.8, 47.0 | 22.1, 8.2 | 21.7, 9.7 |
+
+The rest of the gap to the baseline in 2D is the tile cull by eye distance, not the sky. The colour
+below the horizon depends on the azimuth alone, so `SkyRenderer::bakeBelowHorizon` draws it once into a
+128 x 1 texture and the shader samples it. Redrawn every frame it left Bastille ~3.5% under the
+revert (21.6 vs 22.4, same session); it is now redrawn only when the sun, the sky colours, the fog
+tints or the camera height change, ~2% under (a custom sky shader is still baked every frame). Looked at: a static camera at `tilt 10` (horizon in view), by default and with a low sun
+in front, against HEAD, sky and horizon strip: **identical to within 1/255**. Not looked at: the globe,
+a custom sky shader, an explicit `GroundColor` (it skips the bake).
+
 ## The tile cull by eye distance held twice the tiles (2026-10-17)
 
 The cull by distance from the eye (#440, `f644bcf96`) was never measured on a device. At the demo's

@@ -1609,7 +1609,7 @@ Pick it for a flat or brand-coloured sky, or as the A/B when measuring what the 
 ### The custom sky shader
 
 `SkyOptions::setShaderSource` replaces `vec4 skyColor(vec3 rayDir)`. The wrapper declares
-`u_sunDir`, `u_sunColor`, `u_skyColor`, `u_horizonColor`, `u_groundColor`, `u_groundAuto`, `u_horizonBlend`,
+`u_sunDir`, `u_sunColor`, `u_skyColor`, `u_horizonColor`, `u_groundColor`, `u_groundAuto`, `u_belowLUT`, `u_bakeWidth`, `u_horizonBlend`,
 `u_sunIntensity`, `u_sunDisc`, `u_atmosphere`, `u_atmosphereColor`, `u_haloColor`, `u_time`,
 `u_zoom`, `u_cameraHeight`, `u_localFrame`, `u_resolution`, `u_starIntensity`, the whole fog block, and the helpers
 `atmosphereTint`, `starAmount`, `sunDisc`, `groundBelowHorizon` (and `atmosphere` / `tonemap` when
@@ -1621,6 +1621,15 @@ ray tipped up to z = 0.001 (azimuth kept) and sets the global `skyBelowHorizon` 
 nothing; the haze still takes the REAL ray, whose horizon term is 1 below the horizon. That is what
 removes the band between the sky and the far terrain, for the built-in and for a custom `skyColor`
 alike. An explicit `GroundColor` skips the tipping and `groundBelowHorizon` paints it.
+
+That tipped ray depends on the azimuth alone, so `skyColor` is not run for every pixel below the
+horizon (a full-screen raymarch: the quad is not clipped when the draw distance cuts the ground, and
+in 2D it covers the screen, so the GPU `sky` section went from ~17 to ~47 ms on the Adreno 610).
+`SkyRenderer::bakeBelowHorizon` first draws the same shader into a 128 x 1 texture (one texel per
+azimuth, `u_bakeWidth` set to its width) and `main()` samples it by `atan(rayDir.y, rayDir.x)`. It is
+redrawn only when the sun, the sky or fog colours or the camera height change (every frame for a custom
+shader). A custom `skyColor` is therefore also called with the tipped rays of that strip, where `gl_FragCoord` and
+`v_rayDir` mean nothing.
 
 A custom sky must NOT fog itself: `main()` applies `skyFog` once to whatever `skyColor` returns, so
 a custom fog shader reaches a custom sky too.

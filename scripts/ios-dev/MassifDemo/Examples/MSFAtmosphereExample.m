@@ -1,4 +1,5 @@
 #import "MSFExample.h"
+#import "DemoCfg.h"
 #import "MassifMaps.h"
 #import "api/MSFMassif.h"
 #import "api/MSFMassifMap.h"
@@ -60,8 +61,8 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
 
 - (void)startWithHost:(id<MSFExampleHost>)host {
     _host = host;
-    _moment = 2; // start at dusk: it is what shows the scattering off best
-    _hour = 19.5;
+    _moment = [DemoCfg intFor:@"moment" defaultValue:2]; // dusk shows the scattering off best; '-moment 0' is dawn
+    _hour = [moments()[_moment][1] doubleValue];
     _atmosphere = YES;
     MSFMassifMap *map = host.map;
 

@@ -42,7 +42,7 @@ to `com.massifmaps.*` / `MSFMapView` — see [Migration](/docs/migration). Highl
 
 ## What's in the box
 
-- Supports **Android, iOS and the web** from a single C++ core — desktop is next, see [Platforms](/platforms).
+- Supports **Android, iOS, macOS (Mac Catalyst) and the web** from a single C++ core — Linux and Windows desktop are next, see [Platforms](/platforms).
 - Multiple languages: **Java / Kotlin** on Android, **Objective-C / Swift** on iOS, **JavaScript / TypeScript** on the [web](/docs/getting-started/web) and through the [NativeScript plugin](/integrations).
 - Open GIS formats: **GeoJSON, Mapbox Vector Tiles, MBTiles, PMTiles, TMS**.
 - High-level styling via **[CartoCSS](https://carto.com/developers/styling/cartocss/)**.

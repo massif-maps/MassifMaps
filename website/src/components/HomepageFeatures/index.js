@@ -29,7 +29,7 @@ const CoreFeatures = [
   {
     icon: '📱',
     title: 'Truly cross-platform',
-    body: 'One C++ core, native bindings for Android (Java/Kotlin) and iOS (Objective-C/Swift), the same core in WebAssembly for the web, plus a NativeScript plugin.',
+    body: 'One C++ core, native bindings for Android (Java/Kotlin), iOS and macOS via Mac Catalyst (Objective-C/Swift), the same core in WebAssembly for the web, plus a NativeScript plugin.',
   },
   {
     icon: '🧭',
@@ -77,6 +77,13 @@ const NewFeatures = [
     to: '/docs/features/sky-sun-shadows',
     shot: 'sun-lighting.jpg',
     body: 'One directional light and a shader sky shared by ground, terrain and fog — with a replaceable sky shader.',
+  },
+  {
+    icon: '🌲',
+    title: '3D Models',
+    to: '/docs/features/3d-models',
+    shot: '3d-models.jpg',
+    body: 'glTF models instanced at the points of any vector layer — trees, turbines, landmarks — lit, shadowed and fogged like the buildings.',
   },
   {
     icon: '🌙',

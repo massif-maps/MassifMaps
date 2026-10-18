@@ -33,6 +33,18 @@ export const Platforms = [
     note: 'Static framework, GLES2 translated to Metal through ANGLE.',
   },
   {
+    id: 'macos',
+    name: 'macOS',
+    icon: '💻',
+    status: 'supported',
+    languages: ['Swift', 'Objective-C'],
+    distribution: 'Swift Package Manager — the iOS package carries the Mac Catalyst slices',
+    minVersion: 'macOS 10.15+ (Mac Catalyst), arm64 + x86_64, Metal via ANGLE',
+    docs: '/docs/getting-started/installation#macos-mac-catalyst',
+    api: 'pathname:///MassifMaps/api/ios/',
+    note: 'The iOS API, run as a Mac Catalyst app. Same framework, same Metal-ANGLE renderer; the demo app runs on the Mac as a native window.',
+  },
+  {
     id: 'nativescript',
     name: 'NativeScript',
     icon: '📜',
@@ -46,12 +58,12 @@ export const Platforms = [
   },
   {
     id: 'desktop',
-    name: 'Desktop',
+    name: 'Linux / Windows desktop',
     icon: '🖥️',
     status: 'planned',
     languages: ['C++'],
     distribution: 'Not published yet',
-    minVersion: 'macOS / Linux / Windows via ANGLE',
+    minVersion: 'Linux / Windows via ANGLE',
     note: 'The generic pieces already exist — a Pion-based HTTP client and only ~8 platform-specific files per target. What is missing is the packaging and a windowing host.',
   },
   {
@@ -118,61 +130,61 @@ export const StatusLabels = {
  * ('unverified' = the shared C++ core has it, but no one has built or run that
  * binding against this fork). Planned platforms have nothing to compare yet.
  */
-export const CapabilityColumns = ['android', 'ios', 'web', 'uwp', 'xamarin'];
+export const CapabilityColumns = ['android', 'ios', 'macos', 'web', 'uwp', 'xamarin'];
 
 export const Capabilities = [
   {
     name: 'Vector tiles (MVT, MLT) + CartoCSS',
     to: '/docs/features/maplibre-tiles',
-    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Raster tiles, MBTiles, PMTiles',
     to: '/docs/features/pmtiles',
-    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: '3D terrain + draping',
     to: '/docs/features/3d-terrain',
-    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Hillshade & on-the-fly contours',
     to: '/docs/features/hillshade',
-    values: {android: true, ios: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Sky, sun lighting & shadows',
     to: '/docs/features/sky-sun-shadows',
-    values: {android: true, ios: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Post-processing shaders',
     to: '/docs/features/post-processing',
-    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Valhalla street routing',
     to: '/docs/guides/routing',
-    values: {android: true, ios: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Offline geocoding',
     to: '/docs/guides/geocoding',
-    values: {android: true, ios: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Offline tiles (MBTiles, PMTiles, cache)',
     to: '/docs/guides/offline-maps',
-    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Prebuilt artifacts published',
     to: '/docs/getting-started/installation',
-    values: {android: true, ios: true, web: false, uwp: false, xamarin: false},
+    values: {android: true, ios: true, macos: true, web: false, uwp: false, xamarin: false},
   },
   {
     name: 'Covered by CI',
-    values: {android: true, ios: true, web: true, uwp: false, xamarin: false},
+    values: {android: true, ios: true, macos: true, web: true, uwp: false, xamarin: false},
   },
 ];

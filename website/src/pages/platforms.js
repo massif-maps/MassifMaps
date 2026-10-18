@@ -65,7 +65,7 @@ export default function PlatformsPage() {
         <div className="container">
           <h1>Platforms</h1>
           <p>
-            One C++ core, native bindings per platform. Android, iOS and the web are built by CI
+            One C++ core, native bindings per platform. Android, iOS, macOS and the web are built by CI
             today; the rest is either on the roadmap or inherited from the original CARTO SDK and
             unverified.
           </p>

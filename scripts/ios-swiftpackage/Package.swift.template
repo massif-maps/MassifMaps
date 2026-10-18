@@ -5,7 +5,8 @@ import PackageDescription
 let package = Package(
     name: "$frameworkName",
     platforms: [
-        .iOS(.v12)
+        .iOS(.v12),
+        .macCatalyst(.v13)
     ],
     products: "$products",
     dependencies: [

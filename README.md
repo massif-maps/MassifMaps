@@ -1,6 +1,6 @@
 # Massif Maps
 
-**An open, multi-platform map SDK for Android, iOS and the web** — a high-performance vector-tile renderer
+**An open, multi-platform map SDK for Android, iOS, macOS (Mac Catalyst) and the web** — a high-performance vector-tile renderer
 with 3D terrain, built-in routing (street and indoor) and geocoding, driven from a single C++ core.
 
 Massif Maps is a maintained fork of the CARTO Mobile SDK, which CARTO stopped maintaining. It was
@@ -39,7 +39,7 @@ See [`website/README.md`](website/README.md) for what works in the dev server vs
 
 ## Features
 
-* Supports all widespread mobile platforms, including Android, iOS and UWP.
+* Supports all widespread mobile platforms, including Android and iOS, plus macOS through Mac Catalyst and UWP.
 * Supports multiple programming languages, including Objective C, Swift and C# on iOS, Java, Kotlin and C# on Android and C# on UWP.
 * Supports common open GIS formats and protocols, including GeoJSON, Mapbox Vector Tiles, MBTiles, TMS.
 * High-level vector tile styling language support via [CartoCSS](https://carto.com/developers/styling/cartocss/) for visualizing maps

@@ -48,6 +48,12 @@ Use Swift Package Manager:
 You can also download a prebuilt framework from the
 [Releases page](https://github.com/massif-maps/MassifMaps/releases).
 
+## macOS (Mac Catalyst)
+
+The iOS package ships the Mac Catalyst slices (`arm64` and `x86_64`, macOS 10.15+). Tick **Mac Catalyst**
+under *Supported Destinations* of your app target and add the same Swift package as on iOS. The API is
+the iOS one.
+
 ## Web
 
 ```bash

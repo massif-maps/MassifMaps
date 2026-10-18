@@ -2,7 +2,11 @@
 title: 3D models
 description: "glTF models placed at the points of a vector tile layer and styled in CartoCSS: trees, wind turbines, landmarks - lit, shadowed, fogged and draped on the terrain like the buildings beside them."
 sidebar_position: 29
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # 3D models from a data source
 
@@ -10,6 +14,8 @@ A `model` rule draws a glTF binary model (`.glb`) at every point of a vector til
 source, a GeoJSON source, anything a style reads. The models are instanced on the GPU, lit by the
 same sun as the buildings, cast and receive the terrain shadows, fog with the distance, and stand on
 the 3D terrain.
+
+<LiveExample id="3d-models" />
 
 ```css
 #poi[class='tree'][zoom >= 15] {

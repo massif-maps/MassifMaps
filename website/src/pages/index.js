@@ -79,7 +79,7 @@ export default function Home() {
   return (
     <Layout
       title={`${siteConfig.title} — Documentation`}
-      description="Documentation for Massif Maps: installation, guides, feature docs and API reference for Android, iOS, the web and NativeScript.">
+      description="Documentation for Massif Maps: installation, guides, feature docs and API reference for Android, iOS, macOS, the web and NativeScript.">
       <HomepageHeader />
       <main>
         <HomepageShowcase />

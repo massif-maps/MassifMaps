@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.2.0] - 2026-10-18
+
+### Breaking changes
+
+- **renderers:** continue the sky's horizon below it instead of a flat ground colour ([#437](https://github.com/massif-maps/MassifMaps/pull/437)) ([`d256b9a`](https://github.com/massif-maps/MassifMaps/commit/d256b9a0ab211385bbfcddfad2a56a349ebd0d13))
+- **renderers:** draw sharper shadow edges by default, as mapbox does ([#402](https://github.com/massif-maps/MassifMaps/pull/402)) ([`b2b613f`](https://github.com/massif-maps/MassifMaps/commit/b2b613f5ef685cbbf70d42500ae2538fab1897b2))
+  shadows render with sharper edges unless an app sets LightOptions.shadowSoftness; set it to 1 for the previous look.
+- **android:** shrink the native library by packing its relocations; minSdk is now 23 ([#392](https://github.com/massif-maps/MassifMaps/pull/392)) ([`7a395a6`](https://github.com/massif-maps/MassifMaps/commit/7a395a6e5de2be8f92abcc606ff05441fc4da0ad))
+  an Android app needs minSdk 23 or higher. See docs/migration.md.
+
+### New features
+
+- **api:** attach layer event bridges by handle, link libc++ shared ([#446](https://github.com/massif-maps/MassifMaps/pull/446)) ([`9a8c2da`](https://github.com/massif-maps/MassifMaps/commit/9a8c2da55c51794341050fdcf8de17cf5f2bdd00))
+- **vt:** ghost a line through 3D buildings with line-occlusion-opacity ([#431](https://github.com/massif-maps/MassifMaps/pull/431)) ([`4f0fe76`](https://github.com/massif-maps/MassifMaps/commit/4f0fe769051e634d28a4382556ecd18f4643599a))
+- **ios-dev:** run the demo as a Mac Catalyst app with in-process capture ([#439](https://github.com/massif-maps/MassifMaps/pull/439)) ([`6c39c82`](https://github.com/massif-maps/MassifMaps/commit/6c39c82ab6cd7796947fe23441bcea6ce2267370))
+- **shadows:** cast shadows on a map with no terrain, and let them follow the buildings' height (#419) ([#423](https://github.com/massif-maps/MassifMaps/pull/423)) ([`3af5c5a`](https://github.com/massif-maps/MassifMaps/commit/3af5c5ad9d586c3dc4dd27c5d11b9a51ee2f865f))
+- **demo:** add a live zoom level bias knob for the bench's raster layer ([#421](https://github.com/massif-maps/MassifMaps/pull/421)) ([`eb23512`](https://github.com/massif-maps/MassifMaps/commit/eb235120baf587e0213bfd435c455550b7fe69fa))
+- **terrain:** let setEnabled switch terrain on without re-decoding, behind AlwaysDecode ([#415](https://github.com/massif-maps/MassifMaps/pull/415)) ([`9d7097a`](https://github.com/massif-maps/MassifMaps/commit/9d7097ac308ca1bcd8db4ea443e6bd7581e041a7))
+- **vt:** stop drawing a model, or its shadow, past a distance from the camera ([#410](https://github.com/massif-maps/MassifMaps/pull/410)) ([`ad01382`](https://github.com/massif-maps/MassifMaps/commit/ad0138283ee93ec7ab354a3f4861c958e6279ddd))
+- **renderers:** let an app turn off the terrain's own shadows, and skip them on a flat terrain ([#404](https://github.com/massif-maps/MassifMaps/pull/404)) ([`4a03668`](https://github.com/massif-maps/MassifMaps/commit/4a03668d223cb92f17646338ec80b2232e2c651b))
+- **vt:** draw glTF 3D models at vector tile points, styled in CartoCSS ([#398](https://github.com/massif-maps/MassifMaps/pull/398)) ([`7c927d5`](https://github.com/massif-maps/MassifMaps/commit/7c927d5c7d22375a1830b57223c66f299b0d51f0))
+
+### Bug fixes
+
+- **datasources:** build PMTiles on 32-bit Android ([#444](https://github.com/massif-maps/MassifMaps/pull/444)) ([`dd54bd8`](https://github.com/massif-maps/MassifMaps/commit/dd54bd8babbff04ab40267addc18094362b919d9))
+- **vt:** draw an arrow's head over every tile's shaft, and past its tile's edge ([#441](https://github.com/massif-maps/MassifMaps/pull/441)) ([`c13f5a1`](https://github.com/massif-maps/MassifMaps/commit/c13f5a190fc79cfc3a6ec2524135aaa7b362e6a4))
+- **labels:** stop semi-occluded and rebuilt labels blinking while the camera moves ([#433](https://github.com/massif-maps/MassifMaps/pull/433)) ([`0af6460`](https://github.com/massif-maps/MassifMaps/commit/0af6460e359a8c3fe8f2cf39fda89963d455022f))
+- **vt:** draw ghosted lines in layer order without tinting, and cheaper ([#434](https://github.com/massif-maps/MassifMaps/pull/434)) ([`56f1f4f`](https://github.com/massif-maps/MassifMaps/commit/56f1f4fe0b53f3d299bfc740af5511dc86969abe))
+- **layers:** cut every layer's tiles by distance from the eye, so terrain tilt no longer changes their detail ([#440](https://github.com/massif-maps/MassifMaps/pull/440)) ([`f644bcf`](https://github.com/massif-maps/MassifMaps/commit/f644bcf96fc1dc5128083c9a33e734014d240f71))
+- **labels:** stop labels and markers blinking or jumping as tiles load and through the 2D/3D switch ([#425](https://github.com/massif-maps/MassifMaps/pull/425)) ([`5655c25`](https://github.com/massif-maps/MassifMaps/commit/5655c250c2d79de65543a86d9ec517d7ec920252))
+- **terrain:** pick a free roam raster tile's zoom from its distance ([#429](https://github.com/massif-maps/MassifMaps/pull/429)) ([`8e33d12`](https://github.com/massif-maps/MassifMaps/commit/8e33d1248fff301f012118f27bb811e8c703328c))
+- **terrain:** keep shadows, relief and labels in step through the 2D/3D switch ([#424](https://github.com/massif-maps/MassifMaps/pull/424)) ([`86b3693`](https://github.com/massif-maps/MassifMaps/commit/86b3693809c7ff9d2e0514dcf1eee50f1aa84c78))
+- **terrain:** keep the distance to the ground through a 2D/3D switch started by tilting ([#426](https://github.com/massif-maps/MassifMaps/pull/426)) ([`3002dc5`](https://github.com/massif-maps/MassifMaps/commit/3002dc5cc304779b02964ee22735241cb321ae72))
+- **renderers:** continue the sky's horizon below it instead of a flat ground colour ([#437](https://github.com/massif-maps/MassifMaps/pull/437)) ([`d256b9a`](https://github.com/massif-maps/MassifMaps/commit/d256b9a0ab211385bbfcddfad2a56a349ebd0d13))
+- **vt:** keep dashed and patterned lines crisp at very high zoom ([#436](https://github.com/massif-maps/MassifMaps/pull/436)) ([`ab9f5d3`](https://github.com/massif-maps/MassifMaps/commit/ab9f5d39033c92215ef5d408ed72261a30c24aa5))
+- **geometry:** straighten the ends of a maneuver arrow so its head sits on a long segment ([#435](https://github.com/massif-maps/MassifMaps/pull/435)) ([`bb794d2`](https://github.com/massif-maps/MassifMaps/commit/bb794d2a4b36d274e175160f4a1d988f8e312f30))
+- **terrain:** stop a raster layer refetching its tiles forever when they outgrow its cache ([#430](https://github.com/massif-maps/MassifMaps/pull/430)) ([`6daed14`](https://github.com/massif-maps/MassifMaps/commit/6daed14bc2cb36e53116e51f624adec179a8e447))
+- **ios:** defer GL resource create/delete when another view's context is current ([#427](https://github.com/massif-maps/MassifMaps/pull/427)) ([`e953310`](https://github.com/massif-maps/MassifMaps/commit/e9533104b21bd513861c54a9f60ae49f2fe11ad4))
+- **gestures:** zoom about the double tap on a double-tap drag, not the focus ([#428](https://github.com/massif-maps/MassifMaps/pull/428)) ([`5392580`](https://github.com/massif-maps/MassifMaps/commit/53925804a3276123de8196349b41c7810b904b9c))
+- **ios:** build the map view once, and expose the pivoting wheel zoom ([#422](https://github.com/massif-maps/MassifMaps/pull/422)) ([`7d64c42`](https://github.com/massif-maps/MassifMaps/commit/7d64c4225c35942cdf7653d3735e237bb32d968e))
+- **layers:** re-cull the tiles when the zoom level bias changes ([#420](https://github.com/massif-maps/MassifMaps/pull/420)) ([`d8cbd23`](https://github.com/massif-maps/MassifMaps/commit/d8cbd233a23b721f98afda4041361f23180b132a))
+- **vt:** put buildings and the labels on their roofs back on the ground when the terrain goes away ([#418](https://github.com/massif-maps/MassifMaps/pull/418)) ([`b67166b`](https://github.com/massif-maps/MassifMaps/commit/b67166b3317813a68c9f0d36f972cfa356bd99b2))
+- **vt:** stop the map hanging, then crashing on the web, while zooming in close in 3D ([#414](https://github.com/massif-maps/MassifMaps/pull/414)) ([`f1f4b74`](https://github.com/massif-maps/MassifMaps/commit/f1f4b743a2cb39f5cea99d58f7883763ec75b0a5))
+- **terrain:** keep a park's grass and paths drawn after a zoom in over 3D terrain ([#412](https://github.com/massif-maps/MassifMaps/pull/412)) ([`a0c07bf`](https://github.com/massif-maps/MassifMaps/commit/a0c07bf2258cfa2eff4980e0511e3a34de03a28b))
+- **vt:** turn a spinning model's shadow with its rotor ([#409](https://github.com/massif-maps/MassifMaps/pull/409)) ([`4ea33de`](https://github.com/massif-maps/MassifMaps/commit/4ea33de5881bfe25f78aba3a594dfe4aa3110f92))
+- **renderers:** draw sharper shadow edges by default, as mapbox does ([#402](https://github.com/massif-maps/MassifMaps/pull/402)) ([`b2b613f`](https://github.com/massif-maps/MassifMaps/commit/b2b613f5ef685cbbf70d42500ae2538fab1897b2))
+- **vt:** darken building walls facing away from the sun inside another building's shadow ([#401](https://github.com/massif-maps/MassifMaps/pull/401)) ([`3d110b1`](https://github.com/massif-maps/MassifMaps/commit/3d110b1caca91bf8f7e5fb925dd5e6b5b76365cf))
+- **layers:** keep the map's detail and its POIs on screen through a zoom out ([#400](https://github.com/massif-maps/MassifMaps/pull/400)) ([`970e360`](https://github.com/massif-maps/MassifMaps/commit/970e3608d9fc881e64b4cd8812beeb96076e072a))
+- **layers:** apply a hillshade slot's contrast and height scale when a style parameter changes ([#393](https://github.com/massif-maps/MassifMaps/pull/393)) ([`405156a`](https://github.com/massif-maps/MassifMaps/commit/405156abc82125b474e92718582ac7792f816e36))
+
 ## [v6.1.3] - 2026-10-08
 
 ### Breaking changes

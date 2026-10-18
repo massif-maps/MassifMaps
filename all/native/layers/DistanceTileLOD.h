@@ -35,8 +35,8 @@ namespace massif {
         static constexpr std::size_t MIN_BUDGET = 24;
 
         static constexpr int NO_VIEW_CAP = 1000; // Limits::capOffset of a cut no zoom of the view caps
-        static constexpr double FAR_COARSENING = 0.5; // the area rule's grazing slope: 1.5 levels per doubling over the ground
-        static constexpr double MIN_GRAZING = 1.0 / 16.0; // vertical over slant distance, under which a tile reads as edge on
+        static constexpr double FAR_COARSENING = 0.65; // fitted with MIN_GRAZING to the area rule's tile count (02-tiles.md), not derived
+        static constexpr double MIN_GRAZING = 1.0 / 32.0; // vertical over slant distance, under which a tile reads as edge on
 
         /** What one cull measures a tile with. */
         struct View {
@@ -58,6 +58,7 @@ namespace massif {
             int capOffset = 0; // levels over the view level a tile may go, NO_VIEW_CAP for any
             int coarsening = -1; // levels under the view level a tile may be coarser, negative for any (terrain occluders)
             int floorCap = std::numeric_limits<int>::max(); // the coarsening floor never above this level
+            int zoomCap = std::numeric_limits<int>::max(); // never split from here on: the level of a look-independent reference distance
         };
 
         /** The scale a tile stops splitting at: its edge on screen, over the pixels a tile may span. */
@@ -77,6 +78,11 @@ namespace massif {
                 return std::numeric_limits<double>::infinity();
             }
             return std::log2(view.zoom0Distance / distance) + view.zoomShift;
+        }
+
+        /** The zoom a tile is styled at: its view zoom, under the level its cap holds the cut at. */
+        static double styleZoom(const View& view, const Limits& limits, double distance) {
+            return std::min(viewZoom(view, distance), limits.zoomCap + 0.999);
         }
 
         /** The whole level of the view zoom, bounded so that an eye inside the tile still has one. */
@@ -108,6 +114,7 @@ namespace massif {
             }
             int level = viewLevel(view, distance);
             int cap = limits.capOffset >= NO_VIEW_CAP ? limits.maxZoom : std::min(limits.maxZoom, level + limits.capOffset);
+            cap = std::min(cap, limits.zoomCap);
             if (zoom >= cap) {
                 return 0.0;
             }

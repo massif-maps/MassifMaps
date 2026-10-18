@@ -414,13 +414,18 @@ zoom (plus `MaxOverzoomLevel` with terrain). The edge is in world units, the dis
 to the nearest point of the tile's box - DEM range included, so a summit tile is near - and the focal
 length in pixels is the projection's.
 
-The **allowance** is `(slant / vertical)^0.5`, from the slant distance to the vertical one of that nearest
-point (at least 1, with the vertical floored at 1/16 of the slant: two levels at most). It is the area
-rule's own grazing slope, a pure function of the tile and the eye: a ground seen head on is judged by
-pixels alone, one seen along the surface may span more, so the level falls ~1.5 per doubling of the
-distance over the ground and one per doubling straight below the eye. Without it the distance rule asks
-for 2x the area rule's tiles at tilt 60 and 6x at 75; with it 1.1x and 1.7x (table below). Free roam
-imagery has none (`farCoarsening` 0): its panorama is cut by pixels alone, as it always was.
+The **allowance** is `(slant / vertical)^0.65`, from the slant distance to the vertical one of that nearest
+point (at least 1, with the vertical floored at 1/32 of the slant: 3.2 levels at most). It is the area
+rule's grazing slope, a pure function of the tile and the eye: a ground seen head on is judged by
+pixels alone, one seen along the surface may span more, so the level falls ~1.65 per doubling of the
+distance over the ground and one per doubling straight below the eye. The exponent and the floor are
+**fitted, not derived** (`FAR_COARSENING`, `MIN_GRAZING`): the foreshortening of a tile's area gives 0.5,
+but the area rule also lost the tile's depth and the screen angle, and had no floor at the horizon, and 0.5
+with a floor of 1/16 asked for 1.7x its tiles at tilt 10. On the Crosscall (z16.3, tilt 10, the 2D bench
+scene) 0.65 and 1/32 give the area rule's cut tile for tile, `z10:1 z12:2 z13:4 z14:1 z15:2 z16:6`; the
+sweep in `DistanceTileLODTest::testTheTileCountIsTheOldRules` finds 0.9-1.1x its count from tilt 90 to 10.
+0.6 held 21 tiles there against 16, 0.7 drops two far tiles of the Bastille scene a level (18 -> 12).
+Free roam imagery has none (`farCoarsening` 0): its panorama is cut by pixels alone, as it always was.
 
 The flat top-down map keeps its cut: at tilt 90 the nearest point and the projected area measure the same
 thing and the allowance is 1; the sweeps in `DistanceTileLODTest` find the two rules within a level.
@@ -428,21 +433,35 @@ thing and the allowance is 1; the sweeps in `DistanceTileLODTest` find the two r
 back to 1 there.
 
 Every bound on a level reads the **view zoom of the tile's own nearest distance** (`viewZoom`: the zoom a
-top-down camera there would be at, `log2(zoom0Distance / distance)` plus the zoom offset and bias), never
-the camera's zoom:
+top-down camera there would be at, `log2(zoom0Distance / distance)` plus the zoom offset and bias), and a
+classic map has a second cap on top, **the level of a reference distance that no look moves**:
 
 | | cap | floor (terrain) | style zoom |
 |---|---|---|---|
-| any planar layer | `floor(view zoom)`, plus `MaxTileZoomOffset` if set; the data's max zoom (+ overzoom with terrain) | `floor(view zoom) - MaxTileZoomCoarsening`, under the DEM's detail limit and the view distance's | the view zoom, floored and held between the tile's zoom and the lift |
+| classic planar layer | `floor(view zoom)`, plus `MaxTileZoomOffset` if set, the data's max zoom (+ overzoom with terrain), and the **reference level** | `floor(view zoom) - MaxTileZoomCoarsening`, under the DEM's detail limit and the view distance's | the view zoom, floored and held between the tile's zoom and the lift |
 | free roam imagery | the data's only | none | n/a (raster) |
 | globe | the camera's zoom | as classic | the camera's target; **the area rule** |
 
-Why not the camera's zoom, even for a classic map: the camera's zoom is the distance to its focus, and
+The reference level is the camera's zoom as it was, with the one thing that moved it taken out: without
+terrain the **camera distance** (the focus stays on the plane, so it is the zoom the app set); with terrain
+the **eye's height over the ground under it**, the zoom a top-down look from the eye would have, which is the
+most the camera's zoom reaches over every look from there (equal to it at tilt 90, 0.2 level over at tilt 60,
+a level over at tilt 30). Without it the per-tile cap alone lets ground nearer than the focus refine past
+the camera's zoom: at tilt 10 (horizon in view) z17 and z18 tiles at the bottom of the screen, 2.5x the
+tiles; under terrain a ridge nearer than the focus took z16 where the camera's z15.8 gave z15, 1.9x. That
+is the cost of the view-zoom cap, and the old cap was what paid for it: ground nearer than the focus was
+never finer than the camera's zoom.
+
+Why not the camera's zoom itself, even for a classic map with terrain: the camera's zoom is the distance to its focus, and
 with terrain on a gesture keeps the eye and slides the focus along the view ray onto the ground
 (`recalculateZoomAndCenter`), so the zoom follows where the view ray lands. Tilting or turning the view
 from one spot moved the zoom, and with it the cap, the floor and the style zoom of every tile at once:
 far trees (tiles styled at z16, data from z14) were there in one look and gone in the next, and the
 drape of the far ground, baked at a fixed size per tile, went from crisp to pixelated with the level.
+The eye's height does not move with the look (`DistanceTileLODTest`: no ground point changes level across
+looks with the cap on), and moves with the ground under the eye when the app pans, as the zoom did. The ground
+is read from the cached DEM: until it lands the height is the eye's altitude, a cap too coarse that the
+re-cull on the DEM's arrival lifts.
 
 #### The tile budget
 
@@ -467,16 +486,21 @@ layer keeps `DistanceTileLOD::DEFAULT_BUDGET`, 112, as a ceiling its rule rarely
   tiles the view held.
 
 Mirrored on a flat plane (`DistanceTileLODTest`, 1000 px screen, TileLODFactor 0.5, z16, the view
-distance of `ViewState::calculateViewDistance`), **not measured on a device**:
+distance of `ViewState::calculateViewDistance`), tilt counted from straight down:
 
 | tilt | area rule | distance rule |
 |---|---|---|
 | 0 | 28 | 24 |
 | 30 | 32 | 26 |
 | 45 | 36 | 28 |
-| 60 | 37 | 40 |
-| 70 | 42 | 57 |
-| 75 | 39 | 67 |
+| 60 | 37 | 37 |
+| 70 | 42 | 43 |
+| 75 | 39 | 37 |
+
+The cut as first shipped (no reference cap, exponent 0.5) held 1.2x the area rule's tiles at tilt 60,
+1.4x at 70 and 1.7x at 80 (mean over zooms, screens and densities), and **the Crosscall measured it at
+2.2x the tiles drawn** in the 2D scene (z16.3, tilt 10) and 1.7x in the Neron terrain scene
+([performance-log](../performance-log.md#the-tile-cull-by-eye-distance-held-twice-the-tiles-2026-10-17)).
 
 `TileLODFactor` is the knob (`MOBILE` 0.71, `REFERENCE` 1).
 
@@ -490,7 +514,12 @@ level is: a far tile keeps the same rules whichever way the eye turns, a near on
 near field. The cut records each kept tile's view zoom (`_tileViewZoom`), which the decoder and the
 staleness test read by tile id; a decoded tile goes stale when its view zoom leaves its style zoom by
 more than `TARGET_TILE_ZOOM_HYSTERESIS`. A tile the cut does not hold (a stand-in) is styled at its own
-zoom. The data decides the rest: a z13 tile of a source that puts trees from z14 has none, however it is
+zoom. The view zoom is **bounded by the reference level** (`DistanceTileLOD::styleZoom`: under `zoomCap + 1`):
+a tile the cap holds at z17 is bigger than the ground its nearest point reads (zoom 19 at tilt 55, z17.6),
+so styled at that zoom it carried the z18-z19 POI pins over its whole area, and the street names went
+(Crosscall, z17.6 tilt 55: "Rue de Palanka" and "Rue Felix Viallet" gone, Burger King and BB Smash in; style
+zoom 17-19 against the parent's 17; clamped to the cap the names came back. That the pins displaced the names
+is likely, not shown). The data decides the rest: a z13 tile of a source that puts trees from z14 has none, however it is
 styled.
 
 Not a function of the cut, so still the camera's: any style FUNCTION of `view::zoom` evaluated per frame

@@ -6,6 +6,10 @@ enable_language( C CXX ASM )
 # General options
 option(SINGLE_LIBRARY "Compile as single library" OFF)
 
+if(ANDROID)
+  option(SQLITE_SHARED "Build SQLite as libsqlite.so, linked by libmassif.so, instead of compiling it in" OFF)
+endif()
+
 if(APPLE)
   option(INCLUDE_OBJC "Include ObjC code on iOS" OFF)
   option(SHARED_LIBRARY "Build as shared library on iOS" OFF)
@@ -168,6 +172,12 @@ endif(INCLUDE_ROUTING)
 
 if(INCLUDE_SQLITE)
   list(APPEND SDK_EXTERNAL_SUBPROJECTS "sqlite" "sqlite3pp")
+  if(ANDROID AND SINGLE_LIBRARY AND SQLITE_SHARED)
+    set(SDK_SQLITE_SHARED ON)
+    # -fvisibility=hidden would hide the sqlite3_* references too, and the linker refuses a hidden
+    # reference to a symbol in another library.
+    add_definitions("-DSQLITE_API=__attribute__((visibility(\"default\")))")
+  endif()
 endif(INCLUDE_SQLITE)
 
 if(INCLUDE_VALHALLA)
@@ -188,6 +198,11 @@ foreach(SDK_SUBPROJECT IN ITEMS ${SDK_EXTERNAL_SUBPROJECTS})
 endforeach()
 
 set(SDK_SUBPROJECTS "${SDK_MASSIF_SUBPROJECTS}" "${SDK_EXTERNAL_SUBPROJECTS}")
+
+if(SDK_SQLITE_SHARED)
+  list(REMOVE_ITEM sqlite_FLAGS "-DSQLITE_THREADSAFE=2" "-DSQLITE_OMIT_WAL")
+  list(APPEND sqlite_FLAGS "-DSQLITE_THREADSAFE=1")
+endif()
 
 # When in single library mode, apply compilation flags to individual projects.
 if(SINGLE_LIBRARY)
@@ -216,6 +231,15 @@ if(SINGLE_LIBRARY)
     endif()
   endforeach()
 endif(SINGLE_LIBRARY)
+
+# libsqlite.so is the name other libraries ship their SQLite under, so an app keeps one copy: build it
+# thread-safe and with WAL (see the flags above), not as massif's private trimmed one.
+if(SDK_SQLITE_SHARED)
+  add_library(sqlite_shared SHARED ${sqlite_SRC_FILES})
+  set_target_properties(sqlite_shared PROPERTIES OUTPUT_NAME sqlite)
+  target_link_libraries(sqlite_shared m)
+  set(sqlite_SRC_FILES "")
+endif()
 
 # Source files and properties
 # CONFIGURE_DEPENDS: without it the glob is evaluated only at configure time, so a newly added
@@ -401,6 +425,9 @@ if(ANDROID)
   # ...) are only exported by libGLESv3.so. It is a superset, so it replaces GLESv2 rather than
   # joining it, and it exists on every device at minSdk 21.
   target_link_libraries(massif EGL GLESv3 z log android jnigraphics)
+  if(SDK_SQLITE_SHARED)
+    target_link_libraries(massif sqlite_shared)
+  endif()
 elseif(APPLE)
   target_link_libraries(massif "-framework Foundation" "-framework CoreGraphics" "-framework CoreText" "-framework CFNetwork" "-framework UIKit")
   if(SDK_CPP_DEFINES MATCHES ".*_MASSIF_USE_METALANGLE.*")

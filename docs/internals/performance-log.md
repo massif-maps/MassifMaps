@@ -2679,7 +2679,19 @@ rule run by forcing the globe path in the same binary):
    at the 1/16 floor; the 1/32 floor takes the last two far tiles; 0.7 coarsens Bastille 18 -> 12) and on the
    host sweep.
 
-The `layers` CPU in 2D is 10.9 ms against 9.9 with the same draw counts: ~1 ms is not tiles (not chased).
+The `layers` CPU in 2D was 10.9 ms against 9.9 with the same draw counts; see the style zoom below.
+
+**The style zoom of a capped tile.** With the cap back, a z17 tile still took the view zoom of its nearest
+point as style zoom (up to tile zoom + the lift of 2, so z19): at z17.6 tilt 55 on the Crosscall (terrain,
+shadows, `--es sky false`) the street names ("Rue de Palanka", "Rue Felix Viallet") dropped out and orange POI
+pins appeared, against the parent. Logged per visible tile (tile zoom/style zoom): the parent's rule gives
+the camera's 17 (read from the code, not logged), this change `z16/s17:2 z16/s18:1 z17/s17:2 z17/s18:3` (and
+`z17/s19:4` on another run), #440 `z16/s17:2 z17/s17:2 z17/s18:2 z18/s18:13`. `DistanceTileLOD::styleZoom` now bounds the view zoom under
+`zoomCap + 1`: all 17, the names back. Same capture, mean abs luma diff against the parent: 2.6 (a settled
+frame; repeats of one build differ by 1-2.3, and one capture taken before the shadows settled 12), against
+#440 + sky bake 4.2; Bastille 0.6-0.8 against the parent (6.5 for #440), Neron 0.1 (3.7). Counts after, same
+method as the table (2 rounds): 2D 19.0 tiles, 200.8 geomDraws, `layers` CPU **9.5 ms** (parent 9.9, so the
+~1 ms was the style zoom), Bastille and Neron unchanged (Neron 10.0 tiles, drape GPU 8.4).
 
 Looked at, after 90 s, `devtap shot` / `diff`, 2D z16.3, Bastille and Neron against the parent and the cull
 commit (`/tmp` only, not kept): geometry and ground colour match the parent; Bastille's upper bands are

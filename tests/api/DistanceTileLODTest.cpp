@@ -520,6 +520,9 @@ namespace {
         TEST_CHECK(std::abs(DistanceTileLOD::viewZoom(view, distance * 2.0) - 15.001) < 1e-9, "and falls a level for every doubling of the distance");
         TEST_CHECK(std::isinf(DistanceTileLOD::viewZoom(view, 0.0)), "an eye inside the tile has no distance to read a zoom off");
         TEST_CHECK(DistanceTileLOD::viewLevel(view, 0.0) == DistanceTileLOD::NO_VIEW_CAP, "and its level is bounded");
+        TEST_CHECK(DistanceTileLOD::styleZoom(view, { 5, 20, 0, -1, 99, 16 }, at(19)) < 17.0 && DistanceTileLOD::styleZoom(view, { 5, 20, 0, -1, 99, 16 }, at(19)) >= 16.0,
+                   "a tile the zoom cap holds at z16 is styled under z17, though its nearest ground reads zoom 19");
+        TEST_CHECK(DistanceTileLOD::styleZoom(view, { 5, 20, 0 }, at(12)) == DistanceTileLOD::viewZoom(view, at(12)), "and by its view zoom where the cap is above it");
 
         // The grazing allowance: a tile seen head on is judged by pixels alone, one seen at a grazing angle may span more.
         view.farCoarsening = 0.5;

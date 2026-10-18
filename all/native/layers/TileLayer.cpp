@@ -1196,7 +1196,7 @@ namespace massif {
             int bucket = (inVisibleFrustum ? 0 : (viewState.getLabelFrustum().inside(tileBounds) ? 1 : 2));
             _distanceNodes.push_back({ critical, parentCritical, bucket });
             _distanceTiles.push_back(tile);
-            _distanceViewZooms.push_back(static_cast<float>(DistanceTileLOD::viewZoom(_distanceView, distance)));
+            _distanceViewZooms.push_back(static_cast<float>(DistanceTileLOD::styleZoom(_distanceView, _distanceLimits, distance)));
             if (critical > 1.0) {
                 for (int n = 0; n < 4; n++) {
                     calculateVisibleTilesRecursive(cullState, tile.getChild(n), dataExtent, critical);

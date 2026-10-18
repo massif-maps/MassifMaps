@@ -80,6 +80,11 @@ namespace massif {
             return std::log2(view.zoom0Distance / distance) + view.zoomShift;
         }
 
+        /** The zoom a tile is styled at: its view zoom, under the level its cap holds the cut at. */
+        static double styleZoom(const View& view, const Limits& limits, double distance) {
+            return std::min(viewZoom(view, distance), limits.zoomCap + 0.999);
+        }
+
         /** The whole level of the view zoom, bounded so that an eye inside the tile still has one. */
         static int viewLevel(const View& view, double distance) {
             double zoom = viewZoom(view, distance);

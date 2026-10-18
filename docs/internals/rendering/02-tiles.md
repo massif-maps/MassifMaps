@@ -514,7 +514,12 @@ level is: a far tile keeps the same rules whichever way the eye turns, a near on
 near field. The cut records each kept tile's view zoom (`_tileViewZoom`), which the decoder and the
 staleness test read by tile id; a decoded tile goes stale when its view zoom leaves its style zoom by
 more than `TARGET_TILE_ZOOM_HYSTERESIS`. A tile the cut does not hold (a stand-in) is styled at its own
-zoom. The data decides the rest: a z13 tile of a source that puts trees from z14 has none, however it is
+zoom. The view zoom is **bounded by the reference level** (`DistanceTileLOD::styleZoom`: under `zoomCap + 1`):
+a tile the cap holds at z17 is bigger than the ground its nearest point reads (zoom 19 at tilt 55, z17.6),
+so styled at that zoom it carried the z18-z19 POI pins over its whole area, and the street names went
+(Crosscall, z17.6 tilt 55: "Rue de Palanka" and "Rue Felix Viallet" gone, Burger King and BB Smash in; style
+zoom 17-19 against the parent's 17; clamped to the cap the names came back. That the pins displaced the names
+is likely, not shown). The data decides the rest: a z13 tile of a source that puts trees from z14 has none, however it is
 styled.
 
 Not a function of the cut, so still the camera's: any style FUNCTION of `view::zoom` evaluated per frame

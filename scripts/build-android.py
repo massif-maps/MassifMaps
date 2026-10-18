@@ -66,6 +66,7 @@ def buildAndroidSO(args, abi):
     "-DCMAKE_ANDROID_ARCH_ABI='%s'" % abi,
     "-DWRAPPER_DIR=%s" % ('%s/generated/android-java/wrappers' % baseDir),
     "-DSINGLE_LIBRARY:BOOL=ON",
+    "-DSQLITE_SHARED:BOOL=ON",
     "-DANDROID_STL='c++_shared'",
     "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
     "-DANDROID_NDK='%s'" % args.androidndkpath,
@@ -85,7 +86,12 @@ def buildAndroidSO(args, abi):
     '--config', args.configuration,
   ]):
     return False
-  return makedirs('%s/%s' % (distDir, abi)) and copyfile('%s/libmassif.so' % buildDir, '%s/%s/libmassif.so' % (distDir, abi))
+  sqliteDist = '%s/%s/libsqlite.so' % (distDir, abi)
+  if os.path.exists(sqliteDist):
+    os.remove(sqliteDist)
+  if not makedirs('%s/%s' % (distDir, abi)) or not copyfile('%s/libmassif.so' % buildDir, '%s/%s/libmassif.so' % (distDir, abi)):
+    return False
+  return not os.path.exists('%s/libsqlite.so' % buildDir) or copyfile('%s/libsqlite.so' % buildDir, sqliteDist)
 
 def buildAndroidJAR(args):
   shutil.rmtree(getBuildDir('android_java'), True)

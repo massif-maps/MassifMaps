@@ -98,6 +98,22 @@ Devanagari, Thai, CJK, Hangul) and a CFF OpenType face (Javanese) hash identical
 `sqlite3pp` calls `sqlite3_set_authorizer` and `sqlite3_column_decltype`, so `OMIT_AUTHORIZATION` and
 `OMIT_DECLTYPE` stay off.
 
+### SQLite as its own `libsqlite.so` (Android)
+
+With `-DSQLITE_SHARED=ON` (on in `build-android.py` and the `android-dev` module) SQLite is built as
+`libsqlite.so` and `libmassif.so` links it (`DT_NEEDED`) instead of compiling it in. An app that ships
+another `libsqlite.so`, such as the NativeScript SQLite plugin, then keeps one copy: gradle `pickFirst`
+on `lib/<abi>/libsqlite.so`, and the app's own `jniLibs` decide which one. Massif knows nothing of the
+other library; it only needs a thread-safe SQLite exporting `sqlite3_*`.
+
+The shared build drops two of the flags above, `SQLITE_THREADSAFE=2` (now `1`) and `SQLITE_OMIT_WAL`,
+so that it can stand in for any other user of the name. The rest of the trims stay. `sqlite3_*` is
+exported through `scripts/android/version-script`, and `SQLITE_API` is defined as default visibility so
+the `-fvisibility=hidden` references in `libmassif.so` are not hidden. Without it the link fails.
+
+Checked on a stub linked the same way (arm64-v8a): `libsqlite.so` is 601 KB with 219 exports, soname
+`libsqlite.so`, and the stub shows `NEEDED libsqlite.so`. The full SDK build and a run are not done.
+
 ### Packed relocations, and why `minSdk` is 23
 
 `.rela.dyn` was 574 KB of the `full` library, 24-byte `R_AARCH64_RELATIVE` entries for every vtable

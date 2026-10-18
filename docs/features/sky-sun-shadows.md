@@ -185,6 +185,7 @@ sky**, which is the usual reason a custom sky "does nothing".
 | `vec4 u_sunColor`, `float u_sunIntensity` | from `LightOptions` |
 | `vec4 u_skyColor`, `u_horizonColor`, `u_groundColor` | the configured colours; `u_groundColor` is the horizon colour while the ground colour is unset |
 | `float u_groundAuto` | 1 while `GroundColor` is unset (rays below the horizon arrive tipped up), 0 once set |
+| `sampler2D u_belowLUT`, `float u_bakeWidth` | reserved by the renderer, which bakes the tipped rays into a texture; do not declare or read them |
 | `float u_horizonBlend`, `u_sunDisc` | the configured blend / sun-disc switch |
 | `vec4 u_atmosphere`, `u_atmosphereColor`, `u_haloColor` | scattering sun intensity and exposure, and the two tints |
 | `float u_starIntensity` | the star field's brightness |

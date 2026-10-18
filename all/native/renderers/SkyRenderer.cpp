@@ -40,6 +40,8 @@ namespace massif {
         _u_horizonColor(-1),
         _u_groundColor(-1),
         _u_groundAuto(-1),
+        _u_belowLUT(-1),
+        _u_bakeWidth(-1),
         _u_horizonBlend(-1),
         _u_sunIntensity(-1),
         _u_sunDisc(-1),
@@ -52,6 +54,9 @@ namespace massif {
         _u_resolution(-1),
         _u_starIntensity(-1),
         _startTime(std::chrono::steady_clock::now()),
+        _belowHorizonLUT(false),
+        _belowHorizonKey(),
+        _belowHorizonBaked(false),
         _glResourceManager(),
         _options(options)
     {
@@ -68,6 +73,8 @@ namespace massif {
     }
 
     void SkyRenderer::onSurfaceDestroyed() {
+        _belowHorizonLUT.deleteResources();
+        _belowHorizonBaked = false;
         _shader.reset();
         _shaderSource.clear();
         _shaderFailed = false;
@@ -91,6 +98,7 @@ namespace massif {
             return static_cast<bool>(_shader);
         }
 
+        _belowHorizonBaked = false;
         _shaderSource = source;
         _fogShaderSource = fogSource;
         _shaderType = type;
@@ -140,6 +148,8 @@ namespace massif {
         _u_horizonColor = glGetUniformLocation(progId, "u_horizonColor");
         _u_groundColor = glGetUniformLocation(progId, "u_groundColor");
         _u_groundAuto = glGetUniformLocation(progId, "u_groundAuto");
+        _u_belowLUT = glGetUniformLocation(progId, "u_belowLUT");
+        _u_bakeWidth = glGetUniformLocation(progId, "u_bakeWidth");
         _u_horizonBlend = glGetUniformLocation(progId, "u_horizonBlend");
         _u_sunIntensity = glGetUniformLocation(progId, "u_sunIntensity");
         _u_sunDisc = glGetUniformLocation(progId, "u_sunDisc");
@@ -265,11 +275,11 @@ namespace massif {
         if (_u_zoom >= 0) {
             glUniform1f(_u_zoom, viewState.getZoom());
         }
+        float cameraHeight = 0.0f;
+        if (std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface()) {
+            cameraHeight = SkyFrame::cameraHeight(*projectionSurface, viewState.getCameraPos());
+        }
         if (_u_cameraHeight >= 0) {
-            float cameraHeight = 0.0f;
-            if (std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface()) {
-                cameraHeight = SkyFrame::cameraHeight(*projectionSurface, viewState.getCameraPos());
-            }
             glUniform1f(_u_cameraHeight, cameraHeight);
         }
         if (_u_resolution >= 0) {
@@ -288,6 +298,22 @@ namespace massif {
         }
         const float quadCoords[8] = { -1, quadBottom, 1, quadBottom, -1, 1, 1, 1 };
 
+        if (skyOptions->isGroundColorAutomatic() && _u_belowLUT >= 0 && _u_bakeWidth >= 0) {
+            // A custom shader may read anything, the time included, so it is baked every frame.
+            auto argb = [](const Color& color) { return static_cast<double>(static_cast<unsigned int>(color.getARGB())); };
+            BelowHorizonKey key = { sunDir(0), sunDir(1), sunDir(2), sunIntensity, skyOptions->getHorizonBlend(), cameraHeight,
+                                    sky.atmosphereSunIntensity, sky.atmosphereLuminance, fog.horizonBlend,
+                                    argb(sunColor), argb(skyColor), argb(horizonColor), argb(atmosphereColor), argb(haloColor),
+                                    argb(fog.highColor), argb(fog.spaceColor) };
+            bool bake = !_shaderSource.empty() || !_belowHorizonBaked || key != _belowHorizonKey;
+            if (bakeBelowHorizon(bake)) {
+                _belowHorizonKey = key;
+                _belowHorizonBaked = true;
+            } else {
+                glUniform1f(_u_groundAuto, 0.0f);
+            }
+        }
+
         glDisable(GL_CULL_FACE);
         glEnableVertexAttribArray(_a_coord);
         glVertexAttribPointer(_a_coord, 2, GL_FLOAT, GL_FALSE, 0, quadCoords);
@@ -301,6 +327,39 @@ namespace massif {
 
     const float SkyRenderer::QUAD_COORDS[8] = { -1, -1, 1, -1, -1, 1, 1, 1 };
     const float SkyRenderer::SKY_HORIZON_MARGIN = 0.35f;
+    const int SkyRenderer::BELOW_HORIZON_LUT_WIDTH = 128;
+
+    bool SkyRenderer::bakeBelowHorizon(bool redraw) {
+        glActiveTexture(GL_TEXTURE0);
+        _belowHorizonLUT.setSize(BELOW_HORIZON_LUT_WIDTH, 1, 1);
+        if (!redraw) {
+            glBindTexture(GL_TEXTURE_2D, _belowHorizonLUT.getTexture());
+            glUniform1i(_u_belowLUT, 0);
+            return true;
+        }
+
+        GLint frameBuffer = 0;
+        GLint viewport[4] = { 0, 0, 0, 0 };
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &frameBuffer);
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        if (!_belowHorizonLUT.beginPass()) {
+            return false;
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUniform1f(_u_bakeWidth, static_cast<float>(BELOW_HORIZON_LUT_WIDTH));
+        glDisable(GL_CULL_FACE);
+        glEnableVertexAttribArray(_a_coord);
+        glVertexAttribPointer(_a_coord, 2, GL_FLOAT, GL_FALSE, 0, QUAD_COORDS);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glDisableVertexAttribArray(_a_coord);
+        glUniform1f(_u_bakeWidth, 0.0f);
+        _belowHorizonLUT.endPass(frameBuffer, viewport[2], viewport[3]);
+        glEnable(GL_DEPTH_TEST);
+
+        glBindTexture(GL_TEXTURE_2D, _belowHorizonLUT.getTexture());
+        glUniform1i(_u_belowLUT, 0);
+        return true;
+    }
 
     const std::string SkyRenderer::SKY_VERTEX_SHADER = R"GLSL(
         #version 100
@@ -333,6 +392,8 @@ namespace massif {
         uniform vec4 u_horizonColor;
         uniform vec4 u_groundColor;
         uniform float u_groundAuto;     // 1 until SkyOptions::setGroundColor is called
+        uniform sampler2D u_belowLUT;   // the colour below the horizon, by azimuth
+        uniform float u_bakeWidth;      // the LUT width while it is being drawn, else 0
         uniform float u_horizonBlend;
         uniform float u_sunIntensity;
         uniform float u_sunDisc;
@@ -523,16 +584,30 @@ namespace massif {
 
     const std::string SkyRenderer::SKY_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
+            bool bake = u_bakeWidth > 0.0;
             vec3 rayDir = normalize(u_localFrame * v_rayDir);
-            // Below the horizon there is no sky, only the gap the map leaves (past the view distance, or
-            // a tile not loaded yet). Unless the ground color was set, that ray sees the sky just above
-            // the horizon: any other colour there is a band under the sky.
-            vec3 skyRay = rayDir;
-            if (rayDir.z < 0.0 && u_groundAuto > 0.5) {
-                skyBelowHorizon = 1.0;
-                skyRay = normalize(vec3(rayDir.xy, 0.001));
+            if (bake) {
+                float azimuth = (gl_FragCoord.x / u_bakeWidth - 0.5) * 6.2831853;
+                rayDir = vec3(cos(azimuth), sin(azimuth), -0.001);
             }
-            vec4 color = clamp(skyColor(skyRay), 0.0, 1.0);
+            // Below the horizon, unless the ground color was set, the ray sees the sky just above it: any
+            // other colour is a band under the sky. That depends on the azimuth alone, so it is baked.
+            bool below = rayDir.z < 0.0 && u_groundAuto > 0.5;
+            vec4 color;
+            if (below && !bake) {
+                color = texture2D(u_belowLUT, vec2(atan(rayDir.y, rayDir.x + 1e-6) / 6.2831853 + 0.5, 0.5));
+            } else {
+                vec3 skyRay = rayDir;
+                if (below) {
+                    skyBelowHorizon = 1.0;
+                    skyRay = normalize(vec3(rayDir.xy, 0.001));
+                }
+                color = clamp(skyColor(skyRay), 0.0, 1.0);
+            }
+            if (bake) {
+                gl_FragColor = color;
+                return;
+            }
             // The sky is at infinity, so what varies over it is the ANGULAR haze alone - the same
             // term the ground takes, which is what makes the two meet without a seam.
             vec4 premul = skyFog(vec4(color.rgb * color.a, color.a), rayDir);

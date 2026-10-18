@@ -10,7 +10,9 @@
 #include "renderers/utils/GLContext.h"
 #include "components/SkyOptions.h"
 #include "components/StyleEnvironment.h"
+#include "renderers/utils/ScreenMaskBuffer.h"
 
+#include <array>
 #include <chrono>
 #include <memory>
 #include <string>
@@ -42,6 +44,7 @@ namespace massif {
 
     protected:
         bool updateShader(const ResolvedSky& sky);
+        bool bakeBelowHorizon(bool redraw);
 
         static const std::string SKY_VERTEX_SHADER;
         static const std::string SKY_FRAGMENT_SHADER_PREFIX;
@@ -56,6 +59,8 @@ namespace massif {
         // shader carries its fog band below the skyline.
         static const float SKY_HORIZON_MARGIN;
         static bool isHorizonClipEnabled();
+        // Azimuth samples of the colour below the horizon.
+        static const int BELOW_HORIZON_LUT_WIDTH;
 
         std::shared_ptr<Shader> _shader;
         std::string _shaderSource;      // the SkyOptions source the current shader was built from
@@ -76,6 +81,8 @@ namespace massif {
         GLint _u_horizonColor;
         GLint _u_groundColor;
         GLint _u_groundAuto;
+        GLint _u_belowLUT;
+        GLint _u_bakeWidth;
         GLint _u_horizonBlend;
         GLint _u_sunIntensity;
         GLint _u_sunDisc;
@@ -89,6 +96,12 @@ namespace massif {
         GLint _u_starIntensity;
 
         std::chrono::steady_clock::time_point _startTime;
+
+        // What the baked colour depends on; the texture is redrawn only when it changes.
+        typedef std::array<double, 16> BelowHorizonKey;
+        ScreenMaskBuffer _belowHorizonLUT;
+        BelowHorizonKey _belowHorizonKey;
+        bool _belowHorizonBaked;
 
         std::shared_ptr<GLResourceManager> _glResourceManager;
 

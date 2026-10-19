@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.2.1] - 2026-10-19
+
+### Bug fixes
+
+- **layers:** stop a hidden tile layer drawing the tiles it holds ([#451](https://github.com/massif-maps/MassifMaps/pull/451)) ([`9c68744`](https://github.com/massif-maps/MassifMaps/commit/9c68744d36dc033de0264e5e014d0596f4a4f3f8))
+
 ## [v6.2.0] - 2026-10-18
 
 ### Breaking changes

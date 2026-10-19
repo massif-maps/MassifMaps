@@ -402,6 +402,9 @@ namespace massif {
     }
     
     void VectorTileLayer::collectLabelLayers(std::vector<std::shared_ptr<VectorTileLayer> >& labelLayers) {
+        if (!isVisible()) {
+            return;
+        }
         labelLayers.push_back(std::static_pointer_cast<VectorTileLayer>(shared_from_this()));
     }
 
@@ -603,6 +606,10 @@ namespace massif {
     }
     
     bool VectorTileLayer::onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
+        // Hiding only empties the tile set; the renderer keeps drawing the tiles it holds.
+        if (!isVisible()) {
+            return false;
+        }
         {
             // Only the layer can evaluate its style's expressions.
             StyleEnvironment env;
@@ -644,6 +651,9 @@ namespace massif {
     }
         
     bool VectorTileLayer::onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
+        if (!isVisible()) {
+            return false;
+        }
         if (auto mapRenderer = getMapRenderer()) {
             _tileRenderer->setLayerOpacity(getOpacity());
             return _tileRenderer->onDrawFrame3D(deltaSeconds, viewState);

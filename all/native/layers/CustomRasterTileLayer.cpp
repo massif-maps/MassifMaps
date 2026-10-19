@@ -43,6 +43,10 @@ namespace massif {
     }
 
     bool CustomRasterTileLayer::onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
+        if (!isVisible()) {
+            return false;
+        }
+
         updateTileLoadListener();
 
         if (auto mapRenderer = getMapRenderer()) {

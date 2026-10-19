@@ -68,6 +68,15 @@ retained `contour` layers at blend 1.0, with nothing active in it at all). `Rend
 separates the two: set by `initializeRenderTile`, cleared by `mergeExistingRenderTile`, which is
 exactly the ground that has no new tile yet.
 
+**A hidden layer is not drawn at all.** `setVisible(false)` makes `TileLayer::loadData` hand the
+renderer an empty tile set, but by the rule above nothing replaces the tiles on screen, so they are
+held for good: `visible()` read `false` while the boundaries stayed drawn, and `clearTileCaches`
+did not reach them (they live in the renderer, not the layer's caches). `VectorTileLayer::onDrawFrame`,
+`onDrawFrame3D` and `collectLabelLayers` therefore return early when hidden, as
+`CompositeVectorTileLayer::renderComposite` already did; so do the raster, hillshade, custom-raster
+and torque layers, which hold their tiles the same way. The held tiles stay, so showing the layer
+again redraws at once. Confirmed on device in alpimaps; the raster gates are syntax-checked only.
+
 **A retained layer is inherited once per target, not once per copy.** `initializeRenderTile` hands
 a new render tile the retained layers of every existing render tile it intersects, and
 `mergeExistingRenderTile` splits a retained tile into four child copies that all carry the same

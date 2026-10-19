@@ -377,6 +377,10 @@ namespace massif {
     }
     
     bool RasterTileLayer::onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
+        if (!isVisible()) {
+            return false;
+        }
+
         updateTileLoadListener();
 
         if (auto mapRenderer = getMapRenderer()) {
@@ -400,6 +404,9 @@ namespace massif {
     }
     
     bool RasterTileLayer::onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
+        if (!isVisible()) {
+            return false;
+        }
         return _tileRenderer->onDrawFrame3D(deltaSeconds, viewState);
     }
 

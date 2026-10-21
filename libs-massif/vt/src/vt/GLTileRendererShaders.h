@@ -126,7 +126,10 @@ namespace massif::vt {
         U_MODELTIME,
         U_MODELHIGHLIGHT,
         U_MODELHIGHLIGHTCOLOR,
-        U_ALPHACUTOFF
+        U_ALPHACUTOFF,
+        U_RASTER1,
+        U_RASTER2,
+        U_RASTER3
     };
 
     enum : unsigned int {
@@ -313,7 +316,10 @@ namespace massif::vt {
         { "uModelTime",            U_MODELTIME },
         { "uModelHighlight",       U_MODELHIGHLIGHT },
         { "uModelHighlightColor",  U_MODELHIGHLIGHTCOLOR },
-        { "uAlphaCutoff",          U_ALPHACUTOFF }
+        { "uAlphaCutoff",          U_ALPHACUTOFF },
+        { "uRaster1",              U_RASTER1 },
+        { "uRaster2",              U_RASTER2 },
+        { "uRaster3",              U_RASTER3 }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -1378,6 +1384,22 @@ namespace massif::vt {
         uniform highp_opt vec2 u_elevationDecode; // meters = elev16 * x + y
         uniform lowp float u_contrast;            // replaces the alpha channel when elevation-encoded
         uniform highp_opt float u_zoom;           // fractional map zoom
+        #ifdef MULTI_RASTER
+        // Rasters 1..3 of a layer carrying several bitmaps; a missing one reads as raster 0.
+        uniform sampler2D uRaster1;
+        uniform sampler2D uRaster2;
+        uniform sampler2D uRaster3;
+
+        // Index must be a literal: GLES2 forbids a computed sampler index.
+        lowp vec4 sampleRasterAt(int index, highp_opt vec2 uv) {
+            if (index == 1) return texture2D(uRaster1, uv);
+            if (index == 2) return texture2D(uRaster2, uv);
+            if (index == 3) return texture2D(uRaster3, uv);
+            return texture2D(uBitmap, uv);
+        }
+        #define sampleRaster(index) sampleRasterAt(index, vUV)
+        #define sampleRasterAtPixel(index, pixel) sampleRasterAt(index, (pixel) * uUVScale.zw)
+        #endif
 
         highp_opt float decodeElevation(lowp vec4 s) {
             return (s.b * 255.0 * 256.0 + s.a * 255.0) * u_elevationDecode.x + u_elevationDecode.y;

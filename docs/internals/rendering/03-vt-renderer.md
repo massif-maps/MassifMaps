@@ -144,6 +144,25 @@ paint surface, …). Consequences worth knowing:
   `Shader::getUniformLoc` returns **0** — a valid location that then clobbers uniform 0. Always use
   `glGetUniformLocation` with a `>= 0` guard (`SkyRenderer` is the pattern to copy).
 
+### Several rasters in one draw
+
+A `vt::TileLayer` carrying several normal-map bitmaps draws them in **one** call
+(`groupRasters` in `RasterGroups.h`, `renderTileBitmaps`), up to `MAX_RASTER_SLOTS` = 4. The custom
+normal-map shader reads them with `sampleRaster(i)` / `sampleRasterAtPixel(i, px)`, the names
+tangram-es uses (`core/shaders/rasters.glsl`); `getRawColor()` is `sampleRaster(0)`. Colour maps and
+mixed types keep one draw each, so today's layers draw as before. The rasters may differ in size (a 1x1
+texel can carry a per-tile number); `uUVScale` is the first one's.
+
+- **No shader flag.** The flag word is full, and `uRaster1..3` cost nothing when unused, so the
+  prelude always declares them. Sampler values persist in the program, so every draw rewrites them.
+- **A computed sampler index is illegal in GLES2.** `sampleRasterAt(int, uv)` branches on a literal
+  instead of indexing an array; an ES 3.0 baseline would lift the cap of 4.
+- **Texture units 4, 6 and 7** carry rasters 1..3: the normal-map draw owns 0, 1 and 5, and the
+  shadow, gradient and drape-mask units belong to programs it does not use. Eight units is all
+  GLES2 guarantees.
+- **Known gap:** the rasters share one uv matrix, so they must come from the same source tile.
+  Tangram's per-raster offsets (`currentRasterUV(i)`) are not ported.
+
 ## Line borders (`line-border-width` / `line-border-color`)
 
 maplibre's line border: a casing `line-border-width` px wide on **each** side of the line. One rule

@@ -28,6 +28,11 @@ static NSMutableDictionary *sValues = nil;
         @"satLayer":            @NO,
         @"hillshade":           @NO,
         @"hypso":               @NO,
+        // AnimatedRasterTileLayer over LibreWXR: the radar steps and the nowcast, two mixed per draw.
+        @"radar":               @NO,
+        @"radarPlay":           @YES,
+        @"radarFps":            @2.0f,
+        @"radarFraction":       @0.0f,
         @"contourLayer":        @NO,
         @"contourTiles":        @NO,
         @"elements":            @NO,

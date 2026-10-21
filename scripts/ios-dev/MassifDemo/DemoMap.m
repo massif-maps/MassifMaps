@@ -12,12 +12,14 @@
 #import "DemoAstro.h"
 #import <UIKit/UIKit.h>
 // Fork additions, not listed in the umbrella header.
+#import "MSFAnimatedRasterTileLayer.h"
 #import "MSFCelestialLayer.h"
 #import "MSFCompositeVectorTileLayer.h"
 #import "MSFContourTileDataSource.h"
 #import "MSFCustomRasterTileLayer.h"
 #import "MSFGeoJSONVectorTileDataSource.h"
 #import "MSFManeuverArrowBuilder.h"
+#import "MSFMemoryCacheTileDataSource.h"
 #import "MSFPostProcessEffect.h"
 
 /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -25,7 +27,7 @@ static const DemoFeature LAYER_ORDER[] = {
     // The sky goes FIRST, so the map and the terrain draw over it and a ridge hides what is behind
     // it - which is what a body in the sky should do.
     DemoFeatureCelestial, DemoFeatureStars,
-    DemoFeatureBase, DemoFeatureSatellite, DemoFeatureHillshade, DemoFeatureHypso,
+    DemoFeatureBase, DemoFeatureSatellite, DemoFeatureHillshade, DemoFeatureHypso, DemoFeatureRadar,
     DemoFeatureContour, DemoFeatureContourTiles, DemoFeatureRouteTest, DemoFeatureManeuvers,
     DemoFeatureElements,
     // Last: the summit names go over everything the map draws.
@@ -80,6 +82,13 @@ MSFLayer *_maneuversLayer;
     // What the peak-finder mode switched off, so leaving it puts the map back as it was.
     BOOL _savedLayerBase, _savedLayerHillshade, _savedLayerContour, _savedLayerContourTiles;
     BOOL _savedLayerSatellite, _savedLayerHypso;
+
+    // The radar loop: the layer, its steps (epoch seconds), and the clock that moves the position.
+    MSFAnimatedRasterTileLayer *_radarLayer;
+    NSArray<NSNumber *> *_radarTimes;
+    float _radarPosition;
+    BOOL _radarDirty;
+    CFTimeInterval _radarLastTimestamp;
     float _savedTilt;
     float _savedOcclusionTolerance;
     float _savedViewDistance;
@@ -193,6 +202,7 @@ MSFLayer *_maneuversLayer;
         case DemoFeatureSatellite:    return @"satLayer";
         case DemoFeatureHillshade:    return @"hillshade";
         case DemoFeatureHypso:        return @"hypso";
+        case DemoFeatureRadar:        return @"radar";
         case DemoFeatureContour:      return @"contourLayer";
         case DemoFeatureContourTiles: return @"contourTiles";
         case DemoFeatureRouteTest:    return @"routeTest";
@@ -262,6 +272,7 @@ MSFLayer *_maneuversLayer;
         case DemoFeatureSatellite:    return [[MSFRasterTileLayer alloc] initWithDataSource:[self rasterSource]];
         case DemoFeatureHillshade:    return [self createHillshadeLayer];
         case DemoFeatureHypso:        return [self createHypsoLayer];
+        case DemoFeatureRadar:        return [self createRadarLayer];
         case DemoFeatureContour:      return [self createContourLayer];
         case DemoFeatureContourTiles: return [self createContourTilesLayer];
         case DemoFeatureRouteTest:    return [DemoTests createRouteTestLayer:self];
@@ -445,6 +456,89 @@ MSFLayer *_maneuversLayer;
     MSFCustomRasterTileLayer *layer = [[MSFCustomRasterTileLayer alloc] initWithDataSource:[self demSource]];
     [layer setShaderSource:[DemoStyles hypsometricShader]];
     return layer;
+}
+
+NSString *const DemoRadarPositionNotification = @"DemoRadarPositionNotification";
+
+/**
+ * AnimatedRasterTileLayer over LibreWXR (RainViewer's API): the past hour and the nowcast, two
+ * steps mixed per draw. The steps are listed once; a display link then advances the position at
+ * radarFps steps a second, and the panel can pause it or scrub.
+ */
+- (MSFLayer *)createRadarLayer {
+    // The memory cache is what keeps a step fetched once: it is the second raster of one tile and the first of the next.
+    MSFMemoryCacheTileDataSource *cache = [[MSFMemoryCacheTileDataSource alloc] initWithDataSource:
+        [[MSFHTTPTileDataSource alloc] initWithMinZoom:0 maxZoom:12
+            baseURL:@"https://api.librewxr.net/v2/radar/{time}/256/{z}/{x}/{y}/2/1_1.png"]];
+    [cache setCapacity:64 * 1024 * 1024];
+    MSFAnimatedRasterTileLayer *layer = [[MSFAnimatedRasterTileLayer alloc] initWithDataSource:cache];
+    [layer setZoomLevelBias:-1]; // radar is coarse data: a quarter of the tiles to wait for
+    _radarLayer = layer;
+    NSURL *url = [NSURL URLWithString:@"https://api.librewxr.net/public/weather-maps.json"];
+    [[[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        NSDictionary *radar = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil][@"radar"] : nil;
+        NSMutableArray<NSNumber *> *times = [NSMutableArray array];
+        for (NSString *key in @[@"past", @"nowcast"]) {
+            for (NSDictionary *step in radar[key]) {
+                [times addObject:step[@"time"]];
+            }
+        }
+        if (!times.count) {
+            NSLog(@"DemoMap: radar steps not available: %@", error.localizedDescription);
+            return;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            MSFStringVector *timestamps = [[MSFStringVector alloc] init];
+            for (NSNumber *time in times) {
+                [timestamps add:time.stringValue];
+            }
+            self->_radarTimes = times;
+            [layer setFrameTimestamps:timestamps];
+            [layer setPrefetchFrames:(int)times.count];
+            CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(radarTick:)];
+            [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+        });
+    }] resume];
+    return layer;
+}
+
+- (void)radarTick:(CADisplayLink *)link {
+    NSUInteger steps = _radarTimes.count;
+    if (!_radarLayer || ![self isEnabled:DemoFeatureRadar]) {
+        _radarLastTimestamp = 0;
+        return;
+    }
+    BOOL playing = [DemoConfig boolFor:@"radarPlay"];
+    if (steps > 0 && (playing || _radarDirty)) {
+        if (playing && _radarLastTimestamp > 0) {
+            _radarPosition = fmodf(_radarPosition + (link.timestamp - _radarLastTimestamp) * [DemoConfig floatFor:@"radarFps"], steps);
+        }
+        _radarDirty = NO;
+        [_radarLayer setAnimationPosition:_radarPosition];
+        float fraction = steps > 1 ? _radarPosition / (steps - 1) : 0;
+        [DemoConfig setValue:@(fraction) forKey:@"radarFraction"];
+        [[NSNotificationCenter defaultCenter] postNotificationName:DemoRadarPositionNotification object:self userInfo:@{
+            @"position": @(_radarPosition), @"steps": @(steps), @"text": [self radarStepTextForPosition:_radarPosition]}];
+    }
+    _radarLastTimestamp = link.timestamp;
+}
+
+- (void)setRadarFraction:(float)fraction {
+    _radarPosition = fraction * MAX(0, (NSInteger)_radarTimes.count - 1);
+    _radarDirty = YES;
+}
+
+- (NSString *)radarStepTextForPosition:(float)position {
+    if (!_radarTimes.count) {
+        return @"loading steps...";
+    }
+    NSUInteger step = MIN(_radarTimes.count - 1, (NSUInteger)MAX(0.0f, position));
+    NSTimeInterval seconds = _radarTimes[step].doubleValue;
+    NSDateFormatter *format = [[NSDateFormatter alloc] init];
+    format.dateFormat = @"HH:mm";
+    format.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+    BOOL forecast = seconds > [NSDate date].timeIntervalSince1970;
+    return [NSString stringWithFormat:@"%@ UTC%@", [format stringFromDate:[NSDate dateWithTimeIntervalSince1970:seconds]], forecast ? @"  forecast" : @""];
 }
 
 /**

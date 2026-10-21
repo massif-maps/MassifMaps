@@ -95,6 +95,8 @@ void testFlattenSwitch();
 void testTerrainDecodeWait();
 void testPrefetchOrder();
 void testWeakSharedMap();
+void testFrameTimestamps();
+void testPrefetchPlan();
 void testZoomPivot();
 void testOrbitPivot();
 void testTerrainSkirts();
@@ -505,6 +507,8 @@ int main() {
     testTerrainDecodeWait();
     testPrefetchOrder();
     testWeakSharedMap();
+    testFrameTimestamps();
+    testPrefetchPlan();
     testZoomPivot();
     testOrbitPivot();
     testTerrainSkirts();

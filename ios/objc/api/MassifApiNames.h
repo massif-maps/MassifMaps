@@ -58,6 +58,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAnchorScreenPos;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAngularSize;
 /** Returns the cluster animation flag value. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimatedClusters;
+/** Returns the animation position. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationPosition;
 /** Returns true if the interaction has started an animation. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationStarted;
 /** Returns the animation style of the billboard. */
@@ -371,6 +373,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFontSize;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFragmentShader;
 /** Returns the time of this map tile. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFrameNr;
+/** Returns the timestamps of the time steps. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFrameTimestamps;
 /** Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFreeRoamLookSensitivity;
 /** Returns the free roam mode. */
@@ -664,6 +668,10 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessEffect;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessed;
 /** Returns the postcode of the address. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPostcode;
+/** Returns the memory the prefetched steps may take. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPrefetchBudget;
+/** Returns how many steps ahead of the shown one are fetched, for every visible tile. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPrefetchFrames;
 /** Returns the state of the preloading flag of this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPreloading;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPreloadingTileCount;
@@ -1187,6 +1195,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryLine;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryManeuverArrow;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPoint;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPolygon;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerAnimatedRaster;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCelestial;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCompositeVector;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCustomRaster;

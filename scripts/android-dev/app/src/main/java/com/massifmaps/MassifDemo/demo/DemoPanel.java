@@ -202,6 +202,7 @@ public final class DemoPanel {
         buildShieldSection(context, demo);
         buildTerrainSection(context, demo);
         buildHillshadeSection(context, demo);
+        buildRadarSection(context, demo);
         buildContourSection(context, demo);
         buildRouteTestSection(context, demo);
         buildRouteSelectSection(context, demo);
@@ -613,6 +614,35 @@ public final class DemoPanel {
         slider(context, "shader contour width", 0.2f, 3f, DemoConfig.HILLSHADE_CONTOUR_WIDTH, true, new FloatSetting() {
             public void set(float value) { DemoConfig.HILLSHADE_CONTOUR_WIDTH = value; demo.applyHillshadeConfig(); }
         });
+    }
+
+    /** The animated radar layer (LAYERS > radar): play or pause the clock, scrub, change the rate. */
+    private static void buildRadarSection(Context context, final DemoMap demo) {
+        header(context, "RADAR LAYER");
+        final TextView stepText = label(context, demo.radarStepText(0));
+        final boolean[] fromClock = { false };
+        final SeekBar[] seek = new SeekBar[1];
+        check(context, "playing", DemoConfig.RADAR_PLAYING, new BoolSetting() {
+            public void set(boolean value) { DemoConfig.RADAR_PLAYING = value; }
+        });
+        seek[0] = slider(context, "position (0 = oldest, 1 = last forecast)", 0f, 1f, 0f, false, new FloatSetting() {
+            public void set(float value) {
+                if (!fromClock[0]) {
+                    demo.setRadarFraction(value);
+                }
+            }
+        });
+        slider(context, "steps a second", 0.5f, 12f, DemoConfig.RADAR_FPS, false, new FloatSetting() {
+            public void set(float value) { DemoConfig.RADAR_FPS = value; }
+        });
+        demo.radarListener = new DemoMap.RadarListener() {
+            public void onRadarPosition(float position, int steps) {
+                stepText.setText(demo.radarStepText(position));
+                fromClock[0] = true;
+                seek[0].setProgress(steps > 1 ? Math.round(position / (steps - 1) * 1000) : 0);
+                fromClock[0] = false;
+            }
+        };
     }
 
     /** Geometry contours (ContourTileDataSource): shared by the layer and the composite slot. */
@@ -1315,7 +1345,7 @@ public final class DemoPanel {
      * contour generation) throw away every cached tile when they change, so applying them per
      * pixel of drag is a guaranteed stall.
      */
-    private static void slider(Context context, final String label,
+    private static SeekBar slider(Context context, final String label,
                                float min, float max, float initial,
                                final boolean applyOnRelease, final FloatSetting setting) {
         final float lo = min, span = max - min;
@@ -1347,6 +1377,7 @@ public final class DemoPanel {
         });
         row.addView(seek, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         addRow(row, label);
+        return seek;
     }
 
     /** A row of small buttons acting as a radio group (no spinner: less code, easier to read). */

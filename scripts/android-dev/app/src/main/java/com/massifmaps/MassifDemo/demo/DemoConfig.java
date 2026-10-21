@@ -108,6 +108,12 @@ public final class DemoConfig {
     public static boolean SATELLITE_UNDER_BASE = false;
     /** CustomRasterTileLayer running a hypsometric-tint shader over the raw DEM tiles. */
     public static boolean LAYER_HYPSO = false;
+    /** AnimatedRasterTileLayer: the LibreWXR radar steps and nowcast, two mixed per draw by a frame clock. */
+    public static boolean LAYER_RADAR = false;
+    /** Radar time steps a second; the fade between two steps runs at the display rate. */
+    public static float RADAR_FPS = 2.0f;
+    /** The radar clock runs; paused, the slider scrubs. */
+    public static boolean RADAR_PLAYING = true;
     /** Markers on summits + a line across the valley: the terrain occlusion / drape test set. */
     public static boolean LAYER_ELEMENTS = true;
     /**
@@ -1225,6 +1231,9 @@ public final class DemoConfig {
         LAYER_SATELLITE = DemoCfg.cfgBool("satLayer", LAYER_SATELLITE);
         SATELLITE_UNDER_BASE = DemoCfg.cfgBool("satUnder", SATELLITE_UNDER_BASE);
         LAYER_HYPSO = DemoCfg.cfgBool("hypso", LAYER_HYPSO);
+        LAYER_RADAR = DemoCfg.cfgBool("radar", LAYER_RADAR);
+        RADAR_FPS = DemoCfg.cfgFloat("radarFps", RADAR_FPS);
+        RADAR_PLAYING = DemoCfg.cfgBool("radarPlay", RADAR_PLAYING);
         LAYER_ELEMENTS = DemoCfg.cfgBool("elements", LAYER_ELEMENTS);
         LAYER_SPANS = DemoCfg.cfgBool("spans", LAYER_SPANS);
         SPAN_ZOOM_BIAS = DemoCfg.cfgFloat("spanZoomBias", SPAN_ZOOM_BIAS);

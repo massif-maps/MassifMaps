@@ -58,6 +58,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> ANGULAR_SIZE = MassifObject.key("angularSize");
     /** Returns the cluster animation flag value. */
     public static final MassifObject.Key<Boolean> ANIMATED_CLUSTERS = MassifObject.key("animatedClusters");
+    /** Returns the animation position. */
+    public static final MassifObject.Key<Double> ANIMATION_POSITION = MassifObject.key("animationPosition");
     /** Returns true if the interaction has started an animation. */
     public static final MassifObject.Key<Boolean> ANIMATION_STARTED = MassifObject.key("animationStarted");
     /** Returns the animation style of the billboard. */
@@ -371,6 +373,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> FRAGMENT_SHADER = MassifObject.key("fragmentShader");
     /** Returns the time of this map tile. */
     public static final MassifObject.Key<Long> FRAME_NR = MassifObject.key("frameNr");
+    /** Returns the timestamps of the time steps. */
+    public static final MassifObject.Key<String> FRAME_TIMESTAMPS = MassifObject.key("frameTimestamps");
     /** Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view. */
     public static final MassifObject.Key<Double> FREE_ROAM_LOOK_SENSITIVITY = MassifObject.key("freeRoamLookSensitivity");
     /** Returns the free roam mode. */
@@ -664,6 +668,10 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> POST_PROCESSED = MassifObject.key("postProcessed");
     /** Returns the postcode of the address. */
     public static final MassifObject.Key<String> POSTCODE = MassifObject.key("postcode");
+    /** Returns the memory the prefetched steps may take. */
+    public static final MassifObject.Key<Long> PREFETCH_BUDGET = MassifObject.key("prefetchBudget");
+    /** Returns how many steps ahead of the shown one are fetched, for every visible tile. */
+    public static final MassifObject.Key<Long> PREFETCH_FRAMES = MassifObject.key("prefetchFrames");
     /** Returns the state of the preloading flag of this layer. */
     public static final MassifObject.Key<Boolean> PRELOADING = MassifObject.key("preloading");
     public static final MassifObject.Key<Long> PRELOADING_TILE_COUNT = MassifObject.key("preloadingTileCount");
@@ -1180,6 +1188,7 @@ public final class ApiNames {
     public static final String TYPE_GEOMETRY_MANEUVER_ARROW = "maneuver-arrow";
     public static final String TYPE_GEOMETRY_POINT = "point";
     public static final String TYPE_GEOMETRY_POLYGON = "polygon";
+    public static final String TYPE_LAYER_ANIMATED_RASTER = "animated-raster";
     public static final String TYPE_LAYER_CELESTIAL = "celestial";
     public static final String TYPE_LAYER_COMPOSITE_VECTOR = "composite-vector";
     public static final String TYPE_LAYER_CUSTOM_RASTER = "custom-raster";

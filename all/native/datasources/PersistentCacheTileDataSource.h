@@ -89,6 +89,11 @@ namespace massif {
         virtual std::shared_ptr<TileData> loadTile(const MapTile& mapTile);
         
         virtual void clear();
+        /**
+         * Deletes the tiles past their expiry (see HTTPTileDataSource.setMaxAgeHeaderCheck). They are otherwise dropped
+         * only when asked for again, so a tile of a rolled-off animation step holds its capacity. Scans the table.
+         */
+        void purgeExpired();
         
         virtual std::size_t getCapacity() const;
 

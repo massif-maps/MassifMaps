@@ -284,6 +284,9 @@ class ProjectionSurface;
          */
         void markTerrainDecodeUnsettled();
 
+        // Tiles of other frames fetched before they are drawn, at preloading priority.
+        virtual std::vector<MapTile> collectFramePrefetchTiles(const std::vector<MapTile>& visibleTiles) { return std::vector<MapTile>(); }
+
         class DataSourceListener : public TileDataSource::OnChangeListener {
         public:
             explicit DataSourceListener(const std::shared_ptr<TileLayer>& layer);

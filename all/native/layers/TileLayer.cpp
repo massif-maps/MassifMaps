@@ -518,6 +518,7 @@ namespace massif {
         // The tiles a stranded bridge's chord is in, fetched like preloading tiles and never drawn.
         collectSpanReferenceTiles();
         buildFetchTiles(_spanReferenceTiles, true, fetchTileList, true);
+        buildFetchTiles(collectFramePrefetchTiles(_visibleTiles), true, fetchTileList, true);
 
         collectStandInTiles();
         for (const MapTile& standInTile : _standInTiles) {
@@ -1451,7 +1452,7 @@ namespace massif {
             }
             for (bool preloadingCache : preloadingCaches) {
                 MapTile prevFrameTile(tile.getX(), tile.getY(), tile.getZoom(), _lastFrameNr);
-                long prevFrameTileId = getTileId(prevFrameTile);
+                long long prevFrameTileId = getTileId(prevFrameTile);
                 bool foundSubstitute = tileExists(prevFrameTileId, preloadingCache);
 
                 if (foundSubstitute) {

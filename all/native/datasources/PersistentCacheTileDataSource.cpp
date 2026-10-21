@@ -136,6 +136,23 @@ namespace massif {
         }
     }
     
+    void PersistentCacheTileDataSource::purgeExpired() {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        if (!_database) {
+            return;
+        }
+        try {
+            long long now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            sqlite3pp::command purge(*_database, "DELETE FROM persistent_cache WHERE expirationTime != 0 AND expirationTime < :now");
+            purge.bind(":now", static_cast<std::uint64_t>(now));
+            purge.execute();
+            purge.finish();
+        }
+        catch (const std::exception& ex) {
+            Log::Errorf("PersistentCacheTileDataSource::purgeExpired: Failed to purge the database: %s", ex.what());
+        }
+    }
+
     std::size_t PersistentCacheTileDataSource::getCapacity() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         return _cache.capacity();

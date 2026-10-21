@@ -1543,7 +1543,8 @@ public class DemoMap {
     public TileDataSource vectorSource() {
         if (cachedVector == null && !DemoConfig.VECTOR_FILE.isEmpty()) {
             try {
-                cachedVector = new PMTilesTileDataSource(dataPath + "/" + DemoConfig.VECTOR_FILE);
+                String file = dataPath + "/" + DemoConfig.VECTOR_FILE;
+                cachedVector = file.endsWith(".mbtiles") ? new MBTilesTileDataSource(file) : new PMTilesTileDataSource(file);
             } catch (IOException e) {
                 Log.w(TAG, "vectorFile not readable, using vectorUrl: " + e.getMessage());
             }

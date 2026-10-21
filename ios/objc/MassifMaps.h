@@ -89,7 +89,6 @@
 #import "MSFVectorTileEventListener.h"
 #import "MSFVectorTileLayer.h"
 #import "MSFCompositeVectorTileLayer.h"
-#import "MSFTorqueTileLayer.h"
 #import "MSFClusteredVectorLayer.h"
 #import "MSFClusterElementBuilder.h"
 
@@ -171,7 +170,6 @@
 #import "MSFCartoCSSStyleSet.h"
 #import "MSFVectorTileDecoder.h"
 #import "MSFMBVectorTileDecoder.h"
-#import "MSFTorqueTileDecoder.h"
 #import "MSFVectorTileFeature.h"
 #import "MSFVectorTileFeatureCollection.h"
 

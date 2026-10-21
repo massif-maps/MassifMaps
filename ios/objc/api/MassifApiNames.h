@@ -58,8 +58,6 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAnchorScreenPos;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAngularSize;
 /** Returns the cluster animation flag value. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimatedClusters;
-/** Returns the animation duration, in seconds. */
-FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationDuration;
 /** Returns true if the interaction has started an animation. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationStarted;
 /** Returns the animation style of the billboard. */
@@ -371,8 +369,6 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFontName;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFontSize;
 /** Returns the fragment shader source of the effect. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFragmentShader;
-/** Returns the frame count defined in the Torque style. */
-FOUNDATION_EXPORT MassifProperty const MassifPropertyFrameCount;
 /** Returns the time of this map tile. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFrameNr;
 /** Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view. */
@@ -854,8 +850,6 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyStyleLayerNames;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyStyleName;
 /** Returns the list of all available style parameters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyStyleParameters;
-/** Returns the current style set used by the decoder. */
-FOUNDATION_EXPORT MassifProperty const MassifPropertyStyleSet;
 /** Returns the distance geo-three's terrain LOD subdivides at. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySubdivideDistance;
 /** Returns the subdomains for {s} tag. The default is ["a", "b", "c", "d"]. */

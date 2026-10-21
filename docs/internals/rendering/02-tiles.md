@@ -806,8 +806,7 @@ MBVectorTileDecoder ─ createFeatureDecoder() ─┬─ MBVTFeatureDecoder  (pr
 `LayerFeatureDecoder` is the seam: it owns the tile-to-target transform, the clip box and the
 feature-id override, and declares the four layer operations (`getLayerNames`, `hasLayer`,
 `createLayerFeatureIterator`, `findFeature`). `LayerTileReader` — formerly `MBVTTileReader` — reads
-through it, so it serves both formats unchanged. `TorqueFeatureDecoder` stays on the plain
-`FeatureDecoder` base: its features are addressed by frame, not by layer.
+through it, so it serves both formats unchanged.
 
 ### Detecting the format
 

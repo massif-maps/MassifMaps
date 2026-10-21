@@ -1010,22 +1010,6 @@ Inherited from `ReverseGeocodingService`:
 |---|---|---|
 | `calculateAddresses` | request: handle | json |
 
-## `TorqueTileDecoder`
-
-| Property | Type | Access | Description |
-|---|---|---|---|
-| `animationDuration` | number | read-only | Returns the animation duration, in seconds. |
-| `frameCount` | integer | read-only | Returns the frame count defined in the Torque style. |
-| `resolution` | integer | read-only | Returns the tile resolution, in pixels. |
-| `styleSet` | object `std::shared_ptr<massif::CartoCSSStyleSet>` | read/write | Returns the current style set used by the decoder. |
-
-Inherited from `VectorTileDecoder`:
-
-| Property | Type | Access | Description |
-|---|---|---|---|
-| `maxZoom` | integer | read-only |  |
-| `minZoom` | integer | read-only |  |
-
 ## `UTFGridClickInfo`
 
 | Property | Type | Access | Description |

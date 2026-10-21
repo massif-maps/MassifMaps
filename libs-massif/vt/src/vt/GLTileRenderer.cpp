@@ -101,8 +101,8 @@ namespace massif::vt {
     static constexpr float DRAPE_LIGHT_STEPS = 16.0f;
     // Layer opacity quantisation in a drape fingerprint: below one 8-bit alpha step it cannot show.
     static constexpr float DRAPE_OPACITY_STEPS = 255.0f;
-    // A label spot is a tile this deep, 2^-28 of the world (~0.15 m): combineAnchorId's cell.
-    static constexpr int LABEL_SPOT_ZOOM = 28;
+    // A label spot is a tile this deep, 2^-22 of the world (~10 m): above the 4096 grid of the tile a POI is read from.
+    static constexpr int LABEL_SPOT_ZOOM = 22;
     // maplibre covering_tiles.ts / mercator_utils.ts verbatim: tallest assumed feature, the angle
     // above the horizon where the culling box starts growing to hold it, and the horizon.
     static constexpr double ASSUMED_MAX_FEATURE_HEIGHT_METERS = 500.0;
@@ -3190,7 +3190,18 @@ namespace massif::vt {
         VT_STAT_SPLIT(labelReleaseNs, labelMapClock);
         // A new id where a label of the layer stood is the same POI: it keeps the icon's state, the text fades in.
         // A fresh start hid it until the next placement pass, a blink at every zoom level its name appears at.
-        std::map<LabelSpot, std::shared_ptr<Label>> oldSpots;
+        // Two icons would overlap, so the old one goes at once; the name fades in only when the old one drew none.
+        auto takeOver = [](Label& next, Label& previous) {
+            next.setVisible(previous.isVisible());
+            next.setOpacity(previous.getOpacity());
+            next.setTerrainOccluded(previous.isTerrainOccluded());
+            next.inheritOcclusion(previous);
+            next.snapPlacement(previous); // before the text: it carries the variant drawsText() reads
+            next.setTextOpacity(previous.drawsText() && next.drawsText() ? previous.getTextOpacity() : 0);
+            previous.setOpacity(0);
+            previous.setTextOpacity(0);
+        };
+        std::multimap<LabelSpot, std::shared_ptr<Label>> oldSpots;
         bool oldSpotsCollected = false;
         double spotCellSize = _transformer->calculateTileBBox(TileId(LABEL_SPOT_ZOOM, 0, 0)).size()(0);
         auto takeOldSpot = [&](const Label& newLabel) {
@@ -3214,7 +3225,7 @@ namespace massif::vt {
                     }
                 }
             }
-            auto spotIt = oldSpots.find(calculateLabelSpot(newLabel.getLayerIndex(), position, spotCellSize));
+            auto spotIt = findNearSpot(oldSpots, newLabel.getLayerIndex(), position, spotCellSize);
             if (spotIt == oldSpots.end()) {
                 return std::shared_ptr<Label>();
             }
@@ -3245,14 +3256,7 @@ namespace massif::vt {
                     newLabel->snapPlacement(*label);
                 }
                 else if (std::shared_ptr<Label> oldLabel = takeOldSpot(*newLabel)) {
-                    newLabel->setVisible(oldLabel->isVisible());
-                    newLabel->setOpacity(oldLabel->getOpacity());
-                    newLabel->setTextOpacity(0);
-                    newLabel->setTerrainOccluded(oldLabel->isTerrainOccluded());
-                    newLabel->inheritOcclusion(*oldLabel);
-                    newLabel->snapPlacement(*oldLabel);
-                    oldLabel->setOpacity(0); // the new one draws its icon now; two would overlap
-                    oldLabel->setTextOpacity(0);
+                    takeOver(*newLabel, *oldLabel);
                 }
                 else {
                     newLabel->setVisible(false);
@@ -3261,6 +3265,33 @@ namespace massif::vt {
                 }
                 newLabel->setActive(true);
                 label = newLabel;
+            }
+        }
+
+        // A successor built while the old label was still drawn (a stand-in tile) sits hidden under its own id,
+        // so the spot match above never ran for it: the old one fading out on its own left a gap until a pass.
+        std::multimap<LabelSpot, std::shared_ptr<Label>> hiddenSpots;
+        for (auto& newLayerEntry : newLayerLabelMap) {
+            for (auto& newEntry : newLayerEntry.second) {
+                const std::shared_ptr<Label>& hidden = newEntry.second;
+                cglib::vec3<double> position;
+                if (!hidden->isVisible() && hidden->getOpacity() <= 0 && !hidden->isLineRun() && hidden->getPointAnchor(position)) {
+                    hiddenSpots.emplace(calculateLabelSpot(hidden->getLayerIndex(), position, spotCellSize), hidden);
+                }
+            }
+        }
+        for (auto& layerEntry : _layerLabelMap) {
+            for (auto& labelEntry : layerEntry.second) {
+                const std::shared_ptr<Label>& orphan = labelEntry.second;
+                cglib::vec3<double> position;
+                if (hiddenSpots.empty() || !orphan || orphan->isActive() || orphan->getOpacity() <= 0 || orphan->isLineRun() || !orphan->getPointAnchor(position)) {
+                    continue;
+                }
+                auto successorIt = findNearSpot(hiddenSpots, orphan->getLayerIndex(), position, spotCellSize);
+                if (successorIt != hiddenSpots.end()) {
+                    takeOver(*successorIt->second, *orphan);
+                    hiddenSpots.erase(successorIt);
+                }
             }
         }
 

@@ -70,7 +70,7 @@ next pass, 300 ms or more (below), with every tile of a zoom out reopening that 
 for one more rebuild, inactive, so the next one still finds it.
 
 **A point label whose id changed but whose anchor did not is carried over too** (`LabelSpot`, same
-layer, the 2^-28 cell below). The shield text is hashed into the id, and Massif draws most POIs
+layer, the same 2^-22 cell (~10 m) or one next to it). The shield text is hashed into the id, and Massif draws most POIs
 icon-only below a label minzoom (`shield-name: ''`), so at the tile level a name appears the same POI
 came back under a new id: the old label faded out at once and the new one waited, hidden, for the
 next placement pass. A cycle costs 90-150 ms on the emulator and the duty-cycle gate below then waits
@@ -78,6 +78,19 @@ next placement pass. A cycle costs 90-150 ms on the emulator and the duty-cycle 
 in a 2D run at Grenoble 5.72722/45.19172 z17.5 -> 15.3: labels drawn 85 -> 34 -> 17 at the z17 -> z16
 step, with 0-22 carried by id against 100-290 fresh. The icon keeps its state now; only the new text
 fades in, from the next pass.
+
+The cell is not the id's 2^-28 one: an id-less feature (OpenFreeMap `place`, a city) is read from a
+tile's 4096 grid, which snaps one point ~2 m apart in a z11 and a z12 tile, so the exact cell missed.
+
+**A successor already built, hidden, is handed the old label's state when the old one goes inactive.**
+Crossing z12 the z12 tile's labels are built while the z11 ones (a stand-in) still draw, so each new
+label exists under its own id, hidden, before the old one is dropped; the spot match above only runs for
+a label with no entry, never saw it, and the old one faded out alone for the 300 ms+ until the next
+pass placed its successor. `commitLabelMaps` now pairs each dropped visible label with a hidden new one at the
+same spot and moves visible, opacity, occlusion, placement and variant across, the name's opacity too when
+both draw one. Measured at Grenoble, zoom 11.6 -> 12.4 in 0.005 steps (`-zoomStep 0.005`, 120 frames,
+`analyze-label-flicker.py`): the blink events at z12.0 went from 98 (frames 82-84) to none; 21 visible labels
+were dropped at op 1.0 with a hidden successor 40 m or less away.
 
 **Where `globalId` comes from.** The symbolizer builds it from the feature's id in the tile, xored
 with a hash of the symbolizer itself (`Symbolizer::combineId`), so one feature cut across several

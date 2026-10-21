@@ -109,6 +109,7 @@ void testTileCacheHold();
 void testTileStandIns();
 void testTileCacheStash();
 void testKineticStep();
+void testCameraNoOp();
 void testLabelPlacementFollowUp();
 void testTileLODRule();
 void testDistanceTileLOD();
@@ -521,6 +522,7 @@ int main() {
     testTileStandIns();
     testTileCacheStash();
     testKineticStep();
+    testCameraNoOp();
     testLabelPlacementFollowUp();
     testTileLODRule();
     testDistanceTileLOD();

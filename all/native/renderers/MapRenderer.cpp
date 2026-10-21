@@ -19,6 +19,7 @@
 #include "renderers/RedrawRequestListener.h"
 #include "renderers/TileRenderer.h"
 #include "renderers/components/BillboardSorter.h"
+#include "renderers/components/CameraNoOp.h"
 #include "renderers/components/RayIntersectedElement.h"
 #include "renderers/cameraevents/CameraPanEvent.h"
 #include "renderers/cameraevents/CameraRotationEvent.h"
@@ -1067,7 +1068,54 @@ namespace massif {
         return _eyeGroundZ;
     }
 
+    namespace {
+
+        bool isCameraNoOp(const CameraPanEvent& cameraEvent, const ViewState& viewState) {
+            std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
+            if (!projectionSurface) {
+                return false;
+            }
+            double span = viewState.getSpanPerZoom() * std::pow(2.0, -static_cast<double>(viewState.getZoom()));
+            MapPos focusPos = projectionSurface->calculateMapPos(viewState.getFocusPos());
+            if (cameraEvent.isUseDelta()) {
+                const MapPos& from = cameraEvent.getPosDelta().first;
+                const MapPos& to = cameraEvent.getPosDelta().second;
+                return CameraNoOp::sameCoord(from.getX(), to.getX(), span) && CameraNoOp::sameCoord(from.getY(), to.getY(), span);
+            }
+            // A zero height keeps the focus where it is, as CameraPanEvent reads it.
+            const MapPos& pos = cameraEvent.getPos();
+            return CameraNoOp::sameCoord(focusPos.getX(), pos.getX(), span) && CameraNoOp::sameCoord(focusPos.getY(), pos.getY(), span) && (pos.getZ() == 0 || CameraNoOp::sameCoord(focusPos.getZ(), pos.getZ(), span));
+        }
+
+        bool isCameraNoOp(const CameraRotationEvent& cameraEvent, const ViewState& viewState) {
+            return CameraNoOp::sameAngle(cameraEvent.isUseDelta() ? cameraEvent.getRotationDelta() : cameraEvent.getRotation() - viewState.getRotation());
+        }
+
+        bool isCameraNoOp(const CameraTiltEvent& cameraEvent, const ViewState& viewState) {
+            return CameraNoOp::sameAngle(cameraEvent.isUseDelta() ? cameraEvent.getTiltDelta() : cameraEvent.getTilt() - viewState.getTilt());
+        }
+
+        bool isCameraNoOp(const CameraZoomEvent& cameraEvent, const ViewState& viewState) {
+            return CameraNoOp::sameZoom(cameraEvent.isUseDelta() ? cameraEvent.getZoomDelta() : cameraEvent.getZoom() - viewState.getZoom());
+        }
+
+    }
+
+    template <typename Event>
+    bool MapRenderer::skipsCameraEvent(const Event& cameraEvent, float durationSeconds, MapMoveReason::MapMoveReason reason) {
+        if (durationSeconds <= 0 && reason != MapMoveReason::MAP_MOVE_REASON_ANIMATION) {
+            return false;
+        }
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        bool noOp = isCameraNoOp(cameraEvent, _viewState);
+        _cameraPlaced = _cameraPlaced || noOp;
+        return noOp;
+    }
+
     void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             if (cameraEvent.isUseDelta()) {
                 _animationHandler.setPanDelta(cameraEvent.getPosDelta(), durationSeconds);
@@ -1110,6 +1158,9 @@ namespace massif {
     }
         
     void MapRenderer::calculateCameraEvent(CameraRotationEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             float oldRotation;
             {
@@ -1148,6 +1199,9 @@ namespace massif {
     }
         
     void MapRenderer::calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             float oldTilt;
             {
@@ -1173,6 +1227,9 @@ namespace massif {
     }
     
     void MapRenderer::calculateCameraEvent(CameraZoomEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             float oldZoom;
             {

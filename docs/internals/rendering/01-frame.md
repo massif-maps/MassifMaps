@@ -321,6 +321,21 @@ the kinetic handler when it starts, and they stay out of the way until it finish
 The path itself is `FlightPath` (all/native/renderers/components/), free of the view state so
 `tests/api/FlightPathTest.cpp` can run it against mapbox-gl's numbers.
 
+### An animation to the view it already has does nothing
+
+A camera event that asks for the current view still rewrites the camera: `CameraZoomEvent` rebuilds
+the camera position as `focus + (camera - focus) * 1`, which is not bit-exact. The matrices move by
+float noise, `CullWorker` sees a different MVP, `TileLayer::update` recalculates the tile set and
+`VectorTileLayer::refreshDrawData` calls `vtLabelsChanged`, so a camera that did not move places its
+labels again, and labels, POIs and trees blink. An app following the user location and calling
+`camera.moveTo(position, { zoom, duration })` once per fix hit it every second, and for the whole
+duration, as each frame of the zoom animation did the same.
+
+`MapRenderer::calculateCameraEvent` drops an event that asks for a duration, or is a frame of an
+animation, when it changes the view by less than a millionth of the viewport span, 1e-4 degree
+or 1e-5 zoom level (`CameraNoOp.h`, `CameraNoOpTest.cpp`). An instant call (duration 0) is not
+filtered, as its `onMapChanged` is the app's to receive.
+
 ### Three things their parameterisation is picky about
 
 **One unit, and it is a SCREENFUL.** `w` is the visible span, `u` the ground distance, and `u/w`

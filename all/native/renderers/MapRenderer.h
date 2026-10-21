@@ -251,6 +251,10 @@ namespace massif {
 
         void initializeRenderState() const;
 
+        // An animation, or a frame of one, that asks for the view it already has: applying it only moves the matrices by float noise.
+        template <typename Event>
+        bool skipsCameraEvent(const Event& cameraEvent, float durationSeconds, MapMoveReason::MapMoveReason reason);
+
         // Per camera event rather than one frame later (mapbox's transform._constrainCamera). Call with _mutex held.
         void constrainCameraToClearance();
         // After a gesture: the camera held, the focus slid along its view ray onto the ground, the zoom re-derived.

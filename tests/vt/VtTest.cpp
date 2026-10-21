@@ -44,6 +44,7 @@ void testGroundCover();
 void testLabelSlice();
 void testLabelFade();
 void testLabelSpot();
+void testLabelSpotNear();
 void testLayerContentFlags();
 void testDrawOnce();
 void testPointGeoPosIndex();
@@ -110,6 +111,7 @@ int main() {
     testLabelSlice();
     testLabelFade();
     testLabelSpot();
+    testLabelSpotNear();
     testLayerContentFlags();
     testDrawOnce();
     testPointGeoPosIndex();

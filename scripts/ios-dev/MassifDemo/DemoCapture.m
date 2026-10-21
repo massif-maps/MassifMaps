@@ -22,6 +22,7 @@
 @property (nonatomic, strong) DemoCaptureListener *listener;
 @property (nonatomic) CFTimeInterval spinStart;
 @property (nonatomic) float baseRotation;
+@property (nonatomic) float baseZoom;
 @property (nonatomic) float degPerSec;
 @property (nonatomic) float duration;
 @property (nonatomic) BOOL quitWhenDone;
@@ -85,6 +86,7 @@ static dispatch_group_t sPending;
     self.duration = [DemoCfg floatFor:@"duration" defaultValue:0];
     self.quitWhenDone = [DemoCfg boolFor:@"quitAfterShot" defaultValue:YES];
     self.baseRotation = [self.mapView getRotation];
+    self.baseZoom = [self.mapView getZoom];
 
     NSString *views = [DemoCfg stringFor:@"shotViews" defaultValue:@""];
     if (views.length) {
@@ -216,6 +218,10 @@ static dispatch_group_t sPending;
         NSLog(@"DemoCapture: sequence of %d frames done in %@", frames, dir);
         [self finish];
         return;
+    }
+    float zoomStep = [DemoCfg floatFor:@"zoomStep" defaultValue:0];
+    if (zoomStep != 0) {
+        [self.mapView setZoom:self.baseZoom + zoomStep * index durationSeconds:0];
     }
     if (stepDeg != 0) {
         [self.mapView setRotation:self.baseRotation + stepDeg * index durationSeconds:0];

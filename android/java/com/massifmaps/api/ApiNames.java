@@ -772,6 +772,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> SERVER_PACKAGE_LIST_AGE = MassifObject.key("serverPackageListAge");
     public static final MassifObject.Key<MassifObject> SERVER_PACKAGE_LIST_META_INFO = MassifObject.key("serverPackageListMetaInfo");
     public static final MassifObject.Key<String> SERVER_PACKAGES = MassifObject.key("serverPackages");
+    /** Returns all shader parameters, as numbers. */
+    public static final MassifObject.Key<String> SHADER_PARAMETERS = MassifObject.key("shaderParameters");
     /** Returns the custom fragment shader source. */
     public static final MassifObject.Key<String> SHADER_SOURCE = MassifObject.key("shaderSource");
     /** Returns the shadow depth bias scale. */
@@ -1051,6 +1053,7 @@ public final class ApiNames {
     // --- methods ---------------------------------------------------------
 
     public static final String METHOD_ADD = "add";
+    public static final String METHOD_ADD_DATA_SOURCE = "addDataSource";
     public static final String METHOD_ADD_EXTERNAL_DATA_SOURCE = "addExternalDataSource";
     public static final String METHOD_ADD_FALLBACK_FONT = "addFallbackFont";
     public static final String METHOD_ADD_FEATURE = "addFeature";
@@ -1179,6 +1182,7 @@ public final class ApiNames {
     public static final String TYPE_GEOMETRY_POLYGON = "polygon";
     public static final String TYPE_LAYER_CELESTIAL = "celestial";
     public static final String TYPE_LAYER_COMPOSITE_VECTOR = "composite-vector";
+    public static final String TYPE_LAYER_CUSTOM_RASTER = "custom-raster";
     public static final String TYPE_LAYER_ELEMENTS = "elements";
     public static final String TYPE_LAYER_HILLSHADE = "hillshade";
     public static final String TYPE_LAYER_RASTER = "raster";

@@ -269,6 +269,8 @@ add_executable(api_tests
   # split out of ElevationManager precisely so it could be reached from here - the manager itself
   # needs the data source and the grid cache.
   PrefetchOrderTest.cpp
+  # Same: WeakSharedMap.h is the one-live-object-per-key map behind the shared frame bitmaps, stdlib only.
+  WeakSharedMapTest.cpp
   # Same: ZoomPivot.h is the zoom gesture's pivot shift, cglib only.
   ZoomPivotTest.cpp
   # Same: OrbitPivot.h is the tilt-about-a-point step, cglib only.

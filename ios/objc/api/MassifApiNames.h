@@ -772,6 +772,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertySelectedVectorElement;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyServerPackageListAge;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyServerPackageListMetaInfo;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyServerPackages;
+/** Returns all shader parameters, as numbers. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyShaderParameters;
 /** Returns the custom fragment shader source. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShaderSource;
 /** Returns the shadow depth bias scale. */
@@ -1052,6 +1054,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomRange;
 typedef NSString *MassifMethod NS_TYPED_ENUM;
 
 FOUNDATION_EXPORT MassifMethod const MassifMethodAdd;
+FOUNDATION_EXPORT MassifMethod const MassifMethodAddDataSource;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddExternalDataSource;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddFallbackFont;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddFeature;
@@ -1186,6 +1189,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPoint;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPolygon;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCelestial;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCompositeVector;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCustomRaster;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerElements;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerHillshade;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerRaster;

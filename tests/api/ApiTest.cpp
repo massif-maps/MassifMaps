@@ -94,6 +94,7 @@ void testTerrainTesselation();
 void testFlattenSwitch();
 void testTerrainDecodeWait();
 void testPrefetchOrder();
+void testWeakSharedMap();
 void testZoomPivot();
 void testOrbitPivot();
 void testTerrainSkirts();
@@ -503,6 +504,7 @@ int main() {
     testFlattenSwitch();
     testTerrainDecodeWait();
     testPrefetchOrder();
+    testWeakSharedMap();
     testZoomPivot();
     testOrbitPivot();
     testTerrainSkirts();

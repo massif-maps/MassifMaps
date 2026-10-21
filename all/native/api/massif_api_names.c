@@ -392,6 +392,7 @@ static const char* const kNames[] = {
     "serverPackageListAge",
     "serverPackageListMetaInfo",
     "serverPackages",
+    "shaderParameters",
     "shaderSource",
     "shadowBias",
     "shadowCascades",

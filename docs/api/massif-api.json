@@ -2709,6 +2709,16 @@
       "base": "massif::RasterTileLayer",
       "properties": [
         {
+          "name": "shaderParameters",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::map<std::string, massif::Variant>",
+          "indexed": "json",
+          "doc": "Returns all shader parameters, as numbers."
+        },
+        {
           "name": "shaderSource",
           "type": "STRING",
           "readOnly": false,
@@ -2719,7 +2729,20 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CustomRasterTileLayer",
+          "name": "addDataSource",
+          "args": [
+            {
+              "name": "dataSource",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::DataSourceListener": {
@@ -11911,6 +11934,29 @@
         ]
       ],
       [
+        "custom-raster",
+        "massif__CustomRasterTileLayer",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ]
+            ],
+            [
+              "source"
+            ],
+            [
+              "source"
+            ]
+          ]
+        ]
+      ],
+      [
         "elements",
         "massif__VectorLayer",
         [
@@ -13885,6 +13931,27 @@
             "cppType": "std::shared_ptr<VectorTileDecoder>",
             "childKind": "style",
             "childClass": "massif::VectorTileDecoder",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::CustomRasterTileLayer",
+      "kind": "layer",
+      "type": "custom-raster",
+      "aliases": {
+        "dataSource": "source"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
             "required": true
           }
         ]

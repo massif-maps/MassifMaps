@@ -234,6 +234,15 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
         _normalMapContourWidth = width;
     }
+    void TileRenderer::setNormalMapShaderParameters(const std::map<std::string, float>& parameters) {
+        std::lock_guard<std::mutex> lock(_normalMapShaderParametersMutex);
+        bool sameNames = parameters.size() == _normalMapShaderParameters.size()
+            && std::equal(parameters.begin(), parameters.end(), _normalMapShaderParameters.begin(), [](const auto& a, const auto& b) { return a.first == b.first; });
+        if (!sameNames) {
+            _normalMapParameterNames++;
+        }
+        _normalMapShaderParameters = parameters;
+    }
     void TileRenderer::setNormalIlluminationDirection(MapVec direction) {
         std::lock_guard<std::mutex> lock(_mutex);
         _normalIlluminationDirection = direction;
@@ -1792,6 +1801,27 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             glUniform1f(glGetUniformLocation(shaderProgram, "u_contourWidth"), _normalMapContourWidth);
             // For per-zoom custom normal-map shaders (getMapZoom()).
             glUniform1f(glGetUniformLocation(shaderProgram, "u_zoom"), viewState.zoom);
+            std::lock_guard<std::mutex> lock(_normalMapShaderParametersMutex);
+            if (!_normalMapShaderParameters.empty()) {
+                std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>();
+                unsigned int generation = tileRenderer ? tileRenderer->getProgramGeneration() : 0;
+                ParameterLocations& cached = _normalMapParameterLocations[shaderProgram];
+                if (cached.generation != generation || cached.names != _normalMapParameterNames || cached.locations.size() != _normalMapShaderParameters.size()) {
+                    cached.generation = generation;
+                    cached.names = _normalMapParameterNames;
+                    cached.locations.clear();
+                    for (const auto& parameter : _normalMapShaderParameters) {
+                        cached.locations.push_back(glGetUniformLocation(shaderProgram, parameter.first.c_str()));
+                    }
+                }
+                std::size_t index = 0;
+                for (const auto& parameter : _normalMapShaderParameters) {
+                    if (cached.locations[index] >= 0) {
+                        glUniform1f(cached.locations[index], parameter.second);
+                    }
+                    index++;
+                }
+            }
         });
     }
 

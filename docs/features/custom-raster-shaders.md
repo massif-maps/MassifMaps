@@ -20,6 +20,8 @@ The layer draws a raster source through a fragment shader you supply. The shader
 
 - read the source pixel with `getRawColor()`,
 - read the current zoom with `getMapZoom()`,
+- read further sources drawn in the same pass with `sampleRaster(i)` ([below](#several-sources-in-one-draw)),
+- read a number you set from the app, declared as `uniform float u_name;` ([below](#shader-parameters)),
 - return a **premultiplied** color.
 
 This lets you recolor, threshold, blend or otherwise post-process any raster source on the GPU,
@@ -48,25 +50,60 @@ mapView.layers.add(layer)
 
 ### With the surface API
 
-There is no `{"type": "custom-raster"}` — the layer carries no `!spec` declaration. Construct it
-and [adopt](/docs/api/#bringing-an-existing-app-across) it; `shaderSource` is an ordinary property
-afterwards, so the shader can be swapped at runtime by one write:
+`{"type": "custom-raster", "source": ...}` creates the layer, and `shaderSource` is an ordinary
+property, so the shader can be swapped at runtime by one `set`:
 
 ```java
-MassifLayer tinted = Massif.adopt("tinted", new CustomRasterTileLayer(source));
-tinted.set("shaderSource", grayscaleFilter);
+map.addLayer("tinted", Spec.of("custom-raster")
+    .set("source", source)
+    .set("shaderSource", grayscaleFilter));
 ```
 
 A [`hillshade`](/docs/api/reference/layer) layer inherits `shaderSource` but does not use it: its
-custom shader is `normalMapLightingShader`, a property of the `hillshade` spec — so a shaded-relief
-layer with a custom shader needs no adoption at all.
+custom shader is `normalMapLightingShader`, a property of the `hillshade` spec.
 
 | Member | Purpose |
 |---|---|
 | `setShaderSource(String)` | Install the GLSL filter shader; empty resets to the passthrough. |
 | `getShaderSource()` | The shader you set. |
-| `getRawColor()` *(in shader)* | The source pixel. |
+| `addDataSource(source)` | Draw another source with the first, up to 4 in total. |
+| `getDataSourceCount()` | The number of sources, the layer's own included. |
+| `setShaderParameter(name, value)` | Set the `uniform float` of that name. `getShaderParameter(name)` reads it. |
+| `shaderParameters` *(surface API)* | All parameters as a name → number map; a write sets the ones it names. |
+| `getRawColor()` *(in shader)* | The source pixel; `sampleRaster(0)`. |
+| `sampleRaster(i)` *(in shader)* | Source `i`, a literal from 0 to 3. |
 | `getMapZoom()` *(in shader)* | Current map zoom, for zoom-dependent effects. |
+
+## Several sources in one draw
+
+`addDataSource()` binds the tiles of every source to the same draw, so the shader mixes their
+**values** rather than blending finished images, and the GPU pays one draw instead of one per
+source. A satellite image under a cloud mask, or a colour ramp over a hillshade, in a single pass:
+
+```java
+layer.addDataSource(cloudMaskSource);
+layer.setShaderSource("""
+    vec4 applyLighting(lowp vec4 color, mediump vec3 normal, mediump vec3 surfaceNormal, mediump float intensity) {
+        vec4 ground = sampleRaster(0);
+        float cloud = sampleRaster(1).a;
+        return vec4(mix(ground.rgb, vec3(1.0), cloud) * ground.a, ground.a);
+    }
+""");
+```
+
+- Up to **4** sources. The index must be a literal: GLES2 cannot index a sampler by a computed value.
+- The sources must share a zoom range, and `sampleRasterAtPixel` reads in the first one's pixels; a source with no tile yet reads as source 0, so
+  the shader sees the same picture twice instead of a hole, and the tile is fetched again after 1 s, 2 s, 4 s... up to a minute.
+- `sampleRasterAtPixel(i, pixel)` reads source `i` at a pixel of the tile.
+- Not supported on `HillshadeRasterTileLayer`.
+- Known gap: every source tile must be the same tile of the pyramid. Per-source offsets, as tangram
+  carries, are not ported.
+
+## Shader parameters
+
+`setShaderParameter("u_mix", 0.4f)` sets `uniform float u_mix;` in the shader, from any thread, with
+no recompile. Draped on 3D terrain, a changed parameter bakes the drape stack again; a change reaches the
+drape at most 10 times a second, so a parameter driven every frame costs at most that many bakes.
 
 ## Relationship to hillshade
 

@@ -2271,6 +2271,10 @@ export interface PropertyTypes {
         readonly 'projection.name': string;
         /** Returns the raster tile event listener. */
         'rasterTileEventListener': Handle;
+        /** Returns all shader parameters, as numbers. */
+        'shaderParameters': Record<string, Json>;
+        /** Returns all shader parameters, as numbers. */
+        [key: `shaderParameters.${string}`]: Json;
         /** Returns the custom fragment shader source. */
         'shaderSource': string;
         /** (read-only) Returns the data source assigned to this layer. */
@@ -2896,6 +2900,10 @@ export interface PropertyTypes {
         readonly 'projection.name': string;
         /** Returns the raster tile event listener. */
         'rasterTileEventListener': Handle;
+        /** Returns all shader parameters, as numbers. */
+        'shaderParameters': Record<string, Json>;
+        /** Returns all shader parameters, as numbers. */
+        [key: `shaderParameters.${string}`]: Json;
         /** Returns the custom fragment shader source. */
         'shaderSource': string;
         /** Returns the shading color of areas that face away from the light source. */
@@ -8693,6 +8701,7 @@ export interface VariantPaths {
         'dataSource.projection.bounds': true;
         'metaData': true;
         'projection.bounds': true;
+        'shaderParameters': true;
         'source.dataExtent': true;
         'source.metaData': true;
         'source.projection.bounds': true;
@@ -8809,6 +8818,7 @@ export interface VariantPaths {
         'illuminationDirection': true;
         'metaData': true;
         'projection.bounds': true;
+        'shaderParameters': true;
         'source.dataExtent': true;
         'source.metaData': true;
         'source.projection.bounds': true;
@@ -10210,6 +10220,59 @@ export interface LayerSpec_composite_vector {
     zoomLevelBias?: number;
 }
 
+export interface LayerSpec_custom_raster {
+    type: 'custom-raster';
+    /** Returns the tile data source of the associated UTF grid. By default this is null. */
+    UTFGridDataSource?: Handle | string | SourceSpec;
+    /** Returns the UTF grid event listener. */
+    UTFGridEventListener?: Handle;
+    /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
+    billboardsUnderLabels?: boolean;
+    /** Returns the culling delay of the layer in milliseconds. */
+    cullDelay?: number;
+    /** Returns the current frame number. */
+    frameNr?: number;
+    /** Gets the current maximum overzoom level for this layer. */
+    maxOverzoomLevel?: number;
+    /** Gets the current maximum underzoom level for this layer. */
+    maxUnderzoomLevel?: number;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    metaData?: Record<string, Json>;
+    /** Returns the opacity of this layer. */
+    opacity?: number;
+    /** Returns whether this layer goes through the post-process effect. */
+    postProcessed?: boolean;
+    /** Returns the state of the preloading flag of this layer. */
+    preloading?: boolean;
+    /** Returns the raster tile event listener. */
+    rasterTileEventListener?: Handle;
+    /** Returns all shader parameters, as numbers. */
+    shaderParameters?: Record<string, Json>;
+    /** Returns the custom fragment shader source. */
+    shaderSource?: string;
+    source: Handle | string | SourceSpec;
+    /** Returns the state of the synchronized refresh flag. */
+    synchronizedRefresh?: boolean;
+    /** Returns the tile texture cache capacity. */
+    textureCacheCapacity?: number;
+    /** Returns the current relative tile blending speed. */
+    tileBlendingSpeed?: number;
+    /** Returns the current tile filter mode. */
+    tileFilterMode?: 'RASTER_TILE_FILTER_MODE_NEAREST' | 'RASTER_TILE_FILTER_MODE_BILINEAR' | 'RASTER_TILE_FILTER_MODE_BICUBIC' | number;
+    /** Returns the tile load listener. */
+    tileLoadListener?: Handle;
+    /** Returns the current tile substitution policy. */
+    tileSubstitutionPolicy?: 'TILE_SUBSTITUTION_POLICY_ALL' | 'TILE_SUBSTITUTION_POLICY_VISIBLE' | 'TILE_SUBSTITUTION_POLICY_NONE' | number;
+    /** Returns the layer task priority of this layer. */
+    updatePriority?: number;
+    /** Returns the visibility of this layer. */
+    visible?: boolean;
+    /** Returns the visible zoom range of this layer. */
+    visibleZoomRange?: [number, number];
+    /** Gets the current zoom level bias for this layer. */
+    zoomLevelBias?: number;
+}
+
 export interface LayerSpec_elements {
     type: 'elements';
     /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
@@ -10292,6 +10355,8 @@ export interface LayerSpec_hillshade {
     preloading?: boolean;
     /** Returns the raster tile event listener. */
     rasterTileEventListener?: Handle;
+    /** Returns all shader parameters, as numbers. */
+    shaderParameters?: Record<string, Json>;
     /** Returns the custom fragment shader source. */
     shaderSource?: string;
     /** Returns the shading color of areas that face away from the light source. */
@@ -10460,7 +10525,7 @@ export interface LayerSpec_vector {
     zoomLevelBias?: number;
 }
 
-export type LayerSpec = LayerSpec_celestial | LayerSpec_composite_vector | LayerSpec_elements | LayerSpec_hillshade | LayerSpec_raster | LayerSpec_solid | LayerSpec_vector;
+export type LayerSpec = LayerSpec_celestial | LayerSpec_composite_vector | LayerSpec_custom_raster | LayerSpec_elements | LayerSpec_hillshade | LayerSpec_raster | LayerSpec_solid | LayerSpec_vector;
 
 export interface OptionsSpec_fog {
     type: 'fog';
@@ -11045,6 +11110,7 @@ export interface SpecClass {
     'layer': {
         'celestial': 'massif::CelestialLayer';
         'composite-vector': 'massif::CompositeVectorTileLayer';
+        'custom-raster': 'massif::CustomRasterTileLayer';
         'elements': 'massif::VectorLayer';
         'hillshade': 'massif::HillshadeRasterTileLayer';
         'raster': 'massif::RasterTileLayer';
@@ -11241,6 +11307,7 @@ export interface MethodTypes {
     'massif::CustomPopupHandler': {
     };
     'massif::CustomRasterTileLayer': {
+        addDataSource: { args: [dataSource: Handle]; result: void };
         clearTileCaches: { args: [all: boolean]; result: void };
         refresh: { args: []; result: void };
     };
@@ -11323,6 +11390,7 @@ export interface MethodTypes {
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::HillshadeRasterTileLayer': {
+        addDataSource: { args: [dataSource: Handle]; result: void };
         clearTileCaches: { args: [all: boolean]; result: void };
         getElevation: { args: [pos: Position]; result: number };
         getElevations: { args: [positions: Position[]]; result: number[] };

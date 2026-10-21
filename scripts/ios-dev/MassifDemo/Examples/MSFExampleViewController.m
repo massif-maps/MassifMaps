@@ -18,6 +18,7 @@
 @property (nonatomic, strong) UIView *captionBar;
 @property (nonatomic, strong) UIView *topBar;
 @property (nonatomic, strong) NSMutableArray<NSTimer *> *timers;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSArray *> *sliderViews;
 @end
 
 @implementation MSFExampleViewController
@@ -26,6 +27,7 @@
     if ((self = [super initWithNibName:nil bundle:nil])) {
         _entry = entry;
         _timers = [NSMutableArray array];
+        _sliderViews = [NSMutableDictionary dictionary];
     }
     return self;
 }
@@ -311,6 +313,19 @@
         [box addArrangedSubview:text];
         [box addArrangedSubview:slider];
         [self.sliders addArrangedSubview:box];
+        self->_sliderViews[label] = @[slider, text];
+    });
+}
+
+- (void)setSlider:(NSString *)label value:(float)value {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSArray *views = self->_sliderViews[label];
+        UISlider *slider = views[0];
+        if (!slider || slider.tracking) {
+            return;
+        }
+        slider.value = value;
+        ((UILabel *)views[1]).text = [NSString stringWithFormat:@"%@  %.2f", label, value];
     });
 }
 

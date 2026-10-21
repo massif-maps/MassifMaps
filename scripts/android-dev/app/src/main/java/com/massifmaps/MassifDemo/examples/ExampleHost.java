@@ -46,6 +46,12 @@ public interface ExampleHost {
      */
     void slider(String label, float min, float max, float value, OnValue action);
 
+    /**
+     * Moves the slider with that label, for a value that changes by itself: a clock. Does not call
+     * the slider's action, which is for the hand.
+     */
+    void setSlider(String label, float value);
+
     /** A short message. Use sparingly - a caption is usually the better place. */
     void toast(String text);
 

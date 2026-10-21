@@ -7,7 +7,11 @@
 #import "Examples/MSFExampleCatalogue.h"
 #import "Examples/MSFExampleViewController.h"
 
-@implementation AppDelegate
+@interface MassifSceneDelegate : UIResponder <UIWindowSceneDelegate>
+@property (nonatomic, strong) UIWindow *window;
+@end
+
+@implementation MassifSceneDelegate
 
 /**
  * The app opens on the example GALLERY, like Android's MainActivity. The composable
@@ -16,8 +20,8 @@
  *   xcrun simctl launch <device> com.massifmaps.MassifDemo -example terrain-3d -ui false
  *   xcrun simctl launch <device> com.massifmaps.MassifDemo -bench true -hillshade true
  */
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)options {
-    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+- (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
+    self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
 
     MSFGalleryViewController *gallery = [[MSFGalleryViewController alloc] init];
     UINavigationController *navigation =
@@ -47,13 +51,24 @@
     // '-winW 800 -winH 600' (points): a smaller window renders faster, so a burst can be paced finer.
     if ([DemoCfg has:@"winW"] && [DemoCfg has:@"winH"]) {
         CGSize size = CGSizeMake([DemoCfg floatFor:@"winW" defaultValue:800], [DemoCfg floatFor:@"winH" defaultValue:600]);
-        UIWindowScene *scene = self.window.windowScene;
-        scene.sizeRestrictions.minimumSize = size;
-        scene.sizeRestrictions.maximumSize = size;
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        windowScene.sizeRestrictions.minimumSize = size;
+        windowScene.sizeRestrictions.maximumSize = size;
     }
 #endif
     [DemoCapture startIfRequested];
-    return YES;
+}
+
+@end
+
+@implementation AppDelegate
+
+- (UISceneConfiguration *)application:(UIApplication *)application
+configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
+                               options:(UISceneConnectionOptions *)options {
+    UISceneConfiguration *configuration = [[UISceneConfiguration alloc] initWithName:@"Default" sessionRole:connectingSceneSession.role];
+    configuration.delegateClass = [MassifSceneDelegate class];
+    return configuration;
 }
 
 /**

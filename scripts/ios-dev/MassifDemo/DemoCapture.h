@@ -12,6 +12,7 @@
  *   -shotDelay 60               seconds after launch before the first frame (tile settle time)
  *   -rotateDegPerSec 10         bearing turns continuously, driven per display frame
  *   -rotateStepDeg 1            bearing +1 degree between two burst frames (deterministic)
+ *   -zoomStep 0.01              zoom +0.01 between two burst frames (deterministic)
  *   -shotTilts 90,75,60,45,30,15  one still per tilt into <shotDir>/tilt_NN.png (-shotTiltWaitMs 6000 between)
  *   -duration 20                seconds the rotation runs; the app quits when it ends (unless a burst is running)
  */

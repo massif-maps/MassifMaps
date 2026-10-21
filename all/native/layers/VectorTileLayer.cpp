@@ -19,6 +19,7 @@
 #include "renderers/drawdatas/TileDrawData.h"
 #include "ui/VectorTileClickInfo.h"
 #include "utils/Log.h"
+#include "layers/TileProbe.h"
 #include "utils/Const.h"
 #include "vectortiles/VectorTileDecoder.h"
 #include "vectortiles/MBVectorTileDecoder.h"
@@ -229,6 +230,7 @@ namespace massif {
         }
         _rendererLayerFilterRe = filterRe ? std::make_shared<const std::regex>(*filterRe) : std::shared_ptr<const std::regex>();
         _tileRenderer->setRendererLayerFilter(filterRe);
+        MASSIF_PROBE_EVENT(this, "setRendererLayerFilter");
         updateTiles(false);
     }
 
@@ -493,9 +495,17 @@ namespace massif {
                 it = referenceTileIds.count(it->first) ? std::next(it) : _spanReferenceCache.erase(it);
             }
 
-            if (_tileRenderer->refreshTiles(drawDatas, spanReferenceTiles)) {
+            bool renderChanged = _tileRenderer->refreshTiles(drawDatas, spanReferenceTiles);
+            if (renderChanged) {
                 tilesChanged = true;
             }
+#ifdef MASSIF_TILE_PROBE
+            char text[160];
+            snprintf(text, sizeof(text), "drawDatas=%d refreshTilesChanged=%d tilesChanged=%d", static_cast<int>(drawDatas.size()), renderChanged ? 1 : 0, tilesChanged ? 1 : 0);
+            MASSIF_PROBE_REPORT(this, "draw", text, true);
+        } else {
+            MASSIF_PROBE_REPORT(this, "draw", "HELD by synchronized refresh (fetches pending)", true);
+#endif
         }
     
         if (auto mapRenderer = getMapRenderer()) {
@@ -863,6 +873,7 @@ namespace massif {
         
     void VectorTileLayer::TileDecoderListener::onDecoderChanged() {
         if (std::shared_ptr<VectorTileLayer> layer = _layer.lock()) {
+            MASSIF_PROBE_EVENT(layer.get(), "onDecoderChanged");
             layer->updateTiles(false);
         } else {
             Log::Error("VectorTileLayer::TileDecoderListener: Lost connection to layer");
@@ -901,10 +912,12 @@ namespace massif {
         bool refresh = false;
         for (const MapTile& dataSourceTile : _dataSourceTiles) {
             if (isCanceled()) {
+                MASSIF_PROBE_COUNT(layer.get(), canceled);
                 break;
             }
             std::shared_ptr<TileData> tileData = layer->_dataSource->loadTile(dataSourceTile);
             if (!tileData) {
+                MASSIF_PROBE_COUNT(layer.get(), noData);
                 break;
             }
             if (tileData->isReplaceWithParent()) {
@@ -917,6 +930,7 @@ namespace massif {
             }
 
             if (isCanceled()) {
+                MASSIF_PROBE_COUNT(layer.get(), canceled);
                 break;
             }
 
@@ -931,13 +945,25 @@ namespace massif {
                 }
             }
 
+            if (!tileMap) {
+                MASSIF_PROBE_COUNT(layer.get(), emptyMap);
+            }
             // Keep the original data only if interactivity is required.
             VectorTileLayer::TileInfo tileInfo(layer->calculateMapTileBounds(dataSourceTile.getFlipped()), layer->_vectorTileEventListener.get() ? tileData->getData() : std::shared_ptr<BinaryData>(), tileMap, _tile.getZoom(), _styleTileZoom);
             {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
 
+#ifdef MASSIF_TILE_PROBE
+                if (isInvalidated()) {
+                    MASSIF_PROBE_COUNT(layer.get(), invalidated);
+                } else if (layer->getTileTransformer() != tileTransformer) {
+                    MASSIF_PROBE_COUNT(layer.get(), staleDrop);
+                    MASSIF_PROBE_EVENT(layer.get(), "DROP stale transformer", "tile=%d/%d/%d", _tile.getZoom(), _tile.getX(), _tile.getY());
+                }
+#endif
                 if (!isInvalidated()) {
                     if (layer->getTileTransformer() == tileTransformer) { // drop a tile built with a stale transformer
+                        MASSIF_PROBE_COUNT(layer.get(), stored);
                         bool spanReference = false;
                         if (isPreloadingTile()) {
                             for (const MapTile& referenceTile : layer->_spanReferenceTiles) {

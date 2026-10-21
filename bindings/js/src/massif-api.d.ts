@@ -252,8 +252,6 @@ export type ClassName =
     | 'massif::TileUtils'
     | 'massif::TomTomOnlineGeocodingService'
     | 'massif::TomTomOnlineReverseGeocodingService'
-    | 'massif::TorqueTileDecoder'
-    | 'massif::TorqueTileLayer'
     | 'massif::TouchHandlerListener'
     | 'massif::UTFGridClickInfo'
     | 'massif::UTFGridEventListener'
@@ -6322,154 +6320,6 @@ export interface PropertyTypes {
         'customServiceURL': string;
         'language': string;
     };
-    'massif::TorqueTileDecoder': {
-        /** (read-only) Returns the animation duration, in seconds. */
-        readonly 'animationDuration': number;
-        /** (read-only) Returns the frame count defined in the Torque style. */
-        readonly 'frameCount': number;
-        readonly 'maxZoom': number;
-        readonly 'minZoom': number;
-        /** (read-only) Returns the tile resolution, in pixels. */
-        readonly 'resolution': number;
-        /** Returns the current style set used by the decoder. */
-        'styleSet': Handle;
-        /** (read-only) Returns the style asset package. */
-        readonly 'styleSet.assetPackage': Handle;
-        readonly 'styleSet.assetPackage.assetNames': string[];
-        /** (read-only) Returns the CartoCSS string used for the style. */
-        readonly 'styleSet.cartoCSS': string;
-    };
-    'massif::TorqueTileLayer': {
-        /** Returns the tile data source of the associated UTF grid. By default this is null. */
-        'UTFGridDataSource': Handle;
-        /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
-        readonly 'UTFGridDataSource.dataExtent': Bounds;
-        /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
-        'UTFGridDataSource.maxOverzoomLevel': number;
-        /** (read-only) Returns the maximum zoom level supported by this data source. */
-        readonly 'UTFGridDataSource.maxZoom': number;
-        /** Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. */
-        'UTFGridDataSource.metaData': Record<string, Json>;
-        /** Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. */
-        [key: `UTFGridDataSource.metaData.${string}`]: Json;
-        /** (read-only) Returns the minimum zoom level supported by this data source. */
-        readonly 'UTFGridDataSource.minZoom': number;
-        /** (read-only) Returns the projection of this tile source. */
-        readonly 'UTFGridDataSource.projection': Handle;
-        /** (read-only) Returns the bounds of this projection. */
-        readonly 'UTFGridDataSource.projection.bounds': Bounds;
-        readonly 'UTFGridDataSource.projection.name': string;
-        /** Returns the UTF grid event listener. */
-        'UTFGridEventListener': Handle;
-        /** Returns whether the billboards of this layer (markers, popups) draw under the labels of the vector tile layers that render them last, rather than over everything. The default is false. */
-        'billboardsUnderLabels': boolean;
-        /** Returns the current display order of the buildings. LAST draws over flat labels too: a label that must clear a building is a billboard one, whose pass runs after the buildings. */
-        'buildingRenderOrder': 'VECTOR_TILE_RENDER_ORDER_HIDDEN' | 'VECTOR_TILE_RENDER_ORDER_LAYER' | 'VECTOR_TILE_RENDER_ORDER_LAST' | number;
-        /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
-        'clickHandlerLayerFilter': string;
-        /** Returns the click radius of vector tile features. Units are screen density independent pixels (DP or DIP). */
-        'clickRadius': number;
-        /** Returns the culling delay of the layer in milliseconds. */
-        'cullDelay': number;
-        /** (read-only) Returns the data source assigned to this layer. */
-        readonly 'dataSource': Handle;
-        /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
-        readonly 'dataSource.dataExtent': Bounds;
-        /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
-        'dataSource.maxOverzoomLevel': number;
-        /** (read-only) Returns the maximum zoom level supported by this data source. */
-        readonly 'dataSource.maxZoom': number;
-        /** Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. */
-        'dataSource.metaData': Record<string, Json>;
-        /** Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. */
-        [key: `dataSource.metaData.${string}`]: Json;
-        /** (read-only) Returns the minimum zoom level supported by this data source. */
-        readonly 'dataSource.minZoom': number;
-        /** (read-only) Returns the projection of this tile source. */
-        readonly 'dataSource.projection': Handle;
-        /** (read-only) Returns the bounds of this projection. */
-        readonly 'dataSource.projection.bounds': Bounds;
-        readonly 'dataSource.projection.name': string;
-        /** Returns the current frame number. */
-        'frameNr': number;
-        /** Returns the label blending speed, in full fades per second. */
-        'labelBlendingSpeed': number;
-        /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
-        'labelPerspectiveScaling': number;
-        /** Returns the current display order of the labels. */
-        'labelRenderOrder': 'VECTOR_TILE_RENDER_ORDER_HIDDEN' | 'VECTOR_TILE_RENDER_ORDER_LAYER' | 'VECTOR_TILE_RENDER_ORDER_LAST' | number;
-        /** Returns the current relative layer blending speed. */
-        'layerBlendingSpeed': number;
-        /** Gets the current maximum overzoom level for this layer. */
-        'maxOverzoomLevel': number;
-        /** Gets the current maximum underzoom level for this layer. */
-        'maxUnderzoomLevel': number;
-        /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
-        'metaData': Record<string, Json>;
-        /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
-        [key: `metaData.${string}`]: Json;
-        /** Returns the opacity of this layer. */
-        'opacity': number;
-        /** Returns whether this layer goes through the post-process effect. */
-        'postProcessed': boolean;
-        /** Returns the state of the preloading flag of this layer. */
-        'preloading': boolean;
-        readonly 'preloadingTileCount': number;
-        /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
-        readonly 'projection': Handle;
-        /** (read-only) Returns the bounds of this projection. */
-        readonly 'projection.bounds': Bounds;
-        readonly 'projection.name': string;
-        /** Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
-        'rendererLayerFilter': string;
-        /** (read-only) Returns the data source assigned to this layer. */
-        readonly 'source': Handle;
-        /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
-        readonly 'source.dataExtent': Bounds;
-        /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
-        'source.maxOverzoomLevel': number;
-        /** (read-only) Returns the maximum zoom level supported by this data source. */
-        readonly 'source.maxZoom': number;
-        /** Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. */
-        'source.metaData': Record<string, Json>;
-        /** Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. */
-        [key: `source.metaData.${string}`]: Json;
-        /** (read-only) Returns the minimum zoom level supported by this data source. */
-        readonly 'source.minZoom': number;
-        /** (read-only) Returns the projection of this tile source. */
-        readonly 'source.projection': Handle;
-        /** (read-only) Returns the bounds of this projection. */
-        readonly 'source.projection.bounds': Bounds;
-        readonly 'source.projection.name': string;
-        /** (read-only) Returns the tile decoder assigned to this layer. */
-        readonly 'style': Handle;
-        readonly 'style.maxZoom': number;
-        readonly 'style.minZoom': number;
-        /** Returns the state of the synchronized refresh flag. */
-        'synchronizedRefresh': boolean;
-        /** Returns the tile cache capacity. */
-        'tileCacheCapacity': number;
-        /** (read-only) Returns the tile decoder assigned to this layer. */
-        readonly 'tileDecoder': Handle;
-        readonly 'tileDecoder.maxZoom': number;
-        readonly 'tileDecoder.minZoom': number;
-        /** Returns the tile load listener. */
-        'tileLoadListener': Handle;
-        /** Returns the current tile substitution policy. */
-        'tileSubstitutionPolicy': 'TILE_SUBSTITUTION_POLICY_ALL' | 'TILE_SUBSTITUTION_POLICY_VISIBLE' | 'TILE_SUBSTITUTION_POLICY_NONE' | number;
-        /** Returns the layer task priority of this layer. */
-        'updatePriority': number;
-        /** Returns the vector tile event listener. */
-        'vectorTileEventListener': Handle;
-        /** Returns the visibility of this layer. */
-        'visible': boolean;
-        /** (read-only) How many tiles the last cull put on screen. A diagnostic: it is what the tile LOD numbers actually cost. */
-        readonly 'visibleTileCount': number;
-        /** Returns the visible zoom range of this layer. */
-        'visibleZoomRange': [number, number];
-        /** Gets the current zoom level bias for this layer. */
-        'zoomLevelBias': number;
-    };
     'massif::TouchHandlerListener': {
     };
     'massif::UTFGridClickInfo': {
@@ -7710,17 +7560,6 @@ export interface PositionPaths {
     };
     'massif::TomTomOnlineReverseGeocodingService': {
     };
-    'massif::TorqueTileDecoder': {
-    };
-    'massif::TorqueTileLayer': {
-        'UTFGridDataSource.dataExtent': true;
-        'UTFGridDataSource.projection.bounds': true;
-        'dataSource.dataExtent': true;
-        'dataSource.projection.bounds': true;
-        'projection.bounds': true;
-        'source.dataExtent': true;
-        'source.projection.bounds': true;
-    };
     'massif::TouchHandlerListener': {
     };
     'massif::UTFGridClickInfo': {
@@ -8540,24 +8379,6 @@ export interface ObjectPaths {
     'massif::TomTomOnlineGeocodingService': {
     };
     'massif::TomTomOnlineReverseGeocodingService': {
-    };
-    'massif::TorqueTileDecoder': {
-        'styleSet': 'massif::CartoCSSStyleSet';
-        'styleSet.assetPackage': 'massif::AssetPackage';
-    };
-    'massif::TorqueTileLayer': {
-        'UTFGridDataSource': 'massif::TileDataSource';
-        'UTFGridDataSource.projection': 'massif::Projection';
-        'UTFGridEventListener': 'massif::UTFGridEventListener';
-        'dataSource': 'massif::TileDataSource';
-        'dataSource.projection': 'massif::Projection';
-        'projection': 'massif::Projection';
-        'source': 'massif::TileDataSource';
-        'source.projection': 'massif::Projection';
-        'style': 'massif::VectorTileDecoder';
-        'tileDecoder': 'massif::VectorTileDecoder';
-        'tileLoadListener': 'massif::TileLoadListener';
-        'vectorTileEventListener': 'massif::VectorTileEventListener';
     };
     'massif::TouchHandlerListener': {
     };
@@ -9517,23 +9338,6 @@ export interface VariantPaths {
     'massif::TomTomOnlineGeocodingService': {
     };
     'massif::TomTomOnlineReverseGeocodingService': {
-    };
-    'massif::TorqueTileDecoder': {
-        'styleSet.assetPackage.assetNames': true;
-    };
-    'massif::TorqueTileLayer': {
-        'UTFGridDataSource.dataExtent': true;
-        'UTFGridDataSource.metaData': true;
-        'UTFGridDataSource.projection.bounds': true;
-        'dataSource.dataExtent': true;
-        'dataSource.metaData': true;
-        'dataSource.projection.bounds': true;
-        'metaData': true;
-        'projection.bounds': true;
-        'source.dataExtent': true;
-        'source.metaData': true;
-        'source.projection.bounds': true;
-        'visibleZoomRange': true;
     };
     'massif::TouchHandlerListener': {
     };
@@ -11892,14 +11696,6 @@ export interface MethodTypes {
     'massif::TomTomOnlineReverseGeocodingService': {
         calculateAddresses: { args: [request: Handle]; result: Json };
     };
-    'massif::TorqueTileDecoder': {
-    };
-    'massif::TorqueTileLayer': {
-        clearModelHighlight: { args: []; result: void };
-        clearTileCaches: { args: [all: boolean]; result: void };
-        refresh: { args: []; result: void };
-        setModelHighlight: { args: [featureId: number, featurePosIndex: number, color: number]; result: void };
-    };
     'massif::TouchHandlerListener': {
     };
     'massif::UTFGridClickInfo': {
@@ -12414,11 +12210,6 @@ export interface EventTypes {
     'massif::TomTomOnlineGeocodingService': {
     };
     'massif::TomTomOnlineReverseGeocodingService': {
-    };
-    'massif::TorqueTileDecoder': {
-    };
-    'massif::TorqueTileLayer': {
-        'vectortile.clicked': 'massif::VectorTileClickInfo';
     };
     'massif::TouchHandlerListener': {
     };

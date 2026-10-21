@@ -711,7 +711,7 @@ prefilter, then discovered the layer was absent when `createFeatureIterator` ret
 style's field sets were gathered first, for nothing. The bundled style has 67 styles over 23 layers
 and a z16 city tile carries far fewer, so most of that work produced an empty layer that was then
 dropped. `TileReader::hasLayer` (a `_layerMap` lookup in `MBVTFeatureDecoder`, virtual so
-`TorqueTileReader` keeps answering yes) is now asked once per layer, before anything is built.
+a reader without layers keeps answering yes) is now asked once per layer, before anything is built.
 
 The one case that must still be built is a style with a **comp-op**: `GLTileRenderer` renders an
 empty layer when `isEmptyBlendRequired(compOp)` ([GLTileRenderer.cpp:2228](https://github.com/massif-maps/MassifMaps/blob/master/libs-massif/vt/src/vt/GLTileRenderer.cpp)),

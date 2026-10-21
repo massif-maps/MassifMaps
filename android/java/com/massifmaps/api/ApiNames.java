@@ -58,8 +58,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> ANGULAR_SIZE = MassifObject.key("angularSize");
     /** Returns the cluster animation flag value. */
     public static final MassifObject.Key<Boolean> ANIMATED_CLUSTERS = MassifObject.key("animatedClusters");
-    /** Returns the animation duration, in seconds. */
-    public static final MassifObject.Key<Double> ANIMATION_DURATION = MassifObject.key("animationDuration");
     /** Returns true if the interaction has started an animation. */
     public static final MassifObject.Key<Boolean> ANIMATION_STARTED = MassifObject.key("animationStarted");
     /** Returns the animation style of the billboard. */
@@ -371,8 +369,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> FONT_SIZE = MassifObject.key("fontSize");
     /** Returns the fragment shader source of the effect. */
     public static final MassifObject.Key<String> FRAGMENT_SHADER = MassifObject.key("fragmentShader");
-    /** Returns the frame count defined in the Torque style. */
-    public static final MassifObject.Key<Long> FRAME_COUNT = MassifObject.key("frameCount");
     /** Returns the time of this map tile. */
     public static final MassifObject.Key<Long> FRAME_NR = MassifObject.key("frameNr");
     /** Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view. */
@@ -854,8 +850,6 @@ public final class ApiNames {
     public static final MassifObject.Key<String> STYLE_NAME = MassifObject.key("styleName");
     /** Returns the list of all available style parameters. */
     public static final MassifObject.Key<String> STYLE_PARAMETERS = MassifObject.key("styleParameters");
-    /** Returns the current style set used by the decoder. */
-    public static final MassifObject.Key<MassifObject> STYLE_SET = MassifObject.key("styleSet");
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     public static final MassifObject.Key<Double> SUBDIVIDE_DISTANCE = MassifObject.key("subdivideDistance");
     /** Returns the subdomains for {s} tag. The default is ["a", "b", "c", "d"]. */

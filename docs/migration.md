@@ -159,6 +159,16 @@ the product. There is **no renamed equivalent**; bring your own source.
 
 ## Breaking changes after 6.0.0
 
+### The Torque animated layer is gone
+
+`TorqueTileLayer`, `TorqueTileDecoder` and the CartoCSS Torque loader are removed, on every platform
+and in the facade (`frameCount`, `animationDuration` and the rest of the decoder properties with them).
+Torque packed a whole animation into one tile payload; nothing here reads that format any more and
+there is no drop-in replacement. The generic `VectorTileLayer` tile-map mode is unchanged.
+
+To animate over a sequence of images, use the raster animation layer from
+[#157](https://github.com/massif-maps/MassifMaps/issues/157) once it ships.
+
 ### Map camera events carry a reason, and onMapStable fires once per movement
 
 `MapEventListener.onMapMoved` and `onMapStable` take a `MapMoveReason` argument, so every app that

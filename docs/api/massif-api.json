@@ -9633,58 +9633,6 @@
       "methods": [],
       "events": []
     },
-    "massif::TorqueTileDecoder": {
-      "base": "massif::VectorTileDecoder",
-      "properties": [
-        {
-          "name": "animationDuration",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "float",
-          "doc": "Returns the animation duration, in seconds."
-        },
-        {
-          "name": "frameCount",
-          "type": "INT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "int",
-          "doc": "Returns the frame count defined in the Torque style."
-        },
-        {
-          "name": "resolution",
-          "type": "INT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "int",
-          "doc": "Returns the tile resolution, in pixels."
-        },
-        {
-          "name": "styleSet",
-          "type": "OBJECT",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "std::shared_ptr<massif::CartoCSSStyleSet>",
-          "objectClass": "massif::CartoCSSStyleSet",
-          "doc": "Returns the current style set used by the decoder."
-        }
-      ],
-      "aliases": {},
-      "methods": [],
-      "events": []
-    },
-    "massif::TorqueTileLayer": {
-      "base": "massif::VectorTileLayer",
-      "properties": [],
-      "aliases": {},
-      "methods": [],
-      "events": []
-    },
     "massif::TouchHandlerListener": {
       "base": null,
       "properties": [],

@@ -12,7 +12,7 @@ The libraries included in the project are:
 An extended CartoCSS parser and translator to MapnikVT.
 
 ##### MapnikVT
-A mid level vector tile rendering library that uses Mapnik-like XML style definition language. Includes decoders for MapBox vector tiles and Torque tiles.
+A mid level vector tile rendering library that uses Mapnik-like XML style definition language. Includes a decoder for MapBox vector tiles.
 
 #####  VT
 A low level vector tile rendering library using OpenGLES 2.

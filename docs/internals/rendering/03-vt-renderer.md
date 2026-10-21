@@ -73,8 +73,8 @@ renderer an empty tile set, but by the rule above nothing replaces the tiles on 
 held for good: `visible()` read `false` while the boundaries stayed drawn, and `clearTileCaches`
 did not reach them (they live in the renderer, not the layer's caches). `VectorTileLayer::onDrawFrame`,
 `onDrawFrame3D` and `collectLabelLayers` therefore return early when hidden, as
-`CompositeVectorTileLayer::renderComposite` already did; so do the raster, hillshade, custom-raster
-and torque layers, which hold their tiles the same way. The held tiles stay, so showing the layer
+`CompositeVectorTileLayer::renderComposite` already did; so do the raster, hillshade and custom-raster
+layers, which hold their tiles the same way. The held tiles stay, so showing the layer
 again redraws at once. Confirmed on device in alpimaps; the raster gates are syntax-checked only.
 
 **A retained layer is inherited once per target, not once per copy.** `initializeRenderTile` hands

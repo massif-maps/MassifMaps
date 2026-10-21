@@ -29,6 +29,13 @@
 #include "utils/Const.h"
 #include "utils/TileUtils.h"
 #include "utils/Log.h"
+#include "layers/TileProbe.h"
+#ifdef MASSIF_TILE_PROBE
+#include "layers/VectorTileLayer.h"
+#include "layers/CompositeVectorTileLayer.h"
+#include "layers/RasterTileLayer.h"
+#include "layers/HillshadeRasterTileLayer.h"
+#endif
 
 #ifdef __ANDROID__
 #include <sys/system_properties.h>
@@ -45,6 +52,34 @@
 #include <string>
 
 namespace massif {
+
+#ifdef MASSIF_TILE_PROBE
+    std::string TileProbeTag(const TileLayer* layer) {
+        if (!layer) {
+            return "null";
+        }
+        const char* kind = "tile";
+        std::string filter;
+        if (dynamic_cast<const CompositeVectorTileLayer*>(layer)) {
+            kind = "composite(group0)";
+        } else if (dynamic_cast<const HillshadeRasterTileLayer*>(layer)) {
+            kind = "hillshade";
+        } else if (dynamic_cast<const RasterTileLayer*>(layer)) {
+            kind = "raster";
+        } else if (dynamic_cast<const VectorTileLayer*>(layer)) {
+            kind = "vt";
+        }
+        if (const VectorTileLayer* vectorLayer = dynamic_cast<const VectorTileLayer*>(layer)) {
+            filter = vectorLayer->getRendererLayerFilter();
+            if (filter.size() > 40) {
+                filter = filter.substr(0, 40) + "...";
+            }
+        }
+        char buffer[160];
+        snprintf(buffer, sizeof(buffer), "%s@%p[%s]", kind, static_cast<const void*>(layer), filter.c_str());
+        return buffer;
+    }
+#endif
 
 #if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     static bool isLineSourceDensityForced() {
@@ -204,6 +239,7 @@ namespace massif {
     }
     
     void TileLayer::clearTileCaches(bool all) {
+        MASSIF_PROBE_EVENT(this, "clearTileCaches", "all=%d", all ? 1 : 0);
         clearTiles(true);
         if (all) {
             clearTiles(false);
@@ -321,6 +357,7 @@ namespace massif {
     {
         Layer::setComponents(envelopeThreadPool, tileThreadPool, options, mapRenderer, touchHandler);
         _tileRenderer->setComponents(options, mapRenderer);
+        MASSIF_PROBE_EVENT(this, "setComponents");
 
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         clearTileCaches(true);
@@ -340,6 +377,7 @@ namespace massif {
             glResourceManager = mapRenderer->getGLResourceManager();
         }
         if (_projectionSurface.lock() != projectionSurface || _glResourceManager.lock() != glResourceManager) {
+            MASSIF_PROBE_EVENT(this, "loadData: projection/GL changed", "surface=%d gl=%d", projectionSurface ? 1 : 0, glResourceManager ? 1 : 0);
             clearTileCaches(true);
             resetTileTransformer();
             // The tile set was calculated against the old transformer, and a still camera would never recalculate it.
@@ -367,6 +405,7 @@ namespace massif {
             // Not the exaggeration: only the GPU reads it, so comparing it would re-decode the map every frame it animates.
             bool sameOptions = _terrainOptions.lock() == terrainOptions;
             if (!sameOptions || _terrainDecodeState != decodeState) {
+                MASSIF_PROBE_EVENT(this, "loadData: terrain decode state changed", "sameOptions=%d decode=%d->%d", sameOptions ? 1 : 0, _terrainDecodeState.enabled ? 1 : 0, decodeState.enabled ? 1 : 0);
                 // A repeat 2D/3D switch gets back the tiles the last one put aside, instead of decoding them again.
                 swapDecodedTiles(sameOptions && _stashedTerrainDecodeState == decodeState);
                 markTerrainDecodeUnsettled();
@@ -387,6 +426,13 @@ namespace massif {
         }
     
         if (!isVisible() || !getVisibleZoomRange().inRange(cullState->getViewState().getZoom()) || getOpacity() <= 0) {
+#ifdef MASSIF_TILE_PROBE
+            {
+                char gate[160];
+                snprintf(gate, sizeof(gate), "GATED visible=%d zoomInRange=%d opacity=%.2f", isVisible() ? 1 : 0, getVisibleZoomRange().inRange(cullState->getViewState().getZoom()) ? 1 : 0, getOpacity());
+                MASSIF_PROBE_REPORT(this, "sum", gate, true);
+            }
+#endif
             _calculatingTiles = false;
             VT_STAT_INC(tileLayersSkipped);
             {
@@ -547,6 +593,32 @@ namespace massif {
             _terrainDecodeWait.recordFetched(visibleFetchedTiles);
         }
 
+#ifdef MASSIF_TILE_PROBE
+        {
+            int visible = 0, have = 0, valid = 0;
+            for (const MapTile& visTile : _visibleTiles) {
+                int tileMask = (1 << visTile.getZoom()) - 1;
+                long long tileId = getTileId(MapTile(visTile.getX() & tileMask, visTile.getY() & tileMask, visTile.getZoom(), visTile.getFrameNr()));
+                visible++;
+                if (tileExists(tileId, false) || tileExists(tileId, true)) {
+                    have++;
+                }
+                if (tileValid(tileId, false) || tileValid(tileId, true)) {
+                    valid++;
+                }
+            }
+            int inFlight = static_cast<int>(_fetchingTileTasks.getAll().size());
+            bool settled = fetchTileList.empty() && inFlight == 0;
+            bool stall = settled && visible > 0 && valid < visible;
+            ::massif::TileProbe::Counters& counters = ::massif::TileProbe::For(this);
+            char text[320];
+            snprintf(text, sizeof(text), "%svisible=%d have=%d valid=%d toFetch=%d inFlight=%d recalc=%d | stored=%d stale=%d inval=%d cancel=%d noData=%d emptyMap=%d",
+                     stall ? "STALL " : "", visible, have, valid, static_cast<int>(fetchTileList.size()), inFlight, recalculateTiles ? 1 : 0,
+                     counters.stored.load(), counters.staleDrop.load(), counters.invalidated.load(), counters.canceled.load(), counters.noData.load(), counters.emptyMap.load());
+            MASSIF_PROBE_REPORT(this, "sum", text, settled);
+        }
+#endif
+
         _calculatingTiles = false;
         _refreshedTiles = true;
         _tileCalculationCount++;
@@ -561,6 +633,7 @@ namespace massif {
             // Forces recalculation of visible tiles, in case the data extent has changed.
             _tileCullState.reset();
 
+            MASSIF_PROBE_EVENT(this, "updateTiles", "removeTiles=%d tasks=%d haveLastCull=%d", removeTiles ? 1 : 0, static_cast<int>(_fetchingTileTasks.getAll().size()), getLastCullState() ? 1 : 0);
             for (const std::shared_ptr<FetchTaskBase>& task : _fetchingTileTasks.getAll()) {
                 task->invalidate();
                 task->cancel();

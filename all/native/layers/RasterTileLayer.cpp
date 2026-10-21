@@ -15,6 +15,7 @@
 #include "graphics/Bitmap.h"
 #include "ui/RasterTileClickInfo.h"
 #include "utils/Log.h"
+#include "layers/TileProbe.h"
 #include "utils/Const.h"
 
 #include <array>
@@ -444,10 +445,12 @@ namespace massif {
         bool refresh = false;
         for (const MapTile& dataSourceTile : _dataSourceTiles) {
             if (isCanceled()) {
+                MASSIF_PROBE_COUNT(layer.get(), canceled);
                 break;
             }
             std::shared_ptr<TileData> tileData = layer->_dataSource->loadTile(dataSourceTile);
             if (!tileData) {
+                MASSIF_PROBE_COUNT(layer.get(), noData);
                 break;
             }
             if (tileData->isReplaceWithParent()) {
@@ -480,9 +483,18 @@ namespace massif {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
 
                 // Store the tile object, unless invalidated or tile transformer has changed.
+#ifdef MASSIF_TILE_PROBE
+                if (isInvalidated()) {
+                    MASSIF_PROBE_COUNT(layer.get(), invalidated);
+                } else if (layer->getTileTransformer() != tileTransformer) {
+                    MASSIF_PROBE_COUNT(layer.get(), staleDrop);
+                    MASSIF_PROBE_EVENT(layer.get(), "DROP stale transformer", "tile=%d/%d/%d", _tile.getZoom(), _tile.getX(), _tile.getY());
+                }
+#endif
                 if (!isInvalidated()) {
                     if (layer->getTileTransformer() == tileTransformer) { // extra check that the tile is created with correct transformer. Otherwise simply drop it.
                         // A fetch is for a tile the cull uses: in the 10 MB preloading cache, arrivals evicted each other before the next refresh held them.
+                        MASSIF_PROBE_COUNT(layer.get(), stored);
                         std::size_t capacity = layer->_visibleCache.capacity();
                         if (putVisibleTile(layer->_visibleCache, _tileId, tileInfo, tileInfo.getSize())) {
                             Log::Infof("RasterTileLayer: visible cache %d -> %d MB (%d tiles of %d KB in use)", static_cast<int>(capacity >> 20),

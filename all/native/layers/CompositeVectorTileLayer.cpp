@@ -16,6 +16,7 @@
 #include "components/Exceptions.h"
 #include "utils/FrameProfiler.h"
 #include "utils/Log.h"
+#include "layers/TileProbe.h"
 
 #include <algorithm>
 #include <cmath>
@@ -93,6 +94,7 @@ namespace massif {
             return;
         }
 
+        MASSIF_PROBE_EVENT(this, "addExternalDataSource", "name=%s type=%d componentsSet=%d", name.c_str(), static_cast<int>(type), _componentsSet ? 1 : 0);
         std::shared_ptr<Layer> childLayer;
         if (type == CompositeSourceType::COMPOSITE_SOURCE_TYPE_RASTER) {
             childLayer = std::make_shared<RasterTileLayer>(dataSource);
@@ -131,6 +133,7 @@ namespace massif {
             throw NullArgumentException("Null dataSource");
         }
 
+        MASSIF_PROBE_EVENT(this, "addVectorDataSource", "name=%s", name.c_str());
         // Its own child layer so it can overzoom independently, e.g. contours rendering z13+ from z12 DEM data.
         auto childVectorLayer = std::make_shared<VectorTileLayer>(dataSource, getTileDecoder());
         // Style names, not layer names: attachments included (see buildFilterString).
@@ -177,6 +180,7 @@ namespace massif {
                 removed = true;
             }
         }
+        MASSIF_PROBE_EVENT(this, "removeExternalDataSource", "name=%s removed=%d", name.c_str(), removed ? 1 : 0);
         if (removed) {
             refresh();
         }
@@ -547,6 +551,15 @@ namespace massif {
         for (const std::weak_ptr<TileRenderer>& peer : peers) {
             peer.lock()->setExtrusionPeers(peers);
         }
+#ifdef MASSIF_TILE_PROBE
+        {
+            std::string slots;
+            for (const DrawItem& item : _drawItems) {
+                slots += item.kind == DRAW_ITEM_VT_GROUP ? " [group]" : " [" + item.slot + "]";
+            }
+            MASSIF_PROBE_EVENT(this, "rebuildDrawItems", "componentsSet=%d externalSources=%d drawItems=%d order:%s", _componentsSet ? 1 : 0, static_cast<int>(_externalSources.size()), static_cast<int>(_drawItems.size()), slots.c_str());
+        }
+#endif
         snapshotChildTileLayers();
     }
 
@@ -579,6 +592,7 @@ namespace massif {
         VectorTileLayer::setComponents(envelopeThreadPool, tileThreadPool, options, mapRenderer, touchHandler);
 
         std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        MASSIF_PROBE_EVENT(this, "composite setComponents", "externalSources=%d drawItems=%d", static_cast<int>(_externalSources.size()), static_cast<int>(_drawItems.size()));
         _childOptions = options;
         _childMapRenderer = mapRenderer;
         _childTouchHandler = touchHandler;

@@ -155,6 +155,11 @@ android {
                 if (project.hasProperty('profileRender')) {
                     cxxDefines += ['-DMASSIF_FRAME_PROFILER=1', '-DMASSIF_VT_RENDER_STATS=1']
                 }
+                // Tile-loading diagnostics (layers/TileProbe.h): '[probe]' lines in logcat. Off in release builds;
+                // './gradlew ... -PtileProbe=false' turns them off in a debug one.
+                if (withDebugProperties && project.findProperty('tileProbe') != 'false') {
+                    cxxDefines += ['-DMASSIF_TILE_PROBE=1']
+                }
                 if (!cxxDefines.isEmpty()) {
                     arguments "-DCMAKE_CXX_FLAGS=${cxxDefines.join(' ')}"
                 }

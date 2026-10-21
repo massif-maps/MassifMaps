@@ -23,6 +23,9 @@ adb install -r -t app/build/outputs/apk/debug/app-debug.apk
   against **12.8** at `-O2` on the north pan.
 - `-PprofileRender` compiles in `FrameProfiler` (`PROF` lines) and `vt/RenderStats.h` (`RenderStats`
   lines). Neither exists in the binary otherwise.
+- Debug builds compile in the tile-loading probes (`layers/TileProbe.h`): `[probe]` lines in logcat, and
+  a `sum` line prefixed `STALL` when a layer wants tiles that nothing is loading. `-PtileProbe=false`
+  leaves them out; release builds never have them.
 - Install from `app/build/outputs/apk/debug/`. `app/build/intermediates/apk/debug/` also holds an
   `app-debug.apk` and it is **stale** — *except* when you pass
   `-Pandroid.injected.build.abi=<abi>` to build a single ABI, which inverts it: AGP then writes the

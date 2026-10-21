@@ -217,6 +217,33 @@ count is itself a signal. `--grep REGEX` bypasses every filter for one specific 
 a knob that never applied. Only open the png when a number moved, and crop first (`--crop
 x0,y0,x1,y1`) rather than reading a full 1080×2400 frame.
 
+### Counting label churn on a device
+
+A label blink is either the placement pass flipping a label, or something feeding it a different
+input. The SDK counts both, behind `MASSIF_VT_RENDER_STATS`, and prints one `RenderStats:` line set a
+second. Build any app with the counters in and read them as a timeline:
+
+```bash
+# Alpi Maps, SDK from source (MASSIF_SDK_HOME = the checkout under test)
+MASSIF_SDK_HOME=<sdk checkout> DEBUGMASSIF=1 ns run android --gradleArgs=-PprofileRender
+# the demo: ./gradlew :app:assembleDebug -PprofileRender
+python3 scripts/devtap.py stats android --device <serial> --package <the app's id>
+```
+
+One row a second (`cullUpd`, `tileRecalc`, `cullPasses`, `visFlips`, `occFlips`, `lineLayouts`...), the
+intervals with `visFlips > 0` marked, and the mean of every counter in those intervals against the
+quiet ones. Reproduce the blink, run it straight after, and read which counter jumps with the flips:
+
+| Counter that moves with the flips | The cause |
+|---|---|
+| `cullUpd`, `tileRecalc` | the view changed: `MapRenderer::viewChanged` re-culled, and the tile set was recalculated, which asks for a placement pass |
+| `cullPasses` without them | a placement pass the view did not ask for: `consumeLabelPlacementOwed` / `consumeLabelReanchorOwed`, a zoom step of 0.25, an option setter |
+| `occFlips`, `occluded` | the building occlusion verdict re-ranks labels ([06-labels](../internals/rendering/06-labels.mdx)) |
+| `lineLayouts`, `reVisible` | a line run (road name, arrow) re-laid on a new view matrix, or re-anchored |
+| `labelMaps` up, `labelMapSkips` flat | labels rebuilt on a tile-set change |
+
+The counters are process-wide and logcat keeps a few minutes, so read it right after the repro.
+
 - **A/B by feature, per screen row band, before probing the plumbing.** Screenshot with a layer on
   and off (`--es hs false`, `--es sat false`, `--es drape false`) and `devtap diff` the two. If a
   band is 0.0% different, that content is *not being drawn there*; if it differs, it is drawn and

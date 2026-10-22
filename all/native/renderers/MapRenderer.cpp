@@ -1140,6 +1140,12 @@ namespace massif {
     }
 
     void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        // The ground rule rewrites the focus height every frame: a target height lifts the camera for the cull that runs in between.
+        if (!cameraEvent.isUseDelta() && cameraEvent.getPos().getZ() != 0 && _options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_OFF) {
+            MapPos groundPos = cameraEvent.getPos();
+            groundPos.setZ(0);
+            cameraEvent.setPos(groundPos);
+        }
         if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
             return;
         }

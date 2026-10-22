@@ -345,6 +345,14 @@ The focus height is left out of the comparison unless free roam is on: the groun
 every frame, so a GPS altitude in the target made every frame of a same-place `flyTo` a real move.
 A `flyTo` that is skipped still stops a flight in progress. A climb is never skipped.
 
+**A pan target's height is dropped outside free roam.** The app passed the GPS altitude with every
+fix, `CameraPanEvent` lifted the focus and the camera by it, and the cull that ran before the next
+frame's ground rule put the focus back saw a camera 300 m up: a coarser tile cut (3 tiles, then 6
+again 200 ms later), the tile set and label maps rebuilt, and the trees going from icon to point and
+back. Measured on the Catalyst demo, a `setFocusPos` to the current position with 300 m of altitude,
+once a second at z19: 46 blink events in 120 frames, none once `calculateCameraEvent` zeroes the
+height of a non-delta pan (`-noopMoveAlt`, [demo loop](../../contributing/catalyst-demo-loop.md)).
+
 ### Three things their parameterisation is picky about
 
 **One unit, and it is a SCREENFUL.** `w` is the visible span, `u` the ground distance, and `u/w`

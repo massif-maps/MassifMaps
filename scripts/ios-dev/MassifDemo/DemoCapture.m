@@ -125,13 +125,14 @@ static dispatch_group_t sPending;
     MSFMapPos *focus = [self.mapView getFocusPos];
     float zoom = [self.mapView getZoom];
     double stepX = [DemoCfg floatFor:@"noopMoveStep" defaultValue:0];
+    double altitude = [DemoCfg floatFor:@"noopMoveAlt" defaultValue:0];
     __block double x = [focus getX];
     NSLog(@"DemoCapture: a move every %.0f ms, %.1f s long, %.2f east each", intervalMs, durationSeconds, stepX);
     dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
     dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(intervalMs * NSEC_PER_MSEC)), (uint64_t)(intervalMs * NSEC_PER_MSEC), 0);
     dispatch_source_set_event_handler(timer, ^{
         x += stepX;
-        [self.mapView setFocusPos:[[MSFMapPos alloc] initWithX:x y:[focus getY] z:[focus getZ]] durationSeconds:durationSeconds];
+        [self.mapView setFocusPos:[[MSFMapPos alloc] initWithX:x y:[focus getY] z:[focus getZ] + altitude] durationSeconds:durationSeconds];
         [self.mapView setZoom:zoom durationSeconds:durationSeconds];
     });
     dispatch_resume(timer);

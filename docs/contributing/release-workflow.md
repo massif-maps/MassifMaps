@@ -42,7 +42,7 @@ tools. Each is its own semver with its own tag, so any of them can ship alone.
 | Style tools | `style-tools-v<version>` | GitHub release (the wasm), npm `@massif-maps/style-tools` |
 
 You say what each should bump, never what its number is. `sdk`, `styles` and `tools` take `none` (the
-default: leave it out), `auto`, `patch`, `minor`, `major` or an explicit `x.y.z`:
+default: leave it out), `auto`, `patch`, `minor`, `major`, as dropdowns:
 
 ```sh
 gh workflow run release.yml --repo massif-maps/MassifMaps -f styles=patch -f publish=true

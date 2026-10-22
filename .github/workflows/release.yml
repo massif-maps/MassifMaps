@@ -9,13 +9,19 @@ on:
   workflow_dispatch:
     inputs:
       sdk:
-        description: 'SDK (Android, iOS, web): none | auto | patch | minor | major | x.y.z'
+        description: 'SDK (Android, iOS, web): what to bump (auto: from the commits since its last release)'
+        type: choice
+        options: [none, auto, patch, minor, major]
         default: none
       styles:
-        description: 'Massif styles: none | auto | patch | minor | major | x.y.z'
+        description: 'Massif styles: what to bump (auto: from the commits since its last release)'
+        type: choice
+        options: [none, auto, patch, minor, major]
         default: none
       tools:
-        description: 'Style tools (massif-style CLI + wasm): none | auto | patch | minor | major | x.y.z'
+        description: 'Style tools (massif-style CLI + wasm): what to bump (auto: from the commits since its last release)'
+        type: choice
+        options: [none, auto, patch, minor, major]
         default: none
       prerelease:
         description: 'Release candidates (-rc.N, npm dist-tag next) instead of final releases'

@@ -232,9 +232,9 @@ colour's DAY lightness mirrored past brightness 0.25-0.3, so the page goes black
   rest 65 %. Below z13 only motorways, trunks and primaries keep a casing; the small
   roads are an uncased line in a light grey (`road-low` 66 %, `minor-low` 62 %) at the other variants' width, fading to white
   over the zoom their casing grows in (`casing-from`). The low-zoom grey stays well under the
-  rivers (dashed, 40 %) and the rail (solid, 30 %), so the three read apart at z5-12. **Tracks, trails and via ferratas** are dark grey
+  rivers (dashed, 40 %) and the rail (solid, 55 %), so the three read apart at z5-12. **Tracks, trails and via ferratas** are dark grey
   and white (the via ferrata's core white; trails and MTB lines 25 %, alpine trails 35 %, tracks 30 %,
-  rail 30 %), tracks and trails 1.6 times as wide as elsewhere, over a white
+  rail 55 %, a main line 25 % with `emphasis_rails`), tracks and trails 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood. No road, track, path or rail
   is darker than 25 %, so a route drawn in black on top (the app's, the style has no route band here)
   stays the darkest thing on the page.
@@ -360,7 +360,7 @@ Switches (0/1):
   from its minzoom, no fade. The isobaths (`depth`) do not follow it.
 - `road_shields` (1), `show_boundaries` (1), `sub_boundaries` (1, states and communes).
 - `show_tram` (1), `show_underground` (1, rail and metro in tunnels), `emphasis_rails` (0: main
-  lines, no `service`, dark and wide from z6).
+  lines, no `service`: a dark solid line from their first zoom, fading out over z15-16.5 as dark sleepers take over).
 - `highlight_drinking_water` (0) — water points larger, placed over any other label, and from z12
   whatever `water_min_zoom` says.
 - `models_3d` (0) — 3D trees and wind turbines (SDK only, above) in place of the tree icons and dots.
@@ -482,6 +482,10 @@ OpenMapTiles splits them into `class = 'rail'` and `class = 'transit'` (trams, s
 so this is **two pairs with an `==` each** rather than one pair over an `in`. That keeps both
 bracketing, and lets a tram be tuned thinner later without touching heavy rail — today they are
 identical, which is what Standard does.
+
+`emphasis_rails` adds two main-line layers (no `service`): `rail-emphasis`, a dark solid line fading
+out over z15-16.5, and `rail-tracks-emphasis`, the sleepers again in the dark ink over `rail-tracks`.
+No solid band stays under the pattern once it is drawn.
 
 The **rails draw wherever the tiles carry them**; only the sleepers wait, for z13 and their own
 opacity fade. A hairline rail at low zoom is the line being on the map at all, which is the point.

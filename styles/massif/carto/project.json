@@ -111,6 +111,7 @@
     "transportation::bridge_path_casing",
     "transportation::tram_tracks",
     "transportation::tram",
+    "transportation::rail_tracks_emphasis",
     "transportation::rail_tracks",
     "transportation::rail",
     "transportation::rail_emphasis",

@@ -252,7 +252,7 @@ EINK.update({
     'path': _W, 'path-z16': _W, 'path-case': 'hsl(0, 0%, 55%)', 'path-osm': 'hsl(0, 0%, 25%)', 'path-osm-case': _W, 'cycleway': 'hsl(0, 0%, 35%)',
     'bridleway': 'hsl(0, 0%, 45%)', 'track': 'hsl(0, 0%, 30%)', 'track-fill': _W, 'via-ferrata': _W, 'via-ferrata-case': 'hsl(0, 0%, 25%)',
     'no-access': 'hsla(0, 0%, 0%, 0.6)', 'construction': 'hsl(0, 0%, 60%)', 'ferry': 'hsl(0, 0%, 30%)',
-    'aerialway': _K, 'aerialway-lift': _K, 'power': 'hsl(0, 0%, 45%)', 'rail': 'hsl(0, 0%, 30%)', 'rail-night': 'hsl(0, 0%, 30%)',
+    'aerialway': _K, 'aerialway-lift': _K, 'power': 'hsl(0, 0%, 45%)', 'rail': 'hsl(0, 0%, 55%)', 'rail-night': 'hsl(0, 0%, 30%)', 'rail-emphasis': 'hsl(0, 0%, 25%)',
     'boundary-country': _K, 'boundary-state': 'hsl(0, 0%, 25%)', 'boundary-minor': 'hsl(0, 0%, 45%)',
     'boundary-halo': 'hsl(0, 0%, 85%)', 'building': 'hsl(0, 0%, 90%)', 'building-outline': 'hsl(0, 0%, 62%)',
     'road-label': _K, 'road-label-halo': _W, 'road-label-night': _K, 'road-label-halo-night': _W,

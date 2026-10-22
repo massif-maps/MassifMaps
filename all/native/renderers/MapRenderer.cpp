@@ -19,6 +19,7 @@
 #include "renderers/RedrawRequestListener.h"
 #include "renderers/TileRenderer.h"
 #include "renderers/components/BillboardSorter.h"
+#include "renderers/components/CameraNoOp.h"
 #include "renderers/components/RayIntersectedElement.h"
 #include "renderers/cameraevents/CameraPanEvent.h"
 #include "renderers/cameraevents/CameraRotationEvent.h"
@@ -1067,7 +1068,87 @@ namespace massif {
         return _eyeGroundZ;
     }
 
+    namespace {
+
+        struct NoOpTest {
+            const ViewState& viewState;
+            bool deadBand;
+            bool compareHeight;
+        };
+
+        bool isCameraNoOp(const CameraPanEvent& cameraEvent, const NoOpTest& test) {
+            std::shared_ptr<ProjectionSurface> projectionSurface = test.viewState.getProjectionSurface();
+            if (!projectionSurface) {
+                return false;
+            }
+            float zoom = test.viewState.getZoom();
+            double tolerance = test.deadBand ? CameraNoOp::deadBandTolerance(Const::WORLD_SIZE, zoom) : CameraNoOp::noiseTolerance(test.viewState.getSpanPerZoom() * std::pow(2.0, -static_cast<double>(zoom)));
+            if (cameraEvent.isUseDelta()) {
+                const MapPos& from = cameraEvent.getPosDelta().first;
+                const MapPos& to = cameraEvent.getPosDelta().second;
+                return CameraNoOp::samePos(to.getX() - from.getX(), to.getY() - from.getY(), 0, tolerance, false);
+            }
+            // A zero height keeps the focus where it is, as CameraPanEvent reads it.
+            const MapPos& pos = cameraEvent.getPos();
+            MapPos focusPos = projectionSurface->calculateMapPos(test.viewState.getFocusPos());
+            return CameraNoOp::samePos(pos.getX() - focusPos.getX(), pos.getY() - focusPos.getY(), pos.getZ() == 0 ? 0 : pos.getZ() - focusPos.getZ(), tolerance, test.compareHeight);
+        }
+
+        bool isCameraNoOp(const CameraRotationEvent& cameraEvent, const NoOpTest& test) {
+            return CameraNoOp::sameAngle(cameraEvent.isUseDelta() ? cameraEvent.getRotationDelta() : cameraEvent.getRotation() - test.viewState.getRotation(), test.deadBand);
+        }
+
+        bool isCameraNoOp(const CameraTiltEvent& cameraEvent, const NoOpTest& test) {
+            return CameraNoOp::sameAngle(cameraEvent.isUseDelta() ? cameraEvent.getTiltDelta() : cameraEvent.getTilt() - test.viewState.getTilt(), test.deadBand);
+        }
+
+        bool isCameraNoOp(const CameraZoomEvent& cameraEvent, const NoOpTest& test) {
+            return CameraNoOp::sameZoom(cameraEvent.isUseDelta() ? cameraEvent.getZoomDelta() : cameraEvent.getZoom() - test.viewState.getZoom(), test.deadBand);
+        }
+
+    }
+
+    template <typename Event>
+    bool MapRenderer::skipsCameraEvent(const Event& cameraEvent, float durationSeconds, MapMoveReason::MapMoveReason reason) {
+        if (reason == MapMoveReason::MAP_MOVE_REASON_GESTURE) {
+            return false;
+        }
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        bool noOp = isCameraNoOp(cameraEvent, NoOpTest { _viewState, durationSeconds > 0, _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF });
+        _cameraPlaced = _cameraPlaced || noOp;
+        return noOp;
+    }
+
+    bool MapRenderer::isCameraAt(const MapPos& internalPos, float zoom, const float* rotation, const float* tilt) {
+        CameraPanEvent panEvent;
+        panEvent.setPos(internalPos);
+        CameraZoomEvent zoomEvent;
+        zoomEvent.setZoom(zoom);
+        CameraRotationEvent rotationEvent;
+        CameraTiltEvent tiltEvent;
+        if (rotation) {
+            rotationEvent.setRotation(*rotation);
+        }
+        if (tilt) {
+            tiltEvent.setTilt(*tilt);
+        }
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        NoOpTest test { _viewState, true, _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF };
+        bool at = isCameraNoOp(panEvent, test) && isCameraNoOp(zoomEvent, test) && (!rotation || isCameraNoOp(rotationEvent, test)) && (!tilt || isCameraNoOp(tiltEvent, test));
+        _cameraPlaced = _cameraPlaced || at;
+        return at;
+    }
+
     void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        // The ground rule rewrites the focus height every frame: a target height lifts the camera for the cull that runs in between.
+        if (!cameraEvent.isUseDelta() && cameraEvent.getPos().getZ() != 0 && _options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_OFF) {
+            MapPos groundPos = cameraEvent.getPos();
+            groundPos.setZ(0);
+            cameraEvent.setPos(groundPos);
+        }
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             if (cameraEvent.isUseDelta()) {
                 _animationHandler.setPanDelta(cameraEvent.getPosDelta(), durationSeconds);
@@ -1110,6 +1191,9 @@ namespace massif {
     }
         
     void MapRenderer::calculateCameraEvent(CameraRotationEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             float oldRotation;
             {
@@ -1148,6 +1232,9 @@ namespace massif {
     }
         
     void MapRenderer::calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             float oldTilt;
             {
@@ -1173,6 +1260,9 @@ namespace massif {
     }
     
     void MapRenderer::calculateCameraEvent(CameraZoomEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
+        if (skipsCameraEvent(cameraEvent, durationSeconds, reason)) {
+            return;
+        }
         if (durationSeconds > 0) {
             float oldZoom;
             {

@@ -301,6 +301,8 @@ add_executable(api_tests
   CelestialImageGridTest.cpp
   # Same: KineticStep.h is the per-frame fraction of a kinetic delta, and nothing else.
   KineticStepTest.cpp
+  # Same: CameraNoOp.h is the tolerance under which a camera event changes nothing, and nothing else.
+  CameraNoOpTest.cpp
   # Same: LabelPlacementFollowUp.h is what a placement pass owes once done, and nothing else.
   LabelPlacementFollowUpTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.

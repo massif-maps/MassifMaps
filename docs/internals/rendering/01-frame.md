@@ -321,6 +321,38 @@ the kinetic handler when it starts, and they stay out of the way until it finish
 The path itself is `FlightPath` (all/native/renderers/components/), free of the view state so
 `tests/api/FlightPathTest.cpp` can run it against mapbox-gl's numbers.
 
+### An animation to the view it already has does nothing
+
+A camera event that asks for the current view still rewrites the camera: `CameraZoomEvent` rebuilds
+the camera position as `focus + (camera - focus) * 1`, which is not bit-exact. The matrices move by
+float noise, `CullWorker` sees a different MVP, `TileLayer::update` recalculates the tile set and
+`VectorTileLayer::refreshDrawData` calls `vtLabelsChanged`, so a camera that did not move places its
+labels again, and labels, POIs and trees blink. An app following the user location and calling
+`camera.moveTo(position, { zoom, duration })` once per fix hit it every second, and for the whole
+duration, as each frame of the zoom animation did the same.
+
+`MapRenderer::calculateCameraEvent` drops an event that asks for the view the camera has, in two
+tolerances (`CameraNoOp.h`, `CameraNoOpTest.cpp`):
+
+- **Noise**, for the frames of an animation and for an instant call (`moveTo`, `setZoom(z, 0)`): a
+  millionth of the viewport span, 1e-4 degree, 1e-5 zoom level. Gestures are not filtered.
+- **Dead band**, for the request of an animation (`setFocusPos`, `setZoom`... with a duration, and
+  `flyTo`, through `MapRenderer::isCameraAt`): a quarter of a tile pixel, 0.1 degree, 0.001 zoom
+  level. An app following the user is handed a GPS fix a fraction of a pixel from the camera each
+  second, and each is a real move that places the labels again.
+
+The focus height is left out of the comparison unless free roam is on: the ground rule rewrites it
+every frame, so a GPS altitude in the target made every frame of a same-place `flyTo` a real move.
+A `flyTo` that is skipped still stops a flight in progress. A climb is never skipped.
+
+**A pan target's height is dropped outside free roam.** The app passed the GPS altitude with every
+fix, `CameraPanEvent` lifted the focus and the camera by it, and the cull that ran before the next
+frame's ground rule put the focus back saw a camera 300 m up: a coarser tile cut (3 tiles, then 6
+again 200 ms later), the tile set and label maps rebuilt, and the trees going from icon to point and
+back. Measured on the Catalyst demo, a `setFocusPos` to the current position with 300 m of altitude,
+once a second at z19: 46 blink events in 120 frames, none once `calculateCameraEvent` zeroes the
+height of a non-delta pan (`-noopMoveAlt`, [demo loop](../../contributing/catalyst-demo-loop.md)).
+
 ### Three things their parameterisation is picky about
 
 **One unit, and it is a SCREENFUL.** `w` is the visible span, `u` the ground distance, and `u/w`

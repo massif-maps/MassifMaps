@@ -253,7 +253,12 @@ namespace massif {
 
     void BaseMapView::flyTo(const MapPos& pos, float zoom, float durationSeconds) {
         stopCameraAnimations();
-        _mapRenderer->getAnimationHandler().setFlightTarget(_options->getBaseProjection()->toInternal(pos), zoom, nullptr, nullptr, 0.0f, durationSeconds, FLIGHT_RHO, FlightEasing::FLIGHT_EASING_EASE);
+        MapPos internalPos = _options->getBaseProjection()->toInternal(pos);
+        if (_mapRenderer->isCameraAt(internalPos, zoom, nullptr, nullptr)) {
+            _mapRenderer->getAnimationHandler().stopFlight();
+            return;
+        }
+        _mapRenderer->getAnimationHandler().setFlightTarget(internalPos, zoom, nullptr, nullptr, 0.0f, durationSeconds, FLIGHT_RHO, FlightEasing::FLIGHT_EASING_EASE);
         // The flight is stepped by the frame loop, and every other camera call gets its frame from
         // calculateCameraEvent. Without this the flight sits at progress 0 on an on-demand
         // renderer - it starts only if something else happens to redraw.
@@ -276,6 +281,10 @@ namespace massif {
         MapPos internalGround = _options->getBaseProjection()->toInternal(MapPos(pos.getX(), pos.getY(), 0));
         MapPos internalClimb = _options->getBaseProjection()->toInternal(MapPos(pos.getX(), pos.getY(), climbHeight));
         double internalClimbHeight = internalClimb.getZ() - internalGround.getZ();
+        if (climbHeight == 0 && _mapRenderer->isCameraAt(internalPos, zoom, &rotation, &tilt)) {
+            _mapRenderer->getAnimationHandler().stopFlight();
+            return;
+        }
         _mapRenderer->getAnimationHandler().setFlightTarget(internalPos, zoom, &rotation, &tilt, static_cast<float>(internalClimbHeight), durationSeconds, FLIGHT_RHO, easing);
         _mapRenderer->requestRedraw();
     }

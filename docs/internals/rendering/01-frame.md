@@ -331,10 +331,19 @@ labels again, and labels, POIs and trees blink. An app following the user locati
 `camera.moveTo(position, { zoom, duration })` once per fix hit it every second, and for the whole
 duration, as each frame of the zoom animation did the same.
 
-`MapRenderer::calculateCameraEvent` drops an event that asks for a duration, or is a frame of an
-animation, when it changes the view by less than a millionth of the viewport span, 1e-4 degree
-or 1e-5 zoom level (`CameraNoOp.h`, `CameraNoOpTest.cpp`). An instant call (duration 0) is not
-filtered, as its `onMapChanged` is the app's to receive.
+`MapRenderer::calculateCameraEvent` drops an event that asks for the view the camera has, in two
+tolerances (`CameraNoOp.h`, `CameraNoOpTest.cpp`):
+
+- **Noise**, for the frames of an animation and for an instant call (`moveTo`, `setZoom(z, 0)`): a
+  millionth of the viewport span, 1e-4 degree, 1e-5 zoom level. Gestures are not filtered.
+- **Dead band**, for the request of an animation (`setFocusPos`, `setZoom`... with a duration, and
+  `flyTo`, through `MapRenderer::isCameraAt`): a quarter of a tile pixel, 0.1 degree, 0.001 zoom
+  level. An app following the user is handed a GPS fix a fraction of a pixel from the camera each
+  second, and each is a real move that places the labels again.
+
+The focus height is left out of the comparison unless free roam is on: the ground rule rewrites it
+every frame, so a GPS altitude in the target made every frame of a same-place `flyTo` a real move.
+A `flyTo` that is skipped still stops a flight in progress. A climb is never skipped.
 
 ### Three things their parameterisation is picky about
 

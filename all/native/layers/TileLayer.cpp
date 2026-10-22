@@ -1009,6 +1009,12 @@ namespace massif {
                 _distanceLimits.zoomCap = DistanceTileLOD::viewLevel(_distanceView, reference) + _distanceZoomCapOffset;
             }
         }
+        // A flat view styles every tile at the camera's zoom: the eye is farther from the edge tiles than the centre ones.
+        _flatStyleDistance = 0;
+        if (_distanceLod && !_freeRoamImagery && !_lodElevationManager && DistanceTileLOD::isFlat(cullState->getViewState().getTilt())) {
+            const ViewState& viewState = cullState->getViewState();
+            _flatStyleDistance = cglib::length(viewState.getCameraPos() - viewState.getFocusPos());
+        }
         _distanceNodes.clear();
         _distanceTiles.clear();
         _distanceViewZooms.clear();
@@ -1270,7 +1276,7 @@ namespace massif {
             int bucket = (inVisibleFrustum ? 0 : (viewState.getLabelFrustum().inside(tileBounds) ? 1 : 2));
             _distanceNodes.push_back({ critical, parentCritical, bucket });
             _distanceTiles.push_back(tile);
-            _distanceViewZooms.push_back(static_cast<float>(DistanceTileLOD::styleZoom(_distanceView, _distanceLimits, distance)));
+            _distanceViewZooms.push_back(static_cast<float>(DistanceTileLOD::styleZoom(_distanceView, _distanceLimits, DistanceTileLOD::styleDistance(distance, _flatStyleDistance))));
             if (critical > 1.0) {
                 for (int n = 0; n < 4; n++) {
                     calculateVisibleTilesRecursive(cullState, tile.getChild(n), dataExtent, critical);

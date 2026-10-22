@@ -37,6 +37,7 @@ namespace massif {
         static constexpr int NO_VIEW_CAP = 1000; // Limits::capOffset of a cut no zoom of the view caps
         static constexpr double FAR_COARSENING = 0.65; // fitted with MIN_GRAZING to the area rule's tile count (02-tiles.md), not derived
         static constexpr double MIN_GRAZING = 1.0 / 32.0; // vertical over slant distance, under which a tile reads as edge on
+        static constexpr double FLAT_TILT_TOLERANCE = 1.0; // degrees off straight down that still count as a 2D view
 
         /** What one cull measures a tile with. */
         struct View {
@@ -83,6 +84,16 @@ namespace massif {
         /** The zoom a tile is styled at: its view zoom, under the level its cap holds the cut at. */
         static double styleZoom(const View& view, const Limits& limits, double distance) {
             return std::min(viewZoom(view, distance), limits.zoomCap + 0.999);
+        }
+
+        /** A view looking straight down, `tilt` as ViewState has it (90 is down). */
+        static bool isFlat(double tilt) {
+            return tilt >= 90.0 - FLAT_TILT_TOLERANCE;
+        }
+
+        /** The distance a tile's style zoom reads: the camera's own when `flatDistance` is set, so a flat view styles every tile alike. */
+        static double styleDistance(double tileDistance, double flatDistance) {
+            return flatDistance > 0 ? flatDistance : tileDistance;
         }
 
         /** The whole level of the view zoom, bounded so that an eye inside the tile still has one. */

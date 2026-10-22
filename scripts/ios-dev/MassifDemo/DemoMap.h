@@ -33,6 +33,7 @@ typedef NS_ENUM(NSInteger, DemoFeature) {
     DemoFeatureSatellite,
     DemoFeatureHillshade,
     DemoFeatureHypso,
+    DemoFeatureRadar,
     DemoFeatureContour,
     DemoFeatureContourTiles,
     DemoFeatureRouteTest,
@@ -67,6 +68,12 @@ typedef NS_ENUM(NSInteger, DemoFeature) {
 /** Drops the cached instance of a layer so the next rebuild constructs it from the config. */
 - (void)invalidate:(DemoFeature)feature;
 - (void)rebuildLayers;
+/** Posted each frame the radar clock moves; userInfo has "position" and "steps" (NSNumbers) and "text". */
+extern NSString *const DemoRadarPositionNotification;
+/** Scrubs the radar to a fraction of the loop, 0 = oldest step, 1 = last. */
+- (void)setRadarFraction:(float)fraction;
+/** The clock time and kind of the step the position is on, e.g. "14:30 UTC  forecast". */
+- (NSString *)radarStepTextForPosition:(float)position;
 /** Needed after a style-source or base-mode change. */
 - (void)rebuildBaseLayer;
 /** The peak labels are style-driven, so every callout knob needs a new decoder. */

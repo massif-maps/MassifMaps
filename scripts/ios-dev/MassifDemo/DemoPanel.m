@@ -33,6 +33,8 @@ typedef NS_ENUM(NSInteger, DemoEntryKind) {
 @property (nonatomic, copy) void (^apply)(void);
 @property (nonatomic) float minimum;
 @property (nonatomic) float maximum;
+/** Applies while dragging, and leaves the table alone: a reload would end the drag. */
+@property (nonatomic) BOOL continuous;
 @property (nonatomic, copy) NSArray<NSString *> *choices;
 @end
 
@@ -103,6 +105,8 @@ typedef NS_ENUM(NSInteger, DemoEntryKind) {
         _demo = demo;
         _query = @"";
         [self buildEntries];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(radarMoved:)
+                                                     name:DemoRadarPositionNotification object:demo];
         // Everything but the layer list starts closed: the panel is long, and this is the section
         // you reach for first.
         for (NSUInteger i = 1; i < _allSections.count; i++) {
@@ -140,6 +144,11 @@ typedef NS_ENUM(NSInteger, DemoEntryKind) {
     void (^peaks)(void) = ^{ [demo rebuildPeaksLayer]; };
     void (^debug)(void) = ^{ [demo applyDebugConfig]; };
 
+    DemoEntry *scrub = [DemoEntry slider:@"radarFraction" label:@"radar position (0 = oldest, 1 = last forecast)" min:0 max:1 apply:^{
+        [demo setRadarFraction:[DemoConfig floatFor:@"radarFraction"]];
+    }];
+    scrub.continuous = YES;
+
     self.allSections = @[
         [self section:@"LAYERS" entries:@[
             [DemoEntry toggle:@"celestial" label:@"celestial" apply:layers],
@@ -148,12 +157,18 @@ typedef NS_ENUM(NSInteger, DemoEntryKind) {
             [DemoEntry toggle:@"satLayer" label:@"satellite" apply:layers],
             [DemoEntry toggle:@"hillshade" label:@"hillshade" apply:layers],
             [DemoEntry toggle:@"hypso" label:@"hypso (hypsometric tint)" apply:layers],
+            [DemoEntry toggle:@"radar" label:@"radar (animated raster)" apply:layers],
             [DemoEntry toggle:@"contourLayer" label:@"contour (traced from the DEM)" apply:layers],
             [DemoEntry toggle:@"contourTiles" label:@"contour tiles (pre-baked)" apply:layers],
             [DemoEntry toggle:@"routeTest" label:@"route test" apply:layers],
             [DemoEntry toggle:@"maneuvers" label:@"maneuvers" apply:layers],
             [DemoEntry toggle:@"elements" label:@"elements" apply:layers],
             [DemoEntry toggle:@"peaks" label:@"peaks" apply:layers],
+        ]],
+        [self section:@"RADAR LAYER" entries:@[
+            [DemoEntry toggle:@"radarPlay" label:@"playing" apply:nil],
+            scrub,
+            [DemoEntry slider:@"radarFps" label:@"steps a second" min:0.5f max:12 apply:nil],
         ]],
         [self section:@"BASE MAP" entries:@[
             [DemoEntry choice:@"base" label:@"mode" choices:@[@"composite", @"plain"] apply:base],
@@ -500,7 +515,7 @@ typedef NS_ENUM(NSInteger, DemoEntryKind) {
             slider.value = [DemoConfig floatFor:entry.key];
             setEntry(slider, entry);
             // Continuous would rebuild the layer stack on every pixel of drag.
-            slider.continuous = NO;
+            slider.continuous = entry.continuous;
             [slider addTarget:self action:@selector(sliderChanged:)
              forControlEvents:UIControlEventValueChanged];
             cell.accessoryView = slider;
@@ -549,10 +564,31 @@ typedef NS_ENUM(NSInteger, DemoEntryKind) {
     }
 }
 
+/** The radar clock moved: the scrub slider follows it, and its row names the step. */
+- (void)radarMoved:(NSNotification *)note {
+    float steps = [note.userInfo[@"steps"] floatValue];
+    float fraction = steps > 1 ? [note.userInfo[@"position"] floatValue] / (steps - 1) : 0;
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        UISlider *slider = [cell.accessoryView isKindOfClass:[UISlider class]] ? (UISlider *)cell.accessoryView : nil;
+        if (slider && [[getEntry(slider) key] isEqualToString:@"radarFraction"]) {
+            if (!slider.tracking) {
+                slider.value = fraction;
+            }
+            cell.detailTextLabel.text = note.userInfo[@"text"];
+        }
+    }
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
 - (void)sliderChanged:(UISlider *)sender {
     DemoEntry *entry = getEntry(sender);
     [DemoConfig setValue:@(sender.value) forKey:entry.key];
-    [self.tableView reloadData];
+    if (!entry.continuous) {
+        [self.tableView reloadData];
+    }
     if (entry.apply) {
         entry.apply();
     }

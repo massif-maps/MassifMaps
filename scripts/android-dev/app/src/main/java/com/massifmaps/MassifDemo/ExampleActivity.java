@@ -430,6 +430,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                     @Override public void onStartTrackingTouch(SeekBar seekBar) { }
                     @Override public void onStopTrackingTouch(SeekBar seekBar) { }
                 });
+                sliderBars.put(label, new SliderBar(bar, min, max));
                 box.addView(text);
                 box.addView(bar, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -444,6 +445,32 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     }
 
     private static final int SLIDER_STEPS = 100;
+
+    private static final class SliderBar {
+        final SeekBar bar;
+        final float min, max;
+
+        SliderBar(SeekBar bar, float min, float max) {
+            this.bar = bar;
+            this.min = min;
+            this.max = max;
+        }
+    }
+
+    private final java.util.Map<String, SliderBar> sliderBars = new java.util.HashMap<>();
+
+    @Override
+    public void setSlider(final String label, final float value) {
+        ui.post(new Runnable() {
+            @Override
+            public void run() {
+                SliderBar slider = sliderBars.get(label);
+                if (slider != null) {
+                    slider.bar.setProgress(Math.round((value - slider.min) / (slider.max - slider.min) * SLIDER_STEPS));
+                }
+            }
+        });
+    }
 
     private static String sliderLabel(String label, float value) {
         return label + "  " + String.format(java.util.Locale.US, "%.2f", value);

@@ -187,6 +187,7 @@ namespace massif {
     
     void RasterTileLayer::clearTiles(bool preloadingTiles) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
+        _incompleteAttempts.clear();
         if (preloadingTiles) {
             _preloadingCache.clear();
         } else {
@@ -246,6 +247,22 @@ namespace massif {
         tileLayerBuilder.addBitmap(tileBitmap);
         std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();
         return std::make_shared<vt::Tile>(vtSubTileId, tileSize, std::vector<std::shared_ptr<vt::TileLayer> > { tileLayer });
+    }
+
+    std::shared_ptr<TileData> RasterTileLayer::loadTileData(const std::shared_ptr<TileDataSource>& dataSource, const MapTile& tile) const {
+        return dataSource->loadTile(tile);
+    }
+
+    std::shared_ptr<Bitmap> RasterTileLayer::decodeTileData(const MapTile& tile, const std::shared_ptr<TileData>& tileData) const {
+        return DecodeTileBitmap(tileData);
+    }
+
+    bool RasterTileLayer::loadExtraBitmaps(const MapTile& dataSourceTile, const CancelableTask& task, std::vector<std::shared_ptr<vt::TileBitmap>>& extraBitmaps) const {
+        return true;
+    }
+
+    std::shared_ptr<vt::Tile> RasterTileLayer::createVectorTile(const MapTile& subTile, const MapTile& tile, const std::shared_ptr<TileData>& tileData, const std::shared_ptr<Bitmap>& bitmap, const std::vector<std::shared_ptr<vt::TileBitmap>>& extraBitmaps, const std::shared_ptr<vt::TileTransformer>& tileTransformer) const {
+        return createVectorTile(subTile, tile, tileData, bitmap, tileTransformer);
     }
 
     void RasterTileLayer::calculateDrawData(const MapTile& visTile, const MapTile& closestTile, bool preloadingTile) {
@@ -448,7 +465,7 @@ namespace massif {
                 MASSIF_PROBE_COUNT(layer.get(), canceled);
                 break;
             }
-            std::shared_ptr<TileData> tileData = layer->_dataSource->loadTile(dataSourceTile);
+            std::shared_ptr<TileData> tileData = layer->loadTileData(layer->getDataSource(), dataSourceTile);
             if (!tileData) {
                 MASSIF_PROBE_COUNT(layer.get(), noData);
                 break;
@@ -468,13 +485,19 @@ namespace massif {
 
             vt::TileId vtTile(_tile.getZoom(), _tile.getX(), _tile.getY());
             vt::TileId vtDataSourceTile(dataSourceTile.getZoom(), dataSourceTile.getX(), dataSourceTile.getY());
-            std::shared_ptr<Bitmap> bitmap = DecodeTileBitmap(tileData);
+            std::shared_ptr<Bitmap> bitmap = layer->decodeTileData(dataSourceTile, tileData);
 
             // Build vector tile from the bitmap
             std::shared_ptr<vt::TileTransformer> tileTransformer = layer->getTileTransformer();
             std::shared_ptr<vt::Tile> tile;
+            bool complete = true;
             if (bitmap) {
-                tile = layer->createVectorTile(_tile, dataSourceTile, tileData, bitmap, tileTransformer);
+                std::vector<std::shared_ptr<vt::TileBitmap>> extraBitmaps;
+                complete = layer->loadExtraBitmaps(dataSourceTile, *this, extraBitmaps);
+                if (isCanceled()) {
+                    break;
+                }
+                tile = layer->createVectorTile(_tile, dataSourceTile, tileData, bitmap, extraBitmaps, tileTransformer);
             }
 
             // Construct tile info and cache it.
@@ -503,6 +526,13 @@ namespace massif {
                         if (tileData->getMaxAge() >= 0) {
                             layer->_visibleCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));
                         }
+                        if (complete) {
+                            layer->_incompleteAttempts.erase(_tileId);
+                        } else {
+                            // Backs off: a source that never has this tile is asked less and less, not every second.
+                            int delayMs = INCOMPLETE_TILE_RETRY_MS << std::min(layer->_incompleteAttempts[_tileId]++, 6);
+                            layer->_visibleCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMs));
+                        }
                     }
                 }
             }
@@ -523,6 +553,7 @@ namespace massif {
     }
 
     const int RasterTileLayer::DEFAULT_CULL_DELAY = 200;
+    const int RasterTileLayer::INCOMPLETE_TILE_RETRY_MS = 1000;
 
     const unsigned int RasterTileLayer::EXTRA_TILE_FOOTPRINT = 4096;
     const unsigned int RasterTileLayer::DEFAULT_PRELOADING_CACHE_SIZE = 10 * 1024 * 1024;

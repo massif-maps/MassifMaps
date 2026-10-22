@@ -99,6 +99,50 @@
       "methods": [],
       "events": []
     },
+    "massif::AnimatedRasterTileLayer": {
+      "base": "massif::CustomRasterTileLayer",
+      "properties": [
+        {
+          "name": "animationPosition",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the animation position."
+        },
+        {
+          "name": "frameTimestamps",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::vector<std::string>",
+          "doc": "Returns the timestamps of the time steps."
+        },
+        {
+          "name": "prefetchBudget",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the memory the prefetched steps may take."
+        },
+        {
+          "name": "prefetchFrames",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many steps ahead of the shown one are fetched, for every visible tile."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
     "massif::AnimationStyle": {
       "base": null,
       "properties": [
@@ -2709,6 +2753,16 @@
       "base": "massif::RasterTileLayer",
       "properties": [
         {
+          "name": "shaderParameters",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::map<std::string, massif::Variant>",
+          "indexed": "json",
+          "doc": "Returns all shader parameters, as numbers."
+        },
+        {
           "name": "shaderSource",
           "type": "STRING",
           "readOnly": false,
@@ -2719,7 +2773,20 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CustomRasterTileLayer",
+          "name": "addDataSource",
+          "args": [
+            {
+              "name": "dataSource",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::DataSourceListener": {
@@ -3580,6 +3647,15 @@
           "position": false,
           "cppType": "std::string",
           "doc": "Returns the base URL template containing tags."
+        },
+        {
+          "name": "frameTimestamps",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::vector<std::string>",
+          "doc": "Returns the timestamps that the {time} tag takes the value of."
         },
         {
           "name": "maxAgeHeaderCheck",
@@ -11868,6 +11944,29 @@
     ],
     "layer": [
       [
+        "animated-raster",
+        "massif__AnimatedRasterTileLayer",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ]
+            ],
+            [
+              "source"
+            ],
+            [
+              "source"
+            ]
+          ]
+        ]
+      ],
+      [
         "celestial",
         "massif__CelestialLayer",
         [
@@ -11906,6 +12005,29 @@
             [
               "source",
               "style"
+            ]
+          ]
+        ]
+      ],
+      [
+        "custom-raster",
+        "massif__CustomRasterTileLayer",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ]
+            ],
+            [
+              "source"
+            ],
+            [
+              "source"
             ]
           ]
         ]
@@ -12929,6 +13051,7 @@
     ]
   },
   "kindOfClass": {
+    "massif::AnimatedRasterTileLayer": "layer",
     "massif::AssetPackage": "assets",
     "massif::AssetTileDataSource": "source",
     "massif::BalloonPopup": "element",
@@ -13851,6 +13974,27 @@
       ]
     },
     {
+      "cppClass": "massif::AnimatedRasterTileLayer",
+      "kind": "layer",
+      "type": "animated-raster",
+      "aliases": {
+        "dataSource": "source"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::CelestialLayer",
       "kind": "layer",
       "type": "celestial",
@@ -13885,6 +14029,27 @@
             "cppType": "std::shared_ptr<VectorTileDecoder>",
             "childKind": "style",
             "childClass": "massif::VectorTileDecoder",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::CustomRasterTileLayer",
+      "kind": "layer",
+      "type": "custom-raster",
+      "aliases": {
+        "dataSource": "source"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
             "required": true
           }
         ]

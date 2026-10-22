@@ -1553,6 +1553,7 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
         
         // Drop all caches with shader/texture/FBO/VBO references
+        _programGeneration++;
         _shaderProgramMap.clear();
         _shaderProgramCache.clear();
         _compiledBitmapMap.clear();
@@ -3836,18 +3837,15 @@ namespace massif::vt {
                     }
                 }
 
-                for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer->layer->getBitmaps()) {
-                    // Draped rasters (hillshade, imagery) are baked into the drape texture already.
-                    if (drapedTile || _drawOncePass == DrawOncePass::CORE || headsPass) {
-                        continue;
-                    }
+                // Draped rasters (hillshade, imagery) are baked into the drape texture already.
+                if (!renderLayer->layer->getBitmaps().empty() && !(drapedTile || _drawOncePass == DrawOncePass::CORE || headsPass)) {
                     CompOp bitmapCompOp = CompOp::SRC_OVER;
                     if (currentCompOp != bitmapCompOp) {
                         setCompOp(bitmapCompOp);
                         currentCompOp = bitmapCompOp;
                     }
                     for (const TileId& groundTileId : groundTiles) {
-                        renderTileBitmap(renderLayer->sourceTileId, groundTileId, renderLayer->blend, geometryOpacity, bitmap);
+                        renderTileBitmaps(renderLayer->sourceTileId, groundTileId, renderLayer->blend, geometryOpacity, renderLayer->layer->getBitmaps());
                     }
                 }
 
@@ -5958,9 +5956,10 @@ namespace massif::vt {
                     renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
                     bakedPrimitives++;
                 }
-                for (const std::shared_ptr<TileBitmap>& bitmap : (spanOnly || _drawOncePass == DrawOncePass::CORE ? std::vector<std::shared_ptr<TileBitmap>>() : renderLayer.layer->getBitmaps())) {
-                    renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
-                    bakedPrimitives++;
+                if (!spanOnly && _drawOncePass != DrawOncePass::CORE) {
+                    const std::vector<std::shared_ptr<TileBitmap>>& bitmaps = renderLayer.layer->getBitmaps();
+                    renderTileBitmaps(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmaps);
+                    bakedPrimitives += static_cast<int>(bitmaps.size());
                 }
                 // The sphere places a vertex through the TARGET tile uv setupTerrainUniforms uploads.
                 drapeOrtho = calculateDrapeMVPMatrix(_transformer && _transformer->isSpherical() ? renderLayer.targetTileId : renderLayer.sourceTileId, targetTileId);
@@ -6997,9 +6996,7 @@ namespace massif::vt {
                     for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
                         renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
                     }
-                    for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
-                        renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
-                    }
+                    renderTileBitmaps(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.layer->getBitmaps());
                 }
                 // Geometry is in SOURCE tile coords, so an overzoomed layer needs the sub-rect transform.
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
@@ -7295,7 +7292,18 @@ namespace massif::vt {
         }
     }
 
-    void GLTileRenderer::renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap) {
+    void GLTileRenderer::renderTileBitmaps(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::vector<std::shared_ptr<TileBitmap>>& bitmaps) {
+        if (bitmaps.size() == 1) {
+            renderTileBitmap(sourceTileId, targetTileId, blend, opacity, bitmaps.data(), 1);
+            return;
+        }
+        for (const RasterGroup& group : groupRasters(bitmaps)) {
+            renderTileBitmap(sourceTileId, targetTileId, blend, opacity, &bitmaps[group.first], static_cast<int>(group.count));
+        }
+    }
+
+    void GLTileRenderer::renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>* rasters, int rasterCount) {
+        const std::shared_ptr<TileBitmap>& bitmap = rasters[0];
         if (blend * opacity <= 0) {
             return;
         }
@@ -7386,6 +7394,20 @@ namespace massif::vt {
             glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
             glUniform1i(shaderProgram.uniforms[U_BITMAP], 0);
             glUniform4f(shaderProgram.uniforms[U_UVSCALE], bitmap->getWidth(), bitmap->getHeight(), 1.0f / bitmap->getWidth(), 1.0f / bitmap->getHeight());
+            // Only a custom shader reaching sampleRaster() has these; every other program skips the lot.
+            bool rasterSlots = bitmap->getType() == TileBitmap::Type::NORMALMAP && shaderProgram.uniforms[U_RASTER1] != static_cast<GLuint>(-1);
+            if (rasterSlots) {
+                // Set every draw: sampler values persist in the program, so a stale unit would outlive a multi-raster draw.
+                for (int slot = 1; slot < MAX_RASTER_SLOTS; slot++) {
+                    bool bound = slot < rasterCount;
+                    glUniform1i(shaderProgram.uniforms[U_RASTER1 + slot - 1], bound ? RASTER_SLOT_UNITS[slot - 1] : 0);
+                    if (bound) {
+                        glActiveTexture(GL_TEXTURE0 + RASTER_SLOT_UNITS[slot - 1]);
+                        glBindTexture(GL_TEXTURE_2D, buildCompiledTileBitmap(rasters[slot]).texture);
+                    }
+                }
+                glActiveTexture(GL_TEXTURE0);
+            }
 
             cglib::mat3x3<float> uvMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(sourceTileId)) * calculateTileMatrix2D(targetTileId));
             uvMatrix = cglib::mat3x3<float>{ { 1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f } } * uvMatrix;
@@ -7399,6 +7421,13 @@ namespace massif::vt {
             VT_STAT_ADD(surfaceIndices, tileSurface->getIndicesCount());
 
             glBindTexture(GL_TEXTURE_2D, 0);
+            if (rasterSlots) {
+                for (int slot = 1; slot < rasterCount; slot++) {
+                    glActiveTexture(GL_TEXTURE0 + RASTER_SLOT_UNITS[slot - 1]);
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                }
+                glActiveTexture(GL_TEXTURE0);
+            }
 
             if (bitmap->getType() == TileBitmap::Type::COLORMAP && _lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
@@ -8499,6 +8528,10 @@ namespace massif::vt {
                 } else {
                     // The shared DEM prelude provides getElevation()/getMapZoom()/sampleElevation().
                     lightingFsh = normalmapCustomPrelude + _lightingShaderNormalMap->shader;
+                    // Only a shader reading more than the one bitmap gets the extra samplers; every other keeps its program as it was.
+                    if (_lightingShaderNormalMap->shader.find("sampleRaster") != std::string::npos) {
+                        defs.insert("MULTI_RASTER");
+                    }
                 }
             }
             if (filterMode == RasterFilterMode::NEAREST) {
@@ -8776,6 +8809,7 @@ namespace massif::vt {
 
     void GLTileRenderer::deleteShaderProgram(ShaderProgram& shaderProgram) {
         if (shaderProgram.program != 0) {
+            _programGeneration++;
             glDeleteProgram(shaderProgram.program);
             shaderProgram.program = 0;
             shaderProgram.uniforms.clear();

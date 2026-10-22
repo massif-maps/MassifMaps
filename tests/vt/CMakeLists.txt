@@ -32,6 +32,7 @@ add_executable(vt_tests
   FillTileClipTest.cpp
   ShadowBoxTest.cpp
   ShaderFlagTest.cpp
+  RasterGroupsTest.cpp
   ExtrusionAnchorTest.cpp
   ExtrusionEmissiveTest.cpp
   LineOcclusionOpacityTest.cpp

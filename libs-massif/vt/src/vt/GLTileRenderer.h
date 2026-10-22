@@ -23,6 +23,7 @@
 #include "TileBitmap.h"
 #include "TileBackground.h"
 #include "TileBitmap.h"
+#include "RasterGroups.h"
 #include "TileSurface.h"
 #include "TileSurfaceBuilder.h"
 #include "TileModels.h"
@@ -157,6 +158,9 @@ namespace massif::vt {
         void setLightingShader2D(const std::optional<LightingShader>& lightingShader2D);
         void setLightingShader3D(const std::optional<LightingShader>& lightingShader3D);
         void setLightingShaderNormalMap(const std::optional<LightingShader>& lightingShaderNormalMap);
+        // Changes whenever a program is deleted or dropped, so a program id seen before may be a different program now.
+        // Lock-free: a lighting callback runs inside the draw, with _mutex held.
+        unsigned int getProgramGeneration() const { return _programGeneration.load(); }
         
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
@@ -745,7 +749,8 @@ namespace massif::vt {
         void renderTileWireframe(const TileId& tileId);
         void renderTileBorder(const TileId& tileId, const TileId& sourceTileId);
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
-        void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
+        void renderTileBitmaps(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::vector<std::shared_ptr<TileBitmap>>& bitmaps);
+        void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>* rasters, int rasterCount);
         void renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry);
         void renderTileModels(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileModelInstances>& models);
         // Which optional blocks a geometry draw runs with. Decided once by renderTileGeometry and
@@ -1153,6 +1158,7 @@ namespace massif::vt {
         std::shared_ptr<const TileTransformer> _transformer;
         const float _scale;
 
+        std::atomic<unsigned int> _programGeneration { 0 };
         mutable std::mutex _mutex;
     };
 }

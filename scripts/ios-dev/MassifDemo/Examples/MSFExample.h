@@ -48,6 +48,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)slider:(NSString *)label min:(float)min max:(float)max value:(float)value
         action:(void (^)(float value))action;
 
+/**
+ * Moves the slider with that label, for a value that changes by itself: a clock. Does not call
+ * the slider's action, which is for the hand.
+ */
+- (void)setSlider:(NSString *)label value:(float)value;
+
 /** A short message. Use sparingly - a caption is usually the better place. */
 - (void)toast:(NSString *)text;
 

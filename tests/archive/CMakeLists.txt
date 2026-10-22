@@ -9,8 +9,13 @@ file(GLOB BROTLI_SOURCES
 
 add_executable(archive_tests
   ArchiveTest.cpp
+  HostStubs.cpp
   "${SDK_BASE_DIR}/all/native/datasources/MBTilesTileDataSource.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/PMTilesTileDataSource.cpp"
+  "${SDK_BASE_DIR}/all/native/datasources/PersistentCacheTileDataSource.cpp"
+  "${SDK_BASE_DIR}/all/native/datasources/CacheTileDataSource.cpp"
+  "${SDK_BASE_DIR}/all/native/components/CancelableThreadPool.cpp"
+  "${SDK_BASE_DIR}/all/native/utils/TileUtils.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/components/PMTilesUtils.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/TileDataSource.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/components/TileData.cpp"

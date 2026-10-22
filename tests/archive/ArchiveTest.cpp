@@ -11,6 +11,7 @@
 #include "core/Variant.h"
 #include "datasources/MBTilesTileDataSource.h"
 #include "datasources/PMTilesTileDataSource.h"
+#include "datasources/PersistentCacheTileDataSource.h"
 #include "datasources/components/PMTilesUtils.h"
 #include "datasources/components/TileData.h"
 #include "rastertiles/ElevationDecoder.h"
@@ -19,11 +20,13 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -390,12 +393,48 @@ void testPMTilesMultiLeaf() {
     std::filesystem::remove(path);
 }
 
+// purgeExpired() drops a row past its expiration: only its own tile ever asked for it again, and
+// a rolled-off animation frame is never asked for. Opening the cache alone drops nothing.
+void testPersistentCachePurge() {
+    std::string cachePath = tempPath("persistent.db");
+    std::filesystem::remove(cachePath);
+    long long now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    {
+        sqlite3pp::database db(cachePath.c_str());
+        db.execute("CREATE TABLE persistent_cache(tileId INTEGER NOT NULL PRIMARY KEY, compressed BLOB, time INTEGER, expirationTime INTEGER, metaData TEXT)");
+        db.execute(("INSERT INTO persistent_cache VALUES (1, x'00', 1, " + std::to_string(now - 60000) + ", '')").c_str());
+        db.execute(("INSERT INTO persistent_cache VALUES (2, x'00', 1, " + std::to_string(now + 3600000) + ", '')").c_str());
+        db.execute("INSERT INTO persistent_cache VALUES (3, x'00', 1, 0, '')");
+    }
+    auto rows = [&cachePath]() {
+        std::set<long long> ids;
+        sqlite3pp::database db(cachePath.c_str());
+        sqlite3pp::query query(db, "SELECT tileId FROM persistent_cache");
+        for (auto it = query.begin(); it != query.end(); ++it) {
+            ids.insert((*it).get<long long>(0));
+        }
+        return ids;
+    };
+    auto inner = std::make_shared<MBTilesTileDataSource>(writeMBTiles("inner.mbtiles", ""));
+    {
+        PersistentCacheTileDataSource cache(inner, cachePath);
+    }
+    TEST_CHECK(rows() == std::set<long long>({ 1, 2, 3 }), "opening the cache drops nothing, whatever its size");
+    {
+        PersistentCacheTileDataSource cache(inner, cachePath);
+        cache.purgeExpired();
+    }
+    TEST_CHECK(rows() == std::set<long long>({ 2, 3 }), "purging drops the expired row, keeps the live and the never-expiring ones");
+    std::filesystem::remove(cachePath);
+}
+
 int main() {
     Log::SetShowInfo(false); // one line per loadTile
     testMBTilesEncoding();
     testPMTilesEncoding();
     testPMTilesDirectorySearch();
     testPMTilesMultiLeaf();
+    testPersistentCachePurge();
     std::printf("%d failure(s)\n", failures);
     return failures == 0 ? 0 : 1;
 }

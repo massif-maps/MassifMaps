@@ -28,6 +28,7 @@ import com.massifmaps.datasources.GeoJSONVectorTileDataSource;
 import com.massifmaps.datasources.HTTPTileDataSource;
 import com.massifmaps.datasources.LocalVectorDataSource;
 import com.massifmaps.datasources.MBTilesTileDataSource;
+import com.massifmaps.datasources.MemoryCacheTileDataSource;
 import com.massifmaps.datasources.MultiTileDataSource;
 import com.massifmaps.datasources.OrderedTileDataSource;
 import com.massifmaps.datasources.PersistentCacheTileDataSource;
@@ -37,6 +38,7 @@ import com.massifmaps.geometry.FeatureCollection;
 import com.massifmaps.geometry.FeatureVector;
 import com.massifmaps.geometry.ManeuverArrowBuilder;
 import com.massifmaps.graphics.Color;
+import com.massifmaps.layers.AnimatedRasterTileLayer;
 import com.massifmaps.layers.CompositeSourceType;
 import com.massifmaps.layers.CompositeVectorTileLayer;
 import com.massifmaps.layers.CustomRasterTileLayer;
@@ -98,7 +100,7 @@ public class DemoMap {
 
     /** One switchable layer of the demo. */
     public enum Feature {
-        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, MODELS, PEAKS
+        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, RADAR, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, MODELS, PEAKS
     }
 
     /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -106,7 +108,7 @@ public class DemoMap {
         // The sky goes FIRST, so the map and the terrain draw over it and a ridge hides what is
         // behind it - which is what a body in the sky should do.
         Feature.CELESTIAL, Feature.STARS,
-        Feature.BASE, Feature.SATELLITE, Feature.API_SOURCE, Feature.HILLSHADE, Feature.HYPSO,
+        Feature.BASE, Feature.SATELLITE, Feature.API_SOURCE, Feature.HILLSHADE, Feature.HYPSO, Feature.RADAR,
         Feature.CONTOUR, Feature.CONTOUR_TILES, Feature.ROUTES, Feature.ROUTE_TEST, Feature.ROUTE_SELECT, Feature.MANEUVERS, Feature.ELEMENTS,
         Feature.SPANS,
         Feature.BUGS,
@@ -253,6 +255,7 @@ public class DemoMap {
             case SATELLITE: return DemoConfig.LAYER_SATELLITE;
             case HILLSHADE: return DemoConfig.LAYER_HILLSHADE;
             case HYPSO: return DemoConfig.LAYER_HYPSO;
+            case RADAR: return DemoConfig.LAYER_RADAR;
             case CONTOUR: return DemoConfig.LAYER_CONTOUR;
             case CONTOUR_TILES: return DemoConfig.LAYER_CONTOUR_TILES;
             case ROUTES: return DemoConfig.LAYER_ROUTES;
@@ -277,6 +280,7 @@ public class DemoMap {
             case SATELLITE: DemoConfig.LAYER_SATELLITE = enabled; break;
             case HILLSHADE: DemoConfig.LAYER_HILLSHADE = enabled; break;
             case HYPSO: DemoConfig.LAYER_HYPSO = enabled; break;
+            case RADAR: DemoConfig.LAYER_RADAR = enabled; break;
             case CONTOUR: DemoConfig.LAYER_CONTOUR = enabled; break;
             case CONTOUR_TILES: DemoConfig.LAYER_CONTOUR_TILES = enabled; break;
             case ROUTES: DemoConfig.LAYER_ROUTES = enabled; break;
@@ -359,6 +363,7 @@ public class DemoMap {
             }
             case HILLSHADE: return createHillshadeLayer();
             case HYPSO: return createHypsoLayer();
+            case RADAR: return createRadarLayer();
             case CONTOUR: return createContourLayer();
             case CONTOUR_TILES: return createContourTilesLayer();
             case ROUTES: return createRoutesLayer();
@@ -798,6 +803,115 @@ public class DemoMap {
         CustomRasterTileLayer layer = new CustomRasterTileLayer(demSource());
         layer.setShaderSource(DemoStyles.hypsometricShader());
         return layer;
+    }
+
+    private AnimatedRasterTileLayer radarLayer;
+    private long[] radarTimes = new long[0];
+    private float radarPosition;
+    private boolean radarDirty;
+
+    /** Told the position, in steps, each frame the radar clock moves; the panel's slider and time follow it. */
+    public interface RadarListener {
+        void onRadarPosition(float position, int steps);
+    }
+
+    public RadarListener radarListener;
+
+    /**
+     * AnimatedRasterTileLayer over LibreWXR (RainViewer's API): the past hour and the nowcast, two
+     * steps mixed per draw. The steps are listed once; a frame clock then advances the position at
+     * radarFps steps a second, and the panel can pause it or scrub.
+     */
+    private Layer createRadarLayer() {
+        // The memory cache is what keeps a step fetched once: it is the second raster of one tile and the first of the next.
+        MemoryCacheTileDataSource cache = new MemoryCacheTileDataSource(
+                new HTTPTileDataSource(0, 12, "https://api.librewxr.net/v2/radar/{time}/256/{z}/{x}/{y}/2/1_1.png"));
+        cache.setCapacity(64 * 1024 * 1024);
+        final AnimatedRasterTileLayer layer = new AnimatedRasterTileLayer(cache);
+        layer.setZoomLevelBias(-1f); // radar is coarse data: a quarter of the tiles to wait for
+        radarLayer = layer;
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) new java.net.URL("https://api.librewxr.net/public/weather-maps.json").openConnection();
+                org.json.JSONObject radar;
+                try (InputStream in = connection.getInputStream()) {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[4096];
+                    for (int n; (n = in.read(buffer)) > 0; ) {
+                        out.write(buffer, 0, n);
+                    }
+                    radar = new org.json.JSONObject(out.toString("UTF-8")).getJSONObject("radar");
+                } finally {
+                    connection.disconnect();
+                }
+                List<Long> times = new java.util.ArrayList<>();
+                for (String key : new String[] { "past", "nowcast" }) {
+                    org.json.JSONArray steps = radar.optJSONArray(key);
+                    for (int i = 0; steps != null && i < steps.length(); i++) {
+                        times.add(steps.getJSONObject(i).getLong("time"));
+                    }
+                }
+                final long[] stepTimes = new long[times.size()];
+                final StringVector timestamps = new StringVector();
+                for (int i = 0; i < stepTimes.length; i++) {
+                    stepTimes[i] = times.get(i);
+                    timestamps.add(String.valueOf(stepTimes[i]));
+                }
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    radarTimes = stepTimes;
+                    layer.setFrameTimestamps(timestamps);
+                    layer.setPrefetchFrames(stepTimes.length);
+                    startRadarClock(layer);
+                });
+            } catch (Exception e) {
+                Log.w(TAG, "radar steps not available: " + e.getMessage());
+            }
+        }, "radar-steps").start();
+        return layer;
+    }
+
+    private void startRadarClock(final AnimatedRasterTileLayer layer) {
+        android.view.Choreographer.getInstance().postFrameCallback(new android.view.Choreographer.FrameCallback() {
+            private long lastFrameNanos;
+
+            @Override
+            public void doFrame(long frameTimeNanos) {
+                if (radarLayer != layer) {
+                    return;
+                }
+                int steps = radarTimes.length;
+                if (steps > 0 && (DemoConfig.RADAR_PLAYING || radarDirty)) {
+                    if (DemoConfig.RADAR_PLAYING && lastFrameNanos != 0) {
+                        radarPosition = (float) ((radarPosition + (frameTimeNanos - lastFrameNanos) / 1e9 * DemoConfig.RADAR_FPS) % steps);
+                    }
+                    radarDirty = false;
+                    layer.setAnimationPosition(radarPosition);
+                    if (radarListener != null) {
+                        radarListener.onRadarPosition(radarPosition, steps);
+                    }
+                }
+                lastFrameNanos = frameTimeNanos;
+                android.view.Choreographer.getInstance().postFrameCallback(this);
+            }
+        });
+    }
+
+    /** Scrubs the radar to a fraction of the loop, 0 = oldest step, 1 = last. */
+    public void setRadarFraction(float fraction) {
+        radarPosition = fraction * Math.max(0, radarTimes.length - 1);
+        radarDirty = true;
+    }
+
+    /** The clock time and kind of the step the position is on, e.g. "14:30 UTC  forecast". */
+    public String radarStepText(float position) {
+        if (radarTimes.length == 0) {
+            return "loading steps...";
+        }
+        int step = Math.min(radarTimes.length - 1, Math.max(0, (int) position));
+        java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US);
+        format.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        boolean forecast = radarTimes[step] * 1000L > System.currentTimeMillis();
+        return format.format(new java.util.Date(radarTimes[step] * 1000L)) + " UTC" + (forecast ? "  forecast" : "");
     }
 
     /**
@@ -1429,7 +1543,8 @@ public class DemoMap {
     public TileDataSource vectorSource() {
         if (cachedVector == null && !DemoConfig.VECTOR_FILE.isEmpty()) {
             try {
-                cachedVector = new PMTilesTileDataSource(dataPath + "/" + DemoConfig.VECTOR_FILE);
+                String file = dataPath + "/" + DemoConfig.VECTOR_FILE;
+                cachedVector = file.endsWith(".mbtiles") ? new MBTilesTileDataSource(file) : new PMTilesTileDataSource(file);
             } catch (IOException e) {
                 Log.w(TAG, "vectorFile not readable, using vectorUrl: " + e.getMessage());
             }

@@ -19,7 +19,7 @@ export async function mountTileCaches(module) {
 }
 
 /** A persistent tile cache in front of a remote source, so a demo does not re-fetch a free service's tiles on every run. */
-function cached(name, capacityMb, source) {
+export function cached(name, capacityMb, source) {
   return { type: 'persistent-cache', databasePath: `${CACHE}/${name}/tiles.db`, capacity: capacityMb * 1024 * 1024, source };
 }
 

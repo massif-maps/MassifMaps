@@ -9,6 +9,8 @@ export function createHost(root, map) {
   const caption = element('div', 'example-caption', root);
   caption.hidden = true;
 
+  const sliders = new Map();
+
   return {
     map,
     /** The element over the map, for an example that brings its own controls. */
@@ -35,10 +37,19 @@ export function createHost(root, map) {
       Object.assign(input, { type: 'range', min, max, step: (max - min) / 200, value });
       const show = () => (text.textContent = `${label} ${format(Number(input.value))}`);
       show();
+      sliders.set(label, { input, show });
       input.addEventListener('input', () => {
         show();
         action(Number(input.value));
       });
+    },
+    /** Moves the slider with that label, for a value that changes by itself: a clock. Does not call its action. */
+    setSlider(label, value) {
+      const slider = sliders.get(label);
+      if (slider) {
+        slider.input.value = value;
+        slider.show();
+      }
     },
     after(millis, action) {
       setTimeout(action, millis);

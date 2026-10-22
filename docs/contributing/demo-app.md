@@ -76,6 +76,13 @@ Standalone layers (`map` = the base map, `satLayer`, `hillshade`, `hypso`, `cont
 `--es style dir|zip|inline|project`. `dir` reads the style from a FOLDER via `DirAssetPackage`
 (`/sdcard/alpimaps_mbtiles/osm`), falling back to `osm.zip` then to inline CartoCSS.
 
+`radar` is the [animated raster layer](/docs/features/animated-raster) over [LibreWXR](https://api.librewxr.net)
+(RainViewer's API): the past hour and the nowcast, 18 steps. A frame clock advances the position at
+`--es radarFps 2` steps a second; the RADAR LAYER section of the panel has **playing**, a **position** slider that
+scrubs (and follows the clock), the step's time (marked *forecast* past now) and the rate. `--es radarPlay false`
+starts paused. Judged at `--es radar true --es lon 5.72 --es lat 45.19 --es zoom 8 --es tilt 0`: no pop at a
+step boundary, no darkening where two steps overlap. Needs the network.
+
 `models` is the 3D MODELS layer (`DemoMap.createModelsLayer`): a jittered grid of trees as ONE
 MultiPoint around the start position and three spinning wind turbines 500 m north-east of it, drawn
 from `assets/style/models/*.glb` by the Massif model rules; a tap tints the model hit

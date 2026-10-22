@@ -5,6 +5,7 @@
 #include "datasources/components/PMTilesUtils.h"
 #include "utils/Log.h"
 #include "utils/NetworkUtils.h"
+#include "utils/FrameTimestamps.h"
 #include "utils/GeneralUtils.h"
 
 #include <cinttypes>
@@ -20,6 +21,8 @@ namespace massif {
         _maxAgeHeaderCheck(false),
         _timeout(-1),
         _headers(),
+        _frameTimestamps(),
+        _frameTimes(),
         _httpClient(true),
         _randomGenerator(),
         _mutex(),
@@ -157,6 +160,36 @@ namespace massif {
         }
     }
     
+    std::vector<std::string> HTTPTileDataSource::getFrameTimestamps() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _frameTimestamps;
+    }
+
+    void HTTPTileDataSource::setFrameTimestamps(const std::vector<std::string>& timestamps) {
+        std::vector<int> frameNrs = AssignFrameNrs(timestamps);
+        std::map<int, std::string> frameTimes;
+        for (std::size_t i = 0; i < timestamps.size(); i++) {
+            frameTimes[frameNrs[i]] = timestamps[i];
+        }
+        std::lock_guard<std::mutex> lock(_mutex);
+        _frameTimestamps = timestamps;
+        _frameTimes = std::move(frameTimes);
+    }
+
+    std::map<std::string, std::string> HTTPTileDataSource::buildTagValues(const MapTile& tile) const {
+        std::map<std::string, std::string> tagValues = TileDataSource::buildTagValues(tile);
+        std::lock_guard<std::mutex> lock(_mutex);
+        // A source with no frames, and a tile of frame 0, keep their URL exactly as it was.
+        if (tile.getFrameNr() != 0 || !_frameTimes.empty()) {
+            tagValues["frame"] = std::to_string(tile.getFrameNr());
+        }
+        auto it = _frameTimes.find(tile.getFrameNr());
+        if (it != _frameTimes.end()) {
+            tagValues["time"] = it->second;
+        }
+        return tagValues;
+    }
+
     std::string HTTPTileDataSource::buildTileURL(const std::string& baseURL, const MapTile& tile) const {
         bool tmsScheme = false;
         std::string subdomain;

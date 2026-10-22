@@ -30,8 +30,10 @@
 %attribute(massif::HTTPTileDataSource, bool, MaxAgeHeaderCheck, isMaxAgeHeaderCheck, setMaxAgeHeaderCheck)
 %attribute(massif::HTTPTileDataSource, int, Timeout, getTimeout, setTimeout)
 %attributeval(massif::HTTPTileDataSource, %arg(std::map<std::string, std::string>), HTTPHeaders, getHTTPHeaders, setHTTPHeaders)
+%attributeval(massif::HTTPTileDataSource, %arg(std::vector<std::string>), FrameTimestamps, getFrameTimestamps, setFrameTimestamps)
 
 %feature("director") massif::HTTPTileDataSource;
+%feature("nodirector") massif::HTTPTileDataSource::buildTagValues;
 
 %include "datasources/HTTPTileDataSource.h"
 

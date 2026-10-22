@@ -21,7 +21,8 @@ namespace massif {
 
     /**
      * A tile data source that loads tiles using a HTTP connection, replacing the tags in the baseURL template with actual values.
-     * Supported tags: s, z, zoom, x, y, xflipped, yflipped, quadkey, frame (e.g. "https://tile.openstreetmap.org/{zoom}/{x}/{y}.png").
+     * Supported tags: s, z, zoom, x, y, xflipped, yflipped, quadkey, frame, time (e.g. "https://tile.openstreetmap.org/{zoom}/{x}/{y}.png").
+     * frame is the tile's frame number; time is the timestamp given to setFrameTimestamps for it, and is left in the URL when none was.
      * A URL ending with .pmtiles or starting with pmtiles:// is read from the PMTiles archive with HTTP range requests.
      */
     class HTTPTileDataSource : public TileDataSource {
@@ -104,7 +105,21 @@ namespace massif {
          */
         void setHTTPHeaders(const std::map<std::string, std::string>& headers);
     
+        /**
+         * Returns the timestamps that the {time} tag takes the value of.
+         * @return The timestamps, as given to setFrameTimestamps.
+         */
+        std::vector<std::string> getFrameTimestamps() const;
+        /**
+         * Sets the timestamps of the frames of an animation, in the order AnimatedRasterTileLayer gives them: a
+         * tile of frame nr N gets the timestamp whose frame number (see FrameTimestamps.h) is N as its {time}.
+         * @param timestamps The timestamps; AnimatedRasterTileLayer sets them on its source by itself.
+         */
+        void setFrameTimestamps(const std::vector<std::string>& timestamps);
+
         virtual std::shared_ptr<TileData> loadTile(const MapTile& mapTile);
+
+        virtual std::map<std::string, std::string> buildTagValues(const MapTile& tile) const;
     
     protected:
         virtual std::string buildTileURL(const std::string& baseURL, const MapTile& tile) const;
@@ -122,6 +137,8 @@ namespace massif {
         bool _maxAgeHeaderCheck;
         int _timeout;
         std::map<std::string, std::string> _headers;
+        std::vector<std::string> _frameTimestamps;
+        std::map<int, std::string> _frameTimes;
         HTTPClient _httpClient;
         mutable std::default_random_engine _randomGenerator;
         mutable std::mutex _mutex;

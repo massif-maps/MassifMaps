@@ -20,6 +20,7 @@
 #include <stdext/timed_lru_cache.h>
 
 #include <vt/Tile.h>
+#include <vt/TileBitmap.h>
 #include <vt/Styles.h>
 
 namespace massif {
@@ -120,6 +121,11 @@ namespace massif {
         virtual bool usesDistanceTileZoom() const { return true; }
 
         virtual std::shared_ptr<vt::Tile> createVectorTile(const MapTile& subTile, const MapTile& tile, const std::shared_ptr<TileData>& tileData, const std::shared_ptr<Bitmap>& bitmap, const std::shared_ptr<vt::TileTransformer>& tileTransformer) const;
+        virtual std::shared_ptr<TileData> loadTileData(const std::shared_ptr<TileDataSource>& dataSource, const MapTile& tile) const;
+        virtual std::shared_ptr<Bitmap> decodeTileData(const MapTile& tile, const std::shared_ptr<TileData>& tileData) const;
+        // Further bitmaps drawn with the tile's own in one pass; false when one is not loaded yet, and the tile is fetched again soon.
+        virtual bool loadExtraBitmaps(const MapTile& dataSourceTile, const CancelableTask& task, std::vector<std::shared_ptr<vt::TileBitmap> >& extraBitmaps) const;
+        virtual std::shared_ptr<vt::Tile> createVectorTile(const MapTile& subTile, const MapTile& tile, const std::shared_ptr<TileData>& tileData, const std::shared_ptr<Bitmap>& bitmap, const std::vector<std::shared_ptr<vt::TileBitmap> >& extraBitmaps, const std::shared_ptr<vt::TileTransformer>& tileTransformer) const;
 
         virtual void calculateDrawData(const MapTile& visTile, const MapTile& closestTile, bool preloadingTile);
         virtual void refreshDrawData(const std::shared_ptr<CullState>& cullState, bool tilesChanged);
@@ -166,11 +172,13 @@ namespace massif {
         };
 
         static const int DEFAULT_CULL_DELAY;
+        static const int INCOMPLETE_TILE_RETRY_MS;
 
         static const unsigned int EXTRA_TILE_FOOTPRINT;
         static const unsigned int DEFAULT_PRELOADING_CACHE_SIZE;
         
         ThreadSafeDirectorPtr<RasterTileEventListener> _rasterTileEventListener;
+        std::map<long long, int> _incompleteAttempts; // by tile id, under _mutex
 
         std::atomic<RasterTileFilterMode::RasterTileFilterMode> _tileFilterMode;
         std::atomic<float> _tileBlendingSpeed;

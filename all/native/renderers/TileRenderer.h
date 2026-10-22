@@ -18,6 +18,7 @@
 #include <memory>
 #include <mutex>
 #include <map>
+#include <unordered_map>
 #include <tuple>
 #include <vector>
 #include <regex>
@@ -77,6 +78,7 @@ namespace massif {
         void setNormalMapContourInterval(float interval);
         void setNormalMapContourColor(const Color& color);
         void setNormalMapContourWidth(float width);
+        void setNormalMapShaderParameters(const std::map<std::string, float>& parameters);
         void setNormalIlluminationMapRotationEnabled(bool enabled);
         void setNormalIlluminationDirection(MapVec direction);
         void setHillshadeMethod(int method);
@@ -270,6 +272,17 @@ namespace massif {
         float _normalMapContourInterval = 0.0f; // meters; <= 0 disables contour lines
         Color _normalMapContourColor;
         float _normalMapContourWidth = 0.75f; // contour half-width in screen pixels
+        // Own lock: the UI thread writes it every frame of an animation and must not wait on _mutex.
+        std::map<std::string, float> _normalMapShaderParameters;
+        mutable std::mutex _normalMapShaderParametersMutex;
+        // Where each program keeps the parameters, good for one generation of programs and one set of names.
+        struct ParameterLocations {
+            unsigned int generation = 0;
+            unsigned int names = 0;
+            std::vector<int> locations;
+        };
+        std::unordered_map<unsigned int, ParameterLocations> _normalMapParameterLocations;
+        unsigned int _normalMapParameterNames = 0;
         std::optional<std::regex> _rendererLayerFilter;
         std::weak_ptr<vt::GLTileRenderer> _rendererLayerFilterTarget;
         std::optional<std::regex> _clickHandlerLayerFilter;

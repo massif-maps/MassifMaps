@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Build, pack and publish every Massif Maps npm package.
 
-    python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web] [--styles-version 1.2.0]
+    python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web] [--tools-version 6.2.2] [--styles-version 1.2.0]
     python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 
 `pack` writes one tarball per package into dist/npm; `publish` publishes the tarballs found there,
-dependencies first. api, web and style-tools take the SDK version; styles keeps its own and is only
-packed when --styles-version is given. Prerequisites per package: BUILDING.md, "npm packages".
+dependencies first. api and web take the SDK version (the positional one), style-tools and styles
+each their own, and a package is only packed when its version is given. Prerequisites per package:
+BUILDING.md, "npm packages".
 """
 import argparse
 import glob
@@ -114,12 +115,17 @@ def tarballs(out):
 
 
 def pack(args):
-    only = args.only.split(',') if args.only else ['api', 'web', 'style-tools'] + (['styles'] if args.styles_version else [])
+    versions = {'api': args.version, 'web': args.version, 'style-tools': args.tools_version, 'styles': args.styles_version}
+    flags = {'api': 'the SDK version', 'web': 'the SDK version', 'style-tools': '--tools-version', 'styles': '--styles-version'}
+    only = args.only.split(',') if args.only else [key for key in PACKAGES if versions[key]]
     unknown = set(only) - set(PACKAGES)
     if unknown:
         sys.exit('unknown package %s; one of %s' % (', '.join(sorted(unknown)), ', '.join(PACKAGES)))
-    if 'styles' in only and not args.styles_version:
-        sys.exit('styles has its own version: pass --styles-version')
+    for key in only:
+        if not versions[key]:
+            sys.exit('%s needs a version: pass %s' % (PACKAGES[key], flags[key]))
+    if not only:
+        sys.exit('no version given: pass the SDK version, --tools-version or --styles-version')
     out = os.path.abspath(args.out)
     os.makedirs(out, exist_ok=True)
     for key, tgz in tarballs(out).items():
@@ -127,7 +133,7 @@ def pack(args):
             os.remove(tgz)
     for key in PACKAGES:
         if key in only:
-            PACKERS[key](args.styles_version if key == 'styles' else args.version, out)
+            PACKERS[key](versions[key], out)
     for key, tgz in tarballs(out).items():
         print('%-26s %s' % (PACKAGES[key], os.path.relpath(tgz, ROOT)))
 
@@ -137,9 +143,9 @@ def publish(args):
     if not found:
         sys.exit('no tarball in %s - run pack first' % args.out)
     versions = {k: re.search(r'-(\d[^/]*)\.tgz$', t).group(1) for k, t in found.items()}
-    sdk = {v for k, v in versions.items() if k != 'styles'}
+    sdk = {versions[k] for k in ('api', 'web') if k in found}
     if len(sdk) > 1:
-        sys.exit('api, web and style-tools must share one version, found %s' % ', '.join(sorted(sdk)))
+        sys.exit('api and web must share one version, found %s' % ', '.join(sorted(sdk)))
     if 'web' in found and 'api' not in found:
         print('warning: publishing @massif-maps/web without @massif-maps/api - its dependency must already be on npm')
     for key, tgz in found.items():
@@ -161,8 +167,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('pack', help='build every package and npm pack it')
-    p.add_argument('version', help='SDK version, no leading v (6.1.0, 6.1.0-rc.1)')
+    p.add_argument('version', nargs='?', help='SDK version for api and web, no leading v (6.1.0, 6.1.0-rc.1)')
     p.add_argument('--only', help='comma-separated subset of: ' + ', '.join(PACKAGES))
+    p.add_argument('--tools-version', help='also pack @massif-maps/style-tools at this version')
     p.add_argument('--styles-version', help='also pack @massif-maps/styles at this version')
     p.add_argument('--out', default=OUT)
     p.set_defaults(func=pack)
@@ -172,7 +179,8 @@ def main():
     p.add_argument('--out', default=OUT)
     p.set_defaults(func=publish)
     args = parser.parse_args()
-    args.version = getattr(args, 'version', '').lstrip('v') or None
+    for name in ('version', 'tools_version', 'styles_version'):
+        setattr(args, name, (getattr(args, name, None) or '').lstrip('v') or None)
     args.func(args)
 
 

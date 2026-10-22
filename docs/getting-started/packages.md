@@ -40,7 +40,7 @@ already routes offline. On Android it installs beside any map variant (its own c
 |---|---|
 | [`@massif-maps/web`](https://www.npmjs.com/package/@massif-maps/web) | the SDK compiled to WebAssembly, with the typed API |
 | [`@massif-maps/api`](https://www.npmjs.com/package/@massif-maps/api) | the typed surface API on its own, shared by the web and NativeScript bindings |
-| [`@massif-maps/style-tools`](https://www.npmjs.com/package/@massif-maps/style-tools) | `massif-style`: CartoCSS compilation, MapBox style conversion, legends — [style CLI](/docs/tools/style-cli) |
+| [`@massif-maps/style-tools`](https://www.npmjs.com/package/@massif-maps/style-tools) | `massif-style`: CartoCSS compilation, MapBox style conversion, legends, own version — [style CLI](/docs/tools/style-cli) |
 | [`@massif-maps/styles`](https://www.npmjs.com/package/@massif-maps/styles) | the Massif styles for MapLibre and the SDK, own version — [Massif styles](/docs/styles/massif) |
 
 ## Release assets
@@ -50,7 +50,9 @@ Also attached to each `v<version>` GitHub release:
 - `css2xml_<os>.zip` — the CartoCSS compiler as a native binary, Linux and macOS;
 - `massif-api-bindings.zip`, `massif-api.json`, `massif.d.ts` — the facade API schema and its
   generated bindings, for an integration that generates its own;
-- `massif-style.wasm`, `massif-style.mjs` — the style compiler that `@massif-maps/style-tools` loads.
+
+The style compiler that `@massif-maps/style-tools` loads, `massif-style.wasm` and `massif-style.mjs`,
+is attached to each `style-tools-v<version>` release instead.
 
 ## Pre-releases
 

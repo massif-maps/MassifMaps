@@ -199,7 +199,7 @@ built and released: [docs/contributing/massif-style-release.md](docs/contributin
 One script builds and packs every npm package, locally and in CI:
 
 ```
-python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web,style-tools] [--styles-version 1.2.0-rc.1]
+python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web] [--tools-version 6.2.2] [--styles-version 1.2.0-rc.1]
 python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 ```
 
@@ -207,7 +207,7 @@ python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 |---|---|---|
 | `@massif-maps/api` | SDK | nothing |
 | `@massif-maps/web` | SDK, depends on `@massif-maps/api` at the same version | `dist/web`, both variants ([Web SDK](#web-sdk)) |
-| `@massif-maps/style-tools` | SDK | `tools/style-cli/wasm/massif-style.{mjs,wasm}` ([Style tools](#style-tools)) |
+| `@massif-maps/style-tools` | its own, only with `--tools-version` | `tools/style-cli/wasm/massif-style.{mjs,wasm}` ([Style tools](#style-tools)) |
 | `@massif-maps/styles` | its own, only with `--styles-version` | nothing |
 
 `pack` writes `dist/npm/*.tgz` and leaves no diff behind. `publish` publishes those tarballs,
@@ -252,32 +252,37 @@ See [docs/contributing/docs-site.md](docs/contributing/docs-site.md).
 
 # Releasing
 
-Every release is a manually dispatched workflow (**Actions → Run workflow**) with a `version` and a
-`publish` switch; with `publish` off it only builds and keeps the result as workflow artefacts.
+Every release is one manually dispatched workflow, **Actions → Release → Run workflow**. Its inputs
+`sdk`, `styles` and `tools` each take `none`, `auto`, `patch`, `minor`, `major` or a version, so the
+three packages release together or alone, each on its own semver; `prerelease` makes `-rc.N`
+candidates and `publish` off is a dry run (the plan and every build, nothing published). How `auto`
+chooses, and examples: [Cutting a release](docs/contributing/release-workflow.md#cutting-a-release).
 
-| What | Workflow | Tag | Publishes |
+| What | Called workflow | Tag | Publishes |
 |---|---|---|---|
-| SDK: Android, iOS, routing, web, style tools | `build.yml` | `v<version>` | GitHub release (AARs, xcframeworks, routing, web zip, `css2xml`, API bindings, style compiler wasm); JitPack and Swift Package tags; npm `@massif-maps/api`, `@massif-maps/web`, `@massif-maps/style-tools` |
+| SDK: Android, iOS, routing, web | `build.yml` | `v<version>` | GitHub release (AARs, xcframeworks, routing, web zip, API bindings); JitPack and Swift Package tags; npm `@massif-maps/api`, `@massif-maps/web` |
+| Style tools | `release-style-tools.yml` | `style-tools-v<version>` | GitHub release (the compiler wasm); npm `@massif-maps/style-tools` |
 | Massif styles | `release-styles.yml`, or `styles/massif/release/release.py --npm TAG --github` | `massif-styles-v<version>` | npm `@massif-maps/styles`, one zip per flavour; redeploys the website |
 | NativeScript plugin | `npm run publish` in `integrations/nativescript` | its own | npm `@nativescript-community/ui-massifmaps` |
 | Website and docs | `docs.yml` | — | GitHub Pages, on pushes to `docs/`, `website/`, nightly and after a release |
 
 CI publishes to npm by **trusted publishing** — no token: on npmjs.com, each package's *Settings →
 Trusted publishing* names GitHub Actions, `massif-maps/MassifMaps` and the workflow that publishes
-it: `build.yml` for `@massif-maps/api`, `web` and `style-tools`, `release-styles.yml` for
-`@massif-maps/styles`. A package must exist before it can be configured, so a new one is published
-once from a machine first (`npm-packages.py publish` after `npm login`). `release-style-tools.yml`
-only builds and packs; `build.yml` publishes its tarball.
+it: `release.yml` (the workflow that dispatches the run, not the reusable one that publishes) for
+all four packages, and `release-style-tools.yml` for the `dev` builds of `@massif-maps/style-tools`.
+A package must exist before it can be configured, so a new one is published once from a machine
+first (`npm-packages.py publish` after `npm login`).
 
 ## Pre-release, then release
 
 1. **Pack locally** and try the tarballs ([npm packages](#npm-packages)) with
    [`scripts/release-check`](scripts/release-check/README.md): `npm install --no-save` them there,
    `npm run check`, `npm run serve`.
-2. **Pre-release from CI**: run `build.yml` with version `6.1.0-rc.1`, `publish` on, `prerelease` on.
-   It makes a GitHub *prerelease*, publishes the npm packages under the `next` dist-tag (a plain
-   `npm install` does not pick them up), tags JitPack and the Swift package `6.1.0-rc.1`, and does
-   not touch `CHANGELOG.md`. Styles: `release-styles.yml` with `1.2.0-rc.1` does the same for them.
+2. **Pre-release from CI**: run `release.yml` with `sdk=minor`, `publish` on, `prerelease` on
+   (`6.1.0-rc.1`: the number comes from the tags). It makes a GitHub *prerelease*, publishes the npm
+   packages under the `next` dist-tag (a plain `npm install` does not pick them up), tags JitPack
+   and the Swift package `6.1.0-rc.1`, and does not touch `CHANGELOG.md`. `styles` and `tools` do the
+   same for them in the same run.
 3. **Test every package** from the registries — the full procedure, with what each check must
    print: [Testing a release](docs/contributing/release-testing.md):
    - Android: `scripts/release-check/android` — the AAR from JitPack
@@ -288,10 +293,10 @@ only builds and packs; `build.yml` publishes its tarball.
      modules, style-tools compiling and converting the styles), `npm run serve` (a map from
      `@massif-maps/web` in the Massif style, `?variant=full`)
    - NativeScript: the demo with `massifSDKVersion=6.1.0-rc.1`
-4. **Release**: the same run with version `6.1.0` and `prerelease` off. npm `latest`, the full
-   `CHANGELOG.md` entry since the last final release, a regular GitHub release.
+4. **Release**: the same run with `prerelease` off: `6.1.0`, npm `latest`, the full `CHANGELOG.md`
+   entry since the last final release, a regular GitHub release.
 
-The run refuses a version below an existing `v` tag. The notes (`scripts/release-notes.py`, which
+The `plan` job refuses a version below an existing tag of the package, or one that exists. The notes (`scripts/release-notes.py`, which
 leaves out the style-only commits: [release notes](docs/contributing/release-workflow.md#release-notes))
 are written into the *draft* release before any build starts, and shown in the run summary: fix them in
 the GitHub draft while the builds run. Order: every build, then the `CHANGELOG.md` entry (copied from

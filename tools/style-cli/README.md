@@ -52,7 +52,7 @@ Node 20 or newer. The wasm build uses `NODERAWFS`, so it runs under Node only â€
 
 The wasm is built from `libs-massif/cartocss` and is **not** in the repository. Either build it
 (see [the docs](https://massif-maps.github.io/MassifMaps/docs/contributing/style-tools)) or download
-`massif-style.wasm` and `massif-style.mjs` from an SDK
+`massif-style.wasm` and `massif-style.mjs` from a `style-tools-v*`
 [release](https://github.com/massif-maps/MassifMaps/releases) into `wasm/`.
 
 ```sh

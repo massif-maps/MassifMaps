@@ -3,14 +3,15 @@
 
     python3 scripts/release-notes.py v6.0.2 v6.1.0-rc.3 > release_body.md
     python3 scripts/release-notes.py --product styles massif-styles-v1.2.1 HEAD
+    python3 scripts/release-notes.py --product tools style-tools-v6.2.1 HEAD
     python3 scripts/release-notes.py --changelog CHANGELOG.md v6.0.2 v6.1.0
 
 One line per squash commit - the PR title is the changelog entry. Breaking changes keep the first
 paragraph of their BREAKING CHANGE footer; everything else is the subject alone, which is what keeps
 the body under GitHub's 125,000 characters (the full commit bodies ran past 230 KB).
 
-A commit belongs to a product by the paths it touches: one touching only the styles (and docs) is
-left out of the SDK's notes, and a PR touching both lands in both.
+A commit belongs to a product (sdk, styles, tools) by the paths it touches: one touching only the
+styles (and docs) is left out of the SDK's notes, and a PR touching both lands in both.
 """
 import argparse
 import datetime
@@ -21,6 +22,8 @@ REPO = 'https://github.com/massif-maps/MassifMaps'
 SECTIONS = [('feat', 'New features'), ('fix', 'Bug fixes')]
 HEADER = re.compile(r'^(\w+)(?:\(([^)]*)\))?(!)?: (.+)$')
 STYLES = ('styles/massif/', 'tools/style-sprite/', 'tools/icon-font/')
+TOOLS = ('tools/style-cli/',)
+SDK_AND_TOOLS = ('libs-massif/cartocss/', 'scripts/gen-cartocss-properties.py')
 NEUTRAL = ('docs/', 'website/', 'tests/', '.claude/', '.github/', 'tools/style-preview/', 'CLAUDE.md', 'CHANGELOG.md')
 
 
@@ -35,9 +38,17 @@ def commits(previous, tag):
 
 
 def products(paths):
-    styles = any(p.startswith(STYLES) for p in paths)
-    sdk = any(not p.startswith(STYLES + NEUTRAL) for p in paths)
-    return {'styles'} if styles and not sdk else {'sdk', 'styles'} if styles else {'sdk'}
+    found = set()
+    for p in paths:
+        if p.startswith(STYLES):
+            found.add('styles')
+        elif p.startswith(TOOLS):
+            found.add('tools')
+        elif p.startswith(SDK_AND_TOOLS):
+            found.update(('sdk', 'tools'))
+        elif not p.startswith(NEUTRAL):
+            found.add('sdk')
+    return found
 
 
 def line(sha, scope, subject):
@@ -49,7 +60,7 @@ def notes(previous, tag, product):
     breaking, grouped = [], {kind: [] for kind, _ in SECTIONS}
     for sha, message, paths in commits(previous, tag):
         match = HEADER.match(message.splitlines()[0])
-        if not match or product not in products(paths):
+        if not match or product not in (products(paths) or {'sdk'}):
             continue
         kind, scope, bang, subject = match.groups()
         footer = re.search(r'^BREAKING[ -]CHANGE: (.+?)(?:\n\s*\n|\Z)', message, re.M | re.S)
@@ -64,7 +75,7 @@ def notes(previous, tag, product):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--product', choices=['sdk', 'styles'], default='sdk')
+    parser.add_argument('--product', choices=['sdk', 'styles', 'tools'], default='sdk')
     parser.add_argument('--changelog', help='prepend the notes to this file as a "## [<tag>]" entry')
     parser.add_argument('--body', help='with --changelog, take the notes from this file instead of the commits')
     parser.add_argument('previous')

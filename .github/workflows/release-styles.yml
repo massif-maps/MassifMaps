@@ -2,7 +2,8 @@ name: Release Massif styles
 
 # Packages styles/massif in every flavour (maplibre, cartocss, compiled, icon font), publishes
 # @massif-maps/styles and a massif-styles-vX.Y.Z GitHub release, then redeploys the website, which
-# serves the MapLibre styles. See docs/contributing/massif-style-release.md.
+# serves the MapLibre styles. release.yml calls it with the version it computed.
+# See docs/contributing/massif-style-release.md.
 
 on:
   # CI for the styles: every flavour built and the MapLibre styles validated. `publish` has no value
@@ -13,19 +14,29 @@ on:
       - 'tools/style-sprite/**'
       - 'tools/style-cli/src/**'
       - '.github/workflows/release-styles.yml'
-  workflow_dispatch:
+  workflow_call:
     inputs:
       version:
         description: 'version number (no leading v)'
         required: true
+        type: string
+      min_sdk:
+        description: 'the oldest SDK these styles need, x.y.z (default: styles/massif/compat.json)'
+        default: ''
+        type: string
       publish:
         description: 'Publish to npm and create the GitHub release?'
         default: false
-        required: true
+        type: boolean
+      prerelease:
+        description: 'Pre-release: npm dist-tag next, GitHub prerelease'
+        default: false
         type: boolean
 
 env:
   VERSION: ${{ inputs.version || '0.0.0-ci' }}
+  # `next` in compat.json has no number until a release resolves it
+  MIN_SDK: ${{ inputs.min_sdk || '0.0.0' }}
   SITE: https://massif-maps.github.io/MassifMaps/styles/massif
 
 jobs:
@@ -101,7 +112,7 @@ jobs:
 
       # every flavour, the npm package and the screenshots; the website URL is the default base
       - name: Package
-        run: python3 styles/massif/release/release.py "$VERSION" --screenshots
+        run: python3 styles/massif/release/release.py "$VERSION" --min-sdk "$MIN_SDK" --screenshots
 
       - name: Validate the MapLibre styles
         run: npx --yes -p @maplibre/maplibre-gl-style-spec@26 gl-style-validate styles/massif/dist/maplibre/*.json
@@ -147,6 +158,8 @@ jobs:
           {
             echo "Massif map styles $VERSION: streets, outdoor, topo, hybrid and e-ink. npm: @massif-maps/styles@$VERSION. MapLibre: $SITE/v$VERSION/streets.json. Docs: https://massif-maps.github.io/MassifMaps/docs/styles/massif"
             echo
+            echo "Needs Massif Maps SDK $MIN_SDK or newer."
+            echo
             python3 scripts/release-notes.py --product styles "${previous#previous=}" HEAD
           } > notes.md
 
@@ -155,7 +168,7 @@ jobs:
         working-directory: dist/npm
         run: |
           npm install -g npm@^11.5.1
-          npm publish --provenance --access public --tag ${{ contains(inputs.version, '-') && 'next' || 'latest' }}
+          npm publish --provenance --access public --tag ${{ inputs.prerelease && 'next' || 'latest' }}
 
       - name: GitHub release
         env:
@@ -164,7 +177,7 @@ jobs:
           gh release create "massif-styles-v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "Massif styles $VERSION" \
             --notes-file notes.md \
-            ${{ contains(inputs.version, '-') && '--prerelease' || '' }} dist/*.zip
+            ${{ inputs.prerelease && '--prerelease' || '' }} dist/*.zip
 
       # a release made with GITHUB_TOKEN triggers no workflow, so the site is redeployed by hand
       - name: Redeploy the website

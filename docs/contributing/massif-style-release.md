@@ -25,6 +25,7 @@ from it. Users' side: [Massif](../styles/massif.mdx). How the style itself is wr
 | `tools/style-cli/` | the converter (`mapbox2css`) and compiler (`css2xml`) |
 | `tools/style-sprite/` | the sprite sheet (`build.mjs`) and the icon font's iconotype project (`iconotype-project.mjs`) |
 | `tools/style-preview/` | the style dev page ([style preview](style-preview.md)) |
+| `styles/massif/compat.json` | the oldest SDK these styles need |
 | `.github/workflows/release-styles.yml` | CI build of every flavour; the published release |
 
 ## Building, from a clean checkout
@@ -34,7 +35,7 @@ from it. Users' side: [Massif](../styles/massif.mdx). How the style itself is wr
 (cd tools/style-cli && npm ci && npm run build)
 (cd tools/style-sprite && npm ci)
 (cd styles/massif/release && npm ci && npx playwright install chromium)   # screenshots only
-# the style compiler as wasm, for the compiled flavours: from an SDK v* release, or
+# the style compiler as wasm, for the compiled flavours: from a style-tools-v* release, or
 (cd libs-massif/cartocss/util && emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=MinSizeRel \
    && emmake make -C build-wasm massif-style && cp build-wasm/massif-style.{mjs,wasm} ../../../tools/style-cli/wasm/)
 
@@ -122,15 +123,32 @@ npm provenance.
 1. **On a pull request** touching `styles/massif`, `tools/style-sprite` or the converter: builds the
    wasm, every flavour and the screenshots, validates, uploads it all as an artefact. Nothing is
    published.
-2. **Actions → Release Massif styles → Run workflow**, `version` (no `v`) and `publish` on:
+2. **Actions → Release → Run workflow** with `styles` set to `patch`, `minor`, `major`, `auto` or a
+   version, and `publish` on ([Cutting a release](release-workflow.md#cutting-a-release), which also
+   releases the SDK or the style tools in the same run). It calls `release-styles.yml` with the
+   version `plan` worked out, and:
    - npm `@massif-maps/styles@<version>` (`dist/npm`, provenance, trusted publishing — no token);
    - GitHub release `massif-styles-v<version>` with every zip and `massif-screenshots-<version>.zip`,
      its notes the commits touching the styles since the last final `massif-styles-v*`
      ([which commits](release-workflow.md#release-notes));
    - `docs.yml` dispatched, since a release made with `GITHUB_TOKEN` triggers no workflow.
 
-Versions are the style's own semver: a change that moves what a variant draws is a minor, a renamed
-or removed parameter or variant a major.
+Versions are the style's own semver, never the SDK's: a change that moves what a variant draws is a
+minor, a renamed or removed parameter or variant a major. `auto` suggests from the commit titles; the
+run summary shows what it picked, and an explicit bump overrides it.
+
+## The SDK a release needs
+
+`compat.json` holds `minSdk`, the oldest SDK the styles work with. Raise it in the PR that makes
+a style use something newer (a new `massif:sdk-*` key, a converter flag such as `--live-light`).
+`release.py` writes it to the npm `package.json` (`massif.minSdk`), to every MapLibre style
+(`metadata["massif:min-sdk"]`), to the release notes and to `versions.json` on the website.
+
+- A number above the latest SDK release needs that SDK in the same run: `plan` fails otherwise.
+- `"next"` means "the SDK released together with these styles", for a PR that cannot know the number.
+  `plan` resolves it to the SDK version of the run and fails when the run has none; the release then
+  commits the number back to `compat.json`.
+
 
 ## The website
 

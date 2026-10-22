@@ -30,21 +30,59 @@ GitHub Pages:
 The workflow file is
 [`.github/workflows/docs.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/docs.yml).
 
+## Cutting a release
+
+**Actions → Release → Run workflow** starts every release: the SDK, the Massif styles and the style
+tools. Each is its own semver with its own tag, so any of them can ship alone.
+
+| Package | Tag | Published as |
+|---|---|---|
+| SDK (Android, iOS, web) | `v<version>` | GitHub release, JitPack, Swift package, npm `@massif-maps/api` and `web` |
+| Massif styles | `massif-styles-v<version>` | GitHub release, npm `@massif-maps/styles`, the website |
+| Style tools | `style-tools-v<version>` | GitHub release (the wasm), npm `@massif-maps/style-tools` |
+
+You say what each should bump, never what its number is. `sdk`, `styles` and `tools` take `none` (the
+default: leave it out), `auto`, `patch`, `minor`, `major` or an explicit `x.y.z`:
+
+```sh
+gh workflow run release.yml --repo massif-maps/MassifMaps -f styles=patch -f publish=true
+gh workflow run release.yml --repo massif-maps/MassifMaps -f sdk=minor -f styles=auto -f tools=auto -f publish=true
+gh workflow run release.yml --repo massif-maps/MassifMaps -f sdk=minor -f prerelease=true -f publish=true
+```
+
+- **`auto`** reads the conventional commits since the package's last release, routed to it by the
+  paths they touch ([release notes](#release-notes)): a breaking one is a major, a `feat` a minor,
+  anything else a patch, and no commit at all releases nothing. `auto` on all three is "release what
+  changed".
+- **`prerelease`** makes release candidates: `6.3.0-rc.1`, the number counted from the existing tags,
+  npm dist-tag `next`. The same run without it releases `6.3.0`.
+- **`publish` off** is a dry run: the plan, then every build, and no tag, release or upload.
+- The first job, `plan`, prints the table (last release, commits since, what `auto` would pick, the next
+  version) in the run summary and stops on a conflict — a tag that exists, a version below one that
+  does — before anything is built. `python3 scripts/release-version.py styles auto` prints the same
+  from a checkout.
+- A run releases one commit: every package it names is tagged at the same SHA.
+
+The styles declare the SDK they need (`styles/massif/compat.json`,
+[Massif style release](massif-style-release.md#the-sdk-a-release-needs)). Styles that need an SDK not
+yet released fail `plan` unless the same run releases the SDK.
+
+The called workflows (`build.yml`, `release-styles.yml`, `release-style-tools.yml`) are not started
+by hand any more, except the style tools' dev builds below. npmjs.com trusts the workflow that
+*dispatches* the run, so each package lists `release.yml` as its trusted publisher.
+
 ## The npm packages in an SDK release
 
 Testing what a run published, channel by channel: [Testing a release](release-testing.md).
 
-`build.yml` builds the web SDK and the style tools next to Android and iOS, from the same version:
+`build.yml` builds the web SDK next to Android and iOS, from the SDK version:
 
 - `build-web`: the web module twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`
   ([variants](../maintenance/web-build.md#variants)); `MassifMaps-web-<version>.zip` on the GitHub
   release (`dist/web`, the files an app serves), and the `@massif-maps/api` and `@massif-maps/web`
   tarballs.
-- `style-tools` calls `release-style-tools.yml`: the style compiler wasm and the
-  `@massif-maps/style-tools` tarball.
-- `update-release`, once every platform has built: attaches the wasm, writes the notes and makes
-  the release public.
-- `publish-npm`, after that: publishes the three tarballs with `scripts/npm-packages.py publish`,
+- `update-release`, once every platform has built: writes the notes and makes the release public.
+- `publish-npm`, after that: publishes the two tarballs with `scripts/npm-packages.py publish`,
   `@massif-maps/api` first, with provenance, skipping a version npm already has.
   npm trusts the workflow itself (trusted publishing, set per package on npmjs.com), so there is
   no npm token.
@@ -54,7 +92,8 @@ of `latest`. A run with `publish` off keeps the zip and the tarballs as workflow
 script packs the tarballs locally: [BUILDING.md](https://github.com/massif-maps/MassifMaps/blob/master/BUILDING.md#npm-packages).
 What the web package contains and how an app hosts it: [the web guide](/docs/getting-started/web).
 
-`@massif-maps/style-tools` also has dev builds: each push to master touching the style compiler
+`@massif-maps/style-tools` is released on its own (`release-style-tools.yml`, called with `tools=…`: a
+`style-tools-v<version>` release carrying the compiler wasm, then npm). It also has dev builds: each push to master touching the style compiler
 (`libs-massif`, `tools/style-cli`) publishes `<latest + 1 patch>-dev.<run>` - `6.1.3-dev.412` after
 6.1.2 - under the `dev` dist-tag, from `release-style-tools.yml` (`publish-dev`). It sorts above
 every release so far and below the next, so `@massif-maps/style-tools@dev` is always the newest
@@ -63,15 +102,18 @@ publisher of the package.
 
 ## Release notes
 
-`scripts/release-notes.py` writes the notes of both releases and the SDK's `CHANGELOG.md` entry:
-one line per `feat`/`fix` squash commit since the last final release, its PR title verbatim. A
-commit goes to a release by the paths it touches:
+`scripts/release-notes.py` writes the notes of the three releases and the SDK's `CHANGELOG.md` entry:
+one line per `feat`/`fix` squash commit since the package's last final release, its PR title
+verbatim. A commit goes to a release by the paths it touches, and the same routing feeds `auto`:
 
-| Touches | SDK notes | Styles notes |
-|---|---|---|
-| `styles/massif`, `tools/style-sprite`, `tools/icon-font` only | — | yes |
-| anything else only | yes | — |
-| both | yes | yes |
+| Touches | SDK | Styles | Tools |
+|---|---|---|---|
+| `styles/massif`, `tools/style-sprite`, `tools/icon-font` | — | yes | — |
+| `tools/style-cli` | — | — | yes |
+| `libs-massif/cartocss` (the compiler the wasm is built from), `scripts/gen-cartocss-properties.py` | yes | — | yes |
+| anything else | yes | — | — |
+
+A commit touching several rows lands in each.
 
 `build.yml` writes the SDK notes into the draft release before the first build and prints them in
 the run summary. Edit the draft body on GitHub while the builds run: the final job copies it (minus

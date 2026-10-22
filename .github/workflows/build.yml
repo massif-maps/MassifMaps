@@ -2,21 +2,21 @@ name: Build MassifMaps
 permissions:
   contents: write
 
-on: 
-  workflow_dispatch:
+# Called by release.yml, which computes the version (docs/contributing/release-workflow.md).
+on:
+  workflow_call:
     inputs:
       version:
-       required: false
-       description: 'MassifMaps SDK version newer than the latest vX.Y.Z tag; use the separate style release workflows for styles or style tools'
-      publish:
-        description: "Should we publish on Github?"
-        default: true
+        description: 'SDK version, no leading v, newer than the latest vX.Y.Z tag'
         required: true
+        type: string
+      publish:
+        description: 'Create the GitHub release and publish to npm, JitPack and Swift Package Manager?'
+        default: false
         type: boolean
       prerelease:
-        description: "Pre-release: GitHub prerelease and npm dist-tag next (version like 6.1.0-rc.1)"
+        description: 'Pre-release: GitHub prerelease and npm dist-tag next (version like 6.1.0-rc.1)'
         default: false
-        required: true
         type: boolean
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
           (cd dist && zip -r massif-api-bindings.zip api-bindings)
 
       - name: Upload Release Asset
-        if: github.event.inputs.publish == 'true'
+        if: inputs.publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -80,14 +80,14 @@ jobs:
             bindings/typescript/massif.d.ts
 
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish != 'true'
+        if: ${{ !inputs.publish }}
         with:
           name: massif-api-bindings
           path: dist/api-bindings
 
   create-release:
     runs-on: ubuntu-latest
-    if: github.event.inputs.publish == 'true'
+    if: inputs.publish
     outputs:
       RELEASE_UPLOAD_ID: ${{ steps.create_release.outputs.id }}
       VERSION: ${{ steps.get_version_or_prompt.outputs.result }}
@@ -104,8 +104,8 @@ jobs:
         with:
           result-encoding: string
           script: |
-            if ("${{ github.event.inputs.version }}".length) {
-             return "${{ github.event.inputs.version }}".replace(/^v/, '');
+            if ("${{ inputs.version }}".length) {
+             return "${{ inputs.version }}".replace(/^v/, '');
             }
 
       - uses: actions/checkout@v7
@@ -130,8 +130,8 @@ jobs:
 
       - name: Build release body
         env:
-          VERSION: ${{ github.event.inputs.version }}
-          NPM_TAG: ${{ github.event.inputs.prerelease == 'true' && 'next' || 'latest' }}
+          VERSION: ${{ inputs.version }}
+          NPM_TAG: ${{ inputs.prerelease && 'next' || 'latest' }}
           TAG: v${{ steps.get_version_or_prompt.outputs.result }}
           PREVIOUS_TAG: ${{ steps.previous.outputs.previous }}
         run: |
@@ -179,12 +179,6 @@ jobs:
           \`\`\`
 
           Or unzip \`MassifMaps-web-${VERSION}.zip\` attached to this release.
-
-          ### Style tools
-
-          \`\`\`sh
-          npm install -g @massif-maps/style-tools@${NPM_TAG}
-          \`\`\`
           EOF
 
       - name: Show the notes
@@ -207,14 +201,14 @@ jobs:
           tag:  v${{ steps.get_version_or_prompt.outputs.result }}
           name: v${{ steps.get_version_or_prompt.outputs.result }}
           draft: true
-          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          prerelease: ${{ inputs.prerelease }}
           bodyFile: release_body.md
           token: ${{ secrets.GITHUB_TOKEN }}
 
   release-preflight:
     runs-on: ubuntu-latest
     needs: [create-release]
-    if: github.event.inputs.publish == 'true'
+    if: inputs.publish
     permissions:
       contents: read
     steps:
@@ -386,7 +380,7 @@ jobs:
         if: matrix.variant == 'android'
         run: |
           cd scripts
-          python build-android.py --profile ${{ matrix.profile }} --build-aar --build-version ${{ github.event.inputs.version }} --configuration=Release
+          python build-android.py --profile ${{ matrix.profile }} --build-aar --build-version ${{ inputs.version }} --configuration=Release
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
@@ -394,9 +388,9 @@ jobs:
         if: matrix.variant == 'ios'
         run: |
           cd scripts
-          python build-ios.py --profile ${{ matrix.profile }} --build-version ${{ github.event.inputs.version }} --configuration=Release --build-xcframework --use-metalangle --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
+          python build-ios.py --profile ${{ matrix.profile }} --build-version ${{ inputs.version }} --configuration=Release --build-xcframework --use-metalangle --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
       - name: Upload Release Asset
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'android'
+        if: inputs.publish && matrix.variant == 'android'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -404,14 +398,14 @@ jobs:
           gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/android/*.aar
       
       - name: Upload Release Asset
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'ios'
+        if: inputs.publish && matrix.variant == 'ios'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/ios_metal/*.zip
 
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish != 'true' && matrix.variant == 'ios'
+        if: ${{ !inputs.publish && matrix.variant == 'ios' }}
         with:
           name:  Massif-ios-${{matrix.variant}}-${{ matrix.profile }}
           path: |
@@ -420,20 +414,20 @@ jobs:
           if-no-files-found: error
 
       - name: Write checksum JSON
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'ios'
+        if: inputs.publish && matrix.variant == 'ios'
         run: |
           SHA=$(sha256sum dist/ios_metal/*.zip | awk '{print $1}')
           printf '{"%s":"%s"}\n' "${{ matrix.profile }}" "$SHA" > dist/checksum-${{ matrix.profile }}.json
 
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'ios'
+        if: inputs.publish && matrix.variant == 'ios'
         with:
           name: ios-checksum-${{ matrix.profile }}
           path: dist/checksum-${{ matrix.profile }}.json
 
 
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish != 'true' && matrix.variant == 'android'
+        if: ${{ !inputs.publish && matrix.variant == 'android' }}
         with:
           name:  Massif-android-${{matrix.variant}}-${{ matrix.profile }}
           path: |
@@ -601,7 +595,7 @@ jobs:
         if: matrix.variant == 'android'
         run: |
           cd scripts
-          python build-routing-android.py --build-version ${{ github.event.inputs.version }} --configuration=Release
+          python build-routing-android.py --build-version ${{ inputs.version }} --configuration=Release
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
@@ -609,36 +603,36 @@ jobs:
         if: matrix.variant == 'ios'
         run: |
           cd scripts
-          python build-routing-ios.py --build-version ${{ github.event.inputs.version }} --build-xcframework --configuration=Release --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
+          python build-routing-ios.py --build-version ${{ inputs.version }} --build-xcframework --configuration=Release --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
 
       - name: Upload routing release asset (Android)
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'android'
+        if: inputs.publish && matrix.variant == 'android'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/routing-android/*.aar
 
       - name: Upload routing release asset (iOS)
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'ios'
+        if: inputs.publish && matrix.variant == 'ios'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/routing-ios/*.zip
 
       - name: Write routing checksum JSON (iOS)
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'ios'
+        if: inputs.publish && matrix.variant == 'ios'
         run: |
           SHA=$(sha256sum dist/routing-ios/*.zip | awk '{print $1}')
           printf '{"routing":"%s"}\n' "$SHA" > dist/routing-checksum.json
 
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish == 'true' && matrix.variant == 'ios'
+        if: inputs.publish && matrix.variant == 'ios'
         with:
           name: routing-checksum
           path: dist/routing-checksum.json
 
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish != 'true' && matrix.variant == 'ios'
+        if: ${{ !inputs.publish && matrix.variant == 'ios' }}
         with:
           name: ValhallaRouting-ios
           path: dist/routing-ios/*.zip
@@ -646,7 +640,7 @@ jobs:
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish != 'true' && matrix.variant == 'android'
+        if: ${{ !inputs.publish && matrix.variant == 'android' }}
         with:
           name: ValhallaRouting-android
           path: dist/routing-android/*.aar
@@ -705,7 +699,7 @@ jobs:
           python3 scripts/npm-packages.py pack "$VERSION" --only api,web
           (cd dist/web && zip -r "../MassifMaps-web-$VERSION.zip" . -x libmassif.a -x 'examples/*')
       - name: Upload Release Asset
-        if: github.event.inputs.publish == 'true'
+        if: inputs.publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} "dist/MassifMaps-web-$VERSION.zip"
@@ -715,28 +709,18 @@ jobs:
           path: dist/npm/*.tgz
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: github.event.inputs.publish != 'true'
+        if: ${{ !inputs.publish }}
         with:
           name: massif-web
           path: dist/MassifMaps-web-*.zip
           retention-days: 7
           if-no-files-found: error
 
-  style-tools:
-    needs: [create-release, release-preflight]
-    if: ${{ !cancelled() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped') }}
-    uses: ./.github/workflows/release-style-tools.yml
-    permissions:
-      contents: read
-      id-token: write # the called publish-dev job asks for npm provenance; a caller must grant it
-    with:
-      version: ${{ needs.create-release.outputs.VERSION || '0.0.0-devel' }}
-
   publish-npm:
     # After the GitHub release is public: a version on npm must never outlive a rolled-back release.
     runs-on: ubuntu-latest
     needs: [update-release]
-    if: github.event.inputs.publish == 'true'
+    if: inputs.publish
     permissions:
       contents: read
       id-token: write # npm provenance
@@ -750,21 +734,17 @@ jobs:
         with:
           name: npm-web
           path: dist/npm
-      - uses: actions/download-artifact@v4
-        with:
-          name: style-tools-tarball
-          path: dist/npm
-      # Trusted publishing (OIDC, no token): each package names this workflow on npmjs.com.
+      # Trusted publishing (OIDC, no token): each package names the workflow that dispatched the run, release.yml.
       - name: Publish to npm
         run: |
           npm install -g npm@^11.5.1
-          python3 scripts/npm-packages.py publish --tag ${{ github.event.inputs.prerelease == 'true' && 'next' || 'latest' }}
+          python3 scripts/npm-packages.py publish --tag ${{ inputs.prerelease && 'next' || 'latest' }}
 
   create-jitpack-swiftpackage-release:
     # After the GitHub release is public: both repos download its assets, which a draft hides.
     runs-on: ubuntu-latest
     needs: [prepare, update-release]
-    if: github.event.inputs.publish == 'true'
+    if: inputs.publish
     permissions:
       contents: write # release changes require contents write
     steps:
@@ -793,16 +773,16 @@ jobs:
       - name: Generate jitpack.yml then publish/tag
         run: |
           PROFILES_CSV=$(echo '${{ needs.prepare.outputs.profiles }}' | python3 -c 'import json,sys; print(",".join(json.load(sys.stdin)))')
-          python ./scripts/generate-jitpack.py --version ${{ github.event.inputs.version }} --profiles $PROFILES_CSV
+          python ./scripts/generate-jitpack.py --version ${{ inputs.version }} --profiles $PROFILES_CSV
           cd mobile-sdk-android-aar
           mv -f ../dist/android/jitpack.yml ./
           git add jitpack.yml
-          git commit -m "Automated update jitpack.yml for version ${{ github.event.inputs.version }} and profile $PROFILES_CSV" || true
+          git commit -m "Automated update jitpack.yml for version ${{ inputs.version }} and profile $PROFILES_CSV" || true
           git push origin main
           # -f: a re-run after a failed release rebuilt the zips, and a tag left on the first run's
           # commit pins stale URLs and checksums (the 6.0.2 Swift package never resolved).
-          git tag -f ${{ github.event.inputs.version }}
-          git push -f origin ${{ github.event.inputs.version }}
+          git tag -f ${{ inputs.version }}
+          git push -f origin ${{ inputs.version }}
       
       - name: Download ios checksum artifacts
         uses: actions/download-artifact@v4
@@ -893,7 +873,7 @@ jobs:
           if [ -n "$ROUTING_CHECKSUM" ]; then
             ROUTING_ARGS="--routing-checksum $ROUTING_CHECKSUM"
           fi
-          python ./scripts/generate-swiftpackage.py --version ${{ github.event.inputs.version }} --profiles "$PROFILES_CSV" --checksums-file ./combined_ios_checksums.json $ROUTING_ARGS
+          python ./scripts/generate-swiftpackage.py --version ${{ inputs.version }} --profiles "$PROFILES_CSV" --checksums-file ./combined_ios_checksums.json $ROUTING_ARGS
           cd mobile-sdk-ios-swift
           # pass checksums file path relative to repo path
           mv -f ../dist/ios_metal/Package.swift ./
@@ -902,13 +882,13 @@ jobs:
           git push origin main
           # -f: a re-run after a failed release rebuilt the zips, and a tag left on the first run's
           # commit pins stale URLs and checksums (the 6.0.2 Swift package never resolved).
-          git tag -f ${{ github.event.inputs.version }}
-          git push -f origin ${{ github.event.inputs.version }}
+          git tag -f ${{ inputs.version }}
+          git push -f origin ${{ inputs.version }}
 
   update-release:
     runs-on: ubuntu-latest
-    needs: [create-release, api-bindings, build, build-routing, build-web, style-tools]
-    if: github.event.inputs.publish == 'true'
+    needs: [create-release, api-bindings, build, build-routing, build-web]
+    if: inputs.publish
     permissions:
       contents: write # release changes require contents write
     steps:
@@ -924,18 +904,8 @@ jobs:
           name: Martin Guillon
           email: dev@akylas.fr
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: massif-style-wasm
-          path: dist/massif-style-wasm
-
-      - name: Attach the style compiler wasm
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/massif-style-wasm/*
-
       - name: Generate CHANGELOG
-        if: github.event.inputs.prerelease != 'true'
+        if: ${{ !inputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -944,22 +914,22 @@ jobs:
           python3 scripts/release-notes.py --changelog CHANGELOG.md --body release_notes.md "${{ needs.create-release.outputs.PREVIOUS_TAG }}" "${{ needs.create-release.outputs.VERSION_TAG }}"
 
       - name: Commit CHANGELOG.md
-        if: github.event.inputs.prerelease != 'true'
+        if: ${{ !inputs.prerelease }}
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           branch: master
-          commit_message: 'docs: update CHANGELOG.md for v${{ github.event.inputs.version }} [skip ci]'
+          commit_message: 'docs: update CHANGELOG.md for v${{ inputs.version }} [skip ci]'
           file_pattern: CHANGELOG.md
 
       - name: Publish the release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ needs.create-release.outputs.VERSION_TAG }}" --draft=false --prerelease=${{ github.event.inputs.prerelease == 'true' }}
+        run: gh release edit "${{ needs.create-release.outputs.VERSION_TAG }}" --draft=false --prerelease=${{ inputs.prerelease }}
 
   cleanup-release:
     name: Delete draft release on failed/cancelled runs
     runs-on: ubuntu-latest
-    needs: [create-release, build, build-routing, build-web, style-tools, publish-npm, create-jitpack-swiftpackage-release, update-release]
+    needs: [create-release, build, build-routing, build-web, publish-npm, create-jitpack-swiftpackage-release, update-release]
     # Only while the release is still a draft. Once public, JitPack, the Swift package and npm may
     # point at it: re-run the failed job instead (tags are forced, npm skips a published version).
     if: ${{ (failure() || cancelled()) && needs.update-release.result != 'success' }}
@@ -970,7 +940,7 @@ jobs:
         uses: author/action-rollback@5e7dd5c4692af3cb62ee64875e62579b2fd857c0
         with:
           release_id: ${{ needs.create-release.outputs.RELEASE_UPLOAD_ID }}
-          tag: v${{ github.event.inputs.version }}
+          tag: v${{ inputs.version }}
           #  If the release does not exist but the tag does, setting this to true will remove the tag.
           delete_orphan_tag: true
         env:

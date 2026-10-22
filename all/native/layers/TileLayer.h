@@ -639,6 +639,7 @@ class ProjectionSurface;
         int _distanceZoomCapOffset = 0; // ...TerrainOptions::MaxTileZoomOffset, when set, over the reference level
         std::vector<DistanceTileLOD::Node> _distanceNodes; // ...every tile the cull visited, see DistanceTileLOD.h
         std::vector<MapTile> _distanceTiles; // ...and which tile each is
+        double _flatStyleDistance = 0; // ...the camera's distance when a flat view styles every tile at its zoom, else 0
         std::vector<float> _distanceViewZooms; // ...and the zoom a top-down camera at its nearest point would be at
         mutable std::mutex _tileViewZoomMutex;
         std::unordered_map<long long, float> _tileViewZoom; // free roam: the view zoom of each tile the last cull kept

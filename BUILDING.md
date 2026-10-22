@@ -253,7 +253,7 @@ See [docs/contributing/docs-site.md](docs/contributing/docs-site.md).
 # Releasing
 
 Every release is one manually dispatched workflow, **Actions → Release → Run workflow**. Its inputs
-`sdk`, `styles` and `tools` each take `none`, `auto`, `patch`, `minor`, `major` or a version, so the
+`sdk`, `styles` and `tools` each are a dropdown of `none`, `auto`, `patch`, `minor`, `major`, so the
 three packages release together or alone, each on its own semver; `prerelease` makes `-rc.N`
 candidates and `publish` off is a dry run (the plan and every build, nothing published). How `auto`
 chooses, and examples: [Cutting a release](docs/contributing/release-workflow.md#cutting-a-release).

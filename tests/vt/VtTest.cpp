@@ -64,6 +64,7 @@ void testLabelTextOpacity();
 void testLabelRadialOffset();
 void testLabelEdgeOffset();
 void testLabelYield();
+void testLabelStable();
 void testLabelOcclusionKeep();
 void testGLBParser();
 void testModelInstances();
@@ -132,6 +133,7 @@ int main() {
     testLabelRadialOffset();
     testLabelEdgeOffset();
     testLabelYield();
+    testLabelStable();
     testLabelOcclusionKeep();
     testGLBParser();
     testModelInstances();

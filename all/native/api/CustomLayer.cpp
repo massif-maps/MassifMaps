@@ -131,7 +131,25 @@ namespace massif { namespace api {
         return false;
     }
 
+    bool CustomLayer::onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
+        return _host->getMode() == MM_CUSTOM_LAYER_SCENE && draw(deltaSeconds, viewState);
+    }
+
     bool CustomLayer::onDrawOverlay(float deltaSeconds, const ViewState& viewState) {
+        return _host->getMode() == MM_CUSTOM_LAYER_OVERLAY && draw(deltaSeconds, viewState);
+    }
+
+    int CustomLayer::getDepthOrdinalCount() const {
+        return _host->getMode() == MM_CUSTOM_LAYER_SCENE ? 1 : 0;
+    }
+
+    void CustomLayer::setDepthOrdinal(float layerOffset, float shift) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        _depthLayerOffset = layerOffset;
+        _depthShift = shift;
+    }
+
+    bool CustomLayer::draw(float deltaSeconds, const ViewState& viewState) {
         if (!isVisible() || !getVisibleZoomRange().inRange(viewState.getZoom()) || getOpacity() <= 0) {
             return false;
         }
@@ -177,8 +195,18 @@ namespace massif { namespace api {
         params.fov_y = viewState.getFOVY();
         params.near_plane = viewState.getNear();
         params.far_plane = viewState.getFar();
+        params.depth_layer_offset = _depthLayerOffset;
+        params.depth_shift = _depthShift;
 
-        glDisable(GL_DEPTH_TEST);
+        bool scene = _host->getMode() == MM_CUSTOM_LAYER_SCENE;
+        GLint depthFunc = GL_LEQUAL;
+        glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+        if (scene) {
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LEQUAL);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
 #ifndef NDEBUG
         GLStateSnapshot before = captureGLState();
 #endif
@@ -193,6 +221,7 @@ namespace massif { namespace api {
         }
 #endif
         glEnable(GL_DEPTH_TEST);
+        glDepthFunc(depthFunc);
         return false;
     }
 

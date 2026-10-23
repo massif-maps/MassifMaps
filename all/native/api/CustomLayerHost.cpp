@@ -11,7 +11,7 @@ namespace massif { namespace api {
     }
 
     bool CustomLayerHost::validate(const mm_custom_layer* layer) {
-        return layer && layer->size >= MIN_SIZE && layer->render && layer->mode == MM_CUSTOM_LAYER_OVERLAY;
+        return layer && layer->size >= MIN_SIZE && layer->render && (layer->mode == MM_CUSTOM_LAYER_OVERLAY || layer->mode == MM_CUSTOM_LAYER_SCENE);
     }
 
     CustomLayerHost::CustomLayerHost(const mm_custom_layer& layer) {

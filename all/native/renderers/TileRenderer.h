@@ -199,6 +199,8 @@ namespace massif {
         bool consumeLabelPlacementOwed();
         /** True once per re-anchor of the labels to new ground: debounced by the owner, as the ramp re-anchors every frame. */
         bool consumeLabelReanchorOwed();
+        /** The per-ordinal depth_shift tile content carries under a terrain ground (05-depth-model.md). */
+        static float resolveTerrainDepthShift();
 
     private:
         struct LabelOcclusionState;

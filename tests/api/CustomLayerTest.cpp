@@ -81,6 +81,12 @@ void testCustomLayer() {
     TEST_CHECK(!CustomLayerHost::validate(&noRender),
                "a layer with nothing to draw is refused rather than crashing on the first frame");
 
+    mm_custom_layer scene = layer;
+    scene.mode = MM_CUSTOM_LAYER_SCENE;
+    scene.destroy = nullptr;
+    TEST_CHECK(CustomLayerHost::validate(&scene) && CustomLayerHost(scene).getMode() == MM_CUSTOM_LAYER_SCENE,
+               "the scene mode is taken and kept");
+
     mm_custom_layer badMode = layer;
     badMode.mode = static_cast<mm_custom_layer_mode>(99);
     TEST_CHECK(!CustomLayerHost::validate(&badMode), "a mode this SDK does not know is refused");

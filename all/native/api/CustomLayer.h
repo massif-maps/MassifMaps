@@ -43,7 +43,10 @@ namespace massif { namespace api {
         virtual void offsetLayerHorizontally(double offset);
 
         virtual bool onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState);
+        virtual bool onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState);
         virtual bool onDrawOverlay(float deltaSeconds, const ViewState& viewState);
+        virtual int getDepthOrdinalCount() const;
+        virtual void setDepthOrdinal(float layerOffset, float shift);
 
         virtual void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
         virtual bool processClick(const ClickInfo& clickInfo, const RayIntersectedElement& intersectedElement, const ViewState& viewState) const;
@@ -52,12 +55,16 @@ namespace massif { namespace api {
         virtual void unregisterDataSourceListener();
 
     private:
+        bool draw(float deltaSeconds, const ViewState& viewState);
+
         const std::shared_ptr<CustomLayerHost> _host;
         // Dropping it queues the caller's on_removed for the GL thread; a new manager means a new context.
         std::shared_ptr<GLResource> _glResource;
         std::weak_ptr<GLResourceManager> _glManager;
         // Debug builds name a state leak once, not every frame.
         std::string _reportedLeak;
+        float _depthLayerOffset = 0.0f;
+        float _depthShift = 0.0f;
     };
 
 } }

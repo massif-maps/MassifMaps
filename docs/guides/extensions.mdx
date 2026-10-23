@@ -115,7 +115,8 @@ extension's own `.so` is otherwise independent of the SDK.
 
 `mm_layer_create_custom` registers a layer whose drawing is a C function. It is called on the GL
 thread with plain GL ES 3.0, after every layer and billboard of the frame, with the depth test off:
-a screen-space overlay for a heatmap, an annotation or a HUD.
+a screen-space overlay for a heatmap, an annotation or a HUD. For meshes and volumes there is a scene
+mode, below.
 
 ```c
 static void render(void* user, const mm_render_params* p) {
@@ -142,6 +143,10 @@ The rules that matter, all in `MassifApiC.h`:
 - **Opacity is yours to apply** — it arrives in the params.
 - **Do not ask for a frame every frame.** Use `mm_layer_request_redraw` when something changed; it is
   safe from any thread.
+- **`MM_CUSTOM_LAYER_SCENE`** instead draws inside the 3D scene, depth tested against the terrain and
+  the tiles. Append `MM_CUSTOM_LAYER_GLSL_DEPTH` to your vertex shader and finish it with
+  `gl_Position = mm_applyDepth(gl_Position)`, uploading `depth_layer_offset` and `depth_shift`; without
+  it you z-fight or punch through the terrain.
 - `on_removed` runs on the GL thread with the context current, so delete your GL objects there;
   `on_context_lost` means they are already gone, so do not.
 

@@ -312,8 +312,24 @@ MM_API int mm_source_notify_changed(mm_ctx ctx, mm_handle handle, int remove_til
 /** Where in the frame a custom layer's render runs. */
 typedef enum {
     /** After every layer and billboard, depth test off: a screen-space overlay. */
-    MM_CUSTOM_LAYER_OVERLAY = 0
+    MM_CUSTOM_LAYER_OVERLAY = 0,
+    /** In the 3D pass at the layer's place in the stack, depth tested against the terrain and the tiles. */
+    MM_CUSTOM_LAYER_SCENE = 1
 } mm_custom_layer_mode;
+
+/**
+ * The vertex-shader half of the depth model, for MM_CUSTOM_LAYER_SCENE. Append it to your vertex
+ * shader and end main() with `gl_Position = mm_applyDepth(gl_Position);`, uploading
+ * depth_layer_offset and depth_shift from the params. Without it your draw z-fights the terrain
+ * or punches through it. #version 300 es.
+ */
+#define MM_CUSTOM_LAYER_GLSL_DEPTH \
+    "uniform float u_depthLayerOffset;\n" \
+    "uniform float u_depthShift;\n" \
+    "vec4 mm_applyDepth(vec4 clip) {\n" \
+    "    clip.z += u_depthLayerOffset * (0.0000019073486328125 * clip.w + u_depthShift);\n" \
+    "    return clip;\n" \
+    "}\n"
 
 /**
  * What render is given. Fixed-size and plain: a field is only ever appended, so size tells a
@@ -336,6 +352,9 @@ typedef struct {
     float opacity;
     /** Degrees, except zoom. */
     float zoom, tilt, rotation, fov_y, near_plane, far_plane;
+    /** MM_CUSTOM_LAYER_SCENE: this layer's depth slot, for MM_CUSTOM_LAYER_GLSL_DEPTH. Both 0 without terrain. */
+    float depth_layer_offset;
+    float depth_shift;
 } mm_render_params;
 
 /**

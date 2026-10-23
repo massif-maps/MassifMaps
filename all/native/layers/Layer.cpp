@@ -267,6 +267,13 @@ namespace massif {
         return false;
     }
 
+    int Layer::getDepthOrdinalCount() const {
+        return 0;
+    }
+
+    void Layer::setDepthOrdinal(float layerOffset, float shift) {
+    }
+
     std::shared_ptr<Bitmap> Layer::getBackgroundBitmap(const ViewState& viewState) const {
         return std::shared_ptr<Bitmap>();
     }

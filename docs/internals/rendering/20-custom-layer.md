@@ -33,6 +33,27 @@ and the opt-out already gives that without being stylised.
 The params carry `framebuffer` read from `GL_FRAMEBUFFER_BINDING` at the call: it is the offscreen
 FBO under an effect, so a plugin binding 0 draws to nowhere.
 
+## The scene slot
+
+`MM_CUSTOM_LAYER_SCENE` draws from `onDrawFrame3D`, at the layer's place in the stack, with the depth
+test on (`LEQUAL`, restored afterwards). It is the one slot that has to follow the
+[depth model](05-depth-model.md): content carries `(proxy − layer) × (2⁻¹⁹·w + depth_shift)`, and a
+plugin drawing at raw depth z-fights the terrain or punches through it.
+
+- `MapRenderer::drawLayers` hands each non-tile layer that asks (`Layer::getDepthOrdinalCount`) an
+  ordinal **above every tile layer's**, in stack order, inside the shared-ground block where the tile
+  layers get theirs. The tile layers' own ordinals and span are untouched, so a map without a scene
+  layer renders as before. A scene layer under a tile layer in the stack therefore still wins
+  coplanar contests against it; against real geometry the depth test decides.
+- The plugin gets `depth_layer_offset = −ordinal` (the proxy is 0 for a live layer) and `depth_shift`,
+  the same 0.02 the tiles use (`TileRenderer::TERRAIN_TANGRAM_DEPTH_SHIFT`, overridable by
+  `debug.massif.depthshift`). `MM_CUSTOM_LAYER_GLSL_DEPTH` is `applyDepthBias`'s layer term and
+  nothing else: the other terms are per-tile constants a plugin has no use for.
+- Each ordinal spends 0.02 of the 0.2 total that was measured as the largest with no see-through
+  (9 ordinals). A scene layer is one more step, so several of them eat the margin; they are cheap
+  to count, expensive to leak through a ridge.
+- With no terrain ground this frame both are 0, and the plugin's draw is plain depth-tested.
+
 ## Matrices
 
 `mvp` is `ViewState::getModelviewProjectionMat()` (double). `mvp_local` is
@@ -62,5 +83,5 @@ no GL and is host-tested; the capture is not.
 
 ## Not verified
 
-Built, syntax-checked and host-tested for the vtable only. Not run on a device: the guard's capture, the slot under a
+Built, syntax-checked and host-tested for the vtable only. Not run on a device: the guard's capture, the scene slot's depth (z-fight, ridges, tilt 60), the slot under a
 post-process effect, the GL-state expectations at that slot, a context loss, and removing a layer.

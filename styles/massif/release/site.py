@@ -39,6 +39,17 @@ def unpack(repo, version, dest):
             zipfile.ZipFile(os.path.join(tmp, f)).extractall(target)
 
 
+def min_sdks(out, versions):
+    """{version: oldest SDK it needs}, read from the styles themselves; releases before it was recorded have none"""
+    found = {}
+    for version in versions:
+        style = os.path.join(out, 'v' + version, 'streets.json')
+        sdk = json.load(open(style)).get('metadata', {}).get('massif:min-sdk') if os.path.exists(style) else None
+        if sdk:
+            found[version] = sdk
+    return found
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('out')
@@ -64,7 +75,7 @@ def main():
                             '--out', tmp, '--base-url', SITE], check=True)
             shutil.copytree(os.path.join(tmp, 'maplibre'), out, dirs_exist_ok=True)
         shutil.copytree(os.path.join(os.path.dirname(HERE), 'carto'), os.path.join(out, 'carto'), dirs_exist_ok=True)
-    json.dump({'latest': versions[0] if versions else None, 'versions': versions},
+    json.dump({'latest': versions[0] if versions else None, 'versions': versions, 'minSdk': min_sdks(out, versions)},
               open(os.path.join(out, 'versions.json'), 'w'), indent=2)
     print('styles/massif: %s' % (', '.join(versions) or 'built from source'))
 

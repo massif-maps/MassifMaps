@@ -81,6 +81,7 @@ a leading space. Added for this loop (`DemoCapture.m`):
 | `-shotSequence N -shotIntervalMs 80 -shotDir <dir>` | a burst: `frame_NNNN.png` + `frames.csv` (frame, ms, rotation, zoom, tilt). PNG encoding is off the render thread; real pace is ~130 ms/frame at 800x600 pt |
 | `-rotateStepDeg d` | bearing += d per burst frame (deterministic) |
 | `-zoomStep z` | zoom += z per burst frame: a slow zoom through an integer level, for the label blink test |
+| `-noopMoveMs N -noopMoveDuration s -noopMoveStep d` | every N ms, `setFocusPos` + `setZoom` with that duration to the camera it started at, the focus moved `d` base-projection units (degrees here) east each time: an app following the user. `d` 0 is a move to the view it already has |
 | `-rotateDegPerSec v -duration s` | bearing turns continuously (display-link driven) for `s` seconds; quits after unless a burst runs |
 | `-shotTilts 90,75,60,45,30,15` | one still per tilt into `<shotDir>/tilt_NN.png` (SDK convention: 90 straight down, 0 horizon); `-tiltMin 0` lifts the 30 clamp |
 | `-winW 800 -winH 600` | Catalyst window size in points (frames are 2x): a smaller window renders about 2.5x faster |

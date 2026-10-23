@@ -4732,7 +4732,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-width": [
           "interpolate",
           [
@@ -4776,9 +4776,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         }
       },
@@ -15458,7 +15458,6 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 6,
       "filter": [
         "all",
         [
@@ -15497,11 +15496,8 @@
           ]
         ]
       ],
-      "layout": {
-        "visibility": "none"
-      },
       "paint": {
-        "line-color": "hsl(0, 0%, 35%)",
+        "line-color": "hsl(0, 0%, 25%)",
         "line-width": [
           "interpolate",
           [
@@ -15519,20 +15515,22 @@
           3.5,
           20,
           7
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          1,
+          16.5,
+          0
         ]
       },
       "metadata": {
-        "massif:layout": {
-          "visibility": "visible"
-        },
-        "massif:filter": [
-          "==",
-          [
-            "config",
-            "emphasis_rails"
-          ],
-          1
-        ],
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -15554,11 +15552,25 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 65%)",
+            "hsl(0, 0%, 75%)",
             0.3,
-            "hsl(0, 0%, 35%)"
+            "hsl(0, 0%, 25%)"
           ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "emphasis_rails"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
         }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -15595,7 +15607,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -15640,9 +15652,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         }
       }
@@ -15682,7 +15694,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-width": [
           "interpolate",
           [
@@ -15756,11 +15768,151 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         }
+      }
+    },
+    {
+      "id": "rail-tracks-emphasis",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "rail"
+          ],
+          [
+            "!",
+            [
+              "in",
+              [
+                "get",
+                "brunnel"
+              ],
+              [
+                "literal",
+                [
+                  "tunnel",
+                  "bridge"
+                ]
+              ]
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "has",
+            "service"
+          ]
+        ]
+      ],
+      "paint": {
+        "line-color": "hsl(0, 0%, 25%)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          2,
+          18,
+          6,
+          20,
+          16,
+          22,
+          32
+        ],
+        "line-dasharray": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "literal",
+            [
+              0.1,
+              15
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              0.1,
+              1
+            ]
+          ],
+          18,
+          [
+            "literal",
+            [
+              0.05,
+              0.5
+            ]
+          ]
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13.75,
+          0,
+          14,
+          1
+        ]
+      },
+      "metadata": {
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "emphasis_rails"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        },
+        "massif:paint": {
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 75%)",
+            0.3,
+            "hsl(0, 0%, 25%)"
+          ]
+        }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -15797,7 +15949,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -15842,9 +15994,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         },
         "massif:filter": [
@@ -15909,7 +16061,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-width": [
           "interpolate",
           [
@@ -15983,9 +16135,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         },
         "massif:filter": [
@@ -18049,7 +18201,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -18094,9 +18246,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         }
       }
@@ -18127,7 +18279,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-width": [
           "interpolate",
           [
@@ -18201,9 +18353,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         }
       }
@@ -18233,7 +18385,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-gap-width": [
           "interpolate",
           [
@@ -18278,9 +18430,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         },
         "massif:filter": [
@@ -18336,7 +18488,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(0, 0%, 30%)",
+        "line-color": "hsl(0, 0%, 55%)",
         "line-width": [
           "interpolate",
           [
@@ -18410,9 +18562,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(0, 0%, 70%)",
+            "hsl(0, 0%, 45%)",
             0.3,
-            "hsl(0, 0%, 30%)"
+            "hsl(0, 0%, 55%)"
           ]
         },
         "massif:filter": [

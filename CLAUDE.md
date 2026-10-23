@@ -31,7 +31,8 @@ below — read the page, do not re-derive it.
 |---|---|
 | **the demo app, intent extras, renderer debugging, screenshots** | [`docs/contributing/demo-app.md`](docs/contributing/demo-app.md) |
 | **how a style looks** (Massif, a converted style): the style dev page | the [style-preview](.claude/skills/style-preview/SKILL.md) skill, [`docs/contributing/style-preview.md`](docs/contributing/style-preview.md) |
-| building and releasing the Massif styles | [`docs/contributing/massif-style-release.md`](docs/contributing/massif-style-release.md), `BUILDING.md` |
+| **cutting a release** (SDK, Massif styles, style tools: one workflow, a bump each) | [`docs/contributing/release-workflow.md`](docs/contributing/release-workflow.md#cutting-a-release) |
+| building the Massif styles | [`docs/contributing/massif-style-release.md`](docs/contributing/massif-style-release.md), `BUILDING.md` |
 | how a render subsystem works | [`docs/internals/rendering/`](docs/internals/rendering/index.mdx) |
 | whole-SDK map, threads, data flow | [`docs/internals/index.mdx`](docs/internals/index.mdx) |
 | what was measured and what failed | [`docs/internals/performance-log.md`](docs/internals/performance-log.md) |

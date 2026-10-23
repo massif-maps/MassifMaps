@@ -1,0 +1,166 @@
+name: Release
+
+# The one place a release starts: the SDK, the Massif styles and the style tools, each on its own
+# semver, together or alone. Say what each should bump, not what its number is: `plan` reads the
+# tags, works the next version out and stops on a conflict before anything is built.
+# docs/contributing/release-workflow.md
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk:
+        description: 'SDK (Android, iOS, web): what to bump (auto: from the commits since its last release)'
+        type: choice
+        options: [none, auto, patch, minor, major]
+        default: none
+      styles:
+        description: 'Massif styles: what to bump (auto: from the commits since its last release)'
+        type: choice
+        options: [none, auto, patch, minor, major]
+        default: none
+      tools:
+        description: 'Style tools (massif-style CLI + wasm): what to bump (auto: from the commits since its last release)'
+        type: choice
+        options: [none, auto, patch, minor, major]
+        default: none
+      prerelease:
+        description: 'Release candidates (-rc.N, npm dist-tag next) instead of final releases'
+        default: false
+        type: boolean
+      publish:
+        description: 'Publish? Off is a dry run: the plan, then every build, no tag, release or upload'
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      sdk: ${{ steps.sdk.outputs.version }}
+      styles: ${{ steps.styles.outputs.version }}
+      styles_min_sdk: ${{ steps.styles.outputs.min_sdk }}
+      tools: ${{ steps.tools.outputs.version }}
+    env:
+      SDK: ${{ inputs.sdk }}
+      STYLES: ${{ inputs.styles }}
+      TOOLS: ${{ inputs.tools }}
+      PRE: ${{ inputs.prerelease && '--prerelease' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Test the release scripts
+        run: python3 -W ignore -m unittest discover -s scripts/tests
+
+      - id: sdk
+        run: python3 scripts/release-version.py sdk "$SDK" $PRE >> "$GITHUB_OUTPUT"
+
+      # the styles may need the SDK released in this very run (compat.json: minSdk)
+      - id: styles
+        run: python3 scripts/release-version.py styles "$STYLES" $PRE --sdk-planned "${{ steps.sdk.outputs.version }}" >> "$GITHUB_OUTPUT"
+
+      - id: tools
+        run: python3 scripts/release-version.py tools "$TOOLS" $PRE >> "$GITHUB_OUTPUT"
+
+      - name: Show the plan
+        run: |
+          row() { echo "| $1 | $2 | $3 | $4 commits, \`$5\` | ${6:-nothing} |"; }
+          {
+            echo "### Release plan ${{ !inputs.publish && '(dry run: nothing is published)' || '' }}"
+            echo
+            echo '| package | asked | last release | since then | next |'
+            echo '|---|---|---|---|---|'
+            row SDK "$SDK" "${{ steps.sdk.outputs.base }}" "${{ steps.sdk.outputs.commits }}" "${{ steps.sdk.outputs.suggested }}" "${{ steps.sdk.outputs.tag }}"
+            row Styles "$STYLES" "${{ steps.styles.outputs.base }}" "${{ steps.styles.outputs.commits }}" "${{ steps.styles.outputs.suggested }}" "${{ steps.styles.outputs.tag }}"
+            row Tools "$TOOLS" "${{ steps.tools.outputs.base }}" "${{ steps.tools.outputs.commits }}" "${{ steps.tools.outputs.suggested }}" "${{ steps.tools.outputs.tag }}"
+            echo
+            echo "The backticked word is what \`auto\` would pick from the commits. Styles need SDK ${{ steps.styles.outputs.min_sdk || '-' }}."
+          } >> "$GITHUB_STEP_SUMMARY"
+          test -n "${{ steps.sdk.outputs.version }}${{ steps.styles.outputs.version }}${{ steps.tools.outputs.version }}" \
+            || { echo '::error::nothing to release: every package is none, or auto found no commit for it'; exit 1; }
+
+  sdk:
+    name: SDK
+    needs: [plan]
+    if: ${{ needs.plan.outputs.sdk != '' }}
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    permissions:
+      contents: write
+      id-token: write
+    with:
+      version: ${{ needs.plan.outputs.sdk }}
+      publish: ${{ inputs.publish }}
+      prerelease: ${{ inputs.prerelease }}
+
+  styles:
+    name: Styles
+    needs: [plan]
+    if: ${{ needs.plan.outputs.styles != '' }}
+    uses: ./.github/workflows/release-styles.yml
+    secrets: inherit
+    permissions:
+      contents: write
+      id-token: write
+      actions: write
+    with:
+      version: ${{ needs.plan.outputs.styles }}
+      min_sdk: ${{ needs.plan.outputs.styles_min_sdk }}
+      publish: ${{ inputs.publish }}
+      prerelease: ${{ inputs.prerelease }}
+
+  tools:
+    name: Style tools
+    needs: [plan]
+    if: ${{ needs.plan.outputs.tools != '' }}
+    uses: ./.github/workflows/release-style-tools.yml
+    permissions:
+      contents: write
+      id-token: write
+    with:
+      version: ${{ needs.plan.outputs.tools }}
+      publish: ${{ inputs.publish }}
+      prerelease: ${{ inputs.prerelease }}
+
+  # compat.json says `next` until the SDK it waited for has a version: write it down once the
+  # styles are out, so the styles after this one do not ask for an SDK release again.
+  pin-min-sdk:
+    name: Pin the SDK the styles need
+    needs: [plan, sdk, styles]
+    if: ${{ !cancelled() && inputs.publish && !inputs.prerelease && needs.styles.result == 'success' && needs.plan.outputs.styles_min_sdk != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      MIN_SDK: ${{ needs.plan.outputs.styles_min_sdk }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+      - name: Commit compat.json
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          path = 'styles/massif/compat.json'
+          compat = json.load(open(path))
+          if compat['minSdk'] == 'next':
+              compat['minSdk'] = os.environ['MIN_SDK']
+              with open(path, 'w') as f:
+                  json.dump(compat, f, indent=2)
+                  f.write('\n')
+          EOF
+          git diff --quiet || {
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -am "chore(styles): pin minSdk to $MIN_SDK [skip ci]"
+            git pull --rebase origin master && git push origin HEAD:master
+          }

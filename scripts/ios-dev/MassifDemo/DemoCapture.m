@@ -27,6 +27,7 @@
 @property (nonatomic) float duration;
 @property (nonatomic) BOOL quitWhenDone;
 @property (nonatomic) BOOL shotPending;
+@property (nonatomic, strong) dispatch_source_t noopTimer;
 @end
 
 static DemoCapture *sInstance;
@@ -88,6 +89,11 @@ static dispatch_group_t sPending;
     self.baseRotation = [self.mapView getRotation];
     self.baseZoom = [self.mapView getZoom];
 
+    float noopMoveMs = [DemoCfg floatFor:@"noopMoveMs" defaultValue:0];
+    if (noopMoveMs > 0) {
+        [self startNoopMoves:noopMoveMs duration:[DemoCfg floatFor:@"noopMoveDuration" defaultValue:1]];
+    }
+
     NSString *views = [DemoCfg stringFor:@"shotViews" defaultValue:@""];
     if (views.length) {
         [self runViews:[views componentsSeparatedByString:@","] index:0];
@@ -112,6 +118,25 @@ static dispatch_group_t sPending;
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.duration * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{ [self finish]; });
     }
+}
+
+/** An app following the user: a moveTo to the position and zoom the camera already has, every `intervalMs`. */
+- (void)startNoopMoves:(float)intervalMs duration:(float)durationSeconds {
+    MSFMapPos *focus = [self.mapView getFocusPos];
+    float zoom = [self.mapView getZoom];
+    double stepX = [DemoCfg floatFor:@"noopMoveStep" defaultValue:0];
+    double altitude = [DemoCfg floatFor:@"noopMoveAlt" defaultValue:0];
+    __block double x = [focus getX];
+    NSLog(@"DemoCapture: a move every %.0f ms, %.1f s long, %.2f east each", intervalMs, durationSeconds, stepX);
+    dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+    dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(intervalMs * NSEC_PER_MSEC)), (uint64_t)(intervalMs * NSEC_PER_MSEC), 0);
+    dispatch_source_set_event_handler(timer, ^{
+        x += stepX;
+        [self.mapView setFocusPos:[[MSFMapPos alloc] initWithX:x y:[focus getY] z:[focus getZ] + altitude] durationSeconds:durationSeconds];
+        [self.mapView setZoom:zoom durationSeconds:durationSeconds];
+    });
+    dispatch_resume(timer);
+    self.noopTimer = timer;
 }
 
 - (void)startSpin {

@@ -524,6 +524,18 @@ namespace {
                    "a tile the zoom cap holds at z16 is styled under z17, though its nearest ground reads zoom 19");
         TEST_CHECK(DistanceTileLOD::styleZoom(view, { 5, 20, 0 }, at(12)) == DistanceTileLOD::viewZoom(view, at(12)), "and by its view zoom where the cap is above it");
 
+        // A flat view styles every tile alike: by distance the edge tiles, farther from the eye, read a level lower.
+        double camera = at(19);
+        DistanceTileLOD::Limits capped { 5, 22, 0, -1, 99, 19 };
+        TEST_CHECK(std::floor(DistanceTileLOD::styleZoom(view, capped, camera * 1.1)) == 18.0 && std::floor(DistanceTileLOD::styleZoom(view, capped, camera)) == 19.0,
+                   "by distance, a tile 10 % farther than the centre one is styled a level lower at camera zoom 19.0");
+        TEST_CHECK(DistanceTileLOD::styleZoom(view, capped, DistanceTileLOD::styleDistance(camera * 1.1, camera)) == DistanceTileLOD::styleZoom(view, capped, DistanceTileLOD::styleDistance(camera, camera)),
+                   "but not with the camera's distance: every tile of a flat view has the one style zoom");
+        TEST_CHECK(DistanceTileLOD::styleDistance(camera * 1.1, 0.0) == camera * 1.1, "and a tilted view keeps the distance of each tile");
+        TEST_CHECK(DistanceTileLOD::isFlat(90.0) && DistanceTileLOD::isFlat(89.5) && DistanceTileLOD::isFlat(90.0 - DistanceTileLOD::FLAT_TILT_TOLERANCE),
+                   "a view straight down, or within the tolerance of it, is flat");
+        TEST_CHECK(!DistanceTileLOD::isFlat(88.9) && !DistanceTileLOD::isFlat(60.0) && !DistanceTileLOD::isFlat(0.0), "and one tilted past it is not");
+
         // The grazing allowance: a tile seen head on is judged by pixels alone, one seen at a grazing angle may span more.
         view.farCoarsening = 0.5;
         TEST_CHECK(DistanceTileLOD::farAllowance(view, 1000.0, 1000.0) == 1.0, "straight below the eye the allowance is 1");

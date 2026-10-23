@@ -8,6 +8,7 @@ written to --out (default build/devtap/) so it can be grepped later without ever
   devtap.py crash  android|ios   crashing thread only, symbolicated
   devtap.py shot   android|ios   screenshot to disk + per-band statistics, never the image
   devtap.py diff   A.png B.png   A/B image comparison as numbers
+  devtap.py stats  android       the SDK's per-second RenderStats as a timeline (-PprofileRender builds)
 
 Only dependency beyond the stdlib is PIL (no numpy on this machine).
 """
@@ -515,6 +516,16 @@ def cmd_diff(a):
 
 # ---------------------------------------------------------------------------------------- selftest
 
+STATS_FIXTURE = """\
+10-21 22:00:01.001  4131  4160 I massif  : RenderStats: over 1000 ms | cullUpd=0 tileRecalc=0 tileSkip=0 tileSets=0 labelMaps=0 labelMapSkips=0 | cullPasses=0 visFlips=0 cullMs=0.00 | occKept=0 occFlips=0 standIn=0
+10-21 22:00:01.001  4131  4160 I massif  : RenderStats: geomDraws=400 labelDraws=12 (per interval)
+10-21 22:00:01.002  4131  4160 I massif  : RenderStats: labels built=0 lineLayouts=0 buildMs=0.0 batchMs=0.0 (per interval)
+10-21 22:00:02.002  4131  4160 I massif  : RenderStats: over 1001 ms | cullUpd=9 tileRecalc=9 tileSkip=0 tileSets=1 labelMaps=1 labelMapSkips=0 | cullPasses=2 visFlips=7 cullMs=3.10 | occKept=0 occFlips=3 standIn=1
+10-21 22:00:02.002  4131  4160 I massif  : RenderStats: labels built=900 lineLayouts=31 buildMs=2.0 batchMs=0.4 (per interval)
+10-21 22:00:03.003  4131  4160 I massif  : RenderStats: over 999 ms | cullUpd=0 tileRecalc=0 tileSkip=0 tileSets=0 labelMaps=0 labelMapSkips=0 | cullPasses=0 visFlips=0 cullMs=0.00 | occKept=0 occFlips=0 standIn=0
+10-21 22:00:03.003  4131  4160 I massif  : RenderStats: labels built=0 lineLayouts=2 buildMs=0.0 batchMs=0.0 (per interval)
+"""
+
 LOGCAT_FIXTURE = """\
 09-06 17:59:11.001  4131  4160 I massif  : TileLayer: 2 span reference tiles for 3 stranded ends
 09-06 17:59:11.002  4131  4160 I massif  : TileLayer: 7 span reference tiles for 9 stranded ends
@@ -574,10 +585,92 @@ def cmd_selftest(a):
     check("ips faulting thread", body["threads"][body["faultingThread"]]["name"], "main")
     os.unlink(p)
 
+    # RenderStats: one row per "over N ms" line, the lineLayouts of the "labels built=" line joined to it.
+    rows = parse_stats(STATS_FIXTURE.splitlines())
+    check("stats rows", len(rows), 3)
+    check("stats main line", (rows[0]["cullUpd"], rows[0]["visFlips"], rows[0]["occFlips"]), (0, 0, 0))
+    check("stats lineLayouts joined", [r["lineLayouts"] for r in rows], [0, 31, 2])
+    check("stats flip interval", [r["visFlips"] for r in rows], [0, 7, 0])
+    check("stats ignores other lines", "geomDraws" in rows[1], False)
+    report = stats_report(rows, 10)
+    check("stats report flags the flip", [l.endswith("<- flip") for l in report[2:5]], [False, True, False])
+    check("stats report compares", any(l.startswith("  cullUpd") for l in report), True)
+
     for f in fails:
         print("FAIL " + f)
-    print("selftest: %d checks, %d failed" % (14, len(fails)))
+    print("selftest: %d checks, %d failed" % (14 + 7, len(fails)))
     sys.exit(1 if fails else 0)
+
+
+# ----------------------------------------------------------------------------------------- stats
+
+# Fields of the "RenderStats: over N ms | ..." line and the "labels built=" line, in the order they
+# are shown. What each answers about a label blink is in docs/contributing/demo-app.md.
+STATS_COLUMNS = ["cullUpd", "tileRecalc", "tileSets", "labelMaps", "labelMapSkips", "labelsAlloc",
+                 "placeUpd", "reVisible", "cullPasses", "visFlips", "collided", "occluded",
+                 "occKept", "occFlips", "standIn", "lineLayouts"]
+STATS_LINE_RE = re.compile(r"(?P<time>\d\d:\d\d:\d\d)\.\d+\s.*RenderStats: (?P<body>.*)")
+STATS_FIELD_RE = re.compile(r"\b([A-Za-z]+)=(-?\d+(?:\.\d+)?)")
+
+
+def parse_stats(lines):
+    """One dict per RenderStats interval: its time plus the STATS_COLUMNS it carried."""
+    rows = []
+    for line in lines:
+        m = STATS_LINE_RE.search(line)
+        if not m:
+            continue
+        body = m.group("body")
+        fields = {k: float(v) for k, v in STATS_FIELD_RE.findall(body)}
+        if body.startswith("over "):
+            rows.append({"time": m.group("time"), "ms": float(body.split()[1])})
+        elif rows and body.startswith("labels built="):
+            fields = {"lineLayouts": fields.get("lineLayouts", 0)}
+        else:
+            continue
+        if rows:
+            rows[-1].update({k: v for k, v in fields.items() if k in STATS_COLUMNS})
+    return rows
+
+
+def stats_report(rows, maxrows):
+    """The timeline, and which counters move in the intervals that flip a label against the quiet ones."""
+    cols = [c for c in STATS_COLUMNS if any(c in r for r in rows)]
+    flip = [r for r in rows if r.get("visFlips", 0) > 0]
+    quiet = [r for r in rows if r.get("visFlips", 0) == 0]
+    out = ["== RenderStats: %d intervals, %d with a label visibility flip" % (len(rows), len(flip))]
+    out.append("time     " + " ".join("%9s" % c[:9] for c in cols))
+    for r in rows[-maxrows:]:
+        out.append("%s %s %s" % (r["time"], " ".join("%9d" % r.get(c, 0) for c in cols),
+                                 "<- flip" if r.get("visFlips", 0) > 0 else ""))
+    if flip and quiet:
+        out.append("mean per interval, flip vs quiet (a counter that jumps with the flips is the cause):")
+        for c in cols:
+            f = sum(r.get(c, 0) for r in flip) / len(flip)
+            q = sum(r.get(c, 0) for r in quiet) / len(quiet)
+            if c != "visFlips" and (f or q):
+                out.append("  %-13s %9.1f vs %9.1f" % (c, f, q))
+    return out
+
+
+def cmd_stats(a):
+    out = ensure_outdir(a.out)
+    dev = pick_android(a.device)
+    r = adb(["logcat", "-d", "-v", "threadtime"], dev)
+    if r.returncode:
+        sys.exit("devtap: adb logcat failed: %s" % r.stderr.strip()[:200])
+    pids = set() if a.all else app_pids(dev, a.package)
+    lines = [l for l in r.stdout.splitlines() if "RenderStats:" in l
+             and (not pids or any((" %s " % p) in l[:40] for p in pids))]
+    full = os.path.join(out, "stats-%s.txt" % stamp())
+    with open(full, "w") as fh:
+        fh.write("\n".join(lines))
+    rows = parse_stats(lines)
+    if not rows:
+        sys.exit("devtap: no RenderStats lines from %s - build with -PprofileRender (see docs/contributing/demo-app.md)"
+                 % (a.package if pids else "any pid"))
+    print("\n".join(stats_report(rows, a.max)))
+    print("== full stats lines: %s   (grep it, do not read it)" % os.path.relpath(full, ROOT))
 
 
 # ------------------------------------------------------------------------------------------- main
@@ -626,6 +719,14 @@ def main():
     df.add_argument("b")
     df.add_argument("--bands", type=int, default=8)
     df.set_defaults(fn=cmd_diff)
+
+    sa = sub.add_parser("stats", help="RenderStats per second, flip intervals against quiet ones")
+    sa.add_argument("platform", choices=["android"])
+    sa.add_argument("--device", help="adb serial")
+    sa.add_argument("--package", default=ANDROID_PKG, help="app to scope to (default the demo; Alpi Maps is its own id)")
+    sa.add_argument("--all", action="store_true", help="every pid, not just the app")
+    sa.add_argument("--max", type=int, default=40, help="intervals to print, newest last (default 40)")
+    sa.set_defaults(fn=cmd_stats)
 
     st = sub.add_parser("selftest", help="check the log parsers against fixtures, no device needed")
     st.set_defaults(fn=cmd_selftest)

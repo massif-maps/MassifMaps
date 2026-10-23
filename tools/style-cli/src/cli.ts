@@ -133,6 +133,9 @@ const USAGE = `Usage: massif-style <command> [options] [args]
       --out FILE            write the JSON there instead of stdout
       --svg FILE            also draw the legend as an SVG sheet, images inlined
       --lang CODE           which label to draw when a label is a {lang: text} object
+
+  --version
+      print the version of these tools
 `;
 
 function loadPropertyTable(): PropertyTable {
@@ -429,6 +432,12 @@ async function main(argv: string[]): Promise<number> {
     if (!command || command === '--help' || command === '-h' || command === 'help') {
         process.stdout.write(USAGE);
         return command ? 0 : 2;
+    }
+
+    if (command === '--version' || command === '-v') {
+        const { version } = JSON.parse(readFileSync(join(HERE, '..', 'package.json'), 'utf8')) as { version: string };
+        process.stdout.write(`${version}\n`);
+        return 0;
     }
 
     try {

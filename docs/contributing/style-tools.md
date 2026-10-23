@@ -127,19 +127,19 @@ first emcc build did not.
 
 ## Releasing
 
-The style tools ship with the SDK, on its version.
+The style tools have their own semver and tag (`style-tools-v<version>`), so a compiler fix ships
+without an SDK release; `style-tools-v6.2.1` is where the numbering continued from the SDK's.
 [`.github/workflows/release-style-tools.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/release-style-tools.yml)
-builds and packs, on pull requests and when
-[`build.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/build.yml)
-calls it:
+builds and packs on pull requests and on pushes to master (which also publish the `dev` build), and
+releases when [`release.yml`](release-workflow.md#cutting-a-release) calls it with `tools=…`:
 
 1. **build-wasm** — checkout with submodules, install emsdk, fetch Boost headers, build, upload the
    two artifacts.
 2. **package** — `gen-cartocss-properties.py --check`, build and test the TypeScript, smoke-test the
    wasm subcommand, pack the tarball with `scripts/npm-packages.py`.
 
-`build.yml` then attaches the wasm to the `v<version>` release for anyone not using npm
-(`update-release`) and publishes the tarball with the SDK's other npm packages (`publish-npm`).
+3. **release**, with `publish` — npm, then the `style-tools-v<version>` GitHub release with the wasm
+   attached for anyone not using npm.
 
 Boost comes from [`.github/actions/prepare-boost`](https://github.com/massif-maps/MassifMaps/blob/master/.github/actions/prepare-boost/action.yml),
 the same action `build.yml` uses, so the wasm is built against the **same Boost as the SDK**. That

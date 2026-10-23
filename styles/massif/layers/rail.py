@@ -3,37 +3,42 @@ from lib import by_hour, gate, get, in_class, layer, zoom_ramp
 SLEEPERS = ['step', ['zoom'], ['literal', [0.1, 15]], 16, ['literal', [0.1, 1]], 18, ['literal', [0.05, 0.5]]]
 
 
+def sleepers(id, filter, color, metadata=None):
+    return layer(id, 'line', 'transportation', minzoom=13, filter=filter,
+                 paint={'line-color': color, 'line-width': zoom_ramp(16, 2, 18, 6, 20, 16, 22, 32, base=1.5),
+                        'line-dasharray': SLEEPERS, 'line-opacity': zoom_ramp(13.75, 0, 14, 1)}, metadata=metadata)
+
+
 def pair(c, id, filter, prefix=''):
     """Standard's two-layer rail: a line-gap-width pair for the rails, and a wide line worn away
     by a very short dash for the sleepers."""
-    color = {'line-color': c['rail']}
     night = {'massif:paint': {'line-color': by_hour(c['rail-night'], c['rail'])}}
     return [
         layer(prefix + id, 'line', 'transportation', filter=filter,
-              paint={**color, 'line-gap-width': zoom_ramp(15, 0, 16, 1, 18, 2, 22, 20),
+              paint={'line-color': c['rail'], 'line-gap-width': zoom_ramp(15, 0, 16, 1, 18, 2, 22, 20),
                      'line-width': zoom_ramp(14, 0.5, 22, 2, base=1.5)}, metadata=night),
-        layer(prefix + id + '-tracks', 'line', 'transportation', minzoom=13, filter=filter,
-              paint={**color, 'line-width': zoom_ramp(16, 2, 18, 6, 20, 16, 22, 32, base=1.5),
-                     'line-dasharray': SLEEPERS, 'line-opacity': zoom_ramp(13.75, 0, 14, 1)}, metadata=night),
+        sleepers(prefix + id + '-tracks', filter, c['rail'], night),
     ]
 
 
-def emphasis(c, filter):
-    """`emphasis_rails`, Alpimaps' switch: a main line (no `service`, so no siding or yard) drawn dark
-    and wide, for a map read along the railway. Hidden in MapLibre, which has no config in a filter."""
-    return [layer('rail-emphasis', 'line', 'transportation', minzoom=6,
-                  filter=['all', filter, ['!', ['has', 'service']]],
-                  layout={'visibility': 'none'},
-                  paint={'line-color': c['rail-emphasis'], 'line-width': zoom_ramp(6, 1, 12, 2, 16, 3.5, 20, 7, base=1.3)},
-                  metadata={'massif:layout': {'visibility': 'visible'},
-                            'massif:filter': ['==', ['config', 'emphasis_rails'], 1]}, emissive=0.5)]
+def emphasis(v, filter):
+    """`emphasis_rails`, Alpimaps' switch, for a map read along the railway: a main line (no `service`)
+    in a solid dark line from its first zoom, handing over to dark sleepers. Hidden in MapLibre (no config in a filter)."""
+    c = v.palette
+    main = ['all', filter, ['!', ['has', 'service']]]
+    line = layer('rail-emphasis', 'line', 'transportation', filter=main,
+                 paint={'line-color': c['rail-emphasis'], 'line-width': zoom_ramp(6, 1, 12, 2, 16, 3.5, 20, 7, base=1.3),
+                        'line-opacity': zoom_ramp(15, 1, 16.5, 0)}, emissive=0.5)
+    ties = sleepers('rail-tracks-emphasis', main, c['rail-emphasis'])
+    return [gate(line, v, 'emphasis_rails'), gate(ties, v, 'emphasis_rails')]
 
 
 def ground(v):
     c = v.palette
     surface = ['!', ['in', get('brunnel'), ['literal', ['tunnel', 'bridge']]]]
     rail = ['all', ['==', get('class'), 'rail'], surface]
-    return (emphasis(c, rail) + pair(c, 'rail', rail) +
+    line, ties = emphasis(v, rail)
+    return ([line] + pair(c, 'rail', rail) + [ties] +
             [gate(lay, v, 'show_tram') for lay in pair(c, 'tram', ['all', ['==', get('class'), 'transit'], surface])])
 
 

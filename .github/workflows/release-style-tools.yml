@@ -1,9 +1,9 @@
 name: Style tools CLI
 
-# Builds massif-style to WebAssembly and packs @massif-maps/style-tools. build.yml calls it and
-# publishes the tarball on the SDK version. docs/contributing/style-tools.md: why TypeScript + wasm.
-# A push to master publishes a dev build too (publish-dev), so a style using a compiler change
-# need not wait for the next SDK release.
+# Builds massif-style to WebAssembly and packs @massif-maps/style-tools. release.yml calls it with
+# the version it computed and, with `publish`, releases it: npm, and a style-tools-vX.Y.Z GitHub
+# release carrying the wasm. A push to master publishes a dev build (publish-dev), so a style using
+# a compiler change need not wait for a release. docs/contributing/style-tools.md: why TypeScript + wasm.
 
 on:
   pull_request:
@@ -26,6 +26,14 @@ on:
         description: 'version number (no leading v)'
         required: true
         type: string
+      publish:
+        description: 'Publish to npm and create the GitHub release?'
+        default: false
+        type: boolean
+      prerelease:
+        description: 'Pre-release: npm dist-tag next, GitHub prerelease'
+        default: false
+        type: boolean
 
 env:
   PACKAGE_DIR: tools/style-cli
@@ -131,7 +139,7 @@ jobs:
           echo "version=$major.$minor.$((patch + 1))-dev.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Set version and pack
-        run: python3 scripts/npm-packages.py pack "${{ inputs.version || steps.dev.outputs.version || '0.0.0-devel' }}" --only style-tools
+        run: python3 scripts/npm-packages.py pack --tools-version "${{ inputs.version || steps.dev.outputs.version || '0.0.0-devel' }}" --only style-tools
 
       - uses: actions/upload-artifact@v4
         with:
@@ -141,7 +149,7 @@ jobs:
 
   publish-dev:
     name: Publish the dev build
-    # not under build.yml: a call carries its version and its caller's workflow_dispatch event
+    # not under release.yml: a call carries its version and its caller's workflow_dispatch event
     needs: [package]
     if: ${{ !inputs.version && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
@@ -158,9 +166,58 @@ jobs:
         with:
           name: style-tools-tarball
           path: dist/npm
-      # Trusted publishing: npmjs.com lists this workflow as well as build.yml for the package.
+      # Trusted publishing: npmjs.com lists this workflow as well as release.yml for the package.
       # `dev`, never `latest` or `next`: an app opts in with `@massif-maps/style-tools@dev`.
       - name: Publish to npm
         run: |
           npm install -g npm@^11.5.1
           python3 scripts/npm-packages.py publish --tag dev
+
+  release:
+    name: Release
+    needs: [package]
+    if: ${{ inputs.version && inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write # npm provenance
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+      - uses: actions/download-artifact@v4
+        with:
+          name: style-tools-tarball
+          path: dist/npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: massif-style-wasm
+          path: dist/wasm
+
+      - name: Release notes
+        run: |
+          previous=$(python3 scripts/release-tags.py "style-tools-v$VERSION")
+          {
+            echo "Massif style tools $VERSION. npm: \`@massif-maps/style-tools@$VERSION\`. The compiler as WebAssembly is attached."
+            echo
+            python3 scripts/release-notes.py --product tools "${previous#previous=}" HEAD
+          } > notes.md
+
+      # Trusted publishing (OIDC, no token): npmjs.com lists release.yml, the workflow that dispatched this run.
+      - name: Publish to npm
+        run: |
+          npm install -g npm@^11.5.1
+          python3 scripts/npm-packages.py publish --tag ${{ inputs.prerelease && 'next' || 'latest' }}
+
+      - name: GitHub release
+        run: |
+          gh release create "style-tools-v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Massif style tools $VERSION" --notes-file notes.md \
+            ${{ inputs.prerelease && '--prerelease' || '' }} dist/wasm/*

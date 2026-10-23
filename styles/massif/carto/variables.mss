@@ -101,12 +101,11 @@
 @line_stroke: hsl(0, 0%, 75%);
 @line_stroke_2: hsl(0, 0%, 55%);
 @line_stroke_3: hsl(0, 0%, 45%);
-@line_stroke_4: hsl(0, 0%, 70%);
-@line_stroke_5: hsl(0, 0%, 60%);
-@line_stroke_6: hsl(0, 0%, 40%);
-@line_stroke_7: hsla(0, 0%, 0%, 0.2);
-@line_stroke_8: hsl(0, 0%, 20%);
-@line_stroke_9: hsl(0, 0%, 80%);
+@line_stroke_4: hsl(0, 0%, 60%);
+@line_stroke_5: hsl(0, 0%, 40%);
+@line_stroke_6: hsla(0, 0%, 0%, 0.2);
+@line_stroke_7: hsl(0, 0%, 20%);
+@line_stroke_8: hsl(0, 0%, 80%);
 @lowzoom_built: hsl(20, 12%, 91%);
 @lowzoom_fill: hsl(0, 0%, 6%);
 @military: hsl(0, 40%, 92%);
@@ -209,7 +208,8 @@
 @track: hsl(30, 55%, 35%);
 @track_fill_stroke: hsla(0, 0%, 100%, 0.3);
 @track_label: hsl(30, 50%, 30%);
-@track_stroke: hsla(35, 70%, 75%, 0.8);
+@track_stroke: hsl(0, 0%, 70%);
+@track_stroke_2: hsla(35, 70%, 75%, 0.8);
 @trail_background_border_fill: #000000;
 @trail_stroke: hsl(5, 72%, 45%);
 @trail_stroke_2: hsl(215, 70%, 42%);

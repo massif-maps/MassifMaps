@@ -203,6 +203,9 @@ namespace massif {
         void calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
         void calculateCameraEvent(CameraZoomEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
     
+        // Whether the camera is within the dead band of this view (CameraNoOp.h), for a call that animates to it. Null rotation or tilt is not compared.
+        bool isCameraAt(const MapPos& internalPos, float zoom, const float* rotation, const float* tilt);
+
         void moveToFitBounds(const MapBounds& mapBounds, const ScreenBounds& screenBounds, bool integerZoom, bool resetTilt, bool resetRotation, float durationSeconds);
         
         void onSurfaceCreated();
@@ -250,6 +253,10 @@ namespace massif {
         };
 
         void initializeRenderState() const;
+
+        // A camera event that asks for the view the camera already has: applying it only moves the matrices by float noise.
+        template <typename Event>
+        bool skipsCameraEvent(const Event& cameraEvent, float durationSeconds, MapMoveReason::MapMoveReason reason);
 
         // Per camera event rather than one frame later (mapbox's transform._constrainCamera). Call with _mutex held.
         void constrainCameraToClearance();

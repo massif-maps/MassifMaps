@@ -3,6 +3,7 @@ machine rather than CI, publish it.
 
     python3 styles/massif/release/release.py 1.2.0 [--only FLAVOUR]... [--screenshots]
     python3 styles/massif/release/release.py 1.2.0-rc.1 --npm next [--dry-run] [--github]
+    python3 styles/massif/release/release.py 1.3.0 --min-sdk 6.3.0     # instead of compat.json's minSdk
 
 Flavours (docs/styles/massif.mdx says which to pick):
   maplibre                    the five MapLibre/Mapbox GL styles and their sprite
@@ -19,6 +20,7 @@ import argparse
 import copy
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -39,6 +41,7 @@ FACE = 'MassifIcons'
 ICON_PROJECT = os.path.join(HERE, 'sprite-src', FACE + '.iconotype.json')
 # the sources anyone can reach; the others are archives an app serves itself (docs/styles/massif-maplibre.md)
 PUBLIC_SOURCES = {'openmaptiles', 'dem'}
+COMPAT = os.path.join(HERE, 'compat.json')
 FLAVOURS = ['maplibre', 'cartocss', 'cartocss-compiled', 'cartocss-iconfont', 'cartocss-iconfont-compiled']
 
 
@@ -55,7 +58,15 @@ def placeholder(source):
     return {'type': 'geojson', 'data': {'type': 'FeatureCollection', 'features': []}}
 
 
-def web_style(doc, version, base_url):
+def min_sdk(override):
+    """The oldest SDK these styles need: compat.json, or --min-sdk when the release resolves `next`."""
+    value = override or json.load(open(COMPAT))['minSdk']
+    if not re.fullmatch(r'\d+\.\d+\.\d+', value):
+        sys.exit('minSdk is "%s": pass --min-sdk <x.y.z> (the SDK released with these styles)' % value)
+    return value
+
+
+def web_style(doc, version, base_url, sdk):
     doc = copy.deepcopy(doc)
     private = {name: src for name, src in doc['sources'].items() if name not in PUBLIC_SOURCES}
     for name, src in private.items():
@@ -64,15 +75,16 @@ def web_style(doc, version, base_url):
         doc['sprite'] = base_url.rstrip('/') + '/sprite/sprite'
     doc.setdefault('metadata', {}).update({
         'massif:version': version,
+        'massif:min-sdk': sdk,
         'massif:placeholder-sources': {name: src.get('url', src.get('tiles')) for name, src in private.items()}})
     return doc
 
 
-def maplibre(out, version, base_url):
+def maplibre(out, version, base_url, sdk):
     os.makedirs(out)
     for name in build.VARIANTS:
         doc = json.load(open(os.path.join(HERE, name + '.json')))
-        json.dump(web_style(doc, version, base_url), open(os.path.join(out, name + '.json'), 'w'),
+        json.dump(web_style(doc, version, base_url, sdk), open(os.path.join(out, name + '.json'), 'w'),
                   separators=(',', ':'), ensure_ascii=False)
     shutil.copytree(os.path.join(HERE, 'sprite'), os.path.join(out, 'sprite'))
 
@@ -113,7 +125,7 @@ def compiled(project, out):
                            check=True, stderr=subprocess.DEVNULL)
 
 
-def npm_package(dist, version):
+def npm_package(dist, version, sdk):
     pkg = os.path.join(dist, 'npm')
     os.makedirs(pkg)
     for flavour in FLAVOURS:
@@ -128,6 +140,7 @@ def npm_package(dist, version):
         'homepage': 'https://massif-maps.github.io/MassifMaps/docs/styles/massif',
         'keywords': ['map', 'style', 'maplibre', 'mapbox', 'cartocss', 'openmaptiles'],
         'files': FLAVOURS + ['README.md', 'LICENSE'],
+        'massif': {'minSdk': sdk},
     }, open(os.path.join(pkg, 'package.json'), 'w'), indent=2)
     shutil.copy(os.path.join(RELEASE, 'npm-readme.md'), os.path.join(pkg, 'README.md'))
     shutil.copy(os.path.join(HERE, 'LICENSE'), pkg)
@@ -158,6 +171,7 @@ def main():
     parser.add_argument('--out', default=os.path.join(HERE, 'dist'))
     parser.add_argument('--base-url', help='where the maplibre flavour is served, for its absolute sprite URL '
                         '(default: the website\'s v<version> folder; "" keeps it relative)')
+    parser.add_argument('--min-sdk', help='the oldest SDK these styles need, overriding compat.json')
     parser.add_argument('--only', choices=FLAVOURS, action='append')
     parser.add_argument('--screenshots', action='store_true', help='one JPEG per variant, zipped (playwright)')
     parser.add_argument('--npm', metavar='TAG', help='publish dist/npm under that dist-tag: next to try a release, latest for real')
@@ -166,6 +180,7 @@ def main():
     args = parser.parse_args()
     flavours = args.only or FLAVOURS
     base_url = SITE + '/v' + args.version if args.base_url is None else args.base_url
+    sdk = min_sdk(args.min_sdk)
     dist = os.path.abspath(args.out)
     if os.path.exists(dist):
         shutil.rmtree(dist)
@@ -173,7 +188,7 @@ def main():
 
     build.main([])
     if 'maplibre' in flavours or args.screenshots:
-        maplibre(os.path.join(dist, 'maplibre'), args.version, base_url)
+        maplibre(os.path.join(dist, 'maplibre'), args.version, base_url, sdk)
     if any(f.startswith('cartocss') and 'iconfont' not in f for f in flavours):
         print(build.convert(os.path.join(dist, 'cartocss')))
     if any('iconfont' in f for f in flavours):
@@ -191,7 +206,7 @@ def main():
             shutil.rmtree(os.path.join(dist, flavour))
     for flavour in flavours:
         zip_dir(os.path.join(dist, flavour), os.path.join(dist, 'massif-%s-%s.zip' % (flavour, args.version)))
-    npm_package(dist, args.version)
+    npm_package(dist, args.version, sdk)
     print('\n'.join(sorted(f for f in os.listdir(dist))))
     publish(dist, args.version, args.npm, args.github, args.dry_run)
 

@@ -110,6 +110,9 @@ public final class DemoConfig {
     public static boolean LAYER_HYPSO = false;
     /** AnimatedRasterTileLayer: the LibreWXR radar steps and nowcast, two mixed per draw by a frame clock. */
     public static boolean LAYER_RADAR = false;
+    /** A custom layer in C (custom_layer_demo.c): a screen-space overlay, and a depth-tested clickable pole in the scene. */
+    public static boolean LAYER_CUSTOM_OVERLAY = false;
+    public static boolean LAYER_CUSTOM_SCENE = false;
     /** Radar time steps a second; the fade between two steps runs at the display rate. */
     public static float RADAR_FPS = 2.0f;
     /** The radar clock runs; paused, the slider scrubs. */
@@ -1232,6 +1235,8 @@ public final class DemoConfig {
         SATELLITE_UNDER_BASE = DemoCfg.cfgBool("satUnder", SATELLITE_UNDER_BASE);
         LAYER_HYPSO = DemoCfg.cfgBool("hypso", LAYER_HYPSO);
         LAYER_RADAR = DemoCfg.cfgBool("radar", LAYER_RADAR);
+        LAYER_CUSTOM_OVERLAY = DemoCfg.cfgBool("customOverlay", LAYER_CUSTOM_OVERLAY);
+        LAYER_CUSTOM_SCENE = DemoCfg.cfgBool("customScene", LAYER_CUSTOM_SCENE);
         RADAR_FPS = DemoCfg.cfgFloat("radarFps", RADAR_FPS);
         RADAR_PLAYING = DemoCfg.cfgBool("radarPlay", RADAR_PLAYING);
         LAYER_ELEMENTS = DemoCfg.cfgBool("elements", LAYER_ELEMENTS);

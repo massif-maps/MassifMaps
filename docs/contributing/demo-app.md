@@ -83,6 +83,18 @@ scrubs (and follows the clock), the step's time (marked *forecast* past now) and
 starts paused. Judged at `--es radar true --es lon 5.72 --es lat 45.19 --es zoom 8 --es tilt 0`: no pop at a
 step boundary, no darkening where two steps overlap. Needs the network.
 
+The gallery example `custom-layer-heatmap` (Android and iOS) is the same layer with a 3D toggle, a Drape toggle and an opacity slider; `--es drape 0` starts it undraped on Android. `customOverlay` and `customScene` are the [custom layers](../internals/rendering/20-custom-layer.md) of
+`app/src/main/cpp/custom_layer_demo.c`, written against `MassifApiC.h` alone (the app builds that file with
+CMake, and looks the `mm_*` functions up in the loaded `libmassif.so`). The scene layer is a **heatmap draped on
+the terrain**: `DemoMap.createHeatmapLayer` samples the DEM on a 160 x 160 grid over 8 km around the start position
+(off the UI thread), a few synthetic hot spots are the data, and the C layer draws the grid depth tested, so a ridge in
+front hides it. A tap on it logs `massif-demo` with the cell and value (`hit_test` marches the ray over the grid) and
+dims the heatmap. The overlay is the colour legend, in screen space, tinted by the layer's opacity. Judged at
+`--es customOverlay true --es customScene true --es terrain true --es lon 5.76 --es lat 45.24 --es zoom 12.2 --es tilt 35`
+(3D; `tilt` is the angle from the horizon, 90 is straight down) and the same with `--es terrain false --es tilt 90` (2D):
+the heatmap follows the relief with only slivers cut out on the steepest ridge edges, and sits flat in 2D. Mercator
+metres are converted to world units in C, so the grid is right whatever the base projection.
+
 `models` is the 3D MODELS layer (`DemoMap.createModelsLayer`): a jittered grid of trees as ONE
 MultiPoint around the start position and three spinning wind turbines 500 m north-east of it, drawn
 from `assets/style/models/*.glb` by the Massif model rules; a tap tints the model hit

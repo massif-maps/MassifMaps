@@ -111,6 +111,54 @@ vector tile protobuf for a `"vector"` layer.
 Link against `libmassif.so` for the `mm_*` symbols only — they are the exported surface, and the
 extension's own `.so` is otherwise independent of the SDK.
 
+## A layer you draw yourself
+
+`mm_layer_create_custom` registers a layer whose drawing is a C function. It is called on the GL
+thread with plain GL ES 3.0, after every layer and billboard of the frame, with the depth test off:
+a screen-space overlay for a heatmap, an annotation or a HUD. For meshes and volumes there is a scene
+mode, below.
+
+```c
+static void render(void* user, const mm_render_params* p) {
+    Heat* heat = user;
+    if (!heat->program && !heat_init(heat)) return;   /* create GL objects here, not before */
+    glBindFramebuffer(GL_FRAMEBUFFER, p->framebuffer); /* never 0: with a post-process effect the scene is offscreen */
+    heat_draw(heat, p->mvp_local, p->opacity);
+    /* restore every piece of GL state you changed - see the header */
+}
+
+mm_custom_layer layer = {
+    .size = sizeof(layer), .mode = MM_CUSTOM_LAYER_OVERLAY,
+    .on_removed = release_gl, .on_context_lost = forget_gl,
+    .render = render, .destroy = free, .user_data = heat,
+};
+mm_handle handle;
+mm_layer_create_custom(mm_context_default(), "heat", &layer, &handle);
+/* then add the handle to the map's layers like any other layer */
+```
+
+The rules that matter, all in `MassifApiC.h`:
+
+- **Restore the GL state you touch** — program, VAO, buffers, active texture and its binding, blend,
+  depth, cull face, viewport, scissor. A leak corrupts the *next* layer, and looks like an SDK bug.
+- **Draw into `framebuffer`**, not into 0.
+- **Use `mvp_local`** for vertex transforms and subtract `origin` in double first; a float matrix at
+  world scale jitters.
+- **Opacity is yours to apply** — it arrives in the params.
+- **Do not ask for a frame every frame.** Use `mm_layer_request_redraw` when something changed; it is
+  safe from any thread.
+- **`MM_CUSTOM_LAYER_SCENE`** instead draws inside the 3D scene, depth tested against the terrain and
+  the tiles. Append `MM_CUSTOM_LAYER_GLSL_DEPTH` to your vertex shader and finish it with
+  `gl_Position = mm_applyDepth(gl_Position)`, uploading `depth_layer_offset` and `depth_shift`; without
+  it you z-fight or punch through the terrain.
+- **Clicks:** give `hit_test` (a ray in, a distance and your own feature id out) and `on_click`
+  (return non-zero to consume it). Both run on the input thread, concurrently with `render`.
+- `on_removed` runs on the GL thread with the context current, so delete your GL objects there;
+  `on_context_lost` means they are already gone, so do not.
+
+This is a draw hook, not a tile pipeline: to supply pixels use a custom source above, to shade
+them a [custom raster layer](/docs/features/custom-raster-shaders).
+
 ## What an extension cannot do
 
 - **Register a spec `type`.** The spec table is generated at build time, so `{"type": "geotiff"}`
@@ -119,7 +167,7 @@ extension's own `.so` is otherwise independent of the SDK.
 - **Subclass an SDK class from C++.** The SDK compiles into one library with `-fvisibility=hidden`
   and an Android link that exports only `Java_*`, `CSharp_*`, `SWIG*` and `mm_*`, so another native
   library cannot derive from `massif::TileDataSource` however many headers it has. That is what
-  `mm_source_create_custom` exists for — a function pointer instead of a vtable.
+  `mm_source_create_custom` and `mm_layer_create_custom` exist for — a function pointer instead of a vtable.
 - **Supply vector ELEMENTS from C.** The C ABI covers tile sources. A `VectorDataSource` producing
   `VectorElement`s is a binding-language subclass, as above.
 - **Avoid thread safety.** Every one of these — the two overrides and the C loader — is called

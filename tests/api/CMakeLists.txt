@@ -91,6 +91,10 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/datasources/components/TileData.cpp"
   # What mm_source_create_custom builds. TileDataSource itself is already in the list below.
   "${SDK_BASE_DIR}/all/native/api/CallbackTileDataSource.cpp"
+  # The vtable half of mm_layer_create_custom. CustomLayer and CustomLayerApi.cpp need Layer, and
+  # with it the renderer, so they are device-verified.
+  "${SDK_BASE_DIR}/all/native/api/CustomLayerHost.cpp"
+  "${SDK_BASE_DIR}/all/native/api/GLStateSnapshot.cpp"
   "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG3857.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG4326.cpp"
@@ -213,6 +217,7 @@ add_executable(api_tests
   MethodTest.cpp
   AdoptTest.cpp
   CustomSourceTest.cpp
+  CustomLayerTest.cpp
   GetterLockTest.cpp
   BundleAssetsTest.cpp
   CAbiTest.cpp

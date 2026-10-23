@@ -24,6 +24,9 @@ targets:
     platform: iOS
     sources:
       - path: MassifDemo
+      # The custom-layer demo's C, the same file the Android demo builds (see MSFCustomHeatmap.h).
+      - path: ../android-dev/app/src/main/cpp/heatmap_layer.c
+      - path: ../android-dev/app/src/main/cpp/heatmap_layer.h
       # The example metadata and screenshots, from the ONE docs/examples tree the Android gallery
       # and the website also read. Bundled flat, so the manifest and the shots sit beside each
       # other in the app bundle.
@@ -106,6 +109,9 @@ targets:
           - $(SRCROOT)/../../generated/ios-objc/proxies
           - $(SRCROOT)/../../ios/objc
           - $(SRCROOT)/../../libs-external/angle-metal/include
+          # api/MassifApiC.h, for the custom layer's C.
+          - $(SRCROOT)/../../all/native
+          - $(SRCROOT)/../android-dev/app/src/main/cpp
         # Must match the profile bootstrap.sh generated the proxies with: the umbrella header
         # gates whole feature blocks on these.
         GCC_PREPROCESSOR_DEFINITIONS:

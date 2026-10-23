@@ -26,6 +26,14 @@ android {
         buildConfig true
     }
 
+    // The custom-layer demo: a C file written against MassifApiC.h alone.
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false

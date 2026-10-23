@@ -99,7 +99,7 @@ namespace massif {
 
     // Own mutex: the render thread reads this every frame, and refreshDrawData holds the layer
     // mutex across a whole tile-set change.
-    MapRange Layer::getVisibleZoomRange() {
+    MapRange Layer::getVisibleZoomRange() const {
         std::lock_guard<std::mutex> lock(_visibleZoomRangeMutex);
         return _visibleZoomRange;
     }
@@ -263,6 +263,17 @@ namespace massif {
         return false;
     }
     
+    bool Layer::onDrawOverlay(float deltaSeconds, const ViewState& viewState) {
+        return false;
+    }
+
+    int Layer::getDepthOrdinalCount() const {
+        return 0;
+    }
+
+    void Layer::setDepthOrdinal(float layerOffset, float shift) {
+    }
+
     std::shared_ptr<Bitmap> Layer::getBackgroundBitmap(const ViewState& viewState) const {
         return std::shared_ptr<Bitmap>();
     }

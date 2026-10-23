@@ -3059,6 +3059,11 @@ namespace massif {
         FRAME_PROF_NOW(profDrawStart);
         FRAME_PROF_GPU_BEGIN(SECTION_PRELUDE);
         std::vector<std::shared_ptr<Layer> > layers = _layers->getAll();
+        for (const std::shared_ptr<Layer>& layer : layers) {
+            if (layer->getDepthOrdinalCount() > 0) {
+                layer->setDepthOrdinal(0.0f, 0.0f);
+            }
+        }
 
         // Post-processing opt-outs are overlays, kept out of the whole terrain arrangement below.
         _overlayLayers.clear();
@@ -3387,6 +3392,14 @@ namespace massif {
                             tileLayer->setTerrainGroundTiles(groundTileIds, groundProxyDepths);
                             tileLayer->setTerrainLayerOrdinalBase(ordinalBase, ordinalTop);
                             ordinalBase += std::max(1, tileLayer->getStyleLayerCount());
+                        }
+                        // Above the tile layers', so their ordinals and ghost offsets stay what they were without these.
+                        float depthShift = TileRenderer::resolveTerrainDepthShift();
+                        for (const std::shared_ptr<Layer>& layer : layers) {
+                            if (int ordinals = layer->getDepthOrdinalCount()) {
+                                layer->setDepthOrdinal(static_cast<float>(-ordinalBase), depthShift);
+                                ordinalBase += ordinals;
+                            }
                         }
                         // Before the ground draws; with no bake, content-driven refresh rides on the cover changing.
                         GLint groundPrevFBO = 0;
@@ -4391,6 +4404,10 @@ namespace massif {
         FRAME_PROF_ADD(billboardMs, profBillboardStart);
         FRAME_PROF_GPU_END();
 
+        for (const std::shared_ptr<Layer>& layer : layers) {
+            needRedraw = layer->onDrawOverlay(deltaSeconds, viewState) || needRedraw;
+        }
+
         billboardDrawDatas.insert(billboardDrawDatas.end(), underLabelsDrawDatas.begin(), underLabelsDrawDatas.end());
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
@@ -4465,6 +4482,10 @@ namespace massif {
             }
 
             glEnable(GL_DEPTH_TEST);
+        }
+
+        for (const std::shared_ptr<Layer>& layer : layers) {
+            needRedraw = layer->onDrawOverlay(deltaSeconds, viewState) || needRedraw;
         }
 
         // Joined to drawLayers' list: the placement worker reads one.

@@ -152,7 +152,7 @@ namespace massif {
          * Returns the visible zoom range of this layer.
          * @return The visible zoom range of this layer.
          */
-        MapRange getVisibleZoomRange();
+        MapRange getVisibleZoomRange() const;
         /**
          * Sets the visible zoom range for this layer. Current zoom level must be within this range for the layer to be visible.
          * This range is half-open, thus layer is visible if range.min <= ZOOMLEVEL < range.max.
@@ -221,6 +221,12 @@ namespace massif {
 
         virtual bool onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) = 0;
         virtual bool onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState);
+        // After every layer and billboard of the frame, depth test off.
+        virtual bool onDrawOverlay(float deltaSeconds, const ViewState& viewState);
+        // A layer that is not a tile layer but draws into the terrain's depth model takes this many ordinals above the tile layers'.
+        virtual int getDepthOrdinalCount() const;
+        // (proxy - layer) and depth_shift of its slot (05-depth-model.md); 0, 0 on a frame with no terrain ground.
+        virtual void setDepthOrdinal(float layerOffset, float shift);
 
         // In draw order. A layer owning children appends them too, or they paint a second time as displaced geometry.
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);

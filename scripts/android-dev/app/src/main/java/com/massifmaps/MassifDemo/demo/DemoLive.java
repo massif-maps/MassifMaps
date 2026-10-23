@@ -99,7 +99,7 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("rasterBias")) {
             demo.applyRasterZoomBias();
         }
-        if (extras.containsKey("radar")) {
+        if (extras.containsKey("radar") || extras.containsKey("customOverlay") || extras.containsKey("customScene")) {
             demo.rebuildLayers();
         }
         if (has(extras, SKY_KEYS)) {

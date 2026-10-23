@@ -1596,6 +1596,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return floatFunc(vtViewState);
     }
 
+    float TileRenderer::resolveTerrainDepthShift() {
+        float depthShift = getTerrainContentDepthShift();
+        return depthShift == 0.0f ? TERRAIN_TANGRAM_DEPTH_SHIFT : depthShift;
+    }
+
     float TileRenderer::getTerrainContentDepthShift() {
 #if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         static const float depthShift = [] {

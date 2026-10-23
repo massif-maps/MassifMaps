@@ -115,9 +115,9 @@ public class DemoMap {
         Feature.SPANS,
         Feature.BUGS,
         Feature.MODELS,
-        // Last: the summit names go over everything the map draws.
+        // The summit names go over everything the map draws, bar the custom layers: the heatmap is depth tested
+        // at its place, and its legend draws after everything whatever its place.
         Feature.PEAKS,
-        // The overlay draws after everything whatever its place; the scene pole is depth tested at its place.
         Feature.CUSTOM_SCENE, Feature.CUSTOM_OVERLAY
     };
 
@@ -828,11 +828,6 @@ public class DemoMap {
     public RadarListener radarListener;
 
     /**
-     * AnimatedRasterTileLayer over LibreWXR (RainViewer's API): the past hour and the nowcast, two
-     * steps mixed per draw. The steps are listed once; a frame clock then advances the position at
-     * radarFps steps a second, and the panel can pause it or scrub.
-     */
-    /**
      * The custom-layer heatmap (customlayer/CustomHeatmap, drawn in C): the DEM sampled over an
      * 8 km square around the start position, off the UI thread because the read blocks on tile
      * loading, then handed to the layer. The camera has not flown to its start yet, so it is
@@ -866,6 +861,11 @@ public class DemoMap {
         return legend != null ? legend.layer() : null;
     }
 
+    /**
+     * AnimatedRasterTileLayer over LibreWXR (RainViewer's API): the past hour and the nowcast, two
+     * steps mixed per draw. The steps are listed once; a frame clock then advances the position at
+     * radarFps steps a second, and the panel can pause it or scrub.
+     */
     private Layer createRadarLayer() {
         // The memory cache is what keeps a step fetched once: it is the second raster of one tile and the first of the next.
         MemoryCacheTileDataSource cache = new MemoryCacheTileDataSource(

@@ -60,7 +60,7 @@ plugin drawing at raw depth z-fights the terrain or punches through it.
 - Each ordinal spends 0.02 of the 0.2 total that was measured as the largest with no see-through
   (9 ordinals). A scene layer is one more step, so several of them eat the margin; they are cheap
   to count, expensive to leak through a ridge.
-- With no terrain ground this frame both are 0, and the plugin's draw is plain depth-tested.
+- With no terrain ground this frame both are 0, and the plugin's draw is plain depth-tested. So are they for a scene layer that opted out of post-processing (`setPostProcessed(false)`): it is drawn by `drawOverlayLayers`, outside the ordinal block, and gets no slot.
 
 ## Picking
 

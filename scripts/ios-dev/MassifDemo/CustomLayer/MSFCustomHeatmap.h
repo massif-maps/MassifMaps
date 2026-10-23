@@ -21,10 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 /** Longitude and latitude of the grid nodes, row by row, flat: lon, lat, lon, lat... (2 * N * N doubles). */
 + (NSData *)gridPositionsForLongitude:(double)lon latitude:(double)lat;
 
-/**
- * Hands the heatmap its grid: the ground height in metres at each node of -gridPositionsFor...
- * (as drawn, so already exaggerated), N * N doubles, or nil for flat ground. Puts a few hot spots on it.
- */
+/** Hands the heatmap its grid: the ground height in metres (as drawn) at each node, N * N doubles, or nil for flat. */
 + (void)setHeatmapAtLongitude:(double)lon latitude:(double)lat heights:(nullable NSData *)heights;
 
 /** Draped (the default): pulled forward of the ground in depth, so it lies on it between its nodes. */

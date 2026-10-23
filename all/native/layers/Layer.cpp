@@ -99,7 +99,7 @@ namespace massif {
 
     // Own mutex: the render thread reads this every frame, and refreshDrawData holds the layer
     // mutex across a whole tile-set change.
-    MapRange Layer::getVisibleZoomRange() {
+    MapRange Layer::getVisibleZoomRange() const {
         std::lock_guard<std::mutex> lock(_visibleZoomRangeMutex);
         return _visibleZoomRange;
     }

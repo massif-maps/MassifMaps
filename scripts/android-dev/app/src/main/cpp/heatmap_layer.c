@@ -45,6 +45,7 @@ struct HeatmapLayer {
     int index_count;
     int dim;
     int drape;
+    int init_failed;
     mm_ctx ctx;
     mm_handle handle;
     int (*request_redraw)(mm_ctx, mm_handle);
@@ -107,8 +108,14 @@ static GLuint compile(GLenum type, const char* source) {
 }
 
 static int init(Demo* demo) {
+    if (demo->init_failed) {
+        return 0;
+    }
     GLuint vs = compile(GL_VERTEX_SHADER, VERTEX), fs = compile(GL_FRAGMENT_SHADER, FRAGMENT);
     if (!vs || !fs) {
+        glDeleteShader(vs);
+        glDeleteShader(fs);
+        demo->init_failed = 1;
         return 0;
     }
     demo->program = glCreateProgram();
@@ -125,6 +132,7 @@ static int init(Demo* demo) {
         LOG_ERROR("custom layer program did not link");
         glDeleteProgram(demo->program);
         demo->program = 0;
+        demo->init_failed = 1;
         return 0;
     }
     demo->u_mvp = glGetUniformLocation(demo->program, "u_mvp");
@@ -208,6 +216,7 @@ static void on_removed(void* user) {
 
 static void on_context_lost(void* user) {
     ((Demo*) user)->program = 0;
+    ((Demo*) user)->init_failed = 0;
 }
 
 /* Marches the ray over the grid's bounds until it dips below the ground: the first cell it enters. */
@@ -221,6 +230,10 @@ static int hit_test(void* user, const double o[3], const double d[3], double* ou
     if (n) {
         double x0 = demo->pos[0], y0 = demo->pos[1];
         double x1 = demo->pos[3 * (n - 1)], y1 = demo->pos[3 * (n - 1) * n + 1];
+        if (x0 == x1 || y0 == y1) {
+            pthread_mutex_unlock(&demo->lock);
+            return 0;
+        }
         double t0 = 0, t1 = 1e30;
         const double lo[2] = { fmin(x0, x1), fmin(y0, y1) }, hi[2] = { fmax(x0, x1), fmax(y0, y1) };
         for (int axis = 0; axis < 2 && t0 < t1; axis++) {
@@ -321,6 +334,10 @@ void heatmap_layer_set(HeatmapLayer* demo, const double* xyz, const float* value
     float* value = malloc(sizeof(float) * count);
     float* vertices = malloc(sizeof(float) * 4 * count);
     uint16_t* indices = malloc(sizeof(uint16_t) * 6 * (n - 1) * (n - 1));
+    if (!pos || !value || !vertices || !indices) {
+        free(pos); free(value); free(vertices); free(indices);
+        return;
+    }
     memcpy(value, values, sizeof(float) * count);
     for (int i = 0; i < 3 * count; i++) {
         pos[i] = xyz[i] * METRES_TO_WORLD;

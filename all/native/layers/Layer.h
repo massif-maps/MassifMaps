@@ -152,7 +152,7 @@ namespace massif {
          * Returns the visible zoom range of this layer.
          * @return The visible zoom range of this layer.
          */
-        MapRange getVisibleZoomRange();
+        MapRange getVisibleZoomRange() const;
         /**
          * Sets the visible zoom range for this layer. Current zoom level must be within this range for the layer to be visible.
          * This range is half-open, thus layer is visible if range.min <= ZOOMLEVEL < range.max.

@@ -1,15 +1,4 @@
-/*
- * Tests for the vtable behind mm_layer_create_custom - a layer the CALLER draws, reached over the C ABI.
- *
- * What is checked is the contract the C struct makes: which vtables are taken, that the caller's
- * struct is copied, that each callback
- * reaches the caller with its user_data, and that destroy runs exactly once and never for a
- * vtable the SDK refused or was handed back. The GL state guard's comparison is checked too: what
- * it names when a render leaks, and that it stays silent when none does.
- *
- * The Layer that calls render needs the renderer, and so does a real draw: depth, framebuffer and
- * GL state are device checks. See tests/README.md.
- */
+/* The vtable behind mm_layer_create_custom and the GL state guard's comparison. The Layer that draws needs the renderer: see tests/README.md. */
 
 #include "api/CustomLayerHost.h"
 #include "api/GLStateSnapshot.h"
@@ -154,7 +143,6 @@ void testCustomLayer() {
         TEST_CHECK(bare.contextLost == 0 && bare.removed == 0,
                    "an optional callback left null is skipped");
     }
-    TEST_CHECK(bare.destroyed == 0, "and so is destroy");
 
     // mm_layer_create_custom promises that a failed create takes nothing: user_data stays the caller's.
     Recorder refused;

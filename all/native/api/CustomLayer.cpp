@@ -12,6 +12,7 @@
 #include "utils/Log.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace massif { namespace api {
@@ -20,7 +21,7 @@ namespace massif { namespace api {
     static ClassRegistry::Entry customLayerRegistryEntry(typeid(const CustomLayer&), "Layer");
 
     namespace {
-        // The manager runs destroy on the GL thread when the owner lets go, which is where a caller's GL objects can be deleted.
+        // The manager runs destroy on the GL thread when the owner lets go.
         class HostGLResource : public GLResource {
         public:
             HostGLResource(const std::weak_ptr<GLResourceManager>& manager, const std::shared_ptr<CustomLayerHost>& host) :
@@ -207,6 +208,7 @@ namespace massif { namespace api {
         bool scene = _host->getMode() == MM_CUSTOM_LAYER_SCENE;
         GLint depthFunc = GL_LEQUAL;
         glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+        GLboolean depthTest = glIsEnabled(GL_DEPTH_TEST);
         if (scene) {
             glEnable(GL_DEPTH_TEST);
             glDepthFunc(GL_LEQUAL);
@@ -226,20 +228,24 @@ namespace massif { namespace api {
             }
         }
 #endif
-        glEnable(GL_DEPTH_TEST);
+        if (depthTest) {
+            glEnable(GL_DEPTH_TEST);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
         glDepthFunc(depthFunc);
         return false;
     }
 
     void CustomLayer::calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const {
-        if (!isVisible() || !_host->canHitTest()) {
+        if (!isVisible() || !getVisibleZoomRange().inRange(viewState.getZoom()) || getOpacity() <= 0 || !_host->canHitTest()) {
             return;
         }
         const double origin[3] = { ray.origin(0), ray.origin(1), ray.origin(2) };
         const double direction[3] = { ray.direction(0), ray.direction(1), ray.direction(2) };
         double t = 0;
         uint64_t feature = 0;
-        if (!_host->hitTest(origin, direction, t, feature)) {
+        if (!_host->hitTest(origin, direction, t, feature) || !std::isfinite(t) || t < 0) {
             return;
         }
         std::shared_ptr<Layer> thisLayer = std::const_pointer_cast<Layer>(shared_from_this());

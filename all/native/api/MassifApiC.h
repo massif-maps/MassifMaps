@@ -352,7 +352,7 @@ typedef struct {
     /** The camera, in world units: subtract it from a position in double before converting to float. */
     double origin[3];
     double delta_seconds;
-    /** x, y, width, height in pixels. */
+    /** x, y, width, height in pixels; x and y are 0. */
     int32_t viewport[4];
     /** The layer's opacity: the SDK cannot apply it to your draw, multiply your alpha by it. */
     float opacity;
@@ -371,7 +371,10 @@ typedef struct {
  * render must leave the GL state as it found it: program, VAO, array and element buffers, active
  * texture and its binding, blend, depth test/write/func, cull face, viewport, scissor. A leak
  * corrupts the NEXT layer and reads as an SDK bug. It must not request a frame unconditionally;
- * ask for one with mm_layer_request_redraw.
+ * ask for one with mm_layer_request_redraw. Blend is on, with premultiplied alpha, when render starts.
+ *
+ * Callbacks must not call back into the mm_* API except mm_layer_request_redraw: render runs under
+ * the layer's lock, and destroy and on_removed under the context's.
  */
 typedef struct {
     /** sizeof of this struct as the caller compiled it. */
@@ -382,11 +385,16 @@ typedef struct {
     /** The GL context is gone, with every object created in it. Runs before the first render in the new one; do not call GL. Optional. */
     void (*on_context_lost)(void* user_data);
     void (*render)(void* user_data, const mm_render_params* params);
+    /** Called once when the layer is destroyed, on whichever thread dropped it. Optional. */
+    void (*destroy)(void* user_data);
+    void* user_data;
+    /* Appended after user_data: a struct that ends before them still takes, and reads them as null. */
     /**
      * Whether a click ray hits something of yours. The ray is in world units, as `origin` in the
      * params. Runs on the thread that handles input, not the GL thread, and concurrently with
      * render: it must be thread-safe. Optional.
-     * @param out_t Where along the ray, in multiples of ray_dir; the nearest hit among all layers wins.
+     * @param out_t Where along the ray, in multiples of ray_dir, finite and not negative; the nearest hit
+     *        among all layers wins, so an overlay that implements this should keep it meaningful.
      * @param out_feature Whatever identifies the hit to you; handed back to on_click.
      * @return Non-zero for a hit.
      */
@@ -398,9 +406,6 @@ typedef struct {
      * @return Non-zero to consume the click, so it does not reach the layers below or the map.
      */
     int (*on_click)(void* user_data, uint64_t feature, int click_type, const double hit_pos[3]);
-    /** Called once when the layer is destroyed, on whichever thread dropped it. Optional. */
-    void (*destroy)(void* user_data);
-    void* user_data;
 } mm_custom_layer;
 
 /**

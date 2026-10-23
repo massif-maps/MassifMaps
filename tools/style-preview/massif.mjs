@@ -59,20 +59,22 @@ export async function createMassifPane(canvas, base, source, camera, onError = (
     };
 
     const { default: Module } = await import('/massif/demo/massif-demo.mjs');
-    const module = await Module({
+    const options = {
         canvas,
         // the module is imported from a path the document does not sit under, and emscripten
         // resolves its .wasm and .data against the DOCUMENT unless told otherwise
         locateFile: (file) => `/massif/demo/${file}`,
         printErr: (line) => { console.error(line); onError(line); },
-        preRun: [({ FS }) => {
+        // WASMFS makes its root in a static constructor, which runs after preRun and before main()
+        onRuntimeInitialized: () => {
             for (const [name, bytes] of files) {
                 const at = `/styles/${PROJECT}/${name}`;
-                FS.mkdirTree(at.slice(0, at.lastIndexOf('/')));
-                FS.writeFile(at, bytes);
+                options.FS.mkdirTree(at.slice(0, at.lastIndexOf('/')));
+                options.FS.writeFile(at, bytes);
             }
-        }],
-    });
+        },
+    };
+    const module = await Module(options);
 
     const { Massif, MassifCamera } = await import('/massif/js/massif.mjs');
     const massif = new Massif(module);

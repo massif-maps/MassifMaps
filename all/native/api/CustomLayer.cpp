@@ -1,11 +1,13 @@
 #include "api/CustomLayer.h"
 #include "api/CustomLayerHost.h"
+#include "api/GLStateSnapshot.h"
 #include "components/ClassRegistry.h"
 #include "graphics/ViewState.h"
 #include "renderers/MapRenderer.h"
 #include "renderers/utils/GLContext.h"
 #include "renderers/utils/GLResource.h"
 #include "renderers/utils/GLResourceManager.h"
+#include "utils/Log.h"
 
 #include <algorithm>
 #include <vector>
@@ -36,6 +38,47 @@ namespace massif { namespace api {
         private:
             const std::shared_ptr<CustomLayerHost> _host;
         };
+
+#ifndef NDEBUG
+        int integer(GLenum name) {
+            GLint value = 0;
+            glGetIntegerv(name, &value);
+            return value;
+        }
+
+        void integers(GLenum name, int* values, int count) {
+            GLint buffer[4] = { 0, 0, 0, 0 };
+            glGetIntegerv(name, buffer);
+            for (int i = 0; i < count; i++) {
+                values[i] = buffer[i];
+            }
+        }
+
+        GLStateSnapshot captureGLState() {
+            GLStateSnapshot state;
+            state.program = integer(GL_CURRENT_PROGRAM);
+            state.vertexArray = integer(GL_VERTEX_ARRAY_BINDING);
+            state.arrayBuffer = integer(GL_ARRAY_BUFFER_BINDING);
+            state.elementArrayBuffer = integer(GL_ELEMENT_ARRAY_BUFFER_BINDING);
+            state.activeTexture = integer(GL_ACTIVE_TEXTURE);
+            state.texture2D = integer(GL_TEXTURE_BINDING_2D);
+            state.framebuffer = integer(GL_FRAMEBUFFER_BINDING);
+            state.blend = glIsEnabled(GL_BLEND);
+            state.blendFunc[0] = integer(GL_BLEND_SRC_RGB);
+            state.blendFunc[1] = integer(GL_BLEND_DST_RGB);
+            state.blendFunc[2] = integer(GL_BLEND_SRC_ALPHA);
+            state.blendFunc[3] = integer(GL_BLEND_DST_ALPHA);
+            state.depthTest = glIsEnabled(GL_DEPTH_TEST);
+            state.depthMask = integer(GL_DEPTH_WRITEMASK);
+            state.depthFunc = integer(GL_DEPTH_FUNC);
+            state.cullFace = glIsEnabled(GL_CULL_FACE);
+            state.cullFaceMode = integer(GL_CULL_FACE_MODE);
+            state.scissorTest = glIsEnabled(GL_SCISSOR_TEST);
+            integers(GL_SCISSOR_BOX, state.scissorBox, 4);
+            integers(GL_VIEWPORT, state.viewport, 4);
+            return state;
+        }
+#endif
 
         bool sameManager(const std::weak_ptr<GLResourceManager>& a, const std::weak_ptr<GLResourceManager>& b) {
             return !a.owner_before(b) && !b.owner_before(a);
@@ -136,7 +179,19 @@ namespace massif { namespace api {
         params.far_plane = viewState.getFar();
 
         glDisable(GL_DEPTH_TEST);
+#ifndef NDEBUG
+        GLStateSnapshot before = captureGLState();
+#endif
         _host->render(params);
+#ifndef NDEBUG
+        std::string leaked = GLStateSnapshot::describeChanges(before, captureGLState());
+        if (leaked != _reportedLeak) {
+            _reportedLeak = leaked;
+            if (!leaked.empty()) {
+                Log::Errorf("CustomLayer: render left the GL state changed (%s); the next layer will draw wrong", leaked.c_str());
+            }
+        }
+#endif
         glEnable(GL_DEPTH_TEST);
         return false;
     }

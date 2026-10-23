@@ -50,7 +50,17 @@ on Android:
 - **removing the layer** drops the resource while the context lives, and the manager runs its
   `destroy` on the GL thread: that is `on_removed`, where the plugin deletes its GL objects.
 
+## The GL state guard
+
+A plugin that leaks state corrupts the layer after it, which reads as an SDK bug. In a build without
+`NDEBUG`, `CustomLayer` snapshots program, VAO, array and element buffers, active texture and its 2D
+binding, framebuffer, blend and its func, depth test/mask/func, cull face and mode, scissor and
+viewport right before `render`, compares after, and logs one `Log::Errorf` naming what changed,
+until the leak changes or stops. It reports; it does not repair. Release builds skip it, so the
+cost is a debug-only ~25 `glGet*` calls per layer per frame. `GLStateSnapshot::describeChanges` has
+no GL and is host-tested; the capture is not.
+
 ## Not verified
 
-Built, syntax-checked and host-tested for the vtable only. Not run on a device: the slot under a
+Built, syntax-checked and host-tested for the vtable only. Not run on a device: the guard's capture, the slot under a
 post-process effect, the GL-state expectations at that slot, a context loss, and removing a layer.

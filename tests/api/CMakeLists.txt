@@ -94,6 +94,7 @@ set(TEST_SDK_SOURCES
   # The vtable half of mm_layer_create_custom. CustomLayer and CustomLayerApi.cpp need Layer, and
   # with it the renderer, so they are device-verified.
   "${SDK_BASE_DIR}/all/native/api/CustomLayerHost.cpp"
+  "${SDK_BASE_DIR}/all/native/api/GLStateSnapshot.cpp"
   "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG3857.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG4326.cpp"

@@ -4,18 +4,21 @@
  * What is checked is the contract the C struct makes: which vtables are taken, that the caller's
  * struct is copied, that each callback
  * reaches the caller with its user_data, and that destroy runs exactly once and never for a
- * vtable the SDK refused or was handed back.
+ * vtable the SDK refused or was handed back. The GL state guard's comparison is checked too: what
+ * it names when a render leaks, and that it stays silent when none does.
  *
  * The Layer that calls render needs the renderer, and so does a real draw: depth, framebuffer and
  * GL state are device checks. See tests/README.md.
  */
 
 #include "api/CustomLayerHost.h"
+#include "api/GLStateSnapshot.h"
 #include "api/MassifApiC.h"
 
 #include <cstddef>
 #include <cstring>
 #include <memory>
+#include <string>
 
 using namespace massif::api;
 
@@ -132,4 +135,20 @@ void testCustomLayer() {
         host.disown();
     }
     TEST_CHECK(refused.destroyed == 0, "a disowned host never calls destroy");
+
+    GLStateSnapshot before;
+    GLStateSnapshot after = before;
+    TEST_CHECK(GLStateSnapshot::describeChanges(before, after).empty(),
+               "an unchanged GL state reports nothing");
+
+    after.program = 5;
+    after.vertexArray = 3;
+    after.viewport[2] = 800;
+    std::string leaked = GLStateSnapshot::describeChanges(before, after);
+    TEST_CHECK(leaked.find("program 0->5") != std::string::npos, "a leaked program is named with both values");
+    TEST_CHECK(leaked.find("vertex array 0->3") != std::string::npos,
+               "so is a bound VAO, the leak that corrupts the next layer");
+    TEST_CHECK(leaked.find("viewport [0,0,0,0]->[0,0,800,0]") != std::string::npos,
+               "and a changed viewport, with the whole rectangle");
+    TEST_CHECK(leaked.find("blend") == std::string::npos, "and nothing the render left alone");
 }

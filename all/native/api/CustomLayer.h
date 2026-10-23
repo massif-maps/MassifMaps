@@ -10,6 +10,7 @@
 #include "layers/Layer.h"
 
 #include <memory>
+#include <string>
 
 namespace massif {
     class GLResource;
@@ -55,6 +56,8 @@ namespace massif { namespace api {
         // Dropping it queues the caller's on_removed for the GL thread; a new manager means a new context.
         std::shared_ptr<GLResource> _glResource;
         std::weak_ptr<GLResourceManager> _glManager;
+        // Debug builds name a state leak once, not every frame.
+        std::string _reportedLeak;
     };
 
 } }

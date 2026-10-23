@@ -16,10 +16,6 @@
 #include <mutex>
 #include <string>
 
-namespace sqlite3pp {
-    class database;
-}
-
 namespace massif {
 
     /**
@@ -58,7 +54,7 @@ namespace massif {
         void addLocale(const std::string& key, const std::string& json) const;
 
     private:
-        std::shared_ptr<sqlite3pp::database> _database;
+        std::string _path;
         std::string _profile;
         Variant _configuration;
         mutable std::mutex _mutex;

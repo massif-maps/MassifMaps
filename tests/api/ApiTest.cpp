@@ -114,6 +114,7 @@ void testCameraNoOp();
 void testLabelPlacementFollowUp();
 void testTileLODRule();
 void testDistanceTileLOD();
+void testValhallaEngine();
 void testSphericalSurface();
 void testGlobeElevationScale();
 void testSkyFrame();
@@ -528,6 +529,7 @@ int main() {
     testLabelPlacementFollowUp();
     testTileLODRule();
     testDistanceTileLOD();
+    testValhallaEngine();
     testSphericalSurface();
     testGlobeElevationScale();
     testSkyFrame();

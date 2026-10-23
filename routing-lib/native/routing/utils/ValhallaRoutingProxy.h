@@ -61,7 +61,6 @@ namespace routing {
         // ----------------------------------------------------------------
 
         static void AddLocale(const std::string& key, const std::string& json);
-        static std::string GetDefaultConfiguration();
 
     private:
         ValhallaRoutingProxy() = delete;

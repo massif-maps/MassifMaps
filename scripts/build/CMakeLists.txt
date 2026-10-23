@@ -180,14 +180,15 @@ if(INCLUDE_SQLITE)
   endif()
 endif(INCLUDE_SQLITE)
 
-if(INCLUDE_VALHALLA)
-  # date is headers only now (valhalla/third_party/date); tz comes from valhalla's tz_alt.cpp
+if(INCLUDE_VALHALLA AND NOT ANDROID)
+  # Android loads the Valhalla engine (libvalhalla_routing.so) at run time. Everywhere else the same
+  # routing-lib engine sources are linked in, behind the same vr_* functions.
   list(APPEND SDK_EXTERNAL_SUBPROJECTS "protobuf" "valhalla")
-  # ValhallaRoutingProxy only calls route(), trace_attributes() and narrate(), so the matrix,
-  # isochrone, locate, height, expansion, status and optimized-route actions are dead weight in the
-  # SDK. Declared here so this default wins over the ON default in the valhalla subproject.
+  # The engine only runs route() and trace_attributes(), so the other Valhalla service actions are dead
+  # weight. Declared here so this default wins over the ON default in the valhalla subproject.
   option(VALHALLA_SERVICES "Build the Valhalla service actions beyond routing and map matching" OFF)
-endif(INCLUDE_VALHALLA)
+  set(SDK_VALHALLA_ENGINE_SRC_DIR "${SDK_BASE_DIR}/routing-lib/native")
+endif()
 
 foreach(SDK_SUBPROJECT IN ITEMS ${SDK_MASSIF_SUBPROJECTS})
   add_subdirectory("${SDK_MASSIF_LIBS_DIR}/${SDK_SUBPROJECT}" ${SDK_SUBPROJECT})
@@ -413,6 +414,14 @@ else()
   foreach(SDK_SUBPROJECT IN ITEMS ${SDK_SUBPROJECTS})
     set(SDK_OBJECTS "${SDK_OBJECTS}" "$<TARGET_OBJECTS:${SDK_SUBPROJECT}>")
   endforeach()
+endif()
+
+if(SDK_VALHALLA_ENGINE_SRC_DIR)
+  list(APPEND SDK_SRC_FILES
+    "${SDK_VALHALLA_ENGINE_SRC_DIR}/engine/Engine.cpp"
+    "${SDK_VALHALLA_ENGINE_SRC_DIR}/routing/utils/ValhallaRoutingProxy.cpp"
+    "${SDK_VALHALLA_ENGINE_SRC_DIR}/log/Log.cpp")
+  set_source_files_properties("${SDK_VALHALLA_ENGINE_SRC_DIR}/routing/utils/ValhallaRoutingProxy.cpp" PROPERTIES COMPILE_DEFINITIONS "VR_ENGINE_ONLY")
 endif()
 
 add_library(massif ${SDK_LIBRARY_TYPE} ${SDK_SRC_FILES} ${SDK_OBJECTS})

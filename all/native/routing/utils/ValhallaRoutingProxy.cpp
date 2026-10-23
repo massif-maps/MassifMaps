@@ -1,7 +1,7 @@
 #ifdef _MASSIF_ROUTING_SUPPORT
 
 #include "ValhallaRoutingProxy.h"
-#include "assets/ValhallaDefaultConfig.h"
+#include "ValhallaEngine.h"
 #include "core/BinaryData.h"
 #include "core/Variant.h"
 #include "components/Exceptions.h"
@@ -25,45 +25,9 @@
 #include <sstream>
 #include <utility>
 
-#include <boost/property_tree/ptree.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <picojson/picojson.h>
-
-#ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
-#include <valhalla/meili/map_matcher.h>
-#include <valhalla/meili/map_matcher_factory.h>
-#include <valhalla/thor/worker.h>
-#include <valhalla/meili/measurement.h>
-#include <valhalla/meili/match_result.h>
-#include <valhalla/meili/map_matcher_factory.h>
-#include <valhalla/meili/candidate_search.h>
-#include <valhalla/meili/map_matcher_factory.h>
-#include <valhalla/midgard/logging.h>
-#include <valhalla/midgard/constants.h>
-#include <valhalla/midgard/encoded.h>
-#include <valhalla/midgard/pointll.h>
-#include <valhalla/baldr/json.h>
-#include <valhalla/baldr/directededge.h>
-#include <valhalla/baldr/datetime.h>
-#include <valhalla/baldr/rapidjson_utils.h>
-#include <valhalla/loki/search.h>
-#include <valhalla/loki/worker.h>
-#include <valhalla/sif/autocost.h>
-#include <valhalla/sif/costfactory.h>
-#include <valhalla/sif/bicyclecost.h>
-#include <valhalla/sif/pedestriancost.h>
-#include <valhalla/meili/measurement.h>
-#include <valhalla/meili/map_matcher.h>
-#include <valhalla/meili/map_matcher_factory.h>
-#include <valhalla/meili/match_result.h>
-#include <valhalla/odin/worker.h>
-#include <valhalla/thor/worker.h>
-#include <valhalla/tyr/serializers.h>
-#include <valhalla/odin/util.h>
-#include <valhalla/odin/directionsbuilder.h>
-
-#else
 
 namespace valhalla { namespace midgard {
 
@@ -160,7 +124,6 @@ namespace valhalla { namespace midgard {
     }
 
 } }
-#endif
 
 namespace massif {
 
@@ -186,71 +149,24 @@ namespace massif {
 
 
 #ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
-    std::unordered_map<std::string, std::string> valhalla_locales;
     void ValhallaRoutingProxy::AddLocale(const std::string& key, const std::string& json) {
-
-        if (valhalla_locales.find(key) == valhalla_locales.end()) {
-            valhalla_locales.insert(std::make_pair(key, json));
-        }
+        ValhallaEngine::Get().addLocale(key, json);
     }
 
-    std::shared_ptr<RouteMatchingResult> ValhallaRoutingProxy::MatchRoute(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, const std::shared_ptr<RouteMatchingRequest>& request) {
-        std::string resultString;
-        try {
-            std::stringstream ss;
-            ss << config.toPicoJSON().serialize();
-            boost::property_tree::ptree configTree;
-            rapidjson::read_json(ss, configTree);
-            auto reader = std::make_shared<valhalla::baldr::GraphReader>(databases);
-
-            valhalla::Api api;
-            valhalla::ParseApi(SerializeRouteMatchingRequest(profile, request), valhalla::Options::trace_attributes, api, valhalla_locales);
-
-            valhalla::loki::loki_worker_t lokiworker(configTree, reader);
-            lokiworker.trace(api);
-            valhalla::thor::thor_worker_t thorworker(configTree, reader);
-            resultString = thorworker.trace_attributes(api);
-            lokiworker.cleanup();
-        }
-        catch (const std::exception& ex) {
-            throw GenericException("Exception while matching route", ex.what());
-        }
+    std::shared_ptr<RouteMatchingResult> ValhallaRoutingProxy::MatchRoute(const std::vector<std::string>& databasePaths, const std::string& profile, const Variant& config, const std::shared_ptr<RouteMatchingRequest>& request) {
+        std::string resultString = ValhallaEngine::Get().call(databasePaths, config.toPicoJSON().serialize(), "trace_attributes", SerializeRouteMatchingRequest(profile, request));
         return ParseRouteMatchingResult(request->getProjection(), resultString);
     }
 
-    std::shared_ptr<RoutingResult> ValhallaRoutingProxy::CalculateRoute(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, const std::shared_ptr<RoutingRequest>& request) {
-        std::string resultString;
-        try {
-            std::stringstream ss;
-            ss << config.toPicoJSON().serialize();
-            boost::property_tree::ptree configTree;
-            rapidjson::read_json(ss, configTree);
-            auto reader = std::make_shared<valhalla::baldr::GraphReader>(databases);
-
-            valhalla::Api api;
-            valhalla::ParseApi(SerializeRoutingRequest(profile, request), valhalla::Options::route, api, valhalla_locales);
-
-            valhalla::loki::loki_worker_t lokiworker(configTree, reader);
-            lokiworker.route(api);
-            valhalla::thor::thor_worker_t thorworker(configTree, reader);
-            thorworker.route(api);
-            valhalla::odin::odin_worker_t odinworker(configTree);
-            odinworker.narrate(api);
-            resultString = valhalla::tyr::serializeDirections(api);
-            lokiworker.cleanup();
-            thorworker.cleanup();
-            odinworker.cleanup();
-        }
-        catch (const std::exception& ex) {
-            throw GenericException("Exception while calculating route", ex.what());
-        }
+    std::shared_ptr<RoutingResult> ValhallaRoutingProxy::CalculateRoute(const std::vector<std::string>& databasePaths, const std::string& profile, const Variant& config, const std::shared_ptr<RoutingRequest>& request) {
+        std::string resultString = ValhallaEngine::Get().call(databasePaths, config.toPicoJSON().serialize(), "route", SerializeRoutingRequest(profile, request));
         return ParseRoutingResult(request->getProjection(), resultString);
     }
-#endif
 
     Variant ValhallaRoutingProxy::GetDefaultConfiguration() {
-        return Variant::FromString(valhalla_default_config);
+        return Variant::FromString(ValhallaEngine::Get().getDefaultConfiguration());
     }
+#endif
 
     bool ValhallaRoutingProxy::TranslateManeuverType(int maneuverType, RoutingAction::RoutingAction& action) {
         enum {

@@ -8,8 +8,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include <sqlite3pp.h>
-
 namespace massif {
 
     MultiValhallaOfflineRoutingService::MultiValhallaOfflineRoutingService() :
@@ -127,13 +125,11 @@ namespace massif {
         // Do routing via package manager, so that all packages are locked during routing
         std::shared_ptr<RouteMatchingResult> result;
         accessLocalPackages([this, &result, &request](const std::map<std::string, std::shared_ptr<ValhallaRoutingPackageHandler> >& packageHandlerMap) {
-            // Build map of routing packages and graph files
-            std::vector<std::shared_ptr<sqlite3pp::database> > packageDatabases;
+            // Build list of routing package files
+            std::vector<std::string> packageDatabases;
             for (auto it = packageHandlerMap.begin(); it != packageHandlerMap.end(); it++) {
                 if (auto valhallaRoutingHandler = std::dynamic_pointer_cast<ValhallaRoutingPackageHandler>(it->second)) {
-                    if (std::shared_ptr<sqlite3pp::database> database = valhallaRoutingHandler->getDatabase()) {
-                        packageDatabases.push_back(database);
-                    }
+                    packageDatabases.push_back(valhallaRoutingHandler->getFilePath());
                 }
             }
 
@@ -160,13 +156,11 @@ namespace massif {
         // Do routing via package manager, so that all packages are locked during routing
         std::shared_ptr<RoutingResult> result;
         accessLocalPackages([this, &result, &request](const std::map<std::string, std::shared_ptr<ValhallaRoutingPackageHandler> >& packageHandlerMap) {
-            // Build map of routing packages and graph files
-            std::vector<std::shared_ptr<sqlite3pp::database> > packageDatabases;
+            // Build list of routing package files
+            std::vector<std::string> packageDatabases;
             for (auto it = packageHandlerMap.begin(); it != packageHandlerMap.end(); it++) {
                 if (auto valhallaRoutingHandler = std::dynamic_pointer_cast<ValhallaRoutingPackageHandler>(it->second)) {
-                    if (std::shared_ptr<sqlite3pp::database> database = valhallaRoutingHandler->getDatabase()) {
-                        packageDatabases.push_back(database);
-                    }
+                    packageDatabases.push_back(valhallaRoutingHandler->getFilePath());
                 }
             }
 

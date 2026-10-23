@@ -19,6 +19,14 @@ Scope: `mm_layer_create_custom` (issue #147) from the C struct to the frame. The
 | `api/CustomLayerApi.cpp` | the two C functions |
 | `Layer::onDrawOverlay` | the one hook added to `Layer` |
 
+## Asking for the first frame
+
+The map renders on demand, and nothing loads for a custom layer, so nothing would ask for the frame
+that first draws it: a layer added to a map that had already settled stayed invisible until the
+next pan. `CustomLayer::setComponents` requests one when the layer joins a map. A plugin that
+changes what it draws asks for the next one itself, with `mm_layer_request_redraw` (the demo does
+after handing the heatmap its grid, and when a tap dims it).
+
 ## The overlay slot
 
 `MapRenderer::drawLayers` calls `onDrawOverlay` on every layer after the billboards, so the layer
@@ -69,6 +77,20 @@ reaching the layers below and the map listener. It runs on the thread that handl
 GL thread, concurrently with `render`: the header says the callbacks must be thread-safe. A layer
 without `hit_test` is never asked, and without `on_click` a hit still lets the click through.
 
+## Laying a layer on the ground
+
+A scene layer is depth tested, so a flat mesh at the ground's height is cut by the ground's own mesh
+wherever the relief is steep: the ground is tessellated finer than any grid a plugin builds, and it
+chords below the plugin's mesh between nodes. The layer's depth slot is the SDK's answer for content
+drawn *on* the shared ground, but with the RTT drape (draped fills and rasters, the usual case)
+`depth_layer_offset` and `depth_shift` arrive as 0, so a plugin gets no pull from it there. The
+heatmap demo therefore applies its own: its vertex shader subtracts a small constant fraction of
+`w` from clip z (`DRAPE_BIAS`, 0.004). That removes the slivers and still lets a ridge in front hide
+the layer; the price is that at long range it can show through a ridge by a hair. It is a
+toggle in the example ("Drape") so the difference is visible. A layer that is *drawn into* the
+ground's drape texture, the way a raster layer is, would need a separate contract: render into the
+drape RTT.
+
 ## Matrices
 
 `mvp` is `ViewState::getModelviewProjectionMat()` (double). `mvp_local` is
@@ -98,5 +120,4 @@ no GL and is host-tested; the capture is not.
 
 ## Not verified
 
-Built, syntax-checked and host-tested for the vtable only. Not run on a device: a real click through `TouchHandler`, the guard's capture, the scene slot's depth (z-fight, ridges, tilt 60), the slot under a
-post-process effect, the GL-state expectations at that slot, a context loss, and removing a layer.
+Host-tested for the vtable only. The Android demo (`custom_layer_demo.c`, see [the demo app](../../contributing/demo-app.md)) and the gallery example `custom-layer-heatmap` have been run on an arm64 emulator: the overlay legend, a heatmap draped on the terrain in 2D and at tilt 35, depth testing against ridges, and a tap through `hit_test`/`on_click`, and the example's 3D toggle both ways. Not run: a post-process effect, the debug state guard (the demo build defines `NDEBUG`), a device, the world-wrap offset, the globe. Also not run: a context loss, and removing a layer.

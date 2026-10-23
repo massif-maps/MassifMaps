@@ -54,6 +54,8 @@ import com.massifmaps.layers.VectorTileEventListener;
 import com.massifmaps.layers.VectorTileLayer;
 import com.massifmaps.layers.VectorTileRenderOrder;
 import com.massifmaps.projections.Projection;
+import com.massifmaps.MassifDemo.customlayer.CustomHeatmap;
+import com.massifmaps.api.MassifLayer;
 import com.massifmaps.renderers.MapRenderer;
 import com.massifmaps.renderers.PostProcessEffect;
 import com.massifmaps.styles.CartoCSSStyleSet;
@@ -100,7 +102,7 @@ public class DemoMap {
 
     /** One switchable layer of the demo. */
     public enum Feature {
-        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, RADAR, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, MODELS, PEAKS
+        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, RADAR, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, MODELS, PEAKS, CUSTOM_OVERLAY, CUSTOM_SCENE
     }
 
     /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -114,7 +116,9 @@ public class DemoMap {
         Feature.BUGS,
         Feature.MODELS,
         // Last: the summit names go over everything the map draws.
-        Feature.PEAKS
+        Feature.PEAKS,
+        // The overlay draws after everything whatever its place; the scene pole is depth tested at its place.
+        Feature.CUSTOM_SCENE, Feature.CUSTOM_OVERLAY
     };
 
     /** Sun, moon and their daily paths - demo content built on the generic celestial API. */
@@ -256,6 +260,8 @@ public class DemoMap {
             case HILLSHADE: return DemoConfig.LAYER_HILLSHADE;
             case HYPSO: return DemoConfig.LAYER_HYPSO;
             case RADAR: return DemoConfig.LAYER_RADAR;
+            case CUSTOM_OVERLAY: return DemoConfig.LAYER_CUSTOM_OVERLAY;
+            case CUSTOM_SCENE: return DemoConfig.LAYER_CUSTOM_SCENE;
             case CONTOUR: return DemoConfig.LAYER_CONTOUR;
             case CONTOUR_TILES: return DemoConfig.LAYER_CONTOUR_TILES;
             case ROUTES: return DemoConfig.LAYER_ROUTES;
@@ -281,6 +287,8 @@ public class DemoMap {
             case HILLSHADE: DemoConfig.LAYER_HILLSHADE = enabled; break;
             case HYPSO: DemoConfig.LAYER_HYPSO = enabled; break;
             case RADAR: DemoConfig.LAYER_RADAR = enabled; break;
+            case CUSTOM_OVERLAY: DemoConfig.LAYER_CUSTOM_OVERLAY = enabled; break;
+            case CUSTOM_SCENE: DemoConfig.LAYER_CUSTOM_SCENE = enabled; break;
             case CONTOUR: DemoConfig.LAYER_CONTOUR = enabled; break;
             case CONTOUR_TILES: DemoConfig.LAYER_CONTOUR_TILES = enabled; break;
             case ROUTES: DemoConfig.LAYER_ROUTES = enabled; break;
@@ -364,6 +372,8 @@ public class DemoMap {
             case HILLSHADE: return createHillshadeLayer();
             case HYPSO: return createHypsoLayer();
             case RADAR: return createRadarLayer();
+            case CUSTOM_OVERLAY: return createHeatmapLegend();
+            case CUSTOM_SCENE: return createHeatmapLayer();
             case CONTOUR: return createContourLayer();
             case CONTOUR_TILES: return createContourTilesLayer();
             case ROUTES: return createRoutesLayer();
@@ -822,6 +832,40 @@ public class DemoMap {
      * steps mixed per draw. The steps are listed once; a frame clock then advances the position at
      * radarFps steps a second, and the panel can pause it or scrub.
      */
+    /**
+     * The custom-layer heatmap (customlayer/CustomHeatmap, drawn in C): the DEM sampled over an
+     * 8 km square around the start position, off the UI thread because the read blocks on tile
+     * loading, then handed to the layer. The camera has not flown to its start yet, so it is
+     * centred on where the camera will be.
+     */
+    private Layer createHeatmapLayer() {
+        MassifLayer heat = CustomHeatmap.create("demo-custom-scene", true);
+        if (heat == null) {
+            return null;
+        }
+        final double lon = DemoConfig.START_LON, lat = DemoConfig.START_LAT;
+        new Thread(new Runnable() {
+            public void run() {
+                double[] positions = CustomHeatmap.gridPositions(lon, lat);
+                float exaggeration = terrainOptions != null && DemoConfig.TERRAIN_ENABLED ? terrainOptions.getExaggeration() : 0;
+                double[] heights = new double[positions.length / 2];
+                if (exaggeration > 0) {
+                    for (int k = 0; k < heights.length; k++) {
+                        heights[k] = getElevation(new MapPos(positions[2 * k], positions[2 * k + 1])) * exaggeration;
+                    }
+                }
+                CustomHeatmap.setHeatmap(lon, lat, heights);
+                mapView.requestRender();
+            }
+        }, "demo-heatmap").start();
+        return heat.layer();
+    }
+
+    private Layer createHeatmapLegend() {
+        MassifLayer legend = CustomHeatmap.create("demo-custom-overlay", false);
+        return legend != null ? legend.layer() : null;
+    }
+
     private Layer createRadarLayer() {
         // The memory cache is what keeps a step fetched once: it is the second raster of one tile and the first of the next.
         MemoryCacheTileDataSource cache = new MemoryCacheTileDataSource(

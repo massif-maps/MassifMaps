@@ -54,6 +54,21 @@ plugin drawing at raw depth z-fights the terrain or punches through it.
   to count, expensive to leak through a ridge.
 - With no terrain ground this frame both are 0, and the plugin's draw is plain depth-tested.
 
+## Picking
+
+`hit_test` and `on_click` are on the vtable and not on the event bus: a custom layer is native code
+that already holds a callback table, and a `custom.clicked` event would need a payload class in a
+new `.i`, a bridge, and regenerated wrappers for every binding. Revisit if an RN or NativeScript
+host wants it.
+
+`CustomLayer::calculateRayIntersectedElements` calls `hit_test` with the click ray (world units,
+camera origin) and pushes a `RayIntersectedElement` at `origin + t·dir`, so the normal sort by
+distance across layers applies and the nearest hit among all layers is clicked first. `processClick`
+hands the feature to `on_click` and returns its answer, so a non-zero return stops the click
+reaching the layers below and the map listener. It runs on the thread that handles input, **not** the
+GL thread, concurrently with `render`: the header says the callbacks must be thread-safe. A layer
+without `hit_test` is never asked, and without `on_click` a hit still lets the click through.
+
 ## Matrices
 
 `mvp` is `ViewState::getModelviewProjectionMat()` (double). `mvp_local` is
@@ -83,5 +98,5 @@ no GL and is host-tested; the capture is not.
 
 ## Not verified
 
-Built, syntax-checked and host-tested for the vtable only. Not run on a device: the guard's capture, the scene slot's depth (z-fight, ridges, tilt 60), the slot under a
+Built, syntax-checked and host-tested for the vtable only. Not run on a device: a real click through `TouchHandler`, the guard's capture, the scene slot's depth (z-fight, ridges, tilt 60), the slot under a
 post-process effect, the GL-state expectations at that slot, a context loss, and removing a layer.

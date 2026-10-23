@@ -49,4 +49,16 @@ namespace massif { namespace api {
         }
     }
 
+    bool CustomLayerHost::canHitTest() const {
+        return _layer.hit_test != nullptr;
+    }
+
+    bool CustomLayerHost::hitTest(const double origin[3], const double direction[3], double& t, uint64_t& feature) const {
+        return _layer.hit_test && _layer.hit_test(_layer.user_data, origin, direction, &t, &feature) != 0;
+    }
+
+    bool CustomLayerHost::click(uint64_t feature, int clickType, const double hitPos[3]) const {
+        return _layer.on_click && _layer.on_click(_layer.user_data, feature, clickType, hitPos) != 0;
+    }
+
 } }

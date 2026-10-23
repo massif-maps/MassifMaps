@@ -3,6 +3,8 @@
 #include "api/GLStateSnapshot.h"
 #include "components/ClassRegistry.h"
 #include "graphics/ViewState.h"
+#include "ui/ClickInfo.h"
+#include "renderers/components/RayIntersectedElement.h"
 #include "renderers/MapRenderer.h"
 #include "renderers/utils/GLContext.h"
 #include "renderers/utils/GLResource.h"
@@ -79,6 +81,10 @@ namespace massif { namespace api {
             return state;
         }
 #endif
+
+        struct Hit {
+            uint64_t feature;
+        };
 
         bool sameManager(const std::weak_ptr<GLResourceManager>& a, const std::weak_ptr<GLResourceManager>& b) {
             return !a.owner_before(b) && !b.owner_before(a);
@@ -226,10 +232,29 @@ namespace massif { namespace api {
     }
 
     void CustomLayer::calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const {
+        if (!isVisible() || !_host->canHitTest()) {
+            return;
+        }
+        const double origin[3] = { ray.origin(0), ray.origin(1), ray.origin(2) };
+        const double direction[3] = { ray.direction(0), ray.direction(1), ray.direction(2) };
+        double t = 0;
+        uint64_t feature = 0;
+        if (!_host->hitTest(origin, direction, t, feature)) {
+            return;
+        }
+        std::shared_ptr<Layer> thisLayer = std::const_pointer_cast<Layer>(shared_from_this());
+        cglib::vec3<double> hitPos = ray.origin + ray.direction * t;
+        results.push_back(RayIntersectedElement(std::make_shared<Hit>(Hit { feature }), thisLayer, hitPos, hitPos, _host->getMode() == MM_CUSTOM_LAYER_SCENE));
     }
 
     bool CustomLayer::processClick(const ClickInfo& clickInfo, const RayIntersectedElement& intersectedElement, const ViewState& viewState) const {
-        return false;
+        std::shared_ptr<Hit> hit = intersectedElement.getElement<Hit>();
+        if (!hit) {
+            return false;
+        }
+        const cglib::vec3<double>& hitPos = intersectedElement.getHitPos();
+        const double position[3] = { hitPos(0), hitPos(1), hitPos(2) };
+        return _host->click(hit->feature, static_cast<int>(clickInfo.getClickType()), position);
     }
 
     void CustomLayer::registerDataSourceListener() {

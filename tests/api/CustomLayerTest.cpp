@@ -33,6 +33,10 @@ namespace {
         int destroyed = 0;
         uint32_t framebuffer = 0;
         float zoom = 0;
+        int clicks = 0;
+        uint64_t clickedFeature = 0;
+        int clickType = -1;
+        bool consume = true;
     };
 
     void render(void* userData, const mm_render_params* params) {
@@ -50,6 +54,23 @@ namespace {
         static_cast<Recorder*>(userData)->contextLost++;
     }
 
+    int hitTest(void*, const double origin[3], const double direction[3], double* t, uint64_t* feature) {
+        if (direction[2] >= 0) {
+            return 0;
+        }
+        *t = -origin[2] / direction[2];
+        *feature = 42;
+        return 1;
+    }
+
+    int onClick(void* userData, uint64_t feature, int clickType, const double hitPos[3]) {
+        Recorder* recorder = static_cast<Recorder*>(userData);
+        recorder->clicks++;
+        recorder->clickedFeature = feature;
+        recorder->clickType = clickType;
+        return recorder->consume && hitPos[2] == 0.0;
+    }
+
     void destroy(void* userData) {
         static_cast<Recorder*>(userData)->destroyed++;
     }
@@ -62,6 +83,8 @@ namespace {
         layer.on_removed = &removed;
         layer.on_context_lost = &contextLost;
         layer.render = &render;
+        layer.hit_test = &hitTest;
+        layer.on_click = &onClick;
         layer.destroy = &destroy;
         layer.user_data = recorder;
         return layer;
@@ -141,6 +164,42 @@ void testCustomLayer() {
         host.disown();
     }
     TEST_CHECK(refused.destroyed == 0, "a disowned host never calls destroy");
+
+    // Picking: the ray goes out, the caller's t and feature come back, and a click carries the feature in.
+    Recorder picking;
+    mm_custom_layer pickLayer = vtable(&picking);
+    {
+        CustomLayerHost host(pickLayer);
+        const double origin[3] = { 1, 2, 10 };
+        const double down[3] = { 0, 0, -1 };
+        const double up[3] = { 0, 0, 1 };
+        double t = 0;
+        uint64_t feature = 0;
+        TEST_CHECK(host.canHitTest(), "a layer with a hit_test says so");
+        TEST_CHECK(host.hitTest(origin, down, t, feature) && t == 10 && feature == 42,
+                   "a hit hands back the caller's distance and feature");
+        TEST_CHECK(!host.hitTest(origin, up, t, feature), "a miss is a miss");
+
+        const double ground[3] = { 1, 2, 0 };
+        TEST_CHECK(host.click(42, MM_CLICK_LONG, ground) && picking.clickedFeature == 42 && picking.clickType == MM_CLICK_LONG,
+                   "a click reaches the caller with the feature and the type, and can consume it");
+        picking.consume = false;
+        TEST_CHECK(!host.click(42, MM_CLICK_SINGLE, ground) && picking.clicks == 2,
+                   "and can let it through");
+    }
+
+    mm_custom_layer unpickable = vtable(&picking);
+    unpickable.hit_test = nullptr;
+    unpickable.on_click = nullptr;
+    unpickable.destroy = nullptr;
+    {
+        CustomLayerHost host(unpickable);
+        const double origin[3] = { 0, 0, 0 };
+        double t = 0;
+        uint64_t feature = 0;
+        TEST_CHECK(!host.canHitTest() && !host.hitTest(origin, origin, t, feature) && !host.click(1, MM_CLICK_SINGLE, origin),
+                   "a layer with no hit_test or on_click is never hit and never consumes");
+    }
 
     GLStateSnapshot before;
     GLStateSnapshot after = before;

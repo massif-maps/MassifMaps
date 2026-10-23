@@ -331,6 +331,12 @@ typedef enum {
     "    return clip;\n" \
     "}\n"
 
+/** The click types on_click is given, as massif::ClickType. */
+#define MM_CLICK_SINGLE 0
+#define MM_CLICK_LONG 1
+#define MM_CLICK_DOUBLE 2
+#define MM_CLICK_DUAL 3
+
 /**
  * What render is given. Fixed-size and plain: a field is only ever appended, so size tells a
  * newer SDK's struct from an older one's.
@@ -376,6 +382,22 @@ typedef struct {
     /** The GL context is gone, with every object created in it. Runs before the first render in the new one; do not call GL. Optional. */
     void (*on_context_lost)(void* user_data);
     void (*render)(void* user_data, const mm_render_params* params);
+    /**
+     * Whether a click ray hits something of yours. The ray is in world units, as `origin` in the
+     * params. Runs on the thread that handles input, not the GL thread, and concurrently with
+     * render: it must be thread-safe. Optional.
+     * @param out_t Where along the ray, in multiples of ray_dir; the nearest hit among all layers wins.
+     * @param out_feature Whatever identifies the hit to you; handed back to on_click.
+     * @return Non-zero for a hit.
+     */
+    int (*hit_test)(void* user_data, const double ray_origin[3], const double ray_dir[3],
+                    double* out_t, uint64_t* out_feature);
+    /**
+     * A click landed on what hit_test returned. Same thread as hit_test. Optional.
+     * @param click_type MM_CLICK_SINGLE and the like.
+     * @return Non-zero to consume the click, so it does not reach the layers below or the map.
+     */
+    int (*on_click)(void* user_data, uint64_t feature, int click_type, const double hit_pos[3]);
     /** Called once when the layer is destroyed, on whichever thread dropped it. Optional. */
     void (*destroy)(void* user_data);
     void* user_data;

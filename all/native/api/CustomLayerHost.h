@@ -34,6 +34,12 @@ namespace massif { namespace api {
         void release() const;
         void contextLost() const;
 
+        /** False when the caller gave no hit_test, so the layer need not be asked. */
+        bool canHitTest() const;
+        bool hitTest(const double origin[3], const double direction[3], double& t, uint64_t& feature) const;
+        /** True when the caller consumed the click. */
+        bool click(uint64_t feature, int clickType, const double hitPos[3]) const;
+
     private:
         mm_custom_layer _layer;
     };

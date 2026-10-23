@@ -147,6 +147,8 @@ The rules that matter, all in `MassifApiC.h`:
   the tiles. Append `MM_CUSTOM_LAYER_GLSL_DEPTH` to your vertex shader and finish it with
   `gl_Position = mm_applyDepth(gl_Position)`, uploading `depth_layer_offset` and `depth_shift`; without
   it you z-fight or punch through the terrain.
+- **Clicks:** give `hit_test` (a ray in, a distance and your own feature id out) and `on_click`
+  (return non-zero to consume it). Both run on the input thread, concurrently with `render`.
 - `on_removed` runs on the GL thread with the context current, so delete your GL objects there;
   `on_context_lost` means they are already gone, so do not.
 

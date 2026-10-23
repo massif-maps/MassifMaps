@@ -8,6 +8,7 @@ option(SINGLE_LIBRARY "Compile as single library" OFF)
 
 if(ANDROID)
   option(SQLITE_SHARED "Build SQLite as libsqlite.so, linked by libvalhalla_routing.so, instead of compiling it in" OFF)
+  option(PACK_DYN_RELOCS "Pack the dynamic relocations, which the platform linker reads from API 23" OFF)
 endif()
 
 # Directories (mirroring scripts/build/CMakeLists.txt)
@@ -67,6 +68,9 @@ if(ANDROID)
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Oz -flto=thin -fomit-frame-pointer")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Oz -flto=thin -fomit-frame-pointer")
   set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -s -fuse-ld=lld -Wl,-plugin-opt=O3 -Wl,--gc-sections -Wl,-icf=all -Wl,--as-needed -Wl,--build-id -Wl,--version-script=${PROJECT_SOURCE_DIR}/../android/version-script")
+  if(PACK_DYN_RELOCS)
+    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--pack-dyn-relocs=android")
+  endif()
 endif(ANDROID)
 
 # Make common libraries available to all subprojects

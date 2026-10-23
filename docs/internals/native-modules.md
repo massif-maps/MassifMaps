@@ -128,14 +128,17 @@ arm64-v8a Release, `full` profile, same `libs-external`, same machine, `origin/m
 | | before | after |
 |---|---|---|
 | `libmassif.so` | 12,300,936 | **9,952,000** (−2,348,936, −19.1%) |
-| `libvalhalla_routing.so`, `c++_shared` (in the `full` AAR) | — | 2,709,480 |
+| `libvalhalla_routing.so`, `c++_shared`, packed relocations (in the `full` AAR) | — | 2,609,872 |
 | `libvalhalla_routing.so`, `c++_static` (standalone `routing` AAR) | 4,423,072 (own SQLite) | 3,238,984 |
 | `libsqlite.so` | 601,336 | 601,336 |
 
 - An app that drops the engine saves **2.35 MB** of native code per ABI.
-- An app that keeps it pays **+0.36 MB** over the old monolith (12,661,480 against 12,300,936): the two
-  libraries each carry their own copy of what both use (zstd, boost bits, unwind tables) and `--icf` cannot
-  merge across them.
+- An app that keeps it pays **+0.26 MB** over the old monolith (12,561,872 against 12,300,936). By linker-map
+  output section against the same tree, the extra is `.text` +147 KB, `.eh_frame` +45 KB, `.rodata` +15 KB (a
+  second library's own copy of inline and template code, unwind tables and no cross-unit ICF) and the
+  engine's relocations, which were another +99 KB until `--pack-dyn-relocs` (API 23, so only for the AAR
+  flavor). `zstd` is not in the engine at all, so there is no shared library to carve out of it; the
+  duplicated part is header-instantiated code (`std`, `boost`, `rapidjson`), which cannot be exported.
 - An app that carried both the `full` and the `routing` AAR used to ship Valhalla, SQLite and libc++ twice
   (~4.4 MB); it now ships the engine once.
 - `libmassif.so` has no `NEEDED libvalhalla_routing.so`; `libvalhalla_routing.so` exports `vr_*` and the
@@ -165,8 +168,8 @@ arm64-v8a Release, `full` profile, same `libs-external`, same machine, `origin/m
 
 - Geocoding, `sgre` and `osrm` could use the same pattern (their engines are leaves) if 0.4 MB ever
   matters; the adapters would need a JSON or flat-struct boundary of their own.
-- The `+0.36 MB` of the engine next to the core is mostly zstd duplicated in both; the engine could take
-  the one in `libmassif.so` only by exporting it, which this design avoids on purpose.
+- The remaining `+0.26 MB` is per-library overhead, not a shared dependency. Only a single library avoids
+  it, which is the thing this design gives up to let the engine be dropped.
 - iOS keeps the `ValhallaRouting` xcframework with its own ObjC classes; paired with `MassifMaps` it still
   clashes on `MSFRoutingRequest` and duplicates `vr_*`.
 

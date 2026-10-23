@@ -119,8 +119,9 @@ Checked on a stub linked the same way (arm64-v8a): `libsqlite.so` is 601 KB with
 On Android the `full` profile no longer compiles Valhalla into `libmassif.so`: `valhalla` and `protobuf`
 are built into `libvalhalla_routing.so`, which the core loads with `dlopen` at the first offline Valhalla
 call, behind five `vr_*` C functions. `full` goes from 12,300,936 to **9,952,000** bytes (−19.1%); the
-engine is 2,709,480 with `c++_shared` and 3,238,984 with `c++_static` (the standalone `routing` AAR,
-which was 4,423,072 with its own SQLite). Keeping both costs 0.36 MB more than the old single library.
+engine is 2,609,872 with `c++_shared` and packed relocations and 3,238,984 with `c++_static` (the
+standalone `routing` AAR, which was 4,423,072 with its own SQLite). Keeping both costs 0.26 MB more than the
+old single library.
 An app that does not route offline drops the file. Design, the options compared and what is unverified:
 [Native modules](native-modules.md).
 

@@ -263,6 +263,10 @@ namespace massif {
         return false;
     }
     
+    bool Layer::onDrawOverlay(float deltaSeconds, const ViewState& viewState) {
+        return false;
+    }
+
     std::shared_ptr<Bitmap> Layer::getBackgroundBitmap(const ViewState& viewState) const {
         return std::shared_ptr<Bitmap>();
     }

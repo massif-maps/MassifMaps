@@ -4391,6 +4391,10 @@ namespace massif {
         FRAME_PROF_ADD(billboardMs, profBillboardStart);
         FRAME_PROF_GPU_END();
 
+        for (const std::shared_ptr<Layer>& layer : layers) {
+            needRedraw = layer->onDrawOverlay(deltaSeconds, viewState) || needRedraw;
+        }
+
         billboardDrawDatas.insert(billboardDrawDatas.end(), underLabelsDrawDatas.begin(), underLabelsDrawDatas.end());
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
@@ -4465,6 +4469,10 @@ namespace massif {
             }
 
             glEnable(GL_DEPTH_TEST);
+        }
+
+        for (const std::shared_ptr<Layer>& layer : layers) {
+            needRedraw = layer->onDrawOverlay(deltaSeconds, viewState) || needRedraw;
         }
 
         // Joined to drawLayers' list: the placement worker reads one.

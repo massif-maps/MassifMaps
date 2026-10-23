@@ -10,7 +10,7 @@
 /*
  * The facade API as a flat C ABI: int result codes and uint32 handles, no C++ types or exceptions.
  * A feature never adds a function here, only a table row; the sole exception plugs in caller code
- * (handlers, dispatchers, tile loaders). See docs/internals/api-facade.md.
+ * (handlers, dispatchers, tile loaders, layer draw callbacks). See docs/internals/api-facade.md.
  */
 
 #include <stddef.h>
@@ -306,6 +306,74 @@ MM_API int mm_source_create_custom(mm_ctx ctx, const char* id, const mm_tile_sou
  *        reload finishes. Non-zero flashes; zero can show stale tiles for a moment.
  */
 MM_API int mm_source_notify_changed(mm_ctx ctx, mm_handle handle, int remove_tiles);
+
+/* --- custom layers ------------------------------------------------------------------------- */
+
+/** Where in the frame a custom layer's render runs. */
+typedef enum {
+    /** After every layer and billboard, depth test off: a screen-space overlay. */
+    MM_CUSTOM_LAYER_OVERLAY = 0
+} mm_custom_layer_mode;
+
+/**
+ * What render is given. Fixed-size and plain: a field is only ever appended, so size tells a
+ * newer SDK's struct from an older one's.
+ */
+typedef struct {
+    uint32_t size;
+    /** The framebuffer to draw into. Not necessarily 0: with a post-process effect the scene is offscreen. */
+    uint32_t framebuffer;
+    /** World to clip, for CPU-side math that needs the precision. World units are the SDK's own, not metres. */
+    double mvp[16];
+    /** The same, relative to `origin`, as GL expects it (column-major): upload this one. */
+    float mvp_local[16];
+    /** The camera, in world units: subtract it from a position in double before converting to float. */
+    double origin[3];
+    double delta_seconds;
+    /** x, y, width, height in pixels. */
+    int32_t viewport[4];
+    /** The layer's opacity: the SDK cannot apply it to your draw, multiply your alpha by it. */
+    float opacity;
+    /** Degrees, except zoom. */
+    float zoom, tilt, rotation, fov_y, near_plane, far_plane;
+} mm_render_params;
+
+/**
+ * A layer whose drawing the caller implements, in plain GL ES 3.0 - the SDK exports no C++ symbols
+ * to subclass Layer with. Create GL objects lazily in render. Everything runs on the GL thread
+ * unless noted, and none of it may block.
+ *
+ * render must leave the GL state as it found it: program, VAO, array and element buffers, active
+ * texture and its binding, blend, depth test/write/func, cull face, viewport, scissor. A leak
+ * corrupts the NEXT layer and reads as an SDK bug. It must not request a frame unconditionally;
+ * ask for one with mm_layer_request_redraw.
+ */
+typedef struct {
+    /** sizeof of this struct as the caller compiled it. */
+    uint32_t size;
+    mm_custom_layer_mode mode;
+    /** The layer left its map. Runs on the GL thread with the context current: delete your GL objects here. Optional. */
+    void (*on_removed)(void* user_data);
+    /** The GL context is gone, with every object created in it. Runs before the first render in the new one; do not call GL. Optional. */
+    void (*on_context_lost)(void* user_data);
+    void (*render)(void* user_data, const mm_render_params* params);
+    /** Called once when the layer is destroyed, on whichever thread dropped it. Optional. */
+    void (*destroy)(void* user_data);
+    void* user_data;
+} mm_custom_layer;
+
+/**
+ * Registers a layer the caller draws, under an id. Add it to a map like any other layer
+ * (`add` or `insert` on the map's layers); visibility and zoom range work as usual.
+ * On anything but MM_OK nothing was taken: `destroy` is not called and user_data stays the caller's.
+ * @param out The handle. Optional.
+ * @return MM_OK, MM_DUPLICATE_ID, or MM_BAD_SPEC when render is null, the mode is unknown or `size` is short.
+ */
+MM_API int mm_layer_create_custom(mm_ctx ctx, const char* id, const mm_custom_layer* layer,
+                                  mm_handle* out);
+
+/** Asks for one more frame. Safe from any thread. @return MM_OK, MM_BAD_HANDLE when it is not a custom layer. */
+MM_API int mm_layer_request_redraw(mm_ctx ctx, mm_handle handle);
 
 /* --- events -------------------------------------------------------------------------------- */
 

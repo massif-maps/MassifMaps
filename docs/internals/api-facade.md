@@ -879,14 +879,14 @@ mm_data_copy(ctx, tile, "data", buffer, size, NULL);
 mm_destroy_handle(ctx, tile);
 ```
 
-**37 entry points, seven concepts.** The count grows with *types* — a scalar setter per C type, a
+**39 entry points, seven concepts.** The count grows with *types* — a scalar setter per C type, a
 size/copy pair per bulk shape — never with features. A new source type is a spec factory, a new
 option a table row, a new event a bridge, a new method a table row. None of them touches this
 header, which is what makes an ABI version worth having.
 
 The one exception is **plumbing the caller's own code in**, which no table can describe because the
 implementation is theirs: `mm_on` takes a handler, `mm_set_ui_dispatcher` takes a loop, and
-`mm_source_create_custom` takes a tile loader.
+`mm_source_create_custom` takes a tile loader, and `mm_layer_create_custom` takes a draw callback.
 
 ### A source the caller implements
 
@@ -923,6 +923,19 @@ The loader runs on the **tile threads, several at once**, and nothing serialises
 caller's.
 
 `MM_TILE_RGBA8` is the other half of this — see [raw tiles](#raw-tiles) below.
+
+### A layer the caller draws
+
+`mm_layer_create_custom` registers a `Layer` whose drawing is a `render` function pointer, for the
+same reason as above: `massif::Layer` cannot be derived from outside the library. It is registered
+under an id as `massif::Layer`, so a map takes it with `add` / `insert` on its layers like any
+other, and visibility and zoom range work as usual. The draw contract — slots, GL state, threads —
+is in [Custom layers](rendering/20-custom-layer.md).
+
+It is registered by object and not built from a `{"type":"custom"}` spec because a function pointer
+cannot be written in JSON, and a name-to-vtable registry would only add a second lifetime to
+`user_data`. As with a custom source, a failed create takes nothing. `mm_layer_request_redraw` is
+the one other function: a plugin's own thread has no other way to ask for a frame.
 
 Conventions, each chosen because a binding author would otherwise get it wrong:
 
@@ -1890,6 +1903,7 @@ The facade's files in `tests/api/` (the suite holds render tests too):
 | `BundleAssetsTest.cpp` | `BundleAssetPackage`'s walk over a fake platform asset listing |
 | `MetaDataTest.cpp` | tile meta data and the elevation decoder chosen from `dem_encoding` |
 | `CustomSourceTest.cpp` | `mm_source_create_custom` and its sink |
+| `CustomLayerTest.cpp` | the `mm_layer_create_custom` vtable: what is taken, each callback, `destroy` once (the draw itself is a device check) |
 | `FogSkyTest.cpp` | the generated fog and sky paths |
 | `GetterLockTest.cpp` | a getter run outside the context lock |
 

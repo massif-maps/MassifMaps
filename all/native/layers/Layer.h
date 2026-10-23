@@ -221,6 +221,8 @@ namespace massif {
 
         virtual bool onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) = 0;
         virtual bool onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState);
+        // After every layer and billboard of the frame, depth test off.
+        virtual bool onDrawOverlay(float deltaSeconds, const ViewState& viewState);
 
         // In draw order. A layer owning children appends them too, or they paint a second time as displaced geometry.
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);

@@ -54,6 +54,7 @@ void testCAbi();
 void testCAbiEvents();
 void testAdopt();
 void testCustomSource();
+void testCustomLayer();
 void testGetterLock();
 void testBundleAssets();
 void testTileMetaData();
@@ -467,6 +468,7 @@ int main() {
     testCAbiEvents();
     testAdopt();
     testCustomSource();
+    testCustomLayer();
     testGetterLock();
     testBundleAssets();
     testTileMetaData();

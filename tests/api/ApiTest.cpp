@@ -66,6 +66,7 @@ void testBagProperties();
 void testFogOptions();
 void testSkyOptions();
 void testEffectSpec();
+void testTileFrameEvents();
 void testFogSkyPaths();
 void testColorProperty();
 void testColorSpec();
@@ -481,6 +482,7 @@ int main() {
     testFogOptions();
     testSkyOptions();
     testEffectSpec();
+    testTileFrameEvents();
     testFogSkyPaths();
     testColorProperty();
     testColorSpec();

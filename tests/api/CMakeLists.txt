@@ -65,6 +65,9 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/Context.cpp"
   "${SDK_BASE_DIR}/all/native/api/ViewRegistration.cpp"
   "${SDK_BASE_DIR}/all/native/api/EventBus.cpp"
+  "${SDK_BASE_DIR}/all/native/api/MapEventBridge.cpp"
+  "${SDK_BASE_DIR}/all/native/ui/CelestialClickInfo.cpp"
+  "${SDK_BASE_DIR}/all/native/celestial/CelestialObject.cpp"
   "${SDK_BASE_DIR}/all/native/api/StructCodec.cpp"
   "${SDK_BASE_DIR}/all/native/api/PropertyTable.cpp"
   "${SDK_BASE_DIR}/all/native/api/Projections.cpp"
@@ -228,6 +231,8 @@ add_executable(api_tests
   BagTest.cpp
   FogSkyTest.cpp
   EffectSpecTest.cpp
+  # The tile-load and frame bridges, which need nothing past MapEventBridge.cpp and the listeners.
+  TileFrameEventTest.cpp
   # FogOptions is the class the colour-spelling bug bit, and the only COLOR property the reduced
   # table carries - so this needs nothing the list above does not already link.
   ColorValueTest.cpp

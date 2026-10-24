@@ -30,7 +30,7 @@ layer.addVectorDataSource("contour", new ContourTileDataSource(demSource));
 layer.removeExternalDataSource("satellite");     // dynamic remove
 layer.getExternalDataSourceNames();              // list
 
-mapView.getLayers().add(layer);
+MassifInterop.getLayerListByHandle(mapView.getLayersHandle()).add(layer);
 ```
 
 ## 2. Placement — the layer order
@@ -198,7 +198,7 @@ MBVectorTileDecoder decoder = new MBVectorTileDecoder(styleSet);
 CompositeVectorTileLayer layer = new CompositeVectorTileLayer(baseVectorSource, decoder);
 layer.addExternalDataSource("hillshade", demSource, CompositeSourceType.COMPOSITE_SOURCE_TYPE_HILLSHADE);
 // ... contour, satellite ...
-mapView.getLayers().add(layer);
+MassifInterop.getLayerListByHandle(mapView.getLayersHandle()).add(layer);
 
 // Toggle the relief on/off at runtime from a user setting:
 decoder.setStyleParameter("show_relief", "false");  // hides #hillshade live, no re-add

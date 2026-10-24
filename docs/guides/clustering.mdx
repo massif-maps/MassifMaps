@@ -31,12 +31,12 @@ whole set, not the visible one.
 <TabItem value="java" label="Java">
 
 ```java
-LocalVectorDataSource source = new LocalVectorDataSource(mapView.getOptions().getBaseProjection());
+LocalVectorDataSource source = new LocalVectorDataSource(MassifInterop.getOptionsByHandle(mapView.getMapHandle()).getBaseProjection());
 // … add every Marker to `source` …
 
 ClusteredVectorLayer layer = new ClusteredVectorLayer(source, new CountClusterBuilder());
 layer.setMinimumClusterDistance(20);   // screen pixels
-mapView.getLayers().add(layer);
+MassifInterop.getLayerListByHandle(mapView.getLayersHandle()).add(layer);
 ```
 
 </TabItem>

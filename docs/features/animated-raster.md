@@ -27,7 +27,7 @@ HTTPTileDataSource radar = new HTTPTileDataSource(0, 12,
     "https://api.librewxr.net/v2/radar/{time}/256/{z}/{x}/{y}/2/1_1.png");
 AnimatedRasterTileLayer layer = new AnimatedRasterTileLayer(new MemoryCacheTileDataSource(radar));
 layer.setFrameTimestamps(timestamps);          // oldest first: the epoch seconds of /public/weather-maps.json
-mapView.getLayers().add(layer);
+MassifInterop.getLayerListByHandle(mapView.getLayersHandle()).add(layer);
 ```
 
 With the [surface API](/docs/api/):

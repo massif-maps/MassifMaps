@@ -99,12 +99,12 @@ public final class DemoOrientation implements SensorEventListener {
 
         float tilt = Math.max(-DemoConfig.LOOK_UP_LIMIT, Math.min(90f, elevation));
         float rotation = -heading;
-        if (Math.abs(tilt - mapView.getTilt()) < DEAD_ZONE_DEGREES
-                && Math.abs(((rotation - mapView.getMapRotation() + 540f) % 360f) - 180f) < DEAD_ZONE_DEGREES) {
+        if (Math.abs(tilt - ObjectApi.view(mapView).getTilt()) < DEAD_ZONE_DEGREES
+                && Math.abs(((rotation - ObjectApi.view(mapView).getRotation() + 540f) % 360f) - 180f) < DEAD_ZONE_DEGREES) {
             return;
         }
-        mapView.setTilt(tilt, 0);
-        mapView.setMapRotation(rotation, 0);
+        ObjectApi.view(mapView).setTilt(tilt, 0);
+        ObjectApi.view(mapView).setRotation(rotation, 0);
     }
 
     @Override

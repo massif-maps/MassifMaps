@@ -8538,6 +8538,9 @@ export interface MethodTypes {
   "massif::BalloonPopupStyleBuilder": {
   };
   "massif::BaseMapView": {
+    cancelAllTasks: () => void;
+    clearAllCaches: () => void;
+    clearPreloadingCaches: () => void;
     fitBounds: (bounds: Json, screenBounds: Json, integerZoom: boolean, resetRotation: boolean, resetTilt: boolean, durationSeconds: number) => void;
     flyTo: (pos: Position, zoom: number, rotation: number, tilt: number, climbHeight: number, durationSeconds: number, easing: string) => void;
     mapToScreen: (pos: Position) => Json;

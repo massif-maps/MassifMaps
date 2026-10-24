@@ -86,7 +86,7 @@ A few things the table hides:
 
 ```java
 TerrainOptions terrain = new TerrainOptions(demSource);
-mapView.getOptions().setTerrainOptions(terrain);
+MassifInterop.getOptionsByHandle(mapView.getMapHandle()).setTerrainOptions(terrain);
 
 // Flat, ready: attached and enabled, drawn flat until you ask for 3D.
 terrain.setFlattened(true);                    // before the first layer decodes: nothing is built for a 3D not yet shown
@@ -106,7 +106,7 @@ terrain.setExaggeration(0f);
 LightOptions light = new LightOptions();
 light.setTerrainLightingEnabled(true);
 light.setShadowStrength(1f);
-mapView.getOptions().setLightOptions(light);
+MassifInterop.getOptionsByHandle(mapView.getMapHandle()).setLightOptions(light);
 ```
 
 ```js

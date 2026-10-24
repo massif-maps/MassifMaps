@@ -1072,8 +1072,11 @@ public final class ApiNames {
     public static final String METHOD_CALCULATE_ADDRESSES = "calculateAddresses";
     public static final String METHOD_CALCULATE_HORIZON = "calculateHorizon";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
+    public static final String METHOD_CANCEL_ALL_TASKS = "cancelAllTasks";
     public static final String METHOD_CLEAR = "clear";
+    public static final String METHOD_CLEAR_ALL_CACHES = "clearAllCaches";
     public static final String METHOD_CLEAR_MODEL_HIGHLIGHT = "clearModelHighlight";
+    public static final String METHOD_CLEAR_PRELOADING_CACHES = "clearPreloadingCaches";
     public static final String METHOD_CLEAR_TILE_CACHES = "clearTileCaches";
     public static final String METHOD_CREATE_LAYER = "createLayer";
     public static final String METHOD_DELETE_LAYER = "deleteLayer";

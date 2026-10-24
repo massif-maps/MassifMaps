@@ -61,7 +61,7 @@ map.addLayer("basemap", Spec.of("vector")
 TileDataSource http = new HTTPTileDataSource(1, 19, url);
 PersistentCacheTileDataSource cache =
     new PersistentCacheTileDataSource(http, getExternalFilesDir(null) + "/mapcache.db");
-mapView.getLayers().add(new RasterTileLayer(cache));
+MassifInterop.getLayerListByHandle(mapView.getLayersHandle()).add(new RasterTileLayer(cache));
 ```
 
 </TabItem>

@@ -1,5 +1,6 @@
 package com.massifmaps.MassifDemo;
 
+import com.massifmaps.MassifDemo.demo.ObjectApi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -134,17 +135,17 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
 
         // Lon/lat everywhere. Every example is written in degrees, and an example that had to
         // convert would be teaching the wrong thing.
-        mapView.getOptions().setBaseProjection(new EPSG4326());
-        mapView.getOptions().setRestrictedPanning(true);
-        mapView.getOptions().setSeamlessPanning(true);
-        mapView.getOptions().setPanningMode(PanningMode.PANNING_MODE_STICKY);
-        mapView.getOptions().setRotatable(true);
+        ObjectApi.options(mapView).setBaseProjection(new EPSG4326());
+        ObjectApi.options(mapView).setRestrictedPanning(true);
+        ObjectApi.options(mapView).setSeamlessPanning(true);
+        ObjectApi.options(mapView).setPanningMode(PanningMode.PANNING_MODE_STICKY);
+        ObjectApi.options(mapView).setRotatable(true);
         // What every other map app does and nobody thinks about: double-tap-and-drag to zoom, and
         // a two-finger tap to zoom out. Both are one flag.
-        mapView.getOptions().setZoomGestures(true);
-        mapView.getOptions().setClickTypeDetection(true);
+        ObjectApi.options(mapView).setZoomGestures(true);
+        ObjectApi.options(mapView).setClickTypeDetection(true);
 
-        map = MassifMap.attach(mapView, entry.id()).eventProjection("EPSG:4326");
+        map = MassifMap.attach(mapView).eventProjection("EPSG:4326");
         installCameraReadout();
         // '--es ui false' strips the chrome, the same key the bench uses. A gallery vignette is a
         // picture of the MAP; the back button and the caption are the app around it.
@@ -234,7 +235,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         }
         // On this thread, not posted: switching the surface re-derives the camera, so it has to
         // land BEFORE applyCameraOverrides rather than race it.
-        mapView.getOptions().setRenderProjectionMode("true".equals(extras.getString("globe"))
+        ObjectApi.options(mapView).setRenderProjectionMode("true".equals(extras.getString("globe"))
                 ? RenderProjectionMode.RENDER_PROJECTION_MODE_SPHERICAL
                 : RenderProjectionMode.RENDER_PROJECTION_MODE_PLANAR);
     }
@@ -280,7 +281,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
      * Every move, as the bench does - a settled-only readout misses the frame an artifact showed on.
      */
     private void installCameraReadout() {
-        mapView.setMapEventListener(new MapEventListener() {
+        ObjectApi.setMapEventListener(mapView, new MapEventListener() {
             @Override
             public void onMapMoved(int reason) {
                 super.onMapMoved(reason);

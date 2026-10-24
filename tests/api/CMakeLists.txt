@@ -63,6 +63,7 @@ set(TEST_DEFINES "_MASSIF_ROUTING_SUPPORT" "_MASSIF_GEOCODING_SUPPORT")
 # case that belongs behind a device check.
 set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/Context.cpp"
+  "${SDK_BASE_DIR}/all/native/api/ViewRegistration.cpp"
   "${SDK_BASE_DIR}/all/native/api/EventBus.cpp"
   "${SDK_BASE_DIR}/all/native/api/StructCodec.cpp"
   "${SDK_BASE_DIR}/all/native/api/PropertyTable.cpp"
@@ -216,6 +217,7 @@ add_executable(api_tests
   ProjectionTest.cpp
   MethodTest.cpp
   AdoptTest.cpp
+  ViewRegistrationTest.cpp
   CustomSourceTest.cpp
   CustomLayerTest.cpp
   GetterLockTest.cpp

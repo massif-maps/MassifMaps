@@ -123,12 +123,12 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("zoomTo")) {
             // "<zoom>,<seconds>": an animated zoom, the closest a script gets to a slow pinch.
             String[] parts = extras.getString("zoomTo").split(",");
-            demo.mapView.setZoom(Float.parseFloat(parts[0]), parts.length > 1 ? Float.parseFloat(parts[1]) : 1.0f);
+            ObjectApi.view(demo.mapView).setZoom(Float.parseFloat(parts[0]), parts.length > 1 ? Float.parseFloat(parts[1]) : 1.0f);
         }
         if (extras.containsKey("apiCreate")) {
             // The map's layer list, so a layer built from a spec can be put on the map.
             if (MassifApi.findObject("layers", "demo") == 0) {
-                MassifInterop.adopt("layers", "demo", demo.mapView.getLayers());
+                MassifInterop.adopt("layers", "demo", ObjectApi.layers(demo.mapView));
             }
             applyApiCreate(extras.getString("apiCreate"));
         }
@@ -238,7 +238,7 @@ public final class DemoLive extends BroadcastReceiver {
 
         int handle = MassifApi.findObject(kind, id);
         if (handle == 0 && "options".equals(kind) && "demo".equals(id)) {
-            handle = MassifInterop.adopt(kind, id, demo.mapView.getOptions());
+            handle = MassifInterop.adopt(kind, id, ObjectApi.options(demo.mapView));
         }
         if (handle == 0) {
             Log.w(TAG, "apiSet: nothing registered as " + kind + ":" + id);
@@ -297,7 +297,7 @@ public final class DemoLive extends BroadcastReceiver {
         }
         int handle = MassifApi.findObject(kind, id);
         if (handle == 0 && "options".equals(kind) && "demo".equals(id)) {
-            handle = MassifInterop.adopt(kind, id, demo.mapView.getOptions());
+            handle = MassifInterop.adopt(kind, id, ObjectApi.options(demo.mapView));
         }
         if (handle == 0) {
             Log.w(TAG, "apiSetAll: nothing registered as " + kind + ":" + id);
@@ -383,9 +383,9 @@ public final class DemoLive extends BroadcastReceiver {
 
         // The demo builds its layers with the object API, so the search needs one under an id.
         com.massifmaps.layers.VectorTileLayer vector = null;
-        for (int i = 0; i < demo.mapView.getLayers().count(); i++) {
-            if (demo.mapView.getLayers().get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
-                vector = (com.massifmaps.layers.VectorTileLayer) demo.mapView.getLayers().get(i);
+        for (int i = 0; i < ObjectApi.layers(demo.mapView).count(); i++) {
+            if (ObjectApi.layers(demo.mapView).get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
+                vector = (com.massifmaps.layers.VectorTileLayer) ObjectApi.layers(demo.mapView).get(i);
                 break;
             }
         }
@@ -403,7 +403,7 @@ public final class DemoLive extends BroadcastReceiver {
             Log.w(TAG, "apiSearch: could not build the service");
             return;
         }
-        int zoom = (int) demo.mapView.getZoom();
+        int zoom = (int) ObjectApi.view(demo.mapView).getZoom();
         MassifApi.setFloat(service, "minZoom", zoom);
         MassifApi.setFloat(service, "maxZoom", zoom);
         MassifApi.setFloat(service, "maxResults", 10);
@@ -421,8 +421,8 @@ public final class DemoLive extends BroadcastReceiver {
         // measured: the whole y=16383 row went past before the call had to be killed.
         // From the MAP's base projection, not the data source's: a MapView coordinate is in the
         // former, and reading it as the latter put the search box near null island.
-        com.massifmaps.core.MapPos focus = demo.mapView.getOptions().getBaseProjection()
-                .toWgs84(demo.mapView.getFocusPos());
+        com.massifmaps.core.MapPos focus = ObjectApi.options(demo.mapView).getBaseProjection()
+                .toWgs84(ObjectApi.view(demo.mapView).getFocusPos());
         double span = 0.1;   // degrees, about 8 km at this latitude - a screenful at z14
         String box = corner(focus, -span, -span) + "," + corner(focus, span, -span) + ","
                    + corner(focus, span, span) + "," + corner(focus, -span, span) + ","
@@ -484,8 +484,8 @@ public final class DemoLive extends BroadcastReceiver {
      * drapes on terrain - but moving one means re-tiling, and that is the number that decides it.
      */
     private void applyApiMarkers(int count) {
-        markerCentre = demo.mapView.getOptions().getBaseProjection()
-                .toWgs84(demo.mapView.getFocusPos());
+        markerCentre = ObjectApi.options(demo.mapView).getBaseProjection()
+                .toWgs84(ObjectApi.view(demo.mapView).getFocusPos());
 
         long start = System.nanoTime();
         long imported;
@@ -504,7 +504,7 @@ public final class DemoLive extends BroadcastReceiver {
                 + "text-name:[name];text-face-name:'Roboto Regular';text-size:11;text-dy:-12;}");
         com.massifmaps.layers.VectorTileLayer layer = new com.massifmaps.layers.VectorTileLayer(
                 markerSource, new com.massifmaps.vectortiles.MBVectorTileDecoder(style));
-        demo.mapView.getLayers().add(layer);
+        ObjectApi.layers(demo.mapView).add(layer);
         Log.i(TAG, "apiMarkers " + count + " features imported in " + imported + " ms");
     }
 
@@ -539,7 +539,7 @@ public final class DemoLive extends BroadcastReceiver {
             Log.w(TAG, "apiMarkerDrag: run --es apiMarkers N first");
             return;
         }
-        int zoom = (int) demo.mapView.getZoom();
+        int zoom = (int) ObjectApi.view(demo.mapView).getZoom();
         com.massifmaps.core.MapTile tile = tileOf(markerCentre.getX(), markerCentre.getY(), zoom);
 
         long notifyNanos = 0, encodeNanos = 0;
@@ -594,18 +594,13 @@ public final class DemoLive extends BroadcastReceiver {
     private void applyApiMoveRate(final int seconds) {
         // The sugar installs the UI dispatcher, and coalescing only applies to the queued path.
         if (sugarMap == null) {
-            sugarMap = com.massifmaps.api.MassifMap.attach(demo.mapView, "demo");
+            sugarMap = com.massifmaps.api.MassifMap.attach(demo.mapView);
         }
         final java.util.concurrent.atomic.AtomicInteger raw =
                 new java.util.concurrent.atomic.AtomicInteger();
         final java.util.concurrent.atomic.AtomicInteger coalesced =
                 new java.util.concurrent.atomic.AtomicInteger();
-        int handle = MassifApi.findObject("options", "demo");
-        if (handle == 0) {
-            handle = MassifInterop.adopt("options", "demo", demo.mapView.getOptions());
-        }
-        demo.mapView.setMapEventListener(
-                MassifInterop.createEventBridge(handle, demo.mapView.getMapEventListener()));
+        int handle = demo.mapView.getMapHandle();
 
         apiMoveListener = new EventListener() {
             @Override
@@ -768,7 +763,7 @@ public final class DemoLive extends BroadcastReceiver {
             return;
         }
         if (sugarMap == null) {
-            sugarMap = com.massifmaps.api.MassifMap.attach(demo.mapView, "demo")
+            sugarMap = com.massifmaps.api.MassifMap.attach(demo.mapView)
                                                    .eventProjection("EPSG:4326");
         }
 
@@ -817,12 +812,7 @@ public final class DemoLive extends BroadcastReceiver {
             apiListener = null;
             return;
         }
-        int handle = MassifApi.findObject("options", "demo");
-        if (handle == 0) {
-            handle = MassifInterop.adopt("options", "demo", demo.mapView.getOptions());
-        }
-        demo.mapView.setMapEventListener(
-            MassifInterop.createEventBridge(handle, demo.mapView.getMapEventListener()));
+        int handle = demo.mapView.getMapHandle();
 
         apiListener = new EventListener() {
             @Override
@@ -837,9 +827,9 @@ public final class DemoLive extends BroadcastReceiver {
 
         // The layer-level one, which is where a feature payload comes from.
         com.massifmaps.layers.VectorTileLayer vector = null;
-        for (int i = 0; i < demo.mapView.getLayers().count(); i++) {
-            if (demo.mapView.getLayers().get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
-                vector = (com.massifmaps.layers.VectorTileLayer) demo.mapView.getLayers().get(i);
+        for (int i = 0; i < ObjectApi.layers(demo.mapView).count(); i++) {
+            if (ObjectApi.layers(demo.mapView).get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
+                vector = (com.massifmaps.layers.VectorTileLayer) ObjectApi.layers(demo.mapView).get(i);
                 break;
             }
         }

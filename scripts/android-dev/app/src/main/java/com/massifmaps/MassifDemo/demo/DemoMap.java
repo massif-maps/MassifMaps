@@ -187,8 +187,8 @@ public class DemoMap {
     /** Applies the whole {@link DemoConfig} to a fresh map. */
     public void build() {
         // Options first: layers created afterwards pick up the terrain/light state immediately.
-        mapView.getOptions().setTileThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
-        mapView.getOptions().setEnvelopeThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
+        ObjectApi.options(mapView).setTileThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
+        ObjectApi.options(mapView).setEnvelopeThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
         applyTileLODConfig();
         applyDebugConfig();
         applyGlobeMode();
@@ -344,7 +344,7 @@ public class DemoMap {
             }
             vector.add(layer);
         }
-        mapView.getLayers().setAll(vector);
+        ObjectApi.layers(mapView).setAll(vector);
         // The sky objects are built with their layer, which happens here, so place them now that
         // they exist.
         updateSky();
@@ -551,7 +551,7 @@ public class DemoMap {
      * ordinary SDK API driven from the app - the SDK has no peak-finder mode.
      */
     public void flyToPeakFinder() {
-        final MapPos focus = mapView.getFocusPos();
+        final MapPos focus = ObjectApi.view(mapView).getFocusPos();
         // 3D terrain first, then the mode: the terrain, the relief surface and the names all have
         // the whole flight to load and fade in, instead of appearing when it lands.
         if (!DemoConfig.TERRAIN_ENABLED) {
@@ -561,9 +561,9 @@ public class DemoMap {
         setPeakFinderMode(true);
         // The tilt belongs to the flight, so undo what the mode did to it and let the one
         // animation carry it - together with the climb to the viewpoint's elevation.
-        mapView.setTilt(savedTilt > 0 ? savedTilt : mapView.getTilt(), 0);
+        ObjectApi.view(mapView).setTilt(savedTilt > 0 ? savedTilt : ObjectApi.view(mapView).getTilt(), 0);
         MapPos target = new MapPos(focus.getX(), focus.getY(), DemoConfig.PEAK_FINDER_FLY_ELEVATION);
-        mapView.flyTo(target, DemoConfig.PEAK_FINDER_FLY_ZOOM, mapView.getRotation(),
+        ObjectApi.view(mapView).flyTo(target, DemoConfig.PEAK_FINDER_FLY_ZOOM, mapView.getRotation(),
                 DemoConfig.PEAK_FINDER_TILT, DemoConfig.PEAK_FINDER_FLY_CLIMB,
                 DemoConfig.PEAK_FINDER_FLY_DURATION, DemoConfig.PEAK_FINDER_FLY_EASING);
         // The viewpoint's height is the flight's now (the target's Z, plus the climb over the way),
@@ -573,7 +573,7 @@ public class DemoMap {
         mapView.post(new Runnable() {
             @Override
             public void run() {
-                float progress = mapView.getFlightProgress();
+                float progress = ObjectApi.view(mapView).getFlightProgress();
                 if (progress >= 0) {
                     DemoPanel.refreshElevationLabel();
                     mapView.postDelayed(this, 16);
@@ -591,7 +591,7 @@ public class DemoMap {
      */
     public void setArMode(boolean enabled) {
         DemoConfig.AR_MODE = enabled;
-        Options options = mapView.getOptions();
+        Options options = ObjectApi.options(mapView);
         if (enabled) {
             if (!DemoConfig.PEAK_FINDER) {
                 setPeakFinderMode(true);
@@ -629,7 +629,7 @@ public class DemoMap {
             savedLayerContourTiles = DemoConfig.LAYER_CONTOUR_TILES;
             savedLayerSatellite = DemoConfig.LAYER_SATELLITE;
             savedLayerHypso = DemoConfig.LAYER_HYPSO;
-            savedTilt = mapView.getTilt();
+            savedTilt = ObjectApi.view(mapView).getTilt();
             DemoConfig.LAYER_BASE = false;
             DemoConfig.LAYER_HILLSHADE = false;
             DemoConfig.LAYER_CONTOUR = false;
@@ -650,7 +650,7 @@ public class DemoMap {
             rebuildLayers();
             applyReliefSurface();
             setReliefOutlineEnabled(true);
-            mapView.setTilt(DemoConfig.PEAK_FINDER_TILT, 0.6f);
+            ObjectApi.view(mapView).setTilt(DemoConfig.PEAK_FINDER_TILT, 0.6f);
             DemoPanel.setElevationWidgetVisible(true);
         } else {
             DemoConfig.LAYER_BASE = savedLayerBase;
@@ -670,7 +670,7 @@ public class DemoMap {
             applyReliefSurface();
             setReliefOutlineEnabled(false);
             if (savedTilt > 0) {
-                mapView.setTilt(savedTilt, 0.6f);
+                ObjectApi.view(mapView).setTilt(savedTilt, 0.6f);
             }
             DemoPanel.setElevationWidgetVisible(false);
         }
@@ -685,8 +685,8 @@ public class DemoMap {
      * the equator (mercator), hence the latitude term.
      */
     public void applyViewpointElevation() {
-        Projection proj = mapView.getOptions().getBaseProjection();
-        MapPos wgs = proj.toWgs84(mapView.getFocusPos());
+        Projection proj = ObjectApi.options(mapView).getBaseProjection();
+        MapPos wgs = proj.toWgs84(ObjectApi.view(mapView).getFocusPos());
         double groundElevation = 0;
         if (terrainOptions != null) {
             double sample = terrainOptions.getElevation(wgs);
@@ -698,7 +698,7 @@ public class DemoMap {
         // so this stays in METRES - with the mercator stretch the terrain heights also carry, or
         // the viewpoint would sit lower than the mountains it is measured against.
         double meters = (groundElevation + DemoConfig.PEAK_FINDER_ELEVATION) / Math.cos(Math.toRadians(wgs.getY()));
-        mapView.setFocusPos(proj.fromWgs84(new MapPos(wgs.getX(), wgs.getY(), meters)), 0.3f);
+        ObjectApi.view(mapView).setFocusPos(proj.fromWgs84(new MapPos(wgs.getX(), wgs.getY(), meters)), 0.3f);
         mapView.requestRender();
     }
 
@@ -723,7 +723,7 @@ public class DemoMap {
     /** Pushes every HILLSHADE_* config value onto the stand-alone hillshade layer. */
     /** Debug overlays (DEBUG section of the panel). */
     public void applyDebugConfig() {
-        mapView.getOptions().setDebugTileBorders(DemoConfig.DEBUG_TILE_BORDERS);
+        ObjectApi.options(mapView).setDebugTileBorders(DemoConfig.DEBUG_TILE_BORDERS);
     }
 
     public void applyHillshadeConfig() {
@@ -1535,7 +1535,7 @@ public class DemoMap {
      * and element-vs-terrain depth test).
      */
     private Layer createElementsLayer() {
-        Projection proj = mapView.getOptions().getBaseProjection();
+        Projection proj = ObjectApi.options(mapView).getBaseProjection();
         LocalVectorDataSource source = new LocalVectorDataSource(proj);
 
         MarkerStyleBuilder markerStyle = new MarkerStyleBuilder();
@@ -1734,25 +1734,25 @@ public class DemoMap {
     /** The tile LOD numbers: a named profile if one was asked for, then the individual knobs. */
     public void applyTileLODConfig() {
         if ("reference".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            mapView.getOptions().setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_REFERENCE);
+            ObjectApi.options(mapView).setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_REFERENCE);
         } else if ("mobile".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            mapView.getOptions().setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_MOBILE);
+            ObjectApi.options(mapView).setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_MOBILE);
         } else if ("desktop".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            mapView.getOptions().setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_DESKTOP);
+            ObjectApi.options(mapView).setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_DESKTOP);
         } else {
-            mapView.getOptions().setTileLODFactor(DemoConfig.TILE_LOD_FACTOR);
-            mapView.getOptions().setTileStyleZoomLift(DemoConfig.TILE_STYLE_ZOOM_LIFT);
+            ObjectApi.options(mapView).setTileLODFactor(DemoConfig.TILE_LOD_FACTOR);
+            ObjectApi.options(mapView).setTileStyleZoomLift(DemoConfig.TILE_STYLE_ZOOM_LIFT);
         }
-        mapView.getOptions().setTileLODMaxZoomLevelsOnScreen(DemoConfig.TILE_LOD_LEVELS_ON_SCREEN);
-        mapView.getOptions().setTileLODTileCountRatio(DemoConfig.TILE_LOD_COUNT_RATIO);
+        ObjectApi.options(mapView).setTileLODMaxZoomLevelsOnScreen(DemoConfig.TILE_LOD_LEVELS_ON_SCREEN);
+        ObjectApi.options(mapView).setTileLODTileCountRatio(DemoConfig.TILE_LOD_COUNT_RATIO);
         if (DemoConfig.FIELD_OF_VIEW_Y > 0) {
-            mapView.getOptions().setFieldOfViewY(DemoConfig.FIELD_OF_VIEW_Y);
+            ObjectApi.options(mapView).setFieldOfViewY(DemoConfig.FIELD_OF_VIEW_Y);
         }
     }
 
     /** Plane or sphere. Rebuilds every tile layer's transformer, so the tile caches drop and refill. */
     public void applyGlobeMode() {
-        mapView.getOptions().setRenderProjectionMode(DemoConfig.GLOBE_MODE
+        ObjectApi.options(mapView).setRenderProjectionMode(DemoConfig.GLOBE_MODE
                 ? RenderProjectionMode.RENDER_PROJECTION_MODE_SPHERICAL
                 : RenderProjectionMode.RENDER_PROJECTION_MODE_PLANAR);
     }
@@ -1762,7 +1762,7 @@ public class DemoMap {
         applyTileLODConfig();
         if (terrainOptions == null) {
             terrainOptions = new TerrainOptions(demSource());
-            mapView.getOptions().setTerrainOptions(terrainOptions);
+            ObjectApi.options(mapView).setTerrainOptions(terrainOptions);
         }
         terrainOptions.setAlwaysDecode(DemoConfig.TERRAIN_ALWAYS_DECODE);
         terrainOptions.setEnabled(DemoConfig.TERRAIN_ENABLED);
@@ -1844,7 +1844,7 @@ public class DemoMap {
     public void applyLightOptions() {
         if (lightOptions == null) {
             lightOptions = new LightOptions();
-            mapView.getOptions().setLightOptions(lightOptions);
+            ObjectApi.options(mapView).setLightOptions(lightOptions);
         }
         if (DemoConfig.SUN_HOUR_UTC >= 0) {
             int hour = (int) DemoConfig.SUN_HOUR_UTC;
@@ -1879,7 +1879,7 @@ public class DemoMap {
     public void applyFogOptions() {
         if (fogOptions == null) {
             fogOptions = new FogOptions();
-            mapView.getOptions().setFogOptions(fogOptions);
+            ObjectApi.options(mapView).setFogOptions(fogOptions);
         }
         fogOptions.setEnabled(DemoConfig.FOG_ENABLED);
         // STYLE mode leaves every value at its default so nothing but the style's Map block can be
@@ -1905,7 +1905,7 @@ public class DemoMap {
     public void applySkyOptions() {
         if (skyOptions == null) {
             skyOptions = new SkyOptions();
-            mapView.getOptions().setSkyOptions(skyOptions);
+            ObjectApi.options(mapView).setSkyOptions(skyOptions);
         }
         skyOptions.setEnabled(DemoConfig.SKY_ENABLED);
         skyOptions.setType("gradient".equals(DemoConfig.SKY_TYPE) ? SkyType.SKY_TYPE_GRADIENT : SkyType.SKY_TYPE_ATMOSPHERE);
@@ -1924,7 +1924,7 @@ public class DemoMap {
                 skyOptions.setShaderSource("");
             }
             skyOptions.setSkyColor(color(reliefSky()));
-            mapView.getOptions().setSkyColor(color(reliefSky()));
+            ObjectApi.options(mapView).setSkyColor(color(reliefSky()));
         }
         mapView.requestRender();
     }
@@ -1947,7 +1947,7 @@ public class DemoMap {
         lightOptions.setTerrainLightingEnabled(true);
         skyOptions.setEnabled(true);
         // The sun is computed for the CURRENT map centre, not the start position.
-        MapPos centre = mapView.getOptions().getBaseProjection().toWgs84(mapView.getFocusPos());
+        MapPos centre = ObjectApi.options(mapView).getBaseProjection().toWgs84(ObjectApi.view(mapView).getFocusPos());
         DemoSky.applyHour(lightOptions, skyOptions, hourUtc, centre.getY(), centre.getX());
         mapView.requestRender();
     }
@@ -1958,12 +1958,12 @@ public class DemoMap {
 
     /** Note: setFocusPos expects BASE PROJECTION coordinates, so WGS84 must be converted first. */
     public void applyCamera() {
-        Projection proj = mapView.getOptions().getBaseProjection();
-        mapView.setFocusPos(proj.fromWgs84(new MapPos(DemoConfig.START_LON, DemoConfig.START_LAT)), 0);
-        mapView.setZoom(DemoConfig.START_ZOOM, 0);
+        Projection proj = ObjectApi.options(mapView).getBaseProjection();
+        ObjectApi.view(mapView).setFocusPos(proj.fromWgs84(new MapPos(DemoConfig.START_LON, DemoConfig.START_LAT)), 0);
+        ObjectApi.view(mapView).setZoom(DemoConfig.START_ZOOM, 0);
         applyLookRange();
-        mapView.setTilt(DemoConfig.START_TILT, 0);
-        mapView.setMapRotation(DemoConfig.START_ROTATION, 0);
+        ObjectApi.view(mapView).setTilt(DemoConfig.START_TILT, 0);
+        ObjectApi.view(mapView).setRotation(DemoConfig.START_ROTATION, 0);
     }
 
     /**
@@ -1977,7 +1977,7 @@ public class DemoMap {
      * sky - get the full range.
      */
     public void applyLookRange() {
-        Options options = mapView.getOptions();
+        Options options = ObjectApi.options(mapView);
         options.setFreeRoamMode(freeRoamMode(DemoConfig.FREE_ROAM_MODE));
         options.setPanningSpeedMode(panningSpeedMode(DemoConfig.PANNING_SPEED_MODE));
         options.setOrbitAroundPivot(DemoConfig.ORBIT_AROUND_PIVOT);
@@ -2052,7 +2052,7 @@ public class DemoMap {
         if (starSkySaved) {
             return;
         }
-        Options options = mapView.getOptions();
+        Options options = ObjectApi.options(mapView);
         savedClearColor = options.getClearColor();
         savedSkyColor = options.getSkyColor();
         savedBackgroundBitmap = options.getBackgroundBitmap();
@@ -2064,7 +2064,7 @@ public class DemoMap {
         if (!starSkySaved) {
             return;
         }
-        Options options = mapView.getOptions();
+        Options options = ObjectApi.options(mapView);
         options.setClearColor(savedClearColor);
         options.setSkyColor(savedSkyColor);
         options.setBackgroundBitmap(savedBackgroundBitmap);
@@ -2073,7 +2073,7 @@ public class DemoMap {
 
     private void enterStarSky() {
         DemoConfig.STAR_SKY = true;
-        Options options = mapView.getOptions();
+        Options options = ObjectApi.options(mapView);
         // Transparent, not black: the frame is then a hole that whatever is behind the surface
         // shows through, and it looks black on its own anyway.
         options.setClearColor(new Color((short) 0, (short) 0, (short) 0, (short) 0));
@@ -2088,7 +2088,7 @@ public class DemoMap {
         setSurfaceTranslucent(DemoConfig.STAR_SKY_TRANSLUCENT);
         setCameraPreviewEnabled(DemoConfig.STAR_SKY_CAMERA);
         rebuildLayers();
-        Log.i(TAG, "star sky on: " + mapView.getLayers().count() + " layers, clear "
+        Log.i(TAG, "star sky on: " + ObjectApi.layers(mapView).count() + " layers, clear "
                 + options.getClearColor().getARGB() + ", background " + options.getBackgroundBitmap());
         setMapLayerOpacity(1f); // the layers are out of the list now: leave them ready to come back
         applyLookRange();
@@ -2100,7 +2100,7 @@ public class DemoMap {
         setOrientationFollowing(false);
         setCameraPreviewEnabled(false);
         DemoConfig.STAR_SKY = false;
-        Options options = mapView.getOptions();
+        Options options = ObjectApi.options(mapView);
         if (starSkySaved) {
             options.setClearColor(savedClearColor);
             options.setSkyColor(savedSkyColor);
@@ -2221,22 +2221,22 @@ public class DemoMap {
         final float duration = DemoConfig.ANIM_DURATION_S;
         handler.postDelayed(new Runnable() {
             public void run() {
-                Projection proj = mapView.getOptions().getBaseProjection();
+                Projection proj = ObjectApi.options(mapView).getBaseProjection();
                 if ("zoom".equals(anim)) {
-                    mapView.setZoom(DemoConfig.START_ZOOM + DemoConfig.ANIM_ZOOM_DELTA, duration);
+                    ObjectApi.view(mapView).setZoom(DemoConfig.START_ZOOM + DemoConfig.ANIM_ZOOM_DELTA, duration);
                 } else if ("pan".equals(anim)) {
-                    mapView.setFocusPos(proj.fromWgs84(new MapPos(DemoConfig.START_LON + DemoConfig.ANIM_LON_DELTA, DemoConfig.START_LAT + DemoConfig.ANIM_LAT_DELTA)), duration);
+                    ObjectApi.view(mapView).setFocusPos(proj.fromWgs84(new MapPos(DemoConfig.START_LON + DemoConfig.ANIM_LON_DELTA, DemoConfig.START_LAT + DemoConfig.ANIM_LAT_DELTA)), duration);
                 } else if ("rotate".equals(anim)) {
-                    mapView.setMapRotation(DemoConfig.ANIM_ROTATION, duration);
+                    ObjectApi.view(mapView).setRotation(DemoConfig.ANIM_ROTATION, duration);
                 } else if ("zoomseq".equals(anim)) {
                     // zoom out, back in, out again - each step after the map settled, which is the
                     // repro shape for "stale content stays on screen" bugs.
                     final float zoomOut = DemoConfig.ANIM_ZOOM_OUT;
                     final float zoomIn = DemoConfig.START_ZOOM;
                     final float settle = DemoConfig.ANIM_SETTLE_MS;
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step1 out " + zoomOut); mapView.setZoom(zoomOut, 0); } }, 0);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step2 in " + zoomIn); mapView.setZoom(zoomIn, 0); } }, (long) settle);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step3 out " + zoomOut); mapView.setZoom(zoomOut, 0); } }, (long) (2 * settle));
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step1 out " + zoomOut); ObjectApi.view(mapView).setZoom(zoomOut, 0); } }, 0);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step2 in " + zoomIn); ObjectApi.view(mapView).setZoom(zoomIn, 0); } }, (long) settle);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step3 out " + zoomOut); ObjectApi.view(mapView).setZoom(zoomOut, 0); } }, (long) (2 * settle));
                 } else if ("approach".equals(anim)) {
                     // The wrong-scale repro shape: dive close enough for the terrain camera
                     // clearance to engage, pan along the slope, then pull back out.
@@ -2244,9 +2244,9 @@ public class DemoMap {
                     final float back = DemoConfig.ANIM_ZOOM_OUT;
                     final float settle = DemoConfig.ANIM_SETTLE_MS;
                     final MapPos panTo = proj.fromWgs84(new MapPos(DemoConfig.START_LON + DemoConfig.ANIM_LON_DELTA, DemoConfig.START_LAT + DemoConfig.ANIM_LAT_DELTA));
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step1 close " + close); mapView.setZoom(close, duration); } }, 0);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step2 pan"); mapView.setFocusPos(panTo, duration); } }, (long) settle);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step3 out " + back); mapView.setZoom(back, duration); } }, (long) (2 * settle));
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step1 close " + close); ObjectApi.view(mapView).setZoom(close, duration); } }, 0);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step2 pan"); ObjectApi.view(mapView).setFocusPos(panTo, duration); } }, (long) settle);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step3 out " + back); ObjectApi.view(mapView).setZoom(back, duration); } }, (long) (2 * settle));
                 }
             }
         }, (long) DemoConfig.ANIM_DELAY_MS);
@@ -2255,7 +2255,7 @@ public class DemoMap {
     /** PeakFinder-style relief outline post-process effect. */
     public void setReliefOutlineEnabled(boolean enabled) {
         DemoConfig.RELIEF_OUTLINE = enabled;
-        MapRenderer renderer = mapView.getMapRenderer();
+        MapRenderer renderer = ObjectApi.renderer(mapView);
         if (enabled) {
             // The SDK provides the mechanism - an offscreen frame, the packed terrain depth and
             // named parameters - and the app provides the look, as a fragment shader string. There

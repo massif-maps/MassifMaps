@@ -182,7 +182,7 @@ instead, and that point stays where it is on screen:
   mouse where the drag started.
 
 ```java
-mapView.getOptions().setOrbitAroundPivot(true);
+MassifInterop.getOptionsByHandle(mapView.getMapHandle()).setOrbitAroundPivot(true);
 ```
 
 ```js

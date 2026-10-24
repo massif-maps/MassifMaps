@@ -12,7 +12,7 @@
 namespace massif { namespace api {
 
     /**
-     * The camera, as facade methods on BaseMapView.
+     * The camera, and the view's task and cache controls, as facade methods on BaseMapView.
      *
      * Its own TU because it is the one part of the facade that needs the map view, and pulling the
      * view into MethodImpls.cpp would put the renderer behind every method the SDK registers.

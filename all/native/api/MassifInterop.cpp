@@ -151,6 +151,21 @@ namespace massif { namespace api {
             Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::Layer"));
     }
 
+    std::shared_ptr<Options> MassifInterop::getOptionsByHandle(int handle) {
+        return std::static_pointer_cast<Options>(
+            Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::Options"));
+    }
+
+    std::shared_ptr<Layers> MassifInterop::getLayerListByHandle(int handle) {
+        return std::static_pointer_cast<Layers>(
+            Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::Layers"));
+    }
+
+    std::shared_ptr<BaseMapView> MassifInterop::getViewByHandle(int handle) {
+        return std::static_pointer_cast<BaseMapView>(
+            Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::BaseMapView"));
+    }
+
     std::shared_ptr<MapEventListener> MassifInterop::createEventBridge(
             int handle, const std::shared_ptr<MapEventListener>& chained) {
         return std::make_shared<MapEventBridge>(Context::GetDefault(), static_cast<Handle>(handle),

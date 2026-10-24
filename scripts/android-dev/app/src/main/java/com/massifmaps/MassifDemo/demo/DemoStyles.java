@@ -1170,7 +1170,7 @@ public final class DemoStyles {
      * effect. It lives here, not in the SDK, for the same reason the surface shader does - the SDK
      * provides the mechanism (an offscreen frame, a depth texture, named parameters) and the
      * application decides what the map looks like.
-     * Parameters (PostProcessEffect.setFloatParameter / setColorParameter): uIntensity,
+     * Parameters (the effect's floatParams / colorParams): uIntensity,
      * uOutlineWidth, uHorizonBoost, uDepthThreshold, uCreaseStrength, uDepthTexelSize,
      * uGrazingFloor, uDistanceFade, uHaze, uInkColor, uPaperColor.
      */
@@ -1307,7 +1307,7 @@ public final class DemoStyles {
      * effect draws its ink lines over. Lambert shading between a paper and a shade colour, the
      * distance pulling everything back towards the paper, and the resolved fog on top - so a
      * panorama reads as a stack of ever paler ridges.
-     * Parameters (TerrainOptions.setSurfaceParameter / setSurfaceColorParameter):
+     * Parameters (the terrain's surfaceParams / surfaceColorParams):
      * uPaperColor, uShadeColor, uShadeStrength, uAmbient, uHaze, uHazeDistance.
      */
     public static String reliefSurfaceShader() {

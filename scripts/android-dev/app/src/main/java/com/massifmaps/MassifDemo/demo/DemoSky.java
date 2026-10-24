@@ -25,7 +25,7 @@ public final class DemoSky {
     public static void applyHour(MassifMap map, float hourUtc, double lat, double lon) {
         PropertyGroup light = map.light();
         PropertyGroup sky = map.sky();
-        map.options().call("lightOptions.setSunPositionFromTime", DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH,
+        map.call("light.setSunPositionFromTime", DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH,
                 DemoConfig.SUN_DAY, (int) hourUtc, (int) ((hourUtc - (int) hourUtc) * 60), lat, lon).close();
         float altitude = (float) light.getDouble("sunAltitude", 0);
 

@@ -46,6 +46,19 @@ void testEffectSpec() {
     TEST_CHECK(context->getProperty(effect, "terrainDepthRequired", value) == RESULT_OK && value.asBool(),
                "and normals imply the depth pre-pass, as the setter documents");
 
+    // The uniforms are bags: one entry per name, written like any property and batchable.
+    TEST_CHECK(context->setProperty(effect, "floatParams.uIntensity", PropertyValue::ofDouble(0.25)) == RESULT_OK,
+               "a float uniform is written by name");
+    TEST_CHECK(context->getProperty(effect, "floatParams.uIntensity", value) == RESULT_OK && value.asDouble() == 0.25,
+               "and read back");
+    TEST_CHECK(context->setProperty(effect, "colorParams.uInk", PropertyValue::ofLong(0xFF336699LL)) == RESULT_OK,
+               "a colour uniform takes the ARGB number");
+    TEST_CHECK(context->getProperty(effect, "colorParams.uInk", value) == RESULT_OK && value.type == PT_COLOR &&
+               value.asLong() == 0xFF336699LL, "and reads back unsigned, alpha intact");
+    TEST_CHECK(context->setProperty(effect, "colorParams.uPaper", PropertyValue::ofString("#ff0000")) == RESULT_OK &&
+               context->getProperty(effect, "colorParams.uPaper", value) == RESULT_OK && value.asLong() == 0xFFFF0000LL,
+               "and a CSS colour text");
+
     Handle refused = NULL_HANDLE;
     TEST_CHECK(Spec::create(*context, "effect", "bad", "{\"type\":\"postprocess\",\"name\":\"bad\"}", refused) == RESULT_BAD_SPEC,
                "an effect without a shader is refused");

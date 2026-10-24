@@ -509,63 +509,6 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /** setSurfaceParameter(name, value) - a float uniform of the terrain's surface shader. */
-        Result setSurfaceParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
-            std::string name;
-            double value = 0;
-            if (!args.getString(0, name) || !args.getDouble(1, value)) {
-                return RESULT_BAD_SPEC;
-            }
-            static_cast<TerrainOptions*>(obj)->setSurfaceParameter(name, static_cast<float>(value));
-            return RESULT_OK;
-        }
-
-        /** setColorParameter(name, argb) - a colour uniform of a post-process effect. */
-        Result setEffectColorParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
-            std::string name;
-            long long argb = 0;
-            if (!args.getString(0, name) || !args.getLong(1, argb)) {
-                return RESULT_BAD_SPEC;
-            }
-            static_cast<PostProcessEffect*>(obj)->setColorParameter(name, Color(static_cast<int>(argb)));
-            return RESULT_OK;
-        }
-
-        /** setSurfaceColorParameter(name, argb) - a colour uniform of the terrain's surface shader. */
-        Result setSurfaceColorParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
-            std::string name;
-            long long argb = 0;
-            if (!args.getString(0, name) || !args.getLong(1, argb)) {
-                return RESULT_BAD_SPEC;
-            }
-            static_cast<TerrainOptions*>(obj)->setSurfaceColorParameter(name, Color(static_cast<int>(argb)));
-            return RESULT_OK;
-        }
-
-        /** setFloatParameter(name, value) - a float uniform of a post-process effect. */
-        Result setEffectFloatParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
-            std::string name;
-            double value = 0;
-            if (!args.getString(0, name) || !args.getDouble(1, value)) {
-                return RESULT_BAD_SPEC;
-            }
-            static_cast<PostProcessEffect*>(obj)->setFloatParameter(name, static_cast<float>(value));
-            return RESULT_OK;
-        }
-
-        /**
-         * calculateHorizon(pos, eyeHeight, [azimuths], maxDistance) -> a handle onto one apparent
-         * altitude per azimuth (ElevationManager::calculateHorizon). WGS84, like getElevation.
-         */
-        Result setTileLODProfile(Context&, void* obj, const CallArgs& args, PropertyValue&) {
-            long long profile = 0;
-            if (!args.getLong(0, profile)) {
-                return RESULT_BAD_SPEC;
-            }
-            static_cast<Options*>(obj)->setTileLODProfile(static_cast<TileLODProfile::TileLODProfile>(profile));
-            return RESULT_OK;
-        }
-
         Result notifyTilesChanged(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             bool removeTiles = false;
             if (!args.getBool(0, removeTiles)) {
@@ -625,6 +568,10 @@ namespace massif { namespace api {
             return objectResult(context, elevations, Context::DOUBLE_VECTOR_CLASS, result);
         }
 
+        /**
+         * calculateHorizon(pos, eyeHeight, [azimuths], maxDistance) -> a handle onto one apparent
+         * altitude per azimuth (ElevationManager::calculateHorizon). WGS84, like getElevation.
+         */
         Result calculateHorizon(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
             MapPos pos;
             double eyeHeight = 0, maxDistance = 0;
@@ -956,7 +903,6 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialLabel", "setAnchorPoint", &setLabelAnchorPoint);
         registerMethod("massif::CelestialLabel", "setOffset", &setLabelOffset);
         registerMethod("massif::TerrainOptions", "calculateHorizon", &calculateHorizon);
-        registerMethod("massif::Options", "setTileLODProfile", &setTileLODProfile);
         registerMethod("massif::TileDataSource", "notifyTilesChanged", &notifyTilesChanged);
         registerMethod("massif::ContourTileDataSource", "setIntervalMultiplier", &setContourIntervalMultiplier);
         registerMethod("massif::ContourTileDataSource", "clearIntervalMultipliers", &clearContourIntervalMultipliers);
@@ -964,10 +910,6 @@ namespace massif { namespace api {
         registerMethod("massif::ContourTileDataSource", "clearResolutionsForZoom", &clearContourResolutionsForZoom);
         registerMethod("massif::TerrainOptions", "getElevation", &getTerrainElevation);
         registerMethod("massif::TerrainOptions", "getElevations", &getTerrainElevations);
-        registerMethod("massif::TerrainOptions", "setSurfaceParameter", &setSurfaceParameter);
-        registerMethod("massif::PostProcessEffect", "setFloatParameter", &setEffectFloatParameter);
-        registerMethod("massif::PostProcessEffect", "setColorParameter", &setEffectColorParameter);
-        registerMethod("massif::TerrainOptions", "setSurfaceColorParameter", &setSurfaceColorParameter);
         registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);

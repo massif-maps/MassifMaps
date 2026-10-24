@@ -447,7 +447,11 @@ Two shapes reach it, and neither is a special case in `Context`:
 ```
 !indexed(massif::MBVectorTileDecoder, params, getStyleParameter, setStyleParameter, returns(bool))
 !indexed(massif::RoutingRequest, params, getCustomParameter, setCustomParameter, values(json))
+!indexed(massif::TerrainOptions, surfaceParams, getSurfaceParameter, setSurfaceParameter, values(number))
+!indexed(massif::TerrainOptions, surfaceColorParams, getSurfaceColorParameter, setSurfaceColorParameter, values(color))
 ```
+
+`values(number)` and `values(color)` are a float and a `Color` entry (a colour is read and written as the ARGB number, or as CSS text). A shader uniform is therefore a property, not a call: `terrain.set("surfaceParams.uHaze", 0.4)` or, many at once, `map.apply(Spec.object().set("terrain.surfaceParams.uHaze", 0.4).set("terrain.surfaceColorParams.uInk", "#123"))`.
 
 `returns(bool)` says the setter answers whether the key exists — `setStyleParameter` does, and a
 parameter the sheet never declared is refused rather than dropped. `values(json)` is for the
@@ -735,7 +739,7 @@ hand-written in `SpecFactories.cpp` is genuinely adaptive rather than boilerplat
 | still hand-written | why the signature cannot say it |
 |---|---|
 | `projection` | a name registry lookup, not a constructor |
-| `data` | bytes read through `URLFileLoader`, or inline as `{"base64": "…"}`; a `bitmap` takes either key bare |
+| `data` | bytes read through `URLFileLoader`, not a constructor |
 | `bitmap` | `Bitmap::CreateFromCompressed` is a static factory |
 | `geometry` **geojson** | a GeoJSON reader, not a constructor — the shapes themselves build from theirs |
 | `search` **from a layer** | the source and the decoder both come from a layer already on the map |

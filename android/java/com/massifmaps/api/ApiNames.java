@@ -207,6 +207,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Integer> COLOR = MassifObject.key("color");
     /** Returns the color format of this bitmap. */
     public static final MassifObject.Key<String> COLOR_FORMAT = MassifObject.key("colorFormat");
+    /** Returns the value of a color parameter. */
+    public static final MassifObject.Key<String> COLOR_PARAMS = MassifObject.key("colorParams");
     /** Returns the current compiled style set used by the decoder. If decoder uses non-compiled style set, null is returned. */
     public static final MassifObject.Key<MassifObject> COMPILED_STYLE = MassifObject.key("compiledStyle");
     /** Returns the contour line color. */
@@ -357,6 +359,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> FLIGHT_PROGRESS = MassifObject.key("flightProgress");
     /** Returns the state of the flippable flag. */
     public static final MassifObject.Key<Boolean> FLIPPABLE = MassifObject.key("flippable");
+    /** Returns the value of a float parameter. */
+    public static final MassifObject.Key<String> FLOAT_PARAMS = MassifObject.key("floatParams");
     /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
     public static final MassifObject.Key<Double> FOCUS_LIFT = MassifObject.key("focusLift");
     /** Returns the focus point offset (from screen center) in pixels. */
@@ -880,8 +884,12 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> SUN_INTENSITY = MassifObject.key("sunIntensity");
     /** Returns whether this sun overrides the one a style states. */
     public static final MassifObject.Key<Boolean> SUN_OVERRIDING_STYLE = MassifObject.key("sunOverridingStyle");
+    /** Returns the value of a terrain surface shader color parameter. */
+    public static final MassifObject.Key<String> SURFACE_COLOR_PARAMS = MassifObject.key("surfaceColorParams");
     /** Returns the resolution the elevation node field is built at. */
     public static final MassifObject.Key<Long> SURFACE_NODE_RESOLUTION = MassifObject.key("surfaceNodeResolution");
+    /** Returns the value of a terrain surface shader float parameter. */
+    public static final MassifObject.Key<String> SURFACE_PARAMS = MassifObject.key("surfaceParams");
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     public static final MassifObject.Key<String> SURFACE_SHADER_SOURCE = MassifObject.key("surfaceShaderSource");
     /** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -946,6 +954,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> TILE_LODFACTOR = MassifObject.key("tileLODFactor");
     /** Returns how many distinct zoom levels a tilted view may spread over. */
     public static final MassifObject.Key<Double> TILE_LODMAX_ZOOM_LEVELS_ON_SCREEN = MassifObject.key("tileLODMaxZoomLevelsOnScreen");
+    /** Returns the profile the four LOD numbers currently match. */
+    public static final MassifObject.Key<String> TILE_LODPROFILE = MassifObject.key("tileLODProfile");
     /** Returns how many times more tiles a tilted view may load than a top-down one. */
     public static final MassifObject.Key<Double> TILE_LODTILE_COUNT_RATIO = MassifObject.key("tileLODTileCountRatio");
     /** Returns the tile load listener. */
@@ -1116,14 +1126,12 @@ public final class ApiNames {
     public static final String METHOD_SET_ANCHOR_POINT = "setAnchorPoint";
     public static final String METHOD_SET_ANCHORS = "setAnchors";
     public static final String METHOD_SET_CIRCLE = "setCircle";
-    public static final String METHOD_SET_COLOR_PARAMETER = "setColorParameter";
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
     public static final String METHOD_SET_DIRECTION = "setDirection";
     public static final String METHOD_SET_DIRECTIONS = "setDirections";
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_MAX_OVERZOOM_LEVEL = "setExternalDataSourceMaxOverzoomLevel";
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_ZOOM_LEVEL_BIAS = "setExternalDataSourceZoomLevelBias";
-    public static final String METHOD_SET_FLOAT_PARAMETER = "setFloatParameter";
     public static final String METHOD_SET_INTERVAL_MULTIPLIER = "setIntervalMultiplier";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
@@ -1135,9 +1143,6 @@ public final class ApiNames {
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
     public static final String METHOD_SET_SUN_POSITION_FROM_TIME = "setSunPositionFromTime";
-    public static final String METHOD_SET_SURFACE_COLOR_PARAMETER = "setSurfaceColorParameter";
-    public static final String METHOD_SET_SURFACE_PARAMETER = "setSurfaceParameter";
-    public static final String METHOD_SET_TILE_LODPROFILE = "setTileLODProfile";
     public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";
     public static final String METHOD_STOP_ALL_DOWNLOADS = "stopAllDownloads";
     public static final String METHOD_STOP_FLIGHT = "stopFlight";

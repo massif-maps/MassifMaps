@@ -207,6 +207,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyClusterElementBuilder;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyColor;
 /** Returns the color format of this bitmap. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyColorFormat;
+/** Returns the value of a color parameter. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyColorParams;
 /** Returns the current compiled style set used by the decoder. If decoder uses non-compiled style set, null is returned. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCompiledStyle;
 /** Returns the contour line color. */
@@ -357,6 +359,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightActive;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightProgress;
 /** Returns the state of the flippable flag. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlippable;
+/** Returns the value of a float parameter. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFloatParams;
 /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFocusLift;
 /** Returns the focus point offset (from screen center) in pixels. */
@@ -880,8 +884,12 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertySunDiscEnabled;
 FOUNDATION_EXPORT MassifProperty const MassifPropertySunIntensity;
 /** Returns whether this sun overrides the one a style states. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySunOverridingStyle;
+/** Returns the value of a terrain surface shader color parameter. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceColorParams;
 /** Returns the resolution the elevation node field is built at. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceNodeResolution;
+/** Returns the value of a terrain surface shader float parameter. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceParams;
 /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceShaderSource;
 /** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -946,6 +954,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyTileId;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODFactor;
 /** Returns how many distinct zoom levels a tilted view may spread over. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODMaxZoomLevelsOnScreen;
+/** Returns the profile the four LOD numbers currently match. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODProfile;
 /** Returns how many times more tiles a tilted view may load than a top-down one. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODTileCountRatio;
 /** Returns the tile load listener. */
@@ -1117,14 +1127,12 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSet;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetAnchorPoint;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetAnchors;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCircle;
-FOUNDATION_EXPORT MassifMethod const MassifMethodSetColorParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetDirection;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetDirections;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceMaxOverzoomLevel;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceZoomLevelBias;
-FOUNDATION_EXPORT MassifMethod const MassifMethodSetFloatParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetIntervalMultiplier;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
@@ -1136,9 +1144,6 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetSegments;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSunPositionFromTime;
-FOUNDATION_EXPORT MassifMethod const MassifMethodSetSurfaceColorParameter;
-FOUNDATION_EXPORT MassifMethod const MassifMethodSetSurfaceParameter;
-FOUNDATION_EXPORT MassifMethod const MassifMethodSetTileLODProfile;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStartDownloadArea;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopAllDownloads;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopFlight;

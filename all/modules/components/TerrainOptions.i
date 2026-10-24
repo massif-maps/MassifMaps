@@ -93,8 +93,9 @@
 %attribute(massif::TerrainOptions, float, TextOcclusionOpacity, getTextOcclusionOpacity, setTextOcclusionOpacity)
 %attributestring(massif::TerrainOptions, std::string, SurfaceShaderSource, getSurfaceShaderSource, setSurfaceShaderSource)
 %attribute(massif::TerrainOptions, int, SurfaceNodeResolution, getSurfaceNodeResolution, setSurfaceNodeResolution)
-!method(massif::TerrainOptions, setSurfaceParameter, arg(name, string), arg(value, float), returns(void))
-!method(massif::TerrainOptions, setSurfaceColorParameter, arg(name, string), arg(color, int), returns(void))
+// Shader uniforms of the surface, by name: set("surfaceParams.u_foo", 1), set("surfaceColorParams.u_tint", "#0af").
+!indexed(massif::TerrainOptions, surfaceParams, getSurfaceParameter, setSurfaceParameter, values(number))
+!indexed(massif::TerrainOptions, surfaceColorParams, getSurfaceColorParameter, setSurfaceColorParameter, values(color))
 %std_exceptions(massif::TerrainOptions::TerrainOptions)
 
 %ignore massif::TerrainOptions::getSurfaceParameters;

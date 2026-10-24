@@ -143,6 +143,8 @@ NS_SWIFT_NAME(MassifMap)
 - (BOOL)set:(NSString *)path value:(id)value;
 /** Several at once, in one crossing. @see MSFMassifObject.apply: */
 - (BOOL)apply:(MSFSpec *)values;
+/** A method on the map or an object under it, by path: `[map call:@"light.setSunPositionFromTime" args:@[...] error:nil]`. @see MSFMassifObject.call:args:error: */
+- (nullable MSFMassifObject *)call:(NSString *)method args:(nullable NSArray *)args error:(NSError **)error;
 - (double)getDouble:(NSString *)path defaultValue:(double)defaultValue;
 - (long long)getLong:(NSString *)path defaultValue:(long long)defaultValue;
 - (BOOL)getBool:(NSString *)path defaultValue:(BOOL)defaultValue;

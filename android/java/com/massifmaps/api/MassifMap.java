@@ -126,6 +126,15 @@ public final class MassifMap implements AutoCloseable {
         return this;
     }
 
+    /**
+     * A method on the map or on an object under it, by path: <pre>map.call("light.setSunPositionFromTime", 2026, 3, 20, 12, 0, 45.0, 5.7).close();</pre>
+     * The result is the caller's to close.
+     * @see MassifObject#call
+     */
+    public MassifObject call(String method, Object... args) {
+        return options.call(method, args);
+    }
+
     public double getDouble(String path, double defaultValue) {
         return options.getDouble(path, defaultValue);
     }

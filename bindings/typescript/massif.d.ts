@@ -615,6 +615,8 @@ export type TileLODProfileTileLODProfile =
   | "TILE_LOD_PROFILE_MOBILE"
   /** A full level finer than the reference (TileLODFactor 0.5, the historical default), about 4x its tile count. Meant for a desktop or a web page on a real GPU. */
   | "TILE_LOD_PROFILE_DESKTOP"
+  /** What the getter reports once a LOD number was set on its own. Applying it changes nothing. */
+  | "TILE_LOD_PROFILE_CUSTOM"
   ;
 
 export type TileSubstitutionPolicyTileSubstitutionPolicy =
@@ -1396,6 +1398,10 @@ export interface PropertyTypes {
     "verticalOffset": number;
   };
   "massif::BaseMapView": {
+    /** Returns the value of a color parameter. */
+    [key: `mapRenderer.postProcessEffect.colorParams.${string}`]: number;
+    /** Returns the value of a float parameter. */
+    [key: `mapRenderer.postProcessEffect.floatParams.${string}`]: number;
     /** (read-only) Returns the position the camera itself is above (the viewpoint), which at a low tilt is far from the focus it looks at. Where a top-down view has to be centred to come back to the same place. */
     readonly "cameraPos": Position;
     /** (read-only) Returns true while a flyTo animation is running. */
@@ -1410,6 +1416,10 @@ export interface PropertyTypes {
     "mapRenderer.mapRendererListener": Handle<"massif::MapRendererListener">;
     /** Returns the current post-process effect. Can be null. */
     "mapRenderer.postProcessEffect": Handle<"massif::PostProcessEffect">;
+    /** Returns the value of a color parameter. */
+    "mapRenderer.postProcessEffect.colorParams": Record<string, number>;
+    /** Returns the value of a float parameter. */
+    "mapRenderer.postProcessEffect.floatParams": Record<string, number>;
     /** (read-only) Returns the fragment shader source of the effect. */
     readonly "mapRenderer.postProcessEffect.fragmentShader": string;
     /** (read-only) Returns the name of the effect. */
@@ -2082,6 +2092,10 @@ export interface PropertyTypes {
   "massif::ContourTileDataSource": {
     /** Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. */
     [key: `metaData.${string}`]: Json;
+    /** Returns the value of a terrain surface shader color parameter. */
+    [key: `terrainOptions.surfaceColorParams.${string}`]: number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    [key: `terrainOptions.surfaceParams.${string}`]: number;
     /** Returns the base contour interval in meters. */
     "baseInterval": number;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -2193,8 +2207,12 @@ export interface PropertyTypes {
     "terrainOptions.sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "terrainOptions.subdivideDistance": number;
+    /** Returns the value of a terrain surface shader color parameter. */
+    "terrainOptions.surfaceColorParams": Record<string, number>;
     /** Returns the resolution the elevation node field is built at. */
     "terrainOptions.surfaceNodeResolution": number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    "terrainOptions.surfaceParams": Record<string, number>;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -3610,10 +3628,18 @@ export interface PropertyTypes {
     readonly "min": number;
   };
   "massif::MapRenderer": {
+    /** Returns the value of a color parameter. */
+    [key: `postProcessEffect.colorParams.${string}`]: number;
+    /** Returns the value of a float parameter. */
+    [key: `postProcessEffect.floatParams.${string}`]: number;
     /** Returns the map renderer listener. Can be null. */
     "mapRendererListener": Handle<"massif::MapRendererListener">;
     /** Returns the current post-process effect. Can be null. */
     "postProcessEffect": Handle<"massif::PostProcessEffect">;
+    /** Returns the value of a color parameter. */
+    "postProcessEffect.colorParams": Record<string, number>;
+    /** Returns the value of a float parameter. */
+    "postProcessEffect.floatParams": Record<string, number>;
     /** (read-only) Returns the fragment shader source of the effect. */
     readonly "postProcessEffect.fragmentShader": string;
     /** (read-only) Returns the name of the effect. */
@@ -4232,6 +4258,14 @@ export interface PropertyTypes {
   "massif::Options": {
     /** Returns the dots per inch value. */
     "DPI": number;
+    /** Returns the value of a terrain surface shader color parameter. */
+    [key: `terrain.surfaceColorParams.${string}`]: number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    [key: `terrain.surfaceParams.${string}`]: number;
+    /** Returns the value of a terrain surface shader color parameter. */
+    [key: `terrainOptions.surfaceColorParams.${string}`]: number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    [key: `terrainOptions.surfaceParams.${string}`]: number;
     /** Returns the color of the ambient light. */
     "ambientLightColor": number;
     /** Returns the background bitmap. May be null. */
@@ -4606,8 +4640,12 @@ export interface PropertyTypes {
     "terrain.sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "terrain.subdivideDistance": number;
+    /** Returns the value of a terrain surface shader color parameter. */
+    "terrain.surfaceColorParams": Record<string, number>;
     /** Returns the resolution the elevation node field is built at. */
     "terrain.surfaceNodeResolution": number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    "terrain.surfaceParams": Record<string, number>;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrain.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4702,8 +4740,12 @@ export interface PropertyTypes {
     "terrainOptions.sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "terrainOptions.subdivideDistance": number;
+    /** Returns the value of a terrain surface shader color parameter. */
+    "terrainOptions.surfaceColorParams": Record<string, number>;
     /** Returns the resolution the elevation node field is built at. */
     "terrainOptions.surfaceNodeResolution": number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    "terrainOptions.surfaceParams": Record<string, number>;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4724,6 +4766,8 @@ export interface PropertyTypes {
     "tileLODFactor": number;
     /** Returns how many distinct zoom levels a tilted view may spread over. */
     "tileLODMaxZoomLevelsOnScreen": number;
+    /** Returns the profile the four LOD numbers currently match. */
+    "tileLODProfile": "TILE_LOD_PROFILE_REFERENCE" | "TILE_LOD_PROFILE_MOBILE" | "TILE_LOD_PROFILE_DESKTOP" | "TILE_LOD_PROFILE_CUSTOM";
     /** Returns how many times more tiles a tilted view may load than a top-down one. */
     "tileLODTileCountRatio": number;
     /** Returns how many zoom levels above its own a coarsened tile may be styled at. */
@@ -5540,6 +5584,14 @@ export interface PropertyTypes {
     "verticalOffset": number;
   };
   "massif::PostProcessEffect": {
+    /** Returns the value of a color parameter. */
+    [key: `colorParams.${string}`]: number;
+    /** Returns the value of a float parameter. */
+    [key: `floatParams.${string}`]: number;
+    /** Returns the value of a color parameter. */
+    "colorParams": Record<string, number>;
+    /** Returns the value of a float parameter. */
+    "floatParams": Record<string, number>;
     /** (read-only) Returns the fragment shader source of the effect. */
     readonly "fragmentShader": string;
     /** (read-only) Returns the name of the effect. */
@@ -5925,6 +5977,10 @@ export interface PropertyTypes {
     "color": number;
   };
   "massif::TerrainOptions": {
+    /** Returns the value of a terrain surface shader color parameter. */
+    [key: `surfaceColorParams.${string}`]: number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    [key: `surfaceParams.${string}`]: number;
     /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
     "alwaysDecode": boolean;
     /** Returns how long the terrain takes to sink flat. */
@@ -6003,8 +6059,12 @@ export interface PropertyTypes {
     "sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "subdivideDistance": number;
+    /** Returns the value of a terrain surface shader color parameter. */
+    "surfaceColorParams": Record<string, number>;
     /** Returns the resolution the elevation node field is built at. */
     "surfaceNodeResolution": number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    "surfaceParams": Record<string, number>;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -7167,6 +7227,10 @@ export type CelestialSpec = CelestialSpec_arc | CelestialSpec_image | CelestialS
 
 export interface EffectSpec_postprocess {
   type: "postprocess";
+  /** Returns the value of a color parameter. */
+  colorParams?: Record<string, number>;
+  /** Returns the value of a float parameter. */
+  floatParams?: Record<string, number>;
   fragmentShader?: string;
   name?: string;
   /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
@@ -8194,8 +8258,12 @@ export interface OptionsSpec_terrain {
   source?: SourceSpec | string;
   /** Returns the distance geo-three's terrain LOD subdivides at. */
   subdivideDistance?: number;
+  /** Returns the value of a terrain surface shader color parameter. */
+  surfaceColorParams?: Record<string, number>;
   /** Returns the resolution the elevation node field is built at. */
   surfaceNodeResolution?: number;
+  /** Returns the value of a terrain surface shader float parameter. */
+  surfaceParams?: Record<string, number>;
   /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
   surfaceShaderSource?: string;
   /** Returns the opacity a label keeps while its anchor is behind 3D content. */
@@ -8957,7 +9025,6 @@ export interface MethodTypes {
   "massif::OnChangeListener": {
   };
   "massif::Options": {
-    setTileLODProfile: (profile: number) => void;
   };
   "massif::OptionsListener": {
   };
@@ -9061,8 +9128,6 @@ export interface MethodTypes {
   "massif::PopupStyleBuilder": {
   };
   "massif::PostProcessEffect": {
-    setColorParameter: (name: string, color: number) => void;
-    setFloatParameter: (name: string, value: number) => void;
   };
   "massif::Projection": {
   };
@@ -9128,8 +9193,6 @@ export interface MethodTypes {
     calculateHorizon: (pos: Position, eyeHeight: number, azimuths: Json, maxDistance: number) => number[];
     getElevation: (pos: Position) => number;
     getElevations: (positions: Position[]) => number[];
-    setSurfaceColorParameter: (name: string, color: number) => void;
-    setSurfaceParameter: (name: string, value: number) => void;
   };
   "massif::TerrariumElevationDataDecoder": {
   };

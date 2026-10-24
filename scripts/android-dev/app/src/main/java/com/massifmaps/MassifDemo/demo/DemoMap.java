@@ -320,9 +320,9 @@ public class DemoMap {
         return Massif.style(id, spec);
     }
 
-    /** One call on the options object or a child of it, with the result dropped: "terrainOptions.setSurfaceParameter". */
+    /** One call on the map or an object under it, with the result dropped: "light.setSunPositionFromTime". */
     private void callOptions(String method, Object... args) {
-        map.options().call(method, args).close();
+        map.call(method, args).close();
     }
 
     /**
@@ -1754,11 +1754,11 @@ public class DemoMap {
     /** The tile LOD numbers: a named profile if one was asked for, then the individual knobs. */
     public void applyTileLODConfig() {
         if ("reference".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            map.options().call("setTileLODProfile", LOD_PROFILE_REFERENCE).close();
+            map.set("tileLODProfile", LOD_PROFILE_REFERENCE);
         } else if ("mobile".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            map.options().call("setTileLODProfile", LOD_PROFILE_MOBILE).close();
+            map.set("tileLODProfile", LOD_PROFILE_MOBILE);
         } else if ("desktop".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            map.options().call("setTileLODProfile", LOD_PROFILE_DESKTOP).close();
+            map.set("tileLODProfile", LOD_PROFILE_DESKTOP);
         } else {
             map.set("tileLODFactor", DemoConfig.TILE_LOD_FACTOR);
             map.set("tileStyleZoomLift", DemoConfig.TILE_STYLE_ZOOM_LIFT);
@@ -1849,13 +1849,14 @@ public class DemoMap {
         if (terrainOptions == null) {
             return;
         }
-        terrainOptions.set("surfaceShaderSource", DemoConfig.RELIEF_SURFACE ? DemoStyles.reliefSurfaceShader() : "");
-        callOptions("terrainOptions.setSurfaceColorParameter", "uPaperColor", reliefPaper());
-        callOptions("terrainOptions.setSurfaceColorParameter", "uShadeColor", reliefShade());
-        callOptions("terrainOptions.setSurfaceParameter", "uShadeStrength", DemoConfig.RELIEF_SHADE_STRENGTH);
-        callOptions("terrainOptions.setSurfaceParameter", "uAmbient", DemoConfig.RELIEF_AMBIENT);
-        callOptions("terrainOptions.setSurfaceParameter", "uHaze", DemoConfig.RELIEF_HAZE);
-        callOptions("terrainOptions.setSurfaceParameter", "uHazeDistance", DemoConfig.RELIEF_HAZE_DISTANCE);
+        terrainOptions.apply(Spec.object()
+            .set("surfaceShaderSource", DemoConfig.RELIEF_SURFACE ? DemoStyles.reliefSurfaceShader() : "")
+            .set("surfaceColorParams.uPaperColor", reliefPaper())
+            .set("surfaceColorParams.uShadeColor", reliefShade())
+            .set("surfaceParams.uShadeStrength", DemoConfig.RELIEF_SHADE_STRENGTH)
+            .set("surfaceParams.uAmbient", DemoConfig.RELIEF_AMBIENT)
+            .set("surfaceParams.uHaze", DemoConfig.RELIEF_HAZE)
+            .set("surfaceParams.uHazeDistance", DemoConfig.RELIEF_HAZE_DISTANCE));
         mapView.requestRender();
     }
 
@@ -1867,7 +1868,7 @@ public class DemoMap {
         if (DemoConfig.SUN_HOUR_UTC >= 0) {
             int hour = (int) DemoConfig.SUN_HOUR_UTC;
             int minute = (int) ((DemoConfig.SUN_HOUR_UTC - hour) * 60);
-            callOptions("lightOptions.setSunPositionFromTime", DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY,
+            callOptions("light.setSunPositionFromTime", DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY,
                     hour, minute, DemoConfig.START_LAT, DemoConfig.START_LON);
         } else {
             lightOptions.set("sunAzimuth", DemoConfig.SUN_AZIMUTH);
@@ -2287,20 +2288,21 @@ public class DemoMap {
         if (reliefEffect == null) {
             return;
         }
-        reliefEffect.call("setFloatParameter", "uIntensity", 1.0f).close();
-        reliefEffect.call("setFloatParameter", "uOutlineWidth", DemoConfig.RELIEF_OUTLINE_WIDTH).close();
-        reliefEffect.call("setFloatParameter", "uHorizonBoost", DemoConfig.RELIEF_HORIZON_BOOST).close();
-        reliefEffect.call("setFloatParameter", "uDepthThreshold", DemoConfig.RELIEF_DEPTH_THRESHOLD).close();
-        reliefEffect.call("setFloatParameter", "uCreaseStrength", DemoConfig.RELIEF_CREASE_STRENGTH).close();
-        reliefEffect.call("setFloatParameter", "uHaze", DemoConfig.RELIEF_HAZE).close();
         // The depth texture is half resolution (TerrainRenderer::BUFFER_DOWNSCALE), and the two
         // below are what keep the horizon the boldest line: the silhouette test is relaxed by the
         // grazing angle, and terrain-vs-terrain lines fade with distance while the sky's do not.
-        reliefEffect.call("setFloatParameter", "uDepthTexelSize", 2.0f).close();
-        reliefEffect.call("setFloatParameter", "uGrazingFloor", 0.15f).close();
-        reliefEffect.call("setFloatParameter", "uDistanceFade", 0.45f).close();
-        reliefEffect.call("setColorParameter", "uInkColor", reliefInk()).close();
-        reliefEffect.call("setColorParameter", "uPaperColor", reliefPaper()).close();
+        reliefEffect.apply(Spec.object()
+            .set("floatParams.uIntensity", 1.0)
+            .set("floatParams.uOutlineWidth", DemoConfig.RELIEF_OUTLINE_WIDTH)
+            .set("floatParams.uHorizonBoost", DemoConfig.RELIEF_HORIZON_BOOST)
+            .set("floatParams.uDepthThreshold", DemoConfig.RELIEF_DEPTH_THRESHOLD)
+            .set("floatParams.uCreaseStrength", DemoConfig.RELIEF_CREASE_STRENGTH)
+            .set("floatParams.uHaze", DemoConfig.RELIEF_HAZE)
+            .set("floatParams.uDepthTexelSize", 2.0)
+            .set("floatParams.uGrazingFloor", 0.15)
+            .set("floatParams.uDistanceFade", 0.45)
+            .set("colorParams.uInkColor", reliefInk())
+            .set("colorParams.uPaperColor", reliefPaper()));
         mapView.requestRender();
     }
 
@@ -2330,7 +2332,7 @@ public class DemoMap {
 
     /** Elevation under a map position; blocks on tile loading, so call it off the UI thread. */
     public double getElevation(Position wgs84Pos) {
-        com.massifmaps.api.MassifObject result = map.options().call("terrainOptions.getElevation", wgs84Pos);
+        com.massifmaps.api.MassifObject result = map.call("terrain.getElevation", wgs84Pos);
         try {
             return Double.parseDouble(result.json());
         } finally {

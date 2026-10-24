@@ -30,9 +30,9 @@
 %ignore massif::PostProcessEffect::getFloatParameters;
 %ignore massif::PostProcessEffect::getColorParameters;
 
-// The facade's way to tune an app-supplied effect. A colour crosses as an ARGB int, which is how every colour property does.
-!method(massif::PostProcessEffect, setFloatParameter, arg(name, string), arg(value, float), returns(void))
-!method(massif::PostProcessEffect, setColorParameter, arg(name, string), arg(color, int), returns(void))
+// Shader uniforms of an app-supplied effect, by name: set("floatParams.uIntensity", 1), set("colorParams.uTint", "#0af").
+!indexed(massif::PostProcessEffect, floatParams, getFloatParameter, setFloatParameter, values(number))
+!indexed(massif::PostProcessEffect, colorParams, getColorParameter, setColorParameter, values(color))
 
 !standard_equals(massif::PostProcessEffect);
 

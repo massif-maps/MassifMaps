@@ -348,7 +348,7 @@ public class DayCycleLightExample extends MapExample {
         double utc = hour - LON / 15.0;
         int dayShift = (int) Math.floor(utc / 24.0);
         utc -= dayShift * 24.0;
-        host.map().options().call("lightOptions.setSunPositionFromTime", 2026, 3, 20 + dayShift,
+        host.map().call("light.setSunPositionFromTime", 2026, 3, 20 + dayShift,
             (int) utc, (int) ((utc - (int) utc) * 60), LAT, LON).close();
         sunAltitude = (float) host.map().light().getDouble("sunAltitude", 0);
         sunAzimuth = (float) host.map().light().getDouble("sunAzimuth", 0);

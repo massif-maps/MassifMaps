@@ -179,6 +179,19 @@ Its bridge to the facade moved with it: `Massif.adopt(...)`, `Massif.rawSource`,
 keeps what `MapView` lost as relative moves on `MapCamera`: `panBy(dLng, dLat)`, `zoomBy`, `rotateBy`, `tiltBy`
 (also on iOS, NativeScript and the web).
 
+### Shader uniforms and the LOD profile are properties, not calls
+
+`terrainOptions.setSurfaceParameter` / `setSurfaceColorParameter`, `PostProcessEffect.setFloatParameter` /
+`setColorParameter` and `Options.setTileLODProfile` are no longer facade methods: a call cannot go into `apply`.
+They are the bags `surfaceParams.<name>`, `surfaceColorParams.<name>`, `floatParams.<name>`, `colorParams.<name>`
+and the enum property `tileLODProfile` (which reads `CUSTOM` once a LOD number was set on its own):
+
+```java
+map.apply(Spec.object().set("terrain.surfaceParams.uHaze", 0.4).set("tileLODProfile", 1));
+```
+
+The C++ methods are unchanged, so the object API is not affected.
+
 ### Android `MapView` no longer carries the object API
 
 `MapView` and `TextureMapView` create their native map themselves and are addressed through the facade, so

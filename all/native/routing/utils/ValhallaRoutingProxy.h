@@ -15,10 +15,6 @@
 #include <memory>
 #include <vector>
 
-namespace sqlite3pp {
-    class database;
-}
-
 namespace massif {
     class HTTPClient;
     class Projection;
@@ -35,12 +31,11 @@ namespace massif {
         static std::shared_ptr<RoutingResult> CalculateRoute(HTTPClient& httpClient, const std::string& baseURL, const std::string& profile, const std::shared_ptr<RoutingRequest>& request, std::map<std::string, std::string>& headers);
 
 #ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
-        static std::shared_ptr<RouteMatchingResult> MatchRoute(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, const std::shared_ptr<RouteMatchingRequest>& request);
-        static std::shared_ptr<RoutingResult> CalculateRoute(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, const std::shared_ptr<RoutingRequest>& request);
+        static std::shared_ptr<RouteMatchingResult> MatchRoute(const std::vector<std::string>& databasePaths, const std::string& profile, const Variant& config, const std::shared_ptr<RouteMatchingRequest>& request);
+        static std::shared_ptr<RoutingResult> CalculateRoute(const std::vector<std::string>& databasePaths, const std::string& profile, const Variant& config, const std::shared_ptr<RoutingRequest>& request);
         static void AddLocale(const std::string& key, const std::string& json);
-#endif
-
         static Variant GetDefaultConfiguration();
+#endif
 
     private:
         ValhallaRoutingProxy();

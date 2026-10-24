@@ -91,7 +91,25 @@ def buildAndroidSO(args, abi):
     os.remove(sqliteDist)
   if not makedirs('%s/%s' % (distDir, abi)) or not copyfile('%s/libmassif.so' % buildDir, '%s/%s/libmassif.so' % (distDir, abi)):
     return False
-  return not os.path.exists('%s/libsqlite.so' % buildDir) or copyfile('%s/libsqlite.so' % buildDir, sqliteDist)
+  if os.path.exists('%s/libsqlite.so' % buildDir) and not copyfile('%s/libsqlite.so' % buildDir, sqliteDist):
+    return False
+  return '_MASSIF_VALHALLA_ROUTING_SUPPORT' not in args.defines or buildValhallaEngine(args, abi)
+
+def buildValhallaEngine(args, abi):
+  # libmassif.so loads libvalhalla_routing.so at run time; the profile's AAR ships it so an app can drop it.
+  baseDir = getBaseDir()
+  if not execute(sys.executable, '%s/scripts' % baseDir, 'build-routing-android.py', '--no-aar', '--shared-stl',
+    '--android-abi', abi,
+    '--android-ndk-path', args.androidndkpath,
+    '--android-sdk-path', args.androidsdkpath,
+    '--cmake', args.cmake,
+    '--configuration', args.configuration,
+    '--build-version', args.buildversion,
+    '--build-number', args.buildnumber
+  ):
+    return False
+  engineDist = '%s/%s/libvalhalla_routing.so' % (getDistDir('routing-android-shared'), abi)
+  return copyfile(engineDist, '%s/%s/libvalhalla_routing.so' % (getDistDir('android'), abi))
 
 def buildAndroidJAR(args):
   shutil.rmtree(getBuildDir('android_java'), True)

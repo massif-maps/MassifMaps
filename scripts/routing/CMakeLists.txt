@@ -6,6 +6,11 @@ enable_language(C CXX ASM)
 # General options
 option(SINGLE_LIBRARY "Compile as single library" OFF)
 
+if(ANDROID)
+  option(SQLITE_SHARED "Build SQLite as libsqlite.so, linked by libvalhalla_routing.so, instead of compiling it in" OFF)
+  option(PACK_DYN_RELOCS "Pack the dynamic relocations, which the platform linker reads from API 23" OFF)
+endif()
+
 # Directories (mirroring scripts/build/CMakeLists.txt)
 set(SDK_BASE_DIR "${PROJECT_SOURCE_DIR}/../..")
 set(SDK_EXTERNAL_LIBS_DIR "${SDK_BASE_DIR}/libs-external")
@@ -63,6 +68,9 @@ if(ANDROID)
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Oz -flto=thin -fomit-frame-pointer")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Oz -flto=thin -fomit-frame-pointer")
   set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -s -fuse-ld=lld -Wl,-plugin-opt=O3 -Wl,--gc-sections -Wl,-icf=all -Wl,--as-needed -Wl,--build-id -Wl,--version-script=${PROJECT_SOURCE_DIR}/../android/version-script")
+  if(PACK_DYN_RELOCS)
+    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--pack-dyn-relocs=android")
+  endif()
 endif(ANDROID)
 
 # Make common libraries available to all subprojects
@@ -93,6 +101,14 @@ foreach(SDK_SUBPROJECT IN ITEMS ${ROUTING_EXTERNAL_SUBPROJECTS})
   add_subdirectory("${SDK_EXTERNAL_LIBS_DIR}/${SDK_SUBPROJECT}" "${SDK_SUBPROJECT}")
 endforeach()
 
+if(ANDROID AND SINGLE_LIBRARY AND SQLITE_SHARED)
+  set(SDK_SQLITE_SHARED ON)
+  # Same contract as scripts/build/CMakeLists.txt: one thread-safe libsqlite.so shared with libmassif.so.
+  add_definitions("-DSQLITE_API=__attribute__((visibility(\"default\")))")
+  list(REMOVE_ITEM sqlite_FLAGS "-DSQLITE_THREADSAFE=2" "-DSQLITE_OMIT_WAL")
+  list(APPEND sqlite_FLAGS "-DSQLITE_THREADSAFE=1")
+endif()
+
 # When in single library mode, apply compilation flags to individual projects.
 if(SINGLE_LIBRARY)
   foreach(SDK_SUBPROJECT IN ITEMS ${ROUTING_EXTERNAL_SUBPROJECTS})
@@ -120,6 +136,13 @@ if(SINGLE_LIBRARY)
     endif()
   endforeach()
 endif(SINGLE_LIBRARY)
+
+if(SDK_SQLITE_SHARED)
+  add_library(sqlite_shared SHARED ${sqlite_SRC_FILES})
+  set_target_properties(sqlite_shared PROPERTIES OUTPUT_NAME sqlite)
+  target_link_libraries(sqlite_shared m)
+  set(sqlite_SRC_FILES "")
+endif()
 
 # Source files and properties
 file(GLOB_RECURSE SDK_SRC_FILES
@@ -182,6 +205,9 @@ add_library(valhalla_routing ${ROUTING_LIBRARY_TYPE}
 # Platform link libraries
 if(ANDROID)
   target_link_libraries(valhalla_routing log z android)
+  if(SDK_SQLITE_SHARED)
+    target_link_libraries(valhalla_routing sqlite_shared)
+  endif()
 elseif(APPLE)
 
   target_link_libraries(valhalla_routing

@@ -31,8 +31,12 @@ about 40% smaller.
 
 Valhalla routing for an app that has no map, or a map without routing: the `full` map variant
 already routes offline. On Android it installs beside any map variant (its own classes and
-`libvalhalla_routing.so`). On iOS pair it with `MassifMapsCore` or `MassifMapsLite`, never
-`MassifMaps`: both define the same `MSF` routing classes. See the [routing guide](/docs/guides/routing).
+`libvalhalla_routing.so`). The `full` AAR carries that same `libvalhalla_routing.so`, which `libmassif.so`
+loads for offline Valhalla: next to `full`, add `pickFirst` on `lib/*/libvalhalla_routing.so` and
+`lib/*/libsqlite.so`. An app that does not route offline drops the file from `full`
+(`packaging.jniLibs.excludes`); `valhalla-online` needs none. On iOS pair it with `MassifMapsCore` or
+`MassifMapsLite`, never `MassifMaps`: both define the same `MSF` routing classes. See the
+[routing guide](/docs/guides/routing).
 
 ## JavaScript and TypeScript
 

@@ -523,54 +523,54 @@ public final class DemoPanel {
             public void set(boolean value) { DemoConfig.TERRAIN_ENABLED = value; demo.animateTerrain(value); }
         });
         check(context, "billboard occlusion", DemoConfig.TERRAIN_BILLBOARD_OCCLUSION, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_BILLBOARD_OCCLUSION = value; demo.terrainOptions.setBillboardOcclusionEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_BILLBOARD_OCCLUSION = value; demo.terrainOptions.set("billboardOcclusionEnabled", value); }
         });
         slider(context, "occlusion tolerance", 0f, 0.5f, DemoConfig.TERRAIN_OCCLUSION_TOLERANCE, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.TERRAIN_OCCLUSION_TOLERANCE = value; demo.terrainOptions.setBillboardOcclusionTolerance(value); }
+            public void set(float value) { DemoConfig.TERRAIN_OCCLUSION_TOLERANCE = value; demo.terrainOptions.set("billboardOcclusionTolerance", value); }
         });
         // How close the camera may get to the ground under it. It BOUNDS THE ZOOM, so lowering it
         // is the only way to reach a high zoom over terrain - which is what judging the drape at
         // z17+ needs. 0 removes the clamp entirely and lets the camera fly through the ground.
         slider(context, "camera clearance (m)", 0f, 500f, DemoConfig.TERRAIN_CAMERA_CLEARANCE, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.TERRAIN_CAMERA_CLEARANCE = value; demo.terrainOptions.setCameraClearance(value); }
+            public void set(float value) { DemoConfig.TERRAIN_CAMERA_CLEARANCE = value; demo.terrainOptions.set("cameraClearance", value); }
         });
         // Exaggeration and the resolutions re-tesselate / drop every cached tile texture, so they
         // are applied on release only - applying them per pixel of drag is a guaranteed stall.
         slider(context, "exaggeration", 0f, 3f, DemoConfig.TERRAIN_EXAGGERATION, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.TERRAIN_EXAGGERATION = value; demo.terrainOptions.setExaggeration(value); }
+            public void set(float value) { DemoConfig.TERRAIN_EXAGGERATION = value; demo.terrainOptions.set("exaggeration", value); }
         });
         slider(context, "mesh resolution", 16, 192, DemoConfig.TERRAIN_MESH_RESOLUTION, true, new FloatSetting() {
             public void set(float value) {
                 DemoConfig.TERRAIN_MESH_RESOLUTION = Math.max(16, ((int) value / 16) * 16);
-                demo.terrainOptions.setMeshResolution(DemoConfig.TERRAIN_MESH_RESOLUTION);
+                demo.terrainOptions.set("meshResolution", DemoConfig.TERRAIN_MESH_RESOLUTION);
             }
         });
         check(context, "drape fills (RTT)", DemoConfig.TERRAIN_DRAPE_FILLS, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_DRAPE_FILLS = value; demo.terrainOptions.setDrapeFillsEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_DRAPE_FILLS = value; demo.terrainOptions.set("drapeFillsEnabled", value); }
         });
         check(context, "drape lines", DemoConfig.TERRAIN_DRAPE_LINES, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_DRAPE_LINES = value; demo.terrainOptions.setDrapeLinesEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_DRAPE_LINES = value; demo.terrainOptions.set("drapeLinesEnabled", value); }
         });
         check(context, "3D bridges", DemoConfig.TERRAIN_BRIDGES_3D, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_BRIDGES_3D = value; demo.terrainOptions.setBridges3DEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_BRIDGES_3D = value; demo.terrainOptions.set("bridges3DEnabled", value); }
         });
         slider(context, "drape resolution", 256, 2048, DemoConfig.TERRAIN_DRAPE_RESOLUTION, true, new FloatSetting() {
             public void set(float value) {
                 DemoConfig.TERRAIN_DRAPE_RESOLUTION = Math.max(256, ((int) value / 256) * 256);
-                demo.terrainOptions.setDrapeResolution(DemoConfig.TERRAIN_DRAPE_RESOLUTION);
+                demo.terrainOptions.set("drapeResolution", DemoConfig.TERRAIN_DRAPE_RESOLUTION);
             }
         });
         check(context, "tile edge stitching", DemoConfig.TERRAIN_TILE_EDGE_STITCHING, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_TILE_EDGE_STITCHING = value; demo.terrainOptions.setTileEdgeStitchingEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_TILE_EDGE_STITCHING = value; demo.terrainOptions.set("tileEdgeStitchingEnabled", value); }
         });
         check(context, "seamless tile edges", DemoConfig.TERRAIN_SEAMLESS_TILE_EDGES, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_SEAMLESS_TILE_EDGES = value; demo.terrainOptions.setSeamlessTileEdgesEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_SEAMLESS_TILE_EDGES = value; demo.terrainOptions.set("seamlessTileEdgesEnabled", value); }
         });
         check(context, "elevation prefetch", DemoConfig.TERRAIN_ELEVATION_PREFETCH, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_ELEVATION_PREFETCH = value; demo.terrainOptions.setElevationPrefetchEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_ELEVATION_PREFETCH = value; demo.terrainOptions.set("elevationPrefetchEnabled", value); }
         });
         check(context, "background bitmap", DemoConfig.TERRAIN_BACKGROUND_BITMAP, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_BACKGROUND_BITMAP = value; demo.terrainOptions.setBackgroundBitmapEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_BACKGROUND_BITMAP = value; demo.terrainOptions.set("backgroundBitmapEnabled", value); }
         });
     }
 
@@ -669,7 +669,7 @@ public final class DemoPanel {
     private static void reloadContours(DemoMap demo) {
         demo.applyContourConfig();
         // Generated tiles are cached by the layers, so drop them to see the new parameters.
-        demo.contourSource().notifyTilesChanged(true);
+        demo.contourSource().call("notifyTilesChanged", true).close();
     }
 
     /** The selection bench: pick a route, or let it cycle, and watch what the change costs. */
@@ -812,10 +812,10 @@ public final class DemoPanel {
         // A style may state its own sun - a converted MapBox style states one per light preset -
         // and by default that wins, so the sliders below do nothing until this is ticked.
         check(context, "app sun overrides style", DemoConfig.APP_SUN, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.APP_SUN = value; demo.lightOptions.setSunOverridingStyle(value); }
+            public void set(boolean value) { DemoConfig.APP_SUN = value; demo.lightOptions.set("sunOverridingStyle", value); }
         });
         check(context, "terrain lighting", DemoConfig.TERRAIN_LIGHTING, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.TERRAIN_LIGHTING = value; demo.lightOptions.setTerrainLightingEnabled(value); }
+            public void set(boolean value) { DemoConfig.TERRAIN_LIGHTING = value; demo.lightOptions.set("terrainLightingEnabled", value); }
         });
         check(context, "day cycle (sun/moon/sky)", DemoConfig.DAY_CYCLE, new BoolSetting() {
             public void set(boolean value) { DemoConfig.DAY_CYCLE = value; demo.applyDayCycle(DemoConfig.DAY_CYCLE_HOUR); }
@@ -833,47 +833,47 @@ public final class DemoPanel {
             }
         });
         slider(context, "azimuth", 0, 360, DemoConfig.SUN_AZIMUTH, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SUN_AZIMUTH = value; DemoConfig.SUN_HOUR_UTC = -1; demo.lightOptions.setSunAzimuth(value); }
+            public void set(float value) { DemoConfig.SUN_AZIMUTH = value; DemoConfig.SUN_HOUR_UTC = -1; demo.lightOptions.set("sunAzimuth", value); }
         });
         slider(context, "altitude", -10, 90, DemoConfig.SUN_ALTITUDE, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SUN_ALTITUDE = value; DemoConfig.SUN_HOUR_UTC = -1; demo.lightOptions.setSunAltitude(value); }
+            public void set(float value) { DemoConfig.SUN_ALTITUDE = value; DemoConfig.SUN_HOUR_UTC = -1; demo.lightOptions.set("sunAltitude", value); }
         });
         slider(context, "sun intensity", 0, 2, DemoConfig.SUN_INTENSITY, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SUN_INTENSITY = value; demo.lightOptions.setSunIntensity(value); }
+            public void set(float value) { DemoConfig.SUN_INTENSITY = value; demo.lightOptions.set("sunIntensity", value); }
         });
         slider(context, "ambient", 0, 1, DemoConfig.AMBIENT_INTENSITY, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.AMBIENT_INTENSITY = value; demo.lightOptions.setAmbientIntensity(value); }
+            public void set(float value) { DemoConfig.AMBIENT_INTENSITY = value; demo.lightOptions.set("ambientIntensity", value); }
         });
 
         header(context, "SHADOWS");
         // Past 1 on purpose: 1 is the physical depth, and a bench wants to be able to exaggerate.
         slider(context, "strength", 0, 2, DemoConfig.SHADOW_STRENGTH, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SHADOW_STRENGTH = value; demo.lightOptions.setShadowStrength(value); }
+            public void set(float value) { DemoConfig.SHADOW_STRENGTH = value; demo.lightOptions.set("shadowStrength", value); }
         });
         slider(context, "softness (texels)", 0, 4, DemoConfig.SHADOW_SOFTNESS, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SHADOW_SOFTNESS = value; demo.lightOptions.setShadowSoftness(value); }
+            public void set(float value) { DemoConfig.SHADOW_SOFTNESS = value; demo.lightOptions.set("shadowSoftness", value); }
         });
         // Reallocates the shadow map atlas, so apply on release only.
         slider(context, "map size", 512, 4096, DemoConfig.SHADOW_MAP_SIZE, true, new FloatSetting() {
             public void set(float value) {
                 DemoConfig.SHADOW_MAP_SIZE = Math.max(512, ((int) value / 512) * 512);
-                demo.lightOptions.setShadowMapSize(DemoConfig.SHADOW_MAP_SIZE);
+                demo.lightOptions.set("shadowMapSize", DemoConfig.SHADOW_MAP_SIZE);
             }
         });
         slider(context, "cascades", 1, 4, DemoConfig.SHADOW_CASCADES, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.SHADOW_CASCADES = Math.round(value); demo.lightOptions.setShadowCascades(DemoConfig.SHADOW_CASCADES); }
+            public void set(float value) { DemoConfig.SHADOW_CASCADES = Math.round(value); demo.lightOptions.set("shadowCascades", DemoConfig.SHADOW_CASCADES); }
         });
         slider(context, "distance (x focus, 0=auto)", 0, 12, DemoConfig.SHADOW_DISTANCE, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SHADOW_DISTANCE = value < 0.25f ? 0 : value; demo.lightOptions.setShadowDistance(DemoConfig.SHADOW_DISTANCE); }
+            public void set(float value) { DemoConfig.SHADOW_DISTANCE = value < 0.25f ? 0 : value; demo.lightOptions.set("shadowDistance", DemoConfig.SHADOW_DISTANCE); }
         });
         slider(context, "caster margin (tiles)", 0, 6, DemoConfig.SHADOW_CASTER_MARGIN, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.SHADOW_CASTER_MARGIN = Math.round(value); demo.lightOptions.setShadowCasterMargin(DemoConfig.SHADOW_CASTER_MARGIN); }
+            public void set(float value) { DemoConfig.SHADOW_CASTER_MARGIN = Math.round(value); demo.lightOptions.set("shadowCasterMargin", DemoConfig.SHADOW_CASTER_MARGIN); }
         });
         slider(context, "depth bias (m)", 0f, 5f, DemoConfig.SHADOW_BIAS, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SHADOW_BIAS = value; demo.lightOptions.setShadowBias(value); }
+            public void set(float value) { DemoConfig.SHADOW_BIAS = value; demo.lightOptions.set("shadowBias", value); }
         });
         slider(context, "normal offset (texels)", 0f, 8f, DemoConfig.SHADOW_NORMAL_OFFSET, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SHADOW_NORMAL_OFFSET = value; demo.lightOptions.setShadowNormalOffset(value); }
+            public void set(float value) { DemoConfig.SHADOW_NORMAL_OFFSET = value; demo.lightOptions.set("shadowNormalOffset", value); }
         });
     }
 
@@ -1047,17 +1047,17 @@ public final class DemoPanel {
     private static void buildSkyFogSection(Context context, final DemoMap demo) {
         header(context, "SKY");
         check(context, "sky", DemoConfig.SKY_ENABLED, new BoolSetting() {
-            public void set(boolean value) { DemoConfig.SKY_ENABLED = value; demo.skyOptions.setEnabled(value); }
+            public void set(boolean value) { DemoConfig.SKY_ENABLED = value; demo.skyOptions.set("enabled", value); }
         });
         // The scattering sky against the old two-colour gradient - the A/B for both look and cost.
         check(context, "atmosphere (off = gradient)", !"gradient".equals(DemoConfig.SKY_TYPE), new BoolSetting() {
             public void set(boolean value) { DemoConfig.SKY_TYPE = value ? "atmosphere" : "gradient"; demo.applySkyOptions(); }
         });
         slider(context, "atmosphere sun intensity", 0, 30, DemoConfig.SKY_ATMO_SUN, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SKY_ATMO_SUN = value; demo.skyOptions.setAtmosphereSunIntensity(value); }
+            public void set(float value) { DemoConfig.SKY_ATMO_SUN = value; demo.skyOptions.set("atmosphereSunIntensity", value); }
         });
         slider(context, "atmosphere exposure (lower = brighter)", 0.1f, 4, DemoConfig.SKY_ATMO_LUMINANCE, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.SKY_ATMO_LUMINANCE = value; demo.skyOptions.setAtmosphereLuminance(value); }
+            public void set(float value) { DemoConfig.SKY_ATMO_LUMINANCE = value; demo.skyOptions.set("atmosphereLuminance", value); }
         });
 
         // Buildings come from the STYLE, so the switch rebuilds the base layer. Only the inline
@@ -1105,7 +1105,7 @@ public final class DemoPanel {
         check(context, "fog", DemoConfig.FOG_ENABLED, new BoolSetting() {
             public void set(boolean value) {
                 DemoConfig.FOG_ENABLED = value;
-                demo.fogOptions.setEnabled(value);
+                demo.fogOptions.set("enabled", value);
                 demo.mapView.requestRender();
             }
         });
@@ -1132,34 +1132,34 @@ public final class DemoPanel {
         });
         // The range is in multiples of the camera-to-focus distance, so it holds at every zoom.
         slider(context, "fog range start (x camera)", 0, 4, DemoConfig.FOG_RANGE_START, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.FOG_RANGE_START = value; demo.fogOptions.setRangeStart(value); }
+            public void set(float value) { DemoConfig.FOG_RANGE_START = value; demo.fogOptions.set("rangeStart", value); }
         });
         slider(context, "fog range end (x camera)", 0, 20, DemoConfig.FOG_RANGE_END, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.FOG_RANGE_END = value; demo.fogOptions.setRangeEnd(value); }
+            public void set(float value) { DemoConfig.FOG_RANGE_END = value; demo.fogOptions.set("rangeEnd", value); }
         });
         // How far up the SKY the same haze reaches. The ground takes the very same term, so the
         // two meet at the skyline whatever this is set to.
         slider(context, "fog horizon blend (0..1)", 0, 1, DemoConfig.FOG_HORIZON_BLEND, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.FOG_HORIZON_BLEND = value; demo.fogOptions.setHorizonBlend(value); }
+            public void set(float value) { DemoConfig.FOG_HORIZON_BLEND = value; demo.fogOptions.set("horizonBlend", value); }
         });
         // Peaks poking out of a valley haze (mapbox vertical-range). Equal values = off.
         slider(context, "fog vertical start (m)", 0, 4000, DemoConfig.FOG_VERTICAL_START, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.FOG_VERTICAL_START = value; demo.fogOptions.setVerticalRangeStart(value); }
+            public void set(float value) { DemoConfig.FOG_VERTICAL_START = value; demo.fogOptions.set("verticalRangeStart", value); }
         });
         slider(context, "fog vertical end (m)", 0, 4000, DemoConfig.FOG_VERTICAL_END, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.FOG_VERTICAL_END = value; demo.fogOptions.setVerticalRangeEnd(value); }
+            public void set(float value) { DemoConfig.FOG_VERTICAL_END = value; demo.fogOptions.set("verticalRangeEnd", value); }
         });
         slider(context, "fog stars (0..1)", 0, 1, DemoConfig.FOG_STAR_INTENSITY, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.FOG_STAR_INTENSITY = value; demo.fogOptions.setStarIntensity(value); }
+            public void set(float value) { DemoConfig.FOG_STAR_INTENSITY = value; demo.fogOptions.set("starIntensity", value); }
         });
         // Changes the visible tile set, so apply on release only.
         slider(context, "tile LOD (x tangram, 0=finest)", 0, 4, DemoConfig.TILE_LOD_FACTOR, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.TILE_LOD_FACTOR = value; ObjectApi.options(demo.mapView).setTileLODFactor(value); }
+            public void set(float value) { DemoConfig.TILE_LOD_FACTOR = value; demo.map.set("tileLODFactor", value); }
         });
         // The GRAZING half of the same test. Unbounded it swings with the camera, so under a tilt
         // one side of the horizon keeps its detail and the other loses a level; 0 = no limit.
         slider(context, "tile LOD zoom levels on screen", 4, 16, DemoConfig.TILE_LOD_LEVELS_ON_SCREEN, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.TILE_LOD_LEVELS_ON_SCREEN = value; ObjectApi.options(demo.mapView).setTileLODMaxZoomLevelsOnScreen(value); }
+            public void set(float value) { DemoConfig.TILE_LOD_LEVELS_ON_SCREEN = value; demo.map.set("tileLODMaxZoomLevelsOnScreen", value); }
         });
         // Which zoom the vector tiles are FETCHED at, against the view's. -1 is what a style
         // written for MapBox's 512 px tiles wants; it also shifts every `[zoom >= N]` rule a level
@@ -1168,26 +1168,26 @@ public final class DemoPanel {
             public void set(float value) {
                 DemoConfig.VECTOR_ZOOM_BIAS = value;
                 if (demo.baseLayer != null) {
-                    demo.baseLayer.setZoomLevelBias(value);
+                    demo.baseLayer.set("zoomLevelBias", value);
                 }
             }
         });
         slider(context, "tile coarsening (levels)", 0, 6, DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING = (int) value; demo.terrainOptions.setMaxTileZoomCoarsening((int) value); }
+            public void set(float value) { DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING = (int) value; demo.terrainOptions.set("maxTileZoomCoarsening", (int) value); }
         });
         slider(context, "view distance (x tangram, 0=all)", 0, 4, DemoConfig.VIEW_DISTANCE_FACTOR, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.VIEW_DISTANCE_FACTOR = value < 0.05f ? 0 : value; demo.terrainOptions.setViewDistanceFactor(DemoConfig.VIEW_DISTANCE_FACTOR); }
+            public void set(float value) { DemoConfig.VIEW_DISTANCE_FACTOR = value < 0.05f ? 0 : value; demo.terrainOptions.set("viewDistanceFactor", DemoConfig.VIEW_DISTANCE_FACTOR); }
         });
         // Absolute distance only EXTENDS the factor above: the ground reaches at least this far
         // whatever the camera's height and pitch, which is what a view along the ground wants.
         slider(context, "view distance (km, 0=factor)", 0, 300, DemoConfig.VIEW_DISTANCE_METERS / 1000.0f, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.VIEW_DISTANCE_METERS = value < 0.5f ? 0 : value * 1000.0f; demo.terrainOptions.setViewDistance(DemoConfig.VIEW_DISTANCE_METERS); }
+            public void set(float value) { DemoConfig.VIEW_DISTANCE_METERS = value < 0.5f ? 0 : value * 1000.0f; demo.terrainOptions.set("viewDistance", DemoConfig.VIEW_DISTANCE_METERS); }
         });
         slider(context, "auto-flatten (px parallax, 0=off)", 0, 20, DemoConfig.AUTO_FLATTEN_PARALLAX, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.AUTO_FLATTEN_PARALLAX = value; demo.terrainOptions.setAutoFlattenParallax(value); }
+            public void set(float value) { DemoConfig.AUTO_FLATTEN_PARALLAX = value; demo.terrainOptions.set("autoFlattenParallax", value); }
         });
         slider(context, "auto-flatten tilt (deg, 0=off)", 0, 90, DemoConfig.AUTO_FLATTEN_TILT, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.AUTO_FLATTEN_TILT = value; demo.terrainOptions.setAutoFlattenTilt(value); }
+            public void set(float value) { DemoConfig.AUTO_FLATTEN_TILT = value; demo.terrainOptions.set("autoFlattenTilt", value); }
         });
     }
 

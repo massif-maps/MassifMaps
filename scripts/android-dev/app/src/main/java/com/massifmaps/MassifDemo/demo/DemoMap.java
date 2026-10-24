@@ -5,68 +5,19 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.massifmaps.components.LightOptions;
-import com.massifmaps.components.Options;
-import com.massifmaps.components.RenderProjectionMode;
-import com.massifmaps.components.SkyOptions;
-import com.massifmaps.components.SkyQuality;
-import com.massifmaps.components.TileLODProfile;
-import com.massifmaps.components.SkyType;
-import com.massifmaps.components.FogOptions;
-import com.massifmaps.components.TerrainFlattenMode;
-import com.massifmaps.components.TerrainOptions;
+import com.massifmaps.api.Massif;
 import com.massifmaps.api.MassifApi;
-import com.massifmaps.api.MassifInterop;
-import com.massifmaps.api.MassifLegacy;
-import com.massifmaps.core.MapPos;
-import com.massifmaps.core.MapPosVector;
-import com.massifmaps.core.MapVec;
-import com.massifmaps.core.StringMap;
-import com.massifmaps.core.StringVector;
-import com.massifmaps.core.Variant;
-import com.massifmaps.datasources.ContourTileDataSource;
-import com.massifmaps.datasources.GeoJSONVectorTileDataSource;
-import com.massifmaps.datasources.HTTPTileDataSource;
-import com.massifmaps.datasources.LocalVectorDataSource;
-import com.massifmaps.datasources.MBTilesTileDataSource;
-import com.massifmaps.datasources.MemoryCacheTileDataSource;
-import com.massifmaps.datasources.MultiTileDataSource;
-import com.massifmaps.datasources.OrderedTileDataSource;
-import com.massifmaps.datasources.PersistentCacheTileDataSource;
-import com.massifmaps.datasources.PMTilesTileDataSource;
-import com.massifmaps.datasources.TileDataSource;
-import com.massifmaps.geometry.FeatureCollection;
-import com.massifmaps.geometry.FeatureVector;
-import com.massifmaps.geometry.ManeuverArrowBuilder;
-import com.massifmaps.graphics.Color;
-import com.massifmaps.layers.AnimatedRasterTileLayer;
-import com.massifmaps.layers.CompositeSourceType;
-import com.massifmaps.layers.CompositeVectorTileLayer;
-import com.massifmaps.layers.CustomRasterTileLayer;
-import com.massifmaps.layers.HillshadeMethod;
-import com.massifmaps.layers.HillshadeRasterTileLayer;
-import com.massifmaps.layers.Layer;
-import com.massifmaps.layers.LayerVector;
-import com.massifmaps.layers.RasterTileFilterMode;
-import com.massifmaps.layers.RasterTileLayer;
-import com.massifmaps.layers.TileSubstitutionPolicy;
-import com.massifmaps.layers.VectorLayer;
-import com.massifmaps.layers.VectorTileEventListener;
-import com.massifmaps.layers.VectorTileLayer;
-import com.massifmaps.layers.VectorTileRenderOrder;
-import com.massifmaps.projections.Projection;
-import com.massifmaps.MassifDemo.customlayer.CustomHeatmap;
+import com.massifmaps.api.MassifException;
 import com.massifmaps.api.MassifLayer;
-import com.massifmaps.renderers.MapRenderer;
-import com.massifmaps.renderers.PostProcessEffect;
-import com.massifmaps.styles.CartoCSSStyleSet;
-import com.massifmaps.styles.LineStyleBuilder;
-import com.massifmaps.styles.MarkerStyleBuilder;
+import com.massifmaps.api.MassifObject;
+import com.massifmaps.api.MassifSource;
+import com.massifmaps.api.PropertyGroup;
+import com.massifmaps.api.Spec;
+import com.massifmaps.api.MapCamera;
+import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.Position;
+import com.massifmaps.MassifDemo.customlayer.CustomHeatmap;
 import com.massifmaps.ui.MapView;
-import com.massifmaps.ui.VectorTileClickInfo;
-import com.massifmaps.vectorelements.Line;
-import com.massifmaps.vectorelements.Marker;
-import com.massifmaps.vectortiles.MBVectorTileDecoder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -129,7 +80,7 @@ public class DemoMap {
     /** Device orientation driving the camera, for the star sky mode. */
     private DemoOrientation orientation;
     /** Decoder of the route selection bench - the selection is one style parameter on it. */
-    private MBVectorTileDecoder routeSelectDecoder;
+    private MassifObject routeSelectDecoder;
     private long routeSelectId = 1;
     private Runnable routeSelectCycle;
     /** Live camera preview behind the transparent map, for the star sky mode. */
@@ -137,19 +88,23 @@ public class DemoMap {
 
     private final Context context;
     public final MapView mapView;
+    /** The map as the facade sees it. */
+    public final MassifMap map;
     public final String dataPath;
 
     // --- map objects the panel needs to reach ---------------------------------------------------
-    public TerrainOptions terrainOptions;
-    public LightOptions lightOptions;
-    public SkyOptions skyOptions;
-    public FogOptions fogOptions;
-    public HillshadeRasterTileLayer hillshadeLayer;      // stand-alone hillshade layer, when built
-    public VectorTileLayer baseLayer;                    // base map layer, whatever the mode
-    public CompositeVectorTileLayer compositeLayer;      // same object as baseLayer in COMPOSITE mode
-    public MBVectorTileDecoder baseDecoder;              // decoder of the base layer
-    public ContourTileDataSource contourSource;          // shared by the layer and the composite slot
-    public PostProcessEffect reliefEffect;               // the attached relief outline effect, if any
+    // The option groups are the map's own: they exist once an applyXxxOptions() has run.
+    public PropertyGroup terrainOptions;
+    public PropertyGroup lightOptions;
+    public PropertyGroup skyOptions;
+    public PropertyGroup fogOptions;
+    public MassifLayer hillshadeLayer;                   // stand-alone hillshade layer, when built
+    public MassifLayer baseLayer;                        // base map layer, whatever the mode
+    public MassifLayer compositeLayer;                   // same layer as baseLayer in COMPOSITE mode
+    public MassifObject baseDecoder;                     // decoder (style) of the base layer
+    public MassifObject contourSource;                   // shared by the layer and the composite slot
+    public MassifObject terrainObject;                   // the TerrainOptions object behind terrainOptions
+    public MassifObject reliefEffect;                    // the attached relief outline effect, if any
     // What the peak-finder mode switched off, so leaving it puts the map back as it was.
     private boolean savedLayerBase, savedLayerHillshade, savedLayerContour, savedLayerContourTiles, savedLayerSatellite, savedLayerHypso;
     private float savedTilt;
@@ -158,19 +113,32 @@ public class DemoMap {
     /** Result of the last {@link #checkCompositeSlots()}: which slots the style really has. */
     public String compositeStatus = "";
 
-    private final Map<Feature, Layer> layers = new LinkedHashMap<Feature, Layer>();
+    private final Map<Feature, MassifLayer> layers = new LinkedHashMap<Feature, MassifLayer>();
 
-    // --- shared, lazily created tile sources -----------------------------------------------------
-    private TileDataSource cachedDem;
-    private TileDataSource cachedVector;
-    private TileDataSource cachedRaster;
-    private TileDataSource cachedContourTiles;
-    private TileDataSource cachedLandform;
-    private GeoJSONVectorTileDataSource cachedManeuvers;
+    // --- shared, lazily created tile sources (registered under an id each) -----------------------
+    private MassifObject cachedDem;
+    private MassifObject cachedVector;
+    private MassifObject cachedRaster;
+    private MassifObject cachedContourTiles;
+    private MassifObject cachedLandform;
+    private MassifObject cachedManeuvers;
     private int maneuverLayerIndex = -1;
-    private final ManeuverArrowBuilder maneuverBuilder = new ManeuverArrowBuilder();
-    private final Map<Integer, FeatureCollection> maneuverArrows = new LinkedHashMap<Integer, FeatureCollection>();
+    private MassifObject maneuverBuilder;
+    private final Map<Integer, String> maneuverArrows = new LinkedHashMap<Integer, String>();
     private boolean seededManeuvers;
+
+    // The enums the facade takes as numbers, named as in the SDK headers.
+    private static final int TILE_SUBSTITUTION_VISIBLE = 1, TILE_SUBSTITUTION_NONE = 2;
+    private static final int RASTER_FILTER_BILINEAR = 1;
+    private static final int RENDER_ORDER_LAST = 1;
+    private static final int COMPOSITE_RASTER = 0, COMPOSITE_HILLSHADE = 1;
+    private static final int LOD_PROFILE_REFERENCE = 0, LOD_PROFILE_MOBILE = 1, LOD_PROFILE_DESKTOP = 2;
+    private static final int FLATTEN_RENDER = 0, FLATTEN_FULL = 1;
+    private static final int SKY_GRADIENT = 0, SKY_ATMOSPHERE = 1;
+    private static final int SKY_LOW = 0, SKY_MEDIUM = 1, SKY_HIGH = 2;
+    private static final int HILLSHADE_STANDARD = 0, HILLSHADE_COMBINED = 1, HILLSHADE_IGOR = 2, HILLSHADE_MULTIDIRECTIONAL = 3, HILLSHADE_BASIC = 4;
+    private static final int PANNING_SPEED_MAP = 0, PANNING_SPEED_ANCHORED = 1, PANNING_SPEED_CONSTANT = 2;
+    private static final int FREE_ROAM_OFF = 0, FREE_ROAM_LOOK = 1, FREE_ROAM_FIRST_PERSON = 2;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean paramOn = true;
@@ -178,7 +146,9 @@ public class DemoMap {
     public DemoMap(Context context, MapView mapView, String dataPath) {
         this.context = context;
         this.mapView = mapView;
+        this.map = MassifMap.attach(mapView).eventProjection("EPSG:4326");
         this.dataPath = dataPath;
+        DemoStyles.init(context);
     }
 
     // =============================================================================================
@@ -188,8 +158,7 @@ public class DemoMap {
     /** Applies the whole {@link DemoConfig} to a fresh map. */
     public void build() {
         // Options first: layers created afterwards pick up the terrain/light state immediately.
-        ObjectApi.options(mapView).setTileThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
-        ObjectApi.options(mapView).setEnvelopeThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
+        map.set("tileThreadPoolSize", DemoConfig.TILE_THREAD_POOL_SIZE).set("envelopeThreadPoolSize", DemoConfig.TILE_THREAD_POOL_SIZE);
         applyTileLODConfig();
         applyDebugConfig();
         applyGlobeMode();
@@ -238,7 +207,7 @@ public class DemoMap {
         }
         if (DemoConfig.POPUP_FONTS != null && !DemoConfig.POPUP_FONTS.isEmpty()) {
             DemoTests.runPopupFonts(this, DemoConfig.POPUP_FONTS,
-                    new MapPos(DemoConfig.START_LON, DemoConfig.START_LAT));
+                    new Position(DemoConfig.START_LON, DemoConfig.START_LAT));
         }
     }
 
@@ -307,16 +276,53 @@ public class DemoMap {
 
     /** Pushes DemoConfig.RASTER_ZOOM_BIAS to the stand-alone raster layer, if built. */
     public void applyRasterZoomBias() {
-        Layer raster = layers.get(Feature.SATELLITE);
-        if (raster instanceof RasterTileLayer) {
-            ((RasterTileLayer) raster).setZoomLevelBias(DemoConfig.RASTER_ZOOM_BIAS);
+        MassifLayer raster = layers.get(Feature.SATELLITE);
+        if (raster != null) {
+            raster.set("zoomLevelBias", DemoConfig.RASTER_ZOOM_BIAS);
         }
         mapView.requestRender();
     }
 
     /** Drops the cached instance of a layer so the next rebuild constructs it from the config. */
     public void invalidate(Feature feature) {
-        layers.remove(feature);
+        MassifLayer layer = layers.remove(feature);
+        if (layer != null) {
+            map.remove(layer);
+            Massif.destroy("layer", layerId(feature));
+        }
+    }
+
+    private static String layerId(Feature feature) {
+        return "demo-" + feature.name().toLowerCase().replace('_', '-');
+    }
+
+    /** Builds a layer from a spec under the feature's id, or null (logged) when it cannot be built. */
+    private MassifLayer layer(Feature feature, Spec spec) {
+        String id = layerId(feature);
+        Massif.destroy("layer", id);
+        try {
+            return map.buildLayer(id, spec);
+        } catch (MassifException e) {
+            Log.w(TAG, feature + " layer not built: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /** Registers a source under an id, replacing what an earlier build left there. */
+    private MassifSource source(String id, Spec spec) {
+        Massif.destroy("source", id);
+        return Massif.source(id, spec);
+    }
+
+    /** Registers a style (decoder) under an id, replacing what an earlier build left there. */
+    private MassifObject style(String id, Spec spec) {
+        Massif.destroy("style", id);
+        return Massif.style(id, spec);
+    }
+
+    /** One call on the options object or a child of it, with the result dropped: "terrainOptions.setSurfaceParameter". */
+    private void callOptions(String method, Object... args) {
+        map.options().call(method, args).close();
     }
 
     /**
@@ -325,17 +331,17 @@ public class DemoMap {
      * changed in a way that needs a new object (style source, base mode).
      */
     public void rebuildLayers() {
-        LayerVector vector = new LayerVector();
         Feature[] order = LAYER_ORDER.clone();
         if (DemoConfig.SATELLITE_UNDER_BASE) {
             List<Feature> list = Arrays.asList(order);
             Collections.swap(list, list.indexOf(Feature.BASE), list.indexOf(Feature.SATELLITE));
         }
+        map.clearLayers();
         for (Feature feature : order) {
             if (!isEnabled(feature)) {
                 continue;
             }
-            Layer layer = layers.get(feature);
+            MassifLayer layer = layers.get(feature);
             if (layer == null) {
                 layer = createLayer(feature);
                 if (layer == null) {
@@ -343,9 +349,8 @@ public class DemoMap {
                 }
                 layers.put(feature, layer);
             }
-            vector.add(layer);
+            map.add(layer);
         }
-        ObjectApi.layers(mapView).setAll(vector);
         // The sky objects are built with their layer, which happens here, so place them now that
         // they exist.
         updateSky();
@@ -360,16 +365,14 @@ public class DemoMap {
         mapView.requestRender();
     }
 
-    private Layer createLayer(Feature feature) {
+    private MassifLayer createLayer(Feature feature) {
         switch (feature) {
-            case CELESTIAL: return celestial.createLayer(mapView);
-            case STARS: return stars.createLayer(mapView);
+            case CELESTIAL: return celestial.createLayer(map, context);
+            case STARS: return stars.createLayer(map, context);
             case BASE: return createBaseLayer();
-            case SATELLITE: {
-                RasterTileLayer raster = new RasterTileLayer(rasterSource());
-                raster.setZoomLevelBias(DemoConfig.RASTER_ZOOM_BIAS);
-                return raster;
-            }
+            case SATELLITE:
+                return layer(feature, Spec.of("raster").set("source", rasterSource().id())
+                        .set("zoomLevelBias", DemoConfig.RASTER_ZOOM_BIAS));
             case HILLSHADE: return createHillshadeLayer();
             case HYPSO: return createHypsoLayer();
             case RADAR: return createRadarLayer();
@@ -412,8 +415,8 @@ public class DemoMap {
             return;
         }
         try {
-            baseDecoder.setStyleParameter(name, value);
-        } catch (Exception e) {
+            baseDecoder.call("setStyleParameter", name, value).close();
+        } catch (MassifException e) {
             Log.w(TAG, "style has no '" + name + "' parameter: " + e.getMessage());
         }
     }
@@ -422,31 +425,32 @@ public class DemoMap {
      * The base map: either a plain VectorTileLayer or a CompositeVectorTileLayer that weaves
      * hillshade / satellite / contour sources into the style's own layer order.
      */
-    private Layer createBaseLayer() {
-        baseDecoder = DemoStyles.create(context, DemoConfig.STYLE_SOURCE, dataPath);
+    private MassifLayer createBaseLayer() {
+        baseDecoder = style("demo-base-style", DemoStyles.create(context, DemoConfig.STYLE_SOURCE, dataPath));
         applyStyleParameters();
         // see BASE_TILE_CACHE_MB: the SDK default (10MB) is what makes a zoom step blank the map
-        if (DemoConfig.BASE_MODE == DemoConfig.BaseMode.PLAIN) {
-            compositeLayer = null;
-            baseLayer = new VectorTileLayer(vectorSource(), baseDecoder);
-            baseLayer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
-            baseLayer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
-            highlightModelsOnClick(baseLayer);
-            return baseLayer;
+        boolean composite = DemoConfig.BASE_MODE != DemoConfig.BaseMode.PLAIN;
+        Spec spec = Spec.of(composite ? "composite-vector" : "vector")
+                .set("source", vectorSource().id())
+                .set("style", baseDecoder.id())
+                .set("tileCacheCapacity", DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L)
+                .set("zoomLevelBias", DemoConfig.VECTOR_ZOOM_BIAS);
+        if (composite) {
+            spec.set("labelRenderOrder", RENDER_ORDER_LAST);
         }
-
-        CompositeVectorTileLayer layer = new CompositeVectorTileLayer(vectorSource(), baseDecoder);
-        layer.setLabelRenderOrder(VectorTileRenderOrder.VECTOR_TILE_RENDER_ORDER_LAST);
-        compositeLayer = layer;
-        baseLayer = layer;
-        layer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
-        layer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
-        highlightModelsOnClick(layer);
-        syncCompositeSources();
-        if (DemoConfig.STYLE_SOURCE == DemoConfig.StyleSource.PROJECT && DemoConfig.PARAM_TOGGLE_INTERVAL_MS > 0) {
-            startParamToggleLoop();
+        baseLayer = layer(Feature.BASE, spec);
+        compositeLayer = composite ? baseLayer : null;
+        if (baseLayer == null) {
+            return null;
         }
-        return layer;
+        highlightModelsOnClick(baseLayer);
+        if (composite) {
+            syncCompositeSources();
+            if (DemoConfig.STYLE_SOURCE == DemoConfig.StyleSource.PROJECT && DemoConfig.PARAM_TOGGLE_INTERVAL_MS > 0) {
+                startParamToggleLoop();
+            }
+        }
+        return baseLayer;
     }
 
     /** Adds/removes the composite slots to match the config. Safe to call at any time. */
@@ -456,30 +460,30 @@ public class DemoMap {
         }
         // hillshade: the elevation decoder is resolved from the source's 'dem_encoding' meta data.
         if (DemoConfig.COMPOSITE_HILLSHADE) {
-            compositeLayer.addExternalDataSource("hillshade", demSource(), CompositeSourceType.COMPOSITE_SOURCE_TYPE_HILLSHADE);
+            compositeLayer.call("addExternalDataSource", "hillshade", demSource().handle(), COMPOSITE_HILLSHADE).close();
             if (DemoConfig.COMPOSITE_HILLSHADE_ZOOM_BIAS != 0) {
-                compositeLayer.setExternalDataSourceZoomLevelBias("hillshade", DemoConfig.COMPOSITE_HILLSHADE_ZOOM_BIAS);
+                compositeLayer.call("setExternalDataSourceZoomLevelBias", "hillshade", DemoConfig.COMPOSITE_HILLSHADE_ZOOM_BIAS).close();
             }
         } else {
-            compositeLayer.removeExternalDataSource("hillshade");
+            compositeLayer.call("removeExternalDataSource", "hillshade").close();
         }
         // satellite: a raster source drawn at the '#satellite' slot with the style's opacity.
         if (DemoConfig.COMPOSITE_SATELLITE) {
-            compositeLayer.addExternalDataSource("satellite", rasterSource(), CompositeSourceType.COMPOSITE_SOURCE_TYPE_RASTER);
+            compositeLayer.call("addExternalDataSource", "satellite", rasterSource().handle(), COMPOSITE_RASTER).close();
         } else {
-            compositeLayer.removeExternalDataSource("satellite");
+            compositeLayer.call("removeExternalDataSource", "satellite").close();
         }
         // contour: merged INTO the master source, styled by the '#contour' rules.
         if (DemoConfig.COMPOSITE_CONTOUR) {
-            compositeLayer.addVectorDataSource("contour", contourSource());
+            compositeLayer.call("addVectorDataSource", "contour", contourSource().handle()).close();
         } else {
-            compositeLayer.removeExternalDataSource("contour");
+            compositeLayer.call("removeExternalDataSource", "contour").close();
         }
         // landform: a SECOND tileset merged in, for a style whose layers do not all come from one.
         if (!DemoConfig.LANDFORM_URL.isEmpty()) {
-            compositeLayer.addVectorDataSource(DemoConfig.LANDFORM_SLOT, landformSource());
+            compositeLayer.call("addVectorDataSource", DemoConfig.LANDFORM_SLOT, landformSource().handle()).close();
         } else if (cachedLandform != null) {
-            compositeLayer.removeExternalDataSource(DemoConfig.LANDFORM_SLOT);
+            compositeLayer.call("removeExternalDataSource", DemoConfig.LANDFORM_SLOT).close();
         }
         checkCompositeSlots();
         mapView.requestRender();
@@ -501,17 +505,12 @@ public class DemoMap {
             compositeStatus = "";
             return;
         }
-        StringVector styleLayers = baseDecoder.getStyleLayerNames();
-        java.util.List<String> declared = new java.util.ArrayList<String>();
-        for (int i = 0; i < styleLayers.size(); i++) {
-            declared.add(styleLayers.get(i));
-        }
+        java.util.List<String> declared = jsonStrings(baseDecoder.getString("styleLayerNames", "[]"));
+        java.util.List<String> registered = jsonStrings(compositeLayer.call("getExternalDataSourceNames"));
 
-        StringVector registered = compositeLayer.getExternalDataSourceNames();
         StringBuilder status = new StringBuilder();
         boolean missing = false;
-        for (int i = 0; i < registered.size(); i++) {
-            String name = registered.get(i);
+        for (String name : registered) {
             boolean ok = declared.contains(name);
             missing |= !ok;
             status.append(status.length() > 0 ? ", " : "").append(name).append(ok ? " OK" : " MISSING in style");
@@ -528,6 +527,28 @@ public class DemoMap {
             Log.w(TAG, "a slot is missing: the style declares no layer with that name. Add it to "
                     + "the project.json \"layers\" array and give it a '#name { ... }' config block "
                     + "(compiled Mapnik XML supports these too), or switch the panel style to 'inline'");
+        }
+    }
+
+    /** A JSON array of strings, as the facade returns a list. */
+    private static java.util.List<String> jsonStrings(String json) {
+        java.util.List<String> list = new java.util.ArrayList<String>();
+        try {
+            org.json.JSONArray array = new org.json.JSONArray(json);
+            for (int i = 0; i < array.length(); i++) {
+                list.add(array.getString(i));
+            }
+        } catch (org.json.JSONException e) {
+            Log.w(TAG, "not a list of names: " + json);
+        }
+        return list;
+    }
+
+    private static java.util.List<String> jsonStrings(MassifObject result) {
+        try {
+            return jsonStrings(result.json());
+        } finally {
+            result.close();
         }
     }
 
@@ -552,7 +573,7 @@ public class DemoMap {
      * ordinary SDK API driven from the app - the SDK has no peak-finder mode.
      */
     public void flyToPeakFinder() {
-        final MapPos focus = ObjectApi.view(mapView).getFocusPos();
+        final Position focus = map.camera().position();
         // 3D terrain first, then the mode: the terrain, the relief surface and the names all have
         // the whole flight to load and fade in, instead of appearing when it lands.
         if (!DemoConfig.TERRAIN_ENABLED) {
@@ -562,11 +583,11 @@ public class DemoMap {
         setPeakFinderMode(true);
         // The tilt belongs to the flight, so undo what the mode did to it and let the one
         // animation carry it - together with the climb to the viewpoint's elevation.
-        ObjectApi.view(mapView).setTilt(savedTilt > 0 ? savedTilt : ObjectApi.view(mapView).getTilt(), 0);
-        MapPos target = new MapPos(focus.getX(), focus.getY(), DemoConfig.PEAK_FINDER_FLY_ELEVATION);
-        ObjectApi.view(mapView).flyTo(target, DemoConfig.PEAK_FINDER_FLY_ZOOM, mapView.getRotation(),
-                DemoConfig.PEAK_FINDER_TILT, DemoConfig.PEAK_FINDER_FLY_CLIMB,
-                DemoConfig.PEAK_FINDER_FLY_DURATION, DemoConfig.PEAK_FINDER_FLY_EASING);
+        map.camera().tilt(savedTilt > 0 ? savedTilt : map.camera().tilt());
+        Position target = new Position(focus.lng, focus.lat, DemoConfig.PEAK_FINDER_FLY_ELEVATION);
+        map.camera().animate(DemoConfig.PEAK_FINDER_FLY_DURATION).climb(DemoConfig.PEAK_FINDER_FLY_CLIMB)
+                .easing(easingName(DemoConfig.PEAK_FINDER_FLY_EASING))
+                .moveTo(target, DemoConfig.PEAK_FINDER_FLY_ZOOM, map.camera().rotation(), DemoConfig.PEAK_FINDER_TILT);
         // The viewpoint's height is the flight's now (the target's Z, plus the climb over the way),
         // so the demo only has to follow it: read the flight's own progress rather than run a
         // second clock beside it, and keep the widget's number and the config in step.
@@ -574,13 +595,23 @@ public class DemoMap {
         mapView.post(new Runnable() {
             @Override
             public void run() {
-                float progress = ObjectApi.view(mapView).getFlightProgress();
-                if (progress >= 0) {
+                if (map.camera().isMoving()) {
                     DemoPanel.refreshElevationLabel();
                     mapView.postDelayed(this, 16);
                 }
             }
         });
+    }
+
+    /** FlightEasing as the facade takes it: the CSS name of the curve. */
+    private static String easingName(int easing) {
+        switch (easing) {
+            case 1: return "linear";
+            case 2: return "ease-in";
+            case 3: return "ease-out";
+            case 4: return "ease-in-out";
+            default: return "ease";
+        }
     }
 
     /**
@@ -592,17 +623,14 @@ public class DemoMap {
      */
     public void setArMode(boolean enabled) {
         DemoConfig.AR_MODE = enabled;
-        Options options = ObjectApi.options(mapView);
         if (enabled) {
             if (!DemoConfig.PEAK_FINDER) {
                 setPeakFinderMode(true);
             }
             saveMapAppearance();
-            options.setClearColor(new Color((short) 0, (short) 0, (short) 0, (short) 0));
-            options.setSkyColor(new Color((short) 0, (short) 0, (short) 0, (short) 0));
-            options.setBackgroundBitmap(null);
+            map.set("clearColor", 0).set("skyColor", 0).set("backgroundBitmap", null);
             if (skyOptions != null) {
-                skyOptions.setEnabled(false);
+                skyOptions.set("enabled", false);
             }
             setReliefDark(true);
             setSurfaceTranslucent(true);
@@ -614,7 +642,7 @@ public class DemoMap {
             setSurfaceTranslucent(false);
             restoreMapAppearance();
             if (skyOptions != null) {
-                skyOptions.setEnabled(DemoConfig.SKY_ENABLED);
+                skyOptions.set("enabled", DemoConfig.SKY_ENABLED);
             }
             setReliefDark(false);
         }
@@ -630,7 +658,7 @@ public class DemoMap {
             savedLayerContourTiles = DemoConfig.LAYER_CONTOUR_TILES;
             savedLayerSatellite = DemoConfig.LAYER_SATELLITE;
             savedLayerHypso = DemoConfig.LAYER_HYPSO;
-            savedTilt = ObjectApi.view(mapView).getTilt();
+            savedTilt = map.camera().tilt();
             DemoConfig.LAYER_BASE = false;
             DemoConfig.LAYER_HILLSHADE = false;
             DemoConfig.LAYER_CONTOUR = false;
@@ -651,7 +679,7 @@ public class DemoMap {
             rebuildLayers();
             applyReliefSurface();
             setReliefOutlineEnabled(true);
-            ObjectApi.view(mapView).setTilt(DemoConfig.PEAK_FINDER_TILT, 0.6f);
+            map.camera().animate(0.6f).tilt(DemoConfig.PEAK_FINDER_TILT);
             DemoPanel.setElevationWidgetVisible(true);
         } else {
             DemoConfig.LAYER_BASE = savedLayerBase;
@@ -671,7 +699,7 @@ public class DemoMap {
             applyReliefSurface();
             setReliefOutlineEnabled(false);
             if (savedTilt > 0) {
-                ObjectApi.view(mapView).setTilt(savedTilt, 0.6f);
+                map.camera().animate(0.6f).tilt(savedTilt);
             }
             DemoPanel.setElevationWidgetVisible(false);
         }
@@ -686,11 +714,10 @@ public class DemoMap {
      * the equator (mercator), hence the latitude term.
      */
     public void applyViewpointElevation() {
-        Projection proj = ObjectApi.options(mapView).getBaseProjection();
-        MapPos wgs = proj.toWgs84(ObjectApi.view(mapView).getFocusPos());
+        Position wgs = map.camera().position();
         double groundElevation = 0;
         if (terrainOptions != null) {
-            double sample = terrainOptions.getElevation(wgs);
+            double sample = getElevation(wgs);
             if (sample > -100000) {
                 groundElevation = sample;
             }
@@ -698,8 +725,8 @@ public class DemoMap {
         // The projection converts metres to internal units itself (toInternal scales z with x/y),
         // so this stays in METRES - with the mercator stretch the terrain heights also carry, or
         // the viewpoint would sit lower than the mountains it is measured against.
-        double meters = (groundElevation + DemoConfig.PEAK_FINDER_ELEVATION) / Math.cos(Math.toRadians(wgs.getY()));
-        ObjectApi.view(mapView).setFocusPos(proj.fromWgs84(new MapPos(wgs.getX(), wgs.getY(), meters)), 0.3f);
+        double meters = (groundElevation + DemoConfig.PEAK_FINDER_ELEVATION) / Math.cos(Math.toRadians(wgs.lat));
+        map.camera().animate(0.3f).position(new Position(wgs.lng, wgs.lat, meters));
         mapView.requestRender();
     }
 
@@ -711,11 +738,11 @@ public class DemoMap {
 
     // --- hillshade -------------------------------------------------------------------------------
 
-    private Layer createHillshadeLayer() {
-        HillshadeRasterTileLayer layer = new HillshadeRasterTileLayer(demSource());
-        layer.setPreloading(true);
-        layer.setTileSubstitutionPolicy(TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE);
-        layer.setTileFilterMode(RasterTileFilterMode.RASTER_TILE_FILTER_MODE_BILINEAR);
+    private MassifLayer createHillshadeLayer() {
+        MassifLayer layer = layer(Feature.HILLSHADE, Spec.of("hillshade").set("source", demSource().id())
+                .set("preloading", true)
+                .set("tileSubstitutionPolicy", TILE_SUBSTITUTION_VISIBLE)
+                .set("tileFilterMode", RASTER_FILTER_BILINEAR));
         hillshadeLayer = layer;
         applyHillshadeConfig();
         return layer;
@@ -724,47 +751,52 @@ public class DemoMap {
     /** Pushes every HILLSHADE_* config value onto the stand-alone hillshade layer. */
     /** Debug overlays (DEBUG section of the panel). */
     public void applyDebugConfig() {
-        ObjectApi.options(mapView).setDebugTileBorders(DemoConfig.DEBUG_TILE_BORDERS);
+        map.set("debugTileBorders", DemoConfig.DEBUG_TILE_BORDERS);
     }
 
     public void applyHillshadeConfig() {
-        HillshadeRasterTileLayer layer = hillshadeLayer;
+        MassifLayer layer = hillshadeLayer;
         if (layer == null) {
             return;
         }
-        layer.setHillshadeMethod(hillshadeMethod());
-        layer.setContrast(DemoConfig.HILLSHADE_CONTRAST);
-        layer.setHeightScale(DemoConfig.HILLSHADE_HEIGHT_SCALE);
-        layer.setExaggeration(DemoConfig.HILLSHADE_EXAGGERATION);
-        layer.setIlluminationMapRotationEnabled(DemoConfig.HILLSHADE_ILLUMINATION_FOLLOWS_MAP);
-        // The illumination direction is a vector; the panel/config express it in degrees.
+        // The illumination direction is a vector; the panel/config express it in degrees. Its z is kept.
         double rad = Math.toRadians(DemoConfig.HILLSHADE_ILLUMINATION_DEGREES);
-        layer.setIlluminationDirection(new MapVec(Math.sin(rad), Math.cos(rad), layer.getIlluminationDirection().getZ()));
-        layer.setShadowColor(color(DemoConfig.HILLSHADE_SHADOW_COLOR_ARGB));
-        layer.setHighlightColor(color(DemoConfig.HILLSHADE_HIGHLIGHT_COLOR_ARGB));
-        layer.setAccentColor(color(DemoConfig.HILLSHADE_ACCENT_COLOR_ARGB));
-
-        // GPU contour lines drawn in the hillshade pass: the normal map then encodes absolute
-        // elevation, and the fragment shader draws anti-aliased lines from it. Unlike the geometry
-        // contours below, these are per-fragment at a fixed metre interval (no labels, no CartoCSS).
-        layer.setContourEnabled(DemoConfig.HILLSHADE_CONTOUR_LINES);
-        layer.setContourInterval(DemoConfig.HILLSHADE_CONTOUR_INTERVAL);
-        layer.setContourWidth(DemoConfig.HILLSHADE_CONTOUR_WIDTH);
-        layer.setContourColor(color(DemoConfig.HILLSHADE_CONTOUR_COLOR_ARGB));
-
-        // Slope colouring replaces the lighting shader entirely.
-        layer.setExagerateHeightScaleEnabled(!DemoConfig.HILLSHADE_SLOPES_SHADER);
-        layer.setNormalMapLightingShader(DemoConfig.HILLSHADE_SLOPES_SHADER ? DemoStyles.slopesShader() : "");
+        double z = 0;
+        try {
+            z = new org.json.JSONArray(layer.getString("illuminationDirection", "[0,0,0]")).optDouble(2, 0);
+        } catch (org.json.JSONException e) {
+            Log.w(TAG, "illuminationDirection not readable: " + e.getMessage());
+        }
+        layer.apply(Spec.object()
+                .set("hillshadeMethod", hillshadeMethod())
+                .set("contrast", DemoConfig.HILLSHADE_CONTRAST)
+                .set("heightScale", DemoConfig.HILLSHADE_HEIGHT_SCALE)
+                .set("exaggeration", DemoConfig.HILLSHADE_EXAGGERATION)
+                .set("illuminationMapRotationEnabled", DemoConfig.HILLSHADE_ILLUMINATION_FOLLOWS_MAP)
+                .set("illuminationDirection", new double[] { Math.sin(rad), Math.cos(rad), z })
+                .set("shadowColor", DemoConfig.HILLSHADE_SHADOW_COLOR_ARGB)
+                .set("highlightColor", DemoConfig.HILLSHADE_HIGHLIGHT_COLOR_ARGB)
+                .set("accentColor", DemoConfig.HILLSHADE_ACCENT_COLOR_ARGB)
+                // GPU contour lines drawn in the hillshade pass: the normal map then encodes absolute
+                // elevation, and the fragment shader draws anti-aliased lines from it. Unlike the geometry
+                // contours below, these are per-fragment at a fixed metre interval (no labels, no CartoCSS).
+                .set("contourEnabled", DemoConfig.HILLSHADE_CONTOUR_LINES)
+                .set("contourInterval", DemoConfig.HILLSHADE_CONTOUR_INTERVAL)
+                .set("contourWidth", DemoConfig.HILLSHADE_CONTOUR_WIDTH)
+                .set("contourColor", DemoConfig.HILLSHADE_CONTOUR_COLOR_ARGB)
+                // Slope colouring replaces the lighting shader entirely.
+                .set("exagerateHeightScaleEnabled", !DemoConfig.HILLSHADE_SLOPES_SHADER)
+                .set("normalMapLightingShader", DemoConfig.HILLSHADE_SLOPES_SHADER ? DemoStyles.slopesShader() : ""));
         mapView.requestRender();
     }
 
-    private @HillshadeMethod.Value int hillshadeMethod() {
+    private int hillshadeMethod() {
         switch (DemoConfig.HILLSHADE_METHOD) {
-            case "STANDARD": return HillshadeMethod.STANDARD;
-            case "COMBINED": return HillshadeMethod.COMBINED;
-            case "MULTIDIRECTIONAL": return HillshadeMethod.MULTIDIRECTIONAL;
-            case "BASIC": return HillshadeMethod.BASIC;
-            default: return HillshadeMethod.IGOR;
+            case "STANDARD": return HILLSHADE_STANDARD;
+            case "COMBINED": return HILLSHADE_COMBINED;
+            case "MULTIDIRECTIONAL": return HILLSHADE_MULTIDIRECTIONAL;
+            case "BASIC": return HILLSHADE_BASIC;
+            default: return HILLSHADE_IGOR;
         }
     }
 
@@ -784,7 +816,7 @@ public class DemoMap {
      *   --es apiLayerSpec composite      (a preset: raster, composite, solid)
      *   --es apiLayerSpec '{"type":...}'  (raw JSON, if the shell lets the quotes through)
      */
-    private Layer createApiSourceLayer() {
+    private MassifLayer createApiSourceLayer() {
         String spec = DemoConfig.apiLayerSpec();
         int handle;
         try {
@@ -807,16 +839,15 @@ public class DemoMap {
         Log.i(TAG, "api reuse=" + (again == handle) + " conflictRefused=" + conflictRefused
                 + " opacity=" + MassifApi.getFloat(handle, "opacity", -1));
 
-        return MassifInterop.getLayer("demoApiLayer");
+        return Massif.layer("demoApiLayer");
     }
 
-    private Layer createHypsoLayer() {
-        CustomRasterTileLayer layer = new CustomRasterTileLayer(demSource());
-        layer.setShaderSource(DemoStyles.hypsometricShader());
-        return layer;
+    private MassifLayer createHypsoLayer() {
+        return layer(Feature.HYPSO, Spec.of("custom-raster").set("source", demSource().id())
+                .set("shaderSource", DemoStyles.hypsometricShader()));
     }
 
-    private AnimatedRasterTileLayer radarLayer;
+    private MassifLayer radarLayer;
     private long[] radarTimes = new long[0];
     private float radarPosition;
     private boolean radarDirty;
@@ -834,7 +865,7 @@ public class DemoMap {
      * loading, then handed to the layer. The camera has not flown to its start yet, so it is
      * centred on where the camera will be.
      */
-    private Layer createHeatmapLayer() {
+    private MassifLayer createHeatmapLayer() {
         MassifLayer heat = CustomHeatmap.create("demo-custom-scene", true);
         if (heat == null) {
             return null;
@@ -843,23 +874,22 @@ public class DemoMap {
         new Thread(new Runnable() {
             public void run() {
                 double[] positions = CustomHeatmap.gridPositions(lon, lat);
-                float exaggeration = terrainOptions != null && DemoConfig.TERRAIN_ENABLED ? terrainOptions.getExaggeration() : 0;
+                double exaggeration = terrainOptions != null && DemoConfig.TERRAIN_ENABLED ? terrainOptions.getDouble("exaggeration", 0) : 0;
                 double[] heights = new double[positions.length / 2];
                 if (exaggeration > 0) {
                     for (int k = 0; k < heights.length; k++) {
-                        heights[k] = getElevation(new MapPos(positions[2 * k], positions[2 * k + 1])) * exaggeration;
+                        heights[k] = getElevation(new Position(positions[2 * k], positions[2 * k + 1])) * exaggeration;
                     }
                 }
                 CustomHeatmap.setHeatmap(lon, lat, heights);
                 mapView.requestRender();
             }
         }, "demo-heatmap").start();
-        return MassifLegacy.layer(heat);
+        return heat;
     }
 
-    private Layer createHeatmapLegend() {
-        MassifLayer legend = CustomHeatmap.create("demo-custom-overlay", false);
-        return legend != null ? MassifLegacy.layer(legend) : null;
+    private MassifLayer createHeatmapLegend() {
+        return CustomHeatmap.create("demo-custom-overlay", false);
     }
 
     /**
@@ -867,13 +897,17 @@ public class DemoMap {
      * steps mixed per draw. The steps are listed once; a frame clock then advances the position at
      * radarFps steps a second, and the panel can pause it or scrub.
      */
-    private Layer createRadarLayer() {
+    private MassifLayer createRadarLayer() {
         // The memory cache is what keeps a step fetched once: it is the second raster of one tile and the first of the next.
-        MemoryCacheTileDataSource cache = new MemoryCacheTileDataSource(
-                new HTTPTileDataSource(0, 12, "https://api.librewxr.net/v2/radar/{time}/256/{z}/{x}/{y}/2/1_1.png"));
-        cache.setCapacity(64 * 1024 * 1024);
-        final AnimatedRasterTileLayer layer = new AnimatedRasterTileLayer(cache);
-        layer.setZoomLevelBias(-1f); // radar is coarse data: a quarter of the tiles to wait for
+        MassifObject http = source("demo-radar-http", Spec.of("http").set("minZoom", 0).set("maxZoom", 12)
+                .set("url", "https://api.librewxr.net/v2/radar/{time}/256/{z}/{x}/{y}/2/1_1.png"));
+        MassifObject cache = source("demo-radar-cache", Spec.of("memory-cache").set("source", http.id())
+                .set("capacity", 64L * 1024 * 1024));
+        // radar is coarse data: a quarter of the tiles to wait for
+        final MassifLayer layer = layer(Feature.RADAR, Spec.of("animated-raster").set("source", cache.id()).set("zoomLevelBias", -1f));
+        if (layer == null) {
+            return null;
+        }
         radarLayer = layer;
         new Thread(() -> {
             try {
@@ -897,15 +931,15 @@ public class DemoMap {
                     }
                 }
                 final long[] stepTimes = new long[times.size()];
-                final StringVector timestamps = new StringVector();
+                final String[] timestamps = new String[stepTimes.length];
                 for (int i = 0; i < stepTimes.length; i++) {
                     stepTimes[i] = times.get(i);
-                    timestamps.add(String.valueOf(stepTimes[i]));
+                    timestamps[i] = String.valueOf(stepTimes[i]);
                 }
                 new Handler(Looper.getMainLooper()).post(() -> {
                     radarTimes = stepTimes;
-                    layer.setFrameTimestamps(timestamps);
-                    layer.setPrefetchFrames(stepTimes.length);
+                    layer.set("frameTimestamps", timestamps);
+                    layer.set("prefetchFrames", stepTimes.length);
                     startRadarClock(layer);
                 });
             } catch (Exception e) {
@@ -915,7 +949,7 @@ public class DemoMap {
         return layer;
     }
 
-    private void startRadarClock(final AnimatedRasterTileLayer layer) {
+    private void startRadarClock(final MassifLayer layer) {
         android.view.Choreographer.getInstance().postFrameCallback(new android.view.Choreographer.FrameCallback() {
             private long lastFrameNanos;
 
@@ -930,7 +964,7 @@ public class DemoMap {
                         radarPosition = (float) ((radarPosition + (frameTimeNanos - lastFrameNanos) / 1e9 * DemoConfig.RADAR_FPS) % steps);
                     }
                     radarDirty = false;
-                    layer.setAnimationPosition(radarPosition);
+                    layer.set("animationPosition", radarPosition);
                     if (radarListener != null) {
                         radarListener.onRadarPosition(radarPosition, steps);
                     }
@@ -964,20 +998,20 @@ public class DemoMap {
      * its own CartoCSS. This is the geometry path (labels possible, styled per 'div'), as opposed
      * to the shader contours of the hillshade layer.
      */
-    private Layer createContourLayer() {
-        MBVectorTileDecoder decoder = new MBVectorTileDecoder(new CartoCSSStyleSet(DemoStyles.contourStyle()));
-        VectorTileLayer layer = new VectorTileLayer(contourSource(), decoder);
+    private MassifLayer createContourLayer() {
+        MassifObject decoder = style("demo-contour-style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css", DemoStyles.contourStyle())));
         // A stand-in tile of another zoom carries a coarser grid AND a coarser interval, so while the
         // right tile loads the map shows angular chords instead of contours. "none" trades that for
         // empty space until the tile is there.
-        layer.setMaxStandInLevel(DemoConfig.CONTOUR_MAX_OVERZOOM_STANDIN);
-        layer.setTileCacheCapacity(DemoConfig.CONTOUR_TILE_CACHE_MB * 1024L * 1024L);
+        Spec spec = Spec.of("vector").set("source", contourSource().id()).set("style", decoder.id())
+                .set("maxStandInLevel", DemoConfig.CONTOUR_MAX_OVERZOOM_STANDIN)
+                .set("tileCacheCapacity", DemoConfig.CONTOUR_TILE_CACHE_MB * 1024L * 1024L);
         if ("none".equalsIgnoreCase(DemoConfig.CONTOUR_TILE_SUBSTITUTION)) {
-            layer.setTileSubstitutionPolicy(TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_NONE);
+            spec.set("tileSubstitutionPolicy", TILE_SUBSTITUTION_NONE);
         } else if ("visible".equalsIgnoreCase(DemoConfig.CONTOUR_TILE_SUBSTITUTION)) {
-            layer.setTileSubstitutionPolicy(TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE);
+            spec.set("tileSubstitutionPolicy", TILE_SUBSTITUTION_VISIBLE);
         }
-        return layer;
+        return layer(Feature.CONTOUR, spec);
     }
 
     /**
@@ -985,23 +1019,24 @@ public class DemoMap {
      * (shared/terrain.less, variables inlined). This is the A/B reference: same rules, same
      * 'ele'/'div' attributes, but geometry baked at zoom 11..14 instead of traced from the DEM.
      */
-    private Layer createContourTilesLayer() {
-        MBVectorTileDecoder decoder = new MBVectorTileDecoder(new CartoCSSStyleSet(DemoStyles.contourTilesStyle()));
-        return new VectorTileLayer(contourTilesSource(), decoder);
+    private MassifLayer createContourTilesLayer() {
+        MassifObject decoder = style("demo-contour-tiles-style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css", DemoStyles.contourTilesStyle())));
+        return layer(Feature.CONTOUR_TILES, Spec.of("vector").set("source", contourTilesSource().id()).set("style", decoder.id()));
     }
 
     /** Offline vector tiles + packaged style; skipped (with a log) when the files are missing. */
-    private Layer createRoutesLayer() {
+    private MassifLayer createRoutesLayer() {
+        Spec styleSpec = DemoStyles.createZipDecoder(dataPath + "/" + DemoConfig.ROUTES_STYLE_ZIP_NAME);
+        if (styleSpec == null) {
+            return null;
+        }
         try {
-            MBTilesTileDataSource source = new MBTilesTileDataSource(dataPath + "/" + DemoConfig.ROUTES_MBTILES_NAME);
-            MBVectorTileDecoder decoder = DemoStyles.createZipDecoder(dataPath + "/" + DemoConfig.ROUTES_STYLE_ZIP_NAME);
-            if (decoder == null) {
-                return null;
-            }
-            MultiTileDataSource multi = new MultiTileDataSource();
-            multi.add(source);
-            return new VectorTileLayer(multi, decoder);
-        } catch (Exception e) {
+            MassifObject mbtiles = source("demo-routes-mbtiles", Spec.of("mbtiles").set("path", dataPath + "/" + DemoConfig.ROUTES_MBTILES_NAME));
+            MassifObject multi = source("demo-routes-multi", Spec.of("multi"));
+            multi.call("add", mbtiles.handle(), "").close();
+            return layer(Feature.ROUTES, Spec.of("vector").set("source", multi.id())
+                    .set("style", style("demo-routes-style", styleSpec).id()));
+        } catch (MassifException e) {
             Log.w(TAG, "routes layer unavailable: " + e.getMessage());
             return null;
         }
@@ -1016,29 +1051,24 @@ public class DemoMap {
      * of a sharp turn (miter needles), the inside of a turn with line-opacity below 1 (the join
      * blends twice where the triangles overlap) and the switchback ends (cap / split joins).
      */
-    private Layer createRouteTestLayer() {
+    private MassifLayer createRouteTestLayer() {
         String geoJSON = readRouteTestGeoJSON();
         if (geoJSON == null) {
             return null; // already logged
         }
-        MBVectorTileDecoder decoder = new MBVectorTileDecoder(new CartoCSSStyleSet(DemoStyles.routeTestStyle()));
-        GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
-        source.setSimplifyTolerance(DemoConfig.ROUTE_TEST_SIMPLIFY);
+        MassifObject decoder = style("demo-route-test-style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css", DemoStyles.routeTestStyle())));
         try {
-            int layerIndex = source.createLayer("route");
+            MassifSource source = source("demo-route-test-source", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24)
+                    .set("simplifyTolerance", DemoConfig.ROUTE_TEST_SIMPLIFY));
             long importStart = System.nanoTime();
             // A FeatureCollection goes in whole (the many-objects bench); a bare Feature is the route.
-            if (geoJSON.contains("\"FeatureCollection\"")) {
-                source.setLayerGeoJSONString(layerIndex, geoJSON);
-            } else {
-                source.addGeoJSONStringFeature(layerIndex, geoJSON);
-            }
+            source.setLayerGeoJSON(source.createLayer("route"), geoJSON);
             Log.i(TAG, "route test geojson imported in " + ((System.nanoTime() - importStart) / 1000000L) + " ms");
-        } catch (IOException e) {
+            return layer(Feature.ROUTE_TEST, Spec.of("vector").set("source", source.id()).set("style", decoder.id()));
+        } catch (MassifException e) {
             Log.w(TAG, "route test geojson rejected: " + e.getMessage());
             return null;
         }
-        return new VectorTileLayer(source, decoder);
     }
 
     /**
@@ -1060,31 +1090,27 @@ public class DemoMap {
      * rises, so Millau (2.46 km) fits at z13 and below and is split from z14 up. Drawing the spans
      * from a lower zoom keeps them whole; the base map keeps its own detail.
      */
-    private Layer createSpansLayer() {
-        VectorTileLayer layer = new VectorTileLayer(vectorSource(), DemoStyles.createSpanDecoder());
-        layer.setZoomLevelBias(DemoConfig.SPAN_ZOOM_BIAS);
-        return layer;
+    private MassifLayer createSpansLayer() {
+        return layer(Feature.SPANS, Spec.of("vector").set("source", vectorSource().id())
+                .set("style", style("demo-spans-style", DemoStyles.createSpanDecoder()).id())
+                .set("zoomLevelBias", DemoConfig.SPAN_ZOOM_BIAS));
     }
 
     /** A tap on a tree or wind turbine of the style's model rules tints that one model; other taps pass. */
-    private static void highlightModelsOnClick(final VectorTileLayer layer) {
-        layer.setVectorTileEventListener(new VectorTileEventListener() {
-            @Override
-            public boolean onVectorTileClicked(VectorTileClickInfo info) {
-                String cls = info.getFeature().getProperties().getObjectElement("class").getString();
-                if (!"poi".equals(info.getFeatureLayerName()) || !("tree".equals(cls) || "wind_turbine".equals(cls))) {
-                    return false;
-                }
-                Log.i(TAG, "MODELPICK " + cls + " id " + info.getFeatureId() + " point " + info.getFeaturePosIndex());
-                layer.setModelHighlight(info.getFeatureId(), info.getFeaturePosIndex(), new Color(0xffff8800));
-                return true;
+    private static void highlightModelsOnClick(final MassifLayer layer) {
+        layer.consumeFeatureClick(e -> {
+            String cls = e.property("class");
+            if (!"poi".equals(e.layerName()) || !("tree".equals(cls) || "wind_turbine".equals(cls))) {
+                return false;
             }
+            Log.i(TAG, "MODELPICK " + cls + " id " + e.featureId() + " point " + e.featurePosIndex());
+            layer.call("setModelHighlight", (int) e.featureId(), e.featurePosIndex(), 0xffff8800).close();
+            return true;
         });
     }
 
     /** Trees in a jittered grid as ONE MultiPoint, as OpenMapTiles packs them, and three turbines. */
-    private Layer createModelsLayer() {
-        GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
+    private MassifLayer createModelsLayer() {
         StringBuilder trees = new StringBuilder();
         java.util.Random random = new java.util.Random(131);
         for (int i = 0; i < 24; i++) {
@@ -1100,42 +1126,42 @@ public class DemoMap {
                     .append(",\"properties\":{},\"geometry\":{\"type\":\"Point\",\"coordinates\":[")
                     .append(DemoConfig.START_LON + 0.006 + i * 0.004).append(',').append(DemoConfig.START_LAT + 0.004).append("]}}");
         }
+        MassifSource source = source("demo-models-source", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24));
         try {
-            source.setLayerGeoJSONString(source.createLayer("trees"), "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"id\":1,"
+            source.setLayerGeoJSON(source.createLayer("trees"), "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"id\":1,"
                     + "\"properties\":{},\"geometry\":{\"type\":\"MultiPoint\",\"coordinates\":[" + trees + "]}}]}");
-            source.setLayerGeoJSONString(source.createLayer("turbines"), "{\"type\":\"FeatureCollection\",\"features\":[" + turbines + "]}");
-        } catch (IOException e) {
+            source.setLayerGeoJSON(source.createLayer("turbines"), "{\"type\":\"FeatureCollection\",\"features\":[" + turbines + "]}");
+        } catch (MassifException e) {
             Log.w(TAG, "model geojson rejected: " + e.getMessage());
             return null;
         }
-        final VectorTileLayer layer = new VectorTileLayer(source, DemoStyles.createModelDecoder());
-        layer.setVectorTileEventListener(new VectorTileEventListener() {
-            @Override
-            public boolean onVectorTileClicked(VectorTileClickInfo info) {
-                Log.i(TAG, "MODELPICK " + info.getFeatureLayerName() + " id " + info.getFeatureId() + " point " + info.getFeaturePosIndex());
-                layer.setModelHighlight(info.getFeatureId(), info.getFeaturePosIndex(), new Color(0xffff8800));
+        final MassifLayer layer = layer(Feature.MODELS, Spec.of("vector").set("source", source.id())
+                .set("style", style("demo-models-style", DemoStyles.createModelDecoder()).id()));
+        if (layer != null) {
+            layer.consumeFeatureClick(e -> {
+                Log.i(TAG, "MODELPICK " + e.layerName() + " id " + e.featureId() + " point " + e.featurePosIndex());
+                layer.call("setModelHighlight", (int) e.featureId(), e.featurePosIndex(), 0xffff8800).close();
                 return true;
-            }
-        });
+            });
+        }
         return layer;
     }
 
-    private Layer createBugsLayer() {
-        MBVectorTileDecoder decoder = DemoStyles.createBugDecoder();
-        GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
+    private MassifLayer createBugsLayer() {
+        MassifObject decoder = style("demo-bugs-style", DemoStyles.createBugDecoder());
         // No simplification: a join artifact has to be looked at on the vertices the style gave.
-        source.setSimplifyTolerance(0);
+        MassifSource source = source("demo-bugs-source", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24).set("simplifyTolerance", 0));
         try {
-            source.setLayerGeoJSONString(source.createLayer("bugline"), buildBugLineGeoJSON());
-            source.setLayerGeoJSONString(source.createLayer("bugsel"), buildBugSelGeoJSON());
-            source.setLayerGeoJSONString(source.createLayer("bugpoints"), buildBugPointsGeoJSON());
-            source.setLayerGeoJSONString(source.createLayer("bugbridge"), buildBugSpanGeoJSON("bridge", 0));
-            source.setLayerGeoJSONString(source.createLayer("bugtunnel"), buildBugSpanGeoJSON("tunnel", 0.0010));
-        } catch (IOException e) {
+            source.setLayerGeoJSON(source.createLayer("bugline"), buildBugLineGeoJSON());
+            source.setLayerGeoJSON(source.createLayer("bugsel"), buildBugSelGeoJSON());
+            source.setLayerGeoJSON(source.createLayer("bugpoints"), buildBugPointsGeoJSON());
+            source.setLayerGeoJSON(source.createLayer("bugbridge"), buildBugSpanGeoJSON("bridge", 0));
+            source.setLayerGeoJSON(source.createLayer("bugtunnel"), buildBugSpanGeoJSON("tunnel", 0.0010));
+        } catch (MassifException e) {
             Log.w(TAG, "bug repro geojson rejected: " + e.getMessage());
             return null;
         }
-        return new VectorTileLayer(source, decoder);
+        return layer(Feature.BUGS, Spec.of("vector").set("source", source.id()).set("style", decoder.id()));
     }
 
     /**
@@ -1211,27 +1237,26 @@ public class DemoMap {
      * not the paint but the reload: the tile load listener fires again for every visible tile when
      * the change forced the tiles to be decoded again, and stays quiet when it did not.
      */
-    private Layer createRouteSelectLayer() {
-        MBVectorTileDecoder decoder = DemoStyles.createRouteSelectDecoder();
-        if (decoder == null) {
+    private MassifLayer createRouteSelectLayer() {
+        Spec styleSpec = DemoStyles.createRouteSelectDecoder();
+        if (styleSpec == null) {
             return null; // already logged
         }
-        GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
+        MassifObject decoder = style("demo-route-select-style", styleSpec);
+        MassifSource source = source("demo-route-select-source", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24));
         try {
-            int layerIndex = source.createLayer("routes");
-            source.setLayerGeoJSONString(layerIndex, buildRouteSelectGeoJSON());
-        } catch (IOException e) {
+            source.setLayerGeoJSON(source.createLayer("routes"), buildRouteSelectGeoJSON());
+        } catch (MassifException e) {
             Log.w(TAG, "route selection geojson rejected: " + e.getMessage());
             return null;
         }
-        VectorTileLayer layer = new VectorTileLayer(source, decoder);
-        layer.setVectorTileEventListener(new VectorTileEventListener() {
-            @Override
-            public boolean onVectorTileClicked(VectorTileClickInfo clickInfo) {
-                Variant properties = clickInfo.getFeature().getProperties();
-                selectRoute((long) properties.getObjectElement("osmid").getLong());
-                return true;
-            }
+        MassifLayer layer = layer(Feature.ROUTE_SELECT, Spec.of("vector").set("source", source.id()).set("style", decoder.id()));
+        if (layer == null) {
+            return null;
+        }
+        layer.consumeFeatureClick(e -> {
+            selectRoute((long) e.propertyDouble("osmid", 0));
+            return true;
         });
         routeSelectDecoder = decoder;
         selectRoute(routeSelectId); // the parameter has to carry the current selection into a fresh decoder
@@ -1246,7 +1271,7 @@ public class DemoMap {
             return;
         }
         long start = System.nanoTime();
-        routeSelectDecoder.setStyleParameter(DemoConfig.ROUTE_SELECT_PARAMETER, Long.toString(osmid));
+        routeSelectDecoder.call("setStyleParameter", DemoConfig.ROUTE_SELECT_PARAMETER, Long.toString(osmid)).close();
         Log.i(TAG, "route " + osmid + " selected in " + ((System.nanoTime() - start) / 1000000.0) + " ms (mode "
                 + DemoConfig.ROUTE_SELECT_MODE + ")");
     }
@@ -1322,16 +1347,17 @@ public class DemoMap {
      * 'maneuver' entry in the style's layers array - and then it draws over the roads but under the
      * labels. That needs the style to carry the rules, which the demo's inline CartoCSS does here.
      */
-    private Layer createManeuversLayer() {
-        MBVectorTileDecoder decoder = new MBVectorTileDecoder(new CartoCSSStyleSet(DemoStyles.maneuverStyle(maneuverHeadPath())));
-        GeoJSONVectorTileDataSource source = maneuverSource();
+    private MassifLayer createManeuversLayer() {
+        MassifObject decoder = style("demo-maneuver-style", Spec.of("mbvt").set("cartocss",
+                Spec.of("cartocss").set("css", DemoStyles.maneuverStyle(maneuverHeadPath()))));
+        MassifSource source = maneuverSource();
         if (!seededManeuvers) {
             // So the layer shows something without an offline routing package on the device. The
             // routing test overwrites these with the real turns of the route it computes.
             seededManeuvers = true;
             DemoTests.seedManeuverArrows(this);
         }
-        return new VectorTileLayer(source, decoder);
+        return layer(Feature.MANEUVERS, Spec.of("vector").set("source", source.id()).set("style", decoder.id()));
     }
 
     /**
@@ -1395,22 +1421,26 @@ public class DemoMap {
     }
 
     /** The maneuver arrow source, kept across layer rebuilds so the arrows survive a toggle. */
-    public GeoJSONVectorTileDataSource maneuverSource() {
+    public MassifSource maneuverSource() {
         if (cachedManeuvers == null) {
-            cachedManeuvers = new GeoJSONVectorTileDataSource(0, 24);
+            MassifSource source = source("demo-maneuver-source", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24));
+            cachedManeuvers = source;
             try {
-                maneuverLayerIndex = cachedManeuvers.createLayer("maneuver");
-            } catch (IOException e) {
+                maneuverLayerIndex = source.createLayer("maneuver");
+            } catch (MassifException e) {
                 Log.w(TAG, "maneuver layer unavailable: " + e.getMessage());
             }
-            maneuverBuilder.setLengthBefore(DemoConfig.MANEUVER_LENGTH_BEFORE);
-            maneuverBuilder.setLengthAfter(DemoConfig.MANEUVER_LENGTH_AFTER);
+            maneuverBuilder().set("lengthBefore", DemoConfig.MANEUVER_LENGTH_BEFORE).set("lengthAfter", DemoConfig.MANEUVER_LENGTH_AFTER);
         }
-        return cachedManeuvers;
+        return (MassifSource) cachedManeuvers;
     }
 
     /** Cuts the arrows; the lengths are its settings, so callers can widen them per arrow. */
-    public ManeuverArrowBuilder maneuverBuilder() {
+    public MassifObject maneuverBuilder() {
+        if (maneuverBuilder == null) {
+            Massif.destroy("geometry", "demo-maneuver-arrows");
+            maneuverBuilder = Massif.object("geometry", "demo-maneuver-arrows", Spec.of("maneuver-arrow"));
+        }
         return maneuverBuilder;
     }
 
@@ -1421,12 +1451,12 @@ public class DemoMap {
      * rebuilt from them - which is all the removed ManeuverArrowDataSource used to do, and belongs
      * in the app rather than in the SDK now that an arrow is a single line feature.
      */
-    public void setManeuverArrow(int arrowId, FeatureCollection arrow) {
+    public void setManeuverArrow(int arrowId, String arrowGeoJson) {
         maneuverSource();
-        if (arrow == null || arrow.getFeatureCount() == 0) {
+        if (arrowGeoJson == null || arrowGeoJson.isEmpty()) {
             maneuverArrows.remove(arrowId);
         } else {
-            maneuverArrows.put(arrowId, arrow);
+            maneuverArrows.put(arrowId, arrowGeoJson);
         }
         rebuildManeuverLayer();
     }
@@ -1443,15 +1473,17 @@ public class DemoMap {
         if (maneuverLayerIndex < 0) {
             return;
         }
-        FeatureVector features = new FeatureVector();
-        for (FeatureCollection arrow : maneuverArrows.values()) {
-            for (int i = 0; i < arrow.getFeatureCount(); i++) {
-                features.add(arrow.getFeature(i));
-            }
-        }
         try {
-            cachedManeuvers.setLayerFeatureCollection(maneuverLayerIndex, null, new FeatureCollection(features));
-        } catch (IOException e) {
+            org.json.JSONArray features = new org.json.JSONArray();
+            for (String arrow : maneuverArrows.values()) {
+                org.json.JSONArray part = new org.json.JSONObject(arrow).getJSONArray("features");
+                for (int i = 0; i < part.length(); i++) {
+                    features.put(part.get(i));
+                }
+            }
+            maneuverSource().setLayerGeoJSON(maneuverLayerIndex,
+                    new org.json.JSONObject().put("type", "FeatureCollection").put("features", features).toString());
+        } catch (org.json.JSONException | MassifException e) {
             Log.w(TAG, "maneuver arrows rejected: " + e.getMessage());
         }
     }
@@ -1506,27 +1538,25 @@ public class DemoMap {
      * vector tile click path - a callout label is picked where it is DRAWN, at the end of its
      * leader line.
      */
-    private Layer createPeaksLayer() {
-        VectorTileLayer layer = new VectorTileLayer(vectorSource(), new MBVectorTileDecoder(new CartoCSSStyleSet(DemoStyles.peaksStyle())));
-        layer.setLabelRenderOrder(VectorTileRenderOrder.VECTOR_TILE_RENDER_ORDER_LAST);
+    private MassifLayer createPeaksLayer() {
         // Out of the post-process pass: the relief effect reads the terrain depth but paints over
         // the whole frame, so a ridge line drawn after the names crosses them. Opting the layer out
-        // draws it AFTER the effect has resolved (Layer.setPostProcessed), which is also what keeps
+        // draws it AFTER the effect has resolved (Layer.postProcessed), which is also what keeps
         // the glyphs crisp - they are not resampled by the effect's half-resolution buffer.
-        layer.setPostProcessed(false);
-        layer.setVectorTileEventListener(new VectorTileEventListener() {
-            @Override
-            public boolean onVectorTileClicked(VectorTileClickInfo clickInfo) {
-                Variant properties = clickInfo.getFeature().getProperties();
-                final String name = properties.getObjectElement("name").getString()
-                        + " " + properties.getObjectElement("ele").toString() + " m";
+        MassifLayer layer = layer(Feature.PEAKS, Spec.of("vector").set("source", vectorSource().id())
+                .set("style", style("demo-peaks-style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css", DemoStyles.peaksStyle()))).id())
+                .set("labelRenderOrder", RENDER_ORDER_LAST)
+                .set("postProcessed", false));
+        if (layer != null) {
+            layer.consumeFeatureClick(e -> {
+                final String name = e.property("name") + " " + e.property("ele") + " m";
                 Log.i(TAG, "peak clicked: " + name);
                 mapView.post(new Runnable() {
                     public void run() { android.widget.Toast.makeText(context, name, android.widget.Toast.LENGTH_SHORT).show(); }
                 });
                 return true;
-            }
-        });
+            });
+        }
         return layer;
     }
 
@@ -1535,33 +1565,31 @@ public class DemoMap {
      * around a ridge and watch them disappear) and a line crossing the Isere valley (drape-lines
      * and element-vs-terrain depth test).
      */
-    private Layer createElementsLayer() {
-        Projection proj = ObjectApi.options(mapView).getBaseProjection();
-        LocalVectorDataSource source = new LocalVectorDataSource(proj);
-
-        MarkerStyleBuilder markerStyle = new MarkerStyleBuilder();
-        markerStyle.setSize(24);
-        markerStyle.setColor(new Color((short) 255, (short) 0, (short) 0, (short) 255));
+    private MassifLayer createElementsLayer() {
+        MassifSource source = source("demo-elements-source", Spec.of("local").set("projection", Spec.of("EPSG:4326")));
+        Massif.destroy("elementstyle", "demo-marker-style");
+        Massif.destroy("elementstyle", "demo-line-style");
+        MassifObject markerStyle = Massif.object("elementstyle", "demo-marker-style", Spec.of("marker").set("size", 24).set("color", 0xFFFF0000));
         double[][] peaks = {
                 { 5.7869, 45.2876 }, // Chamechaude
                 { 5.9207, 45.2989 }, // Dent de Crolles
                 { 5.5433, 45.1861 }, // Le Moucherotte
                 { 5.7247, 45.1988 }, // Bastille above Grenoble
         };
+        int n = 0;
         for (double[] p : peaks) {
-            source.add(new Marker(proj.fromWgs84(new MapPos(p[0], p[1])), markerStyle.buildStyle()));
+            String id = "demo-peak-marker-" + (n++);
+            Massif.destroy("element", id);
+            MassifObject marker = Massif.object("element", id, Spec.of("marker").set("position", p).set("style", markerStyle.id()));
+            source.call("add", marker.handle()).close();
         }
-
-        LineStyleBuilder lineStyle = new LineStyleBuilder();
-        lineStyle.setWidth(8);
-        lineStyle.setColor(new Color((short) 0, (short) 90, (short) 255, (short) 255));
-        MapPosVector linePoses = new MapPosVector();
-        linePoses.add(proj.fromWgs84(new MapPos(5.6800, 45.1600)));
-        linePoses.add(proj.fromWgs84(new MapPos(5.7247, 45.1927)));
-        linePoses.add(proj.fromWgs84(new MapPos(5.7869, 45.2876)));
-        source.add(new Line(linePoses, lineStyle.buildStyle()));
-
-        return new VectorLayer(source);
+        MassifObject lineStyle = Massif.object("elementstyle", "demo-line-style", Spec.of("line").set("width", 8).set("color", 0xFF005AFF));
+        Massif.destroy("element", "demo-valley-line");
+        MassifObject line = Massif.object("element", "demo-valley-line", Spec.of("line")
+                .set("poses", new double[][] { { 5.6800, 45.1600 }, { 5.7247, 45.1927 }, { 5.7869, 45.2876 } })
+                .set("style", lineStyle.id()));
+        source.call("add", line.handle()).close();
+        return layer(Feature.ELEMENTS, Spec.of("elements").set("source", source.id()));
     }
 
     // =============================================================================================
@@ -1573,33 +1601,38 @@ public class DemoMap {
      * a 'landform' tileset while everything else comes from the planet one, and a z13 planet tile
      * carries no peak layer at all - which is why they drew nothing until this existed.
      */
-    public TileDataSource landformSource() {
+    private MassifObject httpCached(String id, int minZoom, int maxZoom, String url, String cacheDb, long capacityMb, String demEncoding) {
+        Spec http = Spec.of("http").set("minZoom", minZoom).set("maxZoom", maxZoom).set("url", url)
+                .set("HTTPHeaders", Spec.object().set("User-Agent", DemoConfig.HTTP_USER_AGENT));
+        MassifObject httpSource = source(id + "-http", http);
+        if (demEncoding != null) {
+            httpSource.call("setMetaDataElement", "dem_encoding", demEncoding).close();
+        }
+        return source(id, Spec.of("persistent-cache").set("source", httpSource.id())
+                .set("databasePath", cacheDbPath(cacheDb)).set("capacity", capacityMb * 1024L * 1024L));
+    }
+
+    public MassifObject landformSource() {
         if (cachedLandform == null) {
-            HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.LANDFORM_MIN_ZOOM, DemoConfig.LANDFORM_MAX_ZOOM, DemoConfig.LANDFORM_URL);
-            source.setHTTPHeaders(userAgentHeaders());
-            PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(DemoConfig.LANDFORM_CACHE_DB));
-            cache.setCapacity(DemoConfig.PERSISTENT_CACHE_MB * 1024L * 1024L);
-            cachedLandform = cache;
+            cachedLandform = httpCached("demo-landform", DemoConfig.LANDFORM_MIN_ZOOM, DemoConfig.LANDFORM_MAX_ZOOM,
+                    DemoConfig.LANDFORM_URL, DemoConfig.LANDFORM_CACHE_DB, DemoConfig.PERSISTENT_CACHE_MB, null);
         }
         return cachedLandform;
     }
 
     /** Master vector tiles of the base map, persistently cached. */
-    public TileDataSource vectorSource() {
+    public MassifObject vectorSource() {
         if (cachedVector == null && !DemoConfig.VECTOR_FILE.isEmpty()) {
+            String file = dataPath + "/" + DemoConfig.VECTOR_FILE;
             try {
-                String file = dataPath + "/" + DemoConfig.VECTOR_FILE;
-                cachedVector = file.endsWith(".mbtiles") ? new MBTilesTileDataSource(file) : new PMTilesTileDataSource(file);
-            } catch (IOException e) {
+                cachedVector = source("demo-vector", Spec.of(file.endsWith(".mbtiles") ? "mbtiles" : "pmtiles").set("path", file));
+            } catch (MassifException e) {
                 Log.w(TAG, "vectorFile not readable, using vectorUrl: " + e.getMessage());
             }
         }
         if (cachedVector == null) {
-            HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.VECTOR_MIN_ZOOM, DemoConfig.VECTOR_MAX_ZOOM, DemoConfig.VECTOR_URL);
-            source.setHTTPHeaders(userAgentHeaders());
-            PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(DemoConfig.VECTOR_CACHE_DB));
-            cache.setCapacity(DemoConfig.PERSISTENT_CACHE_MB * 1024L * 1024L);
-            cachedVector = cache;
+            cachedVector = httpCached("demo-vector", DemoConfig.VECTOR_MIN_ZOOM, DemoConfig.VECTOR_MAX_ZOOM,
+                    DemoConfig.VECTOR_URL, DemoConfig.VECTOR_CACHE_DB, DemoConfig.PERSISTENT_CACHE_MB, null);
         }
         return cachedVector;
     }
@@ -1608,16 +1641,16 @@ public class DemoMap {
      * The elevation source. EVERYTHING elevation-related uses this one instance (3D terrain,
      * hillshade, contours, hypsometric tint), so each DEM tile is fetched and decoded once.
      */
-    public TileDataSource demSource() {
+    public MassifObject demSource() {
         if (cachedDem == null) {
-            TileDataSource dem = cachedDemSource(DemoConfig.DEM_MIN_ZOOM, DemoConfig.DEM_MAX_ZOOM,
+            MassifObject dem = cachedDemSource("demo-dem", DemoConfig.DEM_MIN_ZOOM, DemoConfig.DEM_MAX_ZOOM,
                     DemoConfig.DEM_URL, DemoConfig.DEM_ENCODING, DemoConfig.DEM_CACHE_DB);
             if (!DemoConfig.DEM2_URL.isEmpty()) {
                 // Two encodings behind one Ordered source: each tile carries the encoding of the
                 // source that answered for it, so terrain/hillshade/contours decode it per tile.
-                TileDataSource dem2 = cachedDemSource(DemoConfig.DEM2_MIN_ZOOM, DemoConfig.DEM2_MAX_ZOOM,
+                MassifObject dem2 = cachedDemSource("demo-dem2", DemoConfig.DEM2_MIN_ZOOM, DemoConfig.DEM2_MAX_ZOOM,
                         DemoConfig.DEM2_URL, DemoConfig.DEM2_ENCODING, DemoConfig.DEM2_CACHE_DB);
-                dem = new OrderedTileDataSource(dem, dem2);
+                dem = source("demo-dem-ordered", Spec.of("ordered").set("source", dem.id()).set("source2", dem2.id()));
             }
             cachedDem = dem;
         }
@@ -1625,42 +1658,32 @@ public class DemoMap {
     }
 
     /** One HTTP DEM source, tagged with its encoding, behind its own persistent cache. */
-    private TileDataSource cachedDemSource(int minZoom, int maxZoom, String url, String encoding, String cacheDb) {
-        HTTPTileDataSource source = new HTTPTileDataSource(minZoom, maxZoom, url);
-        source.setMetaDataElement("dem_encoding", new Variant(encoding));
-        PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(cacheDb));
-        cache.setCapacity(DemoConfig.DEM_PERSISTENT_CACHE_MB * 1024L * 1024L);
-        return cache;
+    private MassifObject cachedDemSource(String id, int minZoom, int maxZoom, String url, String encoding, String cacheDb) {
+        return httpCached(id, minZoom, maxZoom, url, cacheDb, DemoConfig.DEM_PERSISTENT_CACHE_MB, encoding);
     }
 
-    public TileDataSource rasterSource() {
+    public MassifObject rasterSource() {
         if (cachedRaster == null) {
-            HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.RASTER_MIN_ZOOM, DemoConfig.RASTER_MAX_ZOOM, DemoConfig.RASTER_URL);
-            source.setHTTPHeaders(userAgentHeaders());
-            PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(DemoConfig.RASTER_CACHE_DB));
-            cache.setCapacity(DemoConfig.PERSISTENT_CACHE_MB * 1024L * 1024L);
-            cachedRaster = cache;
+            cachedRaster = httpCached("demo-raster", DemoConfig.RASTER_MIN_ZOOM, DemoConfig.RASTER_MAX_ZOOM,
+                    DemoConfig.RASTER_URL, DemoConfig.RASTER_CACHE_DB, DemoConfig.PERSISTENT_CACHE_MB, null);
         }
         return cachedRaster;
     }
 
     /** Pre-baked contour vector tiles, persistently cached (Feature.CONTOUR_TILES only). */
-    public TileDataSource contourTilesSource() {
+    public MassifObject contourTilesSource() {
         if (cachedContourTiles == null) {
-            HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.CONTOUR_TILES_MIN_ZOOM, DemoConfig.CONTOUR_TILES_MAX_ZOOM, DemoConfig.CONTOUR_TILES_URL);
-            source.setHTTPHeaders(userAgentHeaders());
-            PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(DemoConfig.CONTOUR_TILES_CACHE_DB));
-            cache.setCapacity(DemoConfig.PERSISTENT_CACHE_MB * 1024L * 1024L);
-            cachedContourTiles = cache;
+            cachedContourTiles = httpCached("demo-contour-tiles", DemoConfig.CONTOUR_TILES_MIN_ZOOM, DemoConfig.CONTOUR_TILES_MAX_ZOOM,
+                    DemoConfig.CONTOUR_TILES_URL, DemoConfig.CONTOUR_TILES_CACHE_DB, DemoConfig.PERSISTENT_CACHE_MB, null);
         }
         return cachedContourTiles;
     }
 
     /** Contours generated from the shared DEM; the same instance feeds layer and composite slot. */
-    public ContourTileDataSource contourSource() {
+    public MassifObject contourSource() {
         if (contourSource == null) {
             // No encoding here: the contour source reads it off each DEM tile it decodes.
-            contourSource = new ContourTileDataSource(demSource());
+            contourSource = source("demo-contour", Spec.of("contour").set("source", demSource().id()));
             applyContourConfig();
         }
         return contourSource;
@@ -1671,58 +1694,54 @@ public class DemoMap {
         if (contourSource == null) {
             return;
         }
-        contourSource.setBaseInterval(DemoConfig.CONTOUR_BASE_INTERVAL);
-        // Perf knobs: the DEM is subsampled to at most 'resolution' samples/side before tracing,
-        // and geometry is simplified by 'simplifyTolerance' tile pixels.
-        contourSource.setResolution(DemoConfig.CONTOUR_RESOLUTION);
-        contourSource.setSimplifyTolerance(DemoConfig.CONTOUR_SIMPLIFY_TOLERANCE);
-        // Fetch neighbour DEM tiles so lines meet across tile boundaries (removes seams).
-        contourSource.setSeamlessEdgesEnabled(DemoConfig.CONTOUR_SEAMLESS_EDGES);
-        // NOTE: in CartoCSS 'zoom' is the TILE zoom. Contour tiles are generated at the DEM zoom,
-        // so per-zoom style rules only fire if the DEM source max zoom is high enough.
-        contourSource.setMinVisibleZoom(DemoConfig.CONTOUR_MIN_VISIBLE_ZOOM);
+        contourSource.apply(Spec.object()
+                .set("baseInterval", DemoConfig.CONTOUR_BASE_INTERVAL)
+                // Perf knobs: the DEM is subsampled to at most 'resolution' samples/side before tracing,
+                // and geometry is simplified by 'simplifyTolerance' tile pixels.
+                .set("resolution", DemoConfig.CONTOUR_RESOLUTION)
+                .set("simplifyTolerance", DemoConfig.CONTOUR_SIMPLIFY_TOLERANCE)
+                // Fetch neighbour DEM tiles so lines meet across tile boundaries (removes seams).
+                .set("seamlessEdgesEnabled", DemoConfig.CONTOUR_SEAMLESS_EDGES)
+                // NOTE: in CartoCSS 'zoom' is the TILE zoom. Contour tiles are generated at the DEM zoom,
+                // so per-zoom style rules only fire if the DEM source max zoom is high enough.
+                .set("minVisibleZoom", DemoConfig.CONTOUR_MIN_VISIBLE_ZOOM)
+                .set("maxOverzoomLevel", DemoConfig.CONTOUR_MAX_OVERZOOM)
+                // Labels only: the lines come from the hillshade shader, so the tile carries a handful of
+                // stubs to lay the text along instead of the traced geometry.
+                .set("labelStubsEnabled", DemoConfig.CONTOUR_LABEL_STUBS)
+                .set("labelInterval", DemoConfig.CONTOUR_LABEL_INTERVAL));
         // Per-zoom detail: how fine the traced interval is, and how big the tracing grid is. Both
         // are cost knobs and both must match what the style actually draws - see contourWidthByDiv.
         applyContourLadders();
-        contourSource.setMaxOverzoomLevel(DemoConfig.CONTOUR_MAX_OVERZOOM);
-        // Labels only: the lines come from the hillshade shader, so the tile carries a handful of
-        // stubs to lay the text along instead of the traced geometry.
-        contourSource.setLabelStubsEnabled(DemoConfig.CONTOUR_LABEL_STUBS);
-        contourSource.setLabelInterval(DemoConfig.CONTOUR_LABEL_INTERVAL);
         // Stubs off the terrain's own elevation: no DEM tile of the contour source's own to fetch
         // and decode, which is tangram's arrangement. Same DEM source on both sides, so the labels
         // state the heights the terrain draws.
-        contourSource.setTerrainOptions(DemoConfig.CONTOUR_STUBS_FROM_TERRAIN ? terrainOptions : null);
+        contourSource.set("terrainOptions", DemoConfig.CONTOUR_STUBS_FROM_TERRAIN ? terrainObject : null);
         mapView.requestRender();
     }
 
     /** "maxZoom:value,..." rungs onto the source. -1 as a zoom means every zoom above the others. */
     private void applyContourLadders() {
         if (!DemoConfig.CONTOUR_INTERVAL_LADDER.isEmpty()) {
-            contourSource.clearIntervalMultipliers();
+            contourSource.call("clearIntervalMultipliers").close();
             for (String rung : DemoConfig.CONTOUR_INTERVAL_LADDER.split(",")) {
                 String[] parts = rung.split(":");
                 if (parts.length == 2) {
-                    contourSource.setIntervalMultiplier(Integer.parseInt(parts[0].trim()), Float.parseFloat(parts[1].trim()));
+                    contourSource.call("setIntervalMultiplier", Integer.parseInt(parts[0].trim()), Float.parseFloat(parts[1].trim())).close();
                 }
             }
         }
         if (!DemoConfig.CONTOUR_RESOLUTION_LADDER.isEmpty()) {
-            contourSource.clearResolutionsForZoom();
+            contourSource.call("clearResolutionsForZoom").close();
             for (String rung : DemoConfig.CONTOUR_RESOLUTION_LADDER.split(",")) {
                 String[] parts = rung.split(":");
                 if (parts.length == 2) {
-                    contourSource.setResolutionForZoom(Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()));
+                    contourSource.call("setResolutionForZoom", Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim())).close();
                 }
             }
         }
     }
 
-    private StringMap userAgentHeaders() {
-        StringMap headers = new StringMap();
-        headers.set("User-Agent", DemoConfig.HTTP_USER_AGENT);
-        return headers;
-    }
 
     private String cacheDbPath(String name) {
         return context.getExternalFilesDir(null) + "/" + name;
@@ -1735,73 +1754,72 @@ public class DemoMap {
     /** The tile LOD numbers: a named profile if one was asked for, then the individual knobs. */
     public void applyTileLODConfig() {
         if ("reference".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            ObjectApi.options(mapView).setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_REFERENCE);
+            map.options().call("setTileLODProfile", LOD_PROFILE_REFERENCE).close();
         } else if ("mobile".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            ObjectApi.options(mapView).setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_MOBILE);
+            map.options().call("setTileLODProfile", LOD_PROFILE_MOBILE).close();
         } else if ("desktop".equals(DemoConfig.TILE_LOD_PROFILE)) {
-            ObjectApi.options(mapView).setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_DESKTOP);
+            map.options().call("setTileLODProfile", LOD_PROFILE_DESKTOP).close();
         } else {
-            ObjectApi.options(mapView).setTileLODFactor(DemoConfig.TILE_LOD_FACTOR);
-            ObjectApi.options(mapView).setTileStyleZoomLift(DemoConfig.TILE_STYLE_ZOOM_LIFT);
+            map.set("tileLODFactor", DemoConfig.TILE_LOD_FACTOR);
+            map.set("tileStyleZoomLift", DemoConfig.TILE_STYLE_ZOOM_LIFT);
         }
-        ObjectApi.options(mapView).setTileLODMaxZoomLevelsOnScreen(DemoConfig.TILE_LOD_LEVELS_ON_SCREEN);
-        ObjectApi.options(mapView).setTileLODTileCountRatio(DemoConfig.TILE_LOD_COUNT_RATIO);
+        map.set("tileLODMaxZoomLevelsOnScreen", DemoConfig.TILE_LOD_LEVELS_ON_SCREEN);
+        map.set("tileLODTileCountRatio", DemoConfig.TILE_LOD_COUNT_RATIO);
         if (DemoConfig.FIELD_OF_VIEW_Y > 0) {
-            ObjectApi.options(mapView).setFieldOfViewY(DemoConfig.FIELD_OF_VIEW_Y);
+            map.set("fieldOfViewY", DemoConfig.FIELD_OF_VIEW_Y);
         }
     }
 
     /** Plane or sphere. Rebuilds every tile layer's transformer, so the tile caches drop and refill. */
     public void applyGlobeMode() {
-        ObjectApi.options(mapView).setRenderProjectionMode(DemoConfig.GLOBE_MODE
-                ? RenderProjectionMode.RENDER_PROJECTION_MODE_SPHERICAL
-                : RenderProjectionMode.RENDER_PROJECTION_MODE_PLANAR);
+        map.set("renderProjectionMode", DemoConfig.GLOBE_MODE ? 1 : 0);
     }
 
     /** Creates the TerrainOptions on first call, then pushes every terrain value onto it. */
     public void applyTerrainOptions() {
         applyTileLODConfig();
         if (terrainOptions == null) {
-            terrainOptions = new TerrainOptions(demSource());
-            ObjectApi.options(mapView).setTerrainOptions(terrainOptions);
+            Massif.destroy("options", "demo-terrain");
+            terrainObject = Massif.object("options", "demo-terrain", Spec.of("terrain").set("source", demSource().id()));
+            map.set("terrainOptions", terrainObject);
+            terrainOptions = map.terrain();
         }
-        terrainOptions.setAlwaysDecode(DemoConfig.TERRAIN_ALWAYS_DECODE);
-        terrainOptions.setEnabled(DemoConfig.TERRAIN_ENABLED);
-        terrainOptions.setExaggeration(DemoConfig.TERRAIN_EXAGGERATION);
-        terrainOptions.setAutoFlattenParallax(DemoConfig.AUTO_FLATTEN_PARALLAX);
-        terrainOptions.setAutoFlattenTilt(DemoConfig.AUTO_FLATTEN_TILT);
-        terrainOptions.setAutoFlattenDuration(DemoConfig.AUTO_FLATTEN_MS / 1000f);
-        terrainOptions.setFlattenMode(DemoConfig.TERRAIN_FULL_SWITCH
-            ? TerrainFlattenMode.TERRAIN_FLATTEN_MODE_FULL
-            : TerrainFlattenMode.TERRAIN_FLATTEN_MODE_RENDER);
+        Spec terrain = Spec.object()
+                .set("alwaysDecode", DemoConfig.TERRAIN_ALWAYS_DECODE)
+                .set("enabled", DemoConfig.TERRAIN_ENABLED)
+                .set("exaggeration", DemoConfig.TERRAIN_EXAGGERATION)
+                .set("autoFlattenParallax", DemoConfig.AUTO_FLATTEN_PARALLAX)
+                .set("autoFlattenTilt", DemoConfig.AUTO_FLATTEN_TILT)
+                .set("autoFlattenDuration", DemoConfig.AUTO_FLATTEN_MS / 1000f)
+                .set("flattenMode", DemoConfig.TERRAIN_FULL_SWITCH ? FLATTEN_FULL : FLATTEN_RENDER)
+                .set("meshResolution", DemoConfig.TERRAIN_MESH_RESOLUTION)
+                .set("cameraClearance", DemoConfig.TERRAIN_CAMERA_CLEARANCE)
+                .set("drapeFillsEnabled", DemoConfig.TERRAIN_DRAPE_FILLS)
+                .set("drapeLinesEnabled", DemoConfig.TERRAIN_DRAPE_LINES)
+                .set("bridges3DEnabled", DemoConfig.TERRAIN_BRIDGES_3D)
+                .set("noDrapeLayerFilter", DemoConfig.TERRAIN_NO_DRAPE_FILTER)
+                .set("drapeResolution", DemoConfig.TERRAIN_DRAPE_RESOLUTION)
+                .set("drapeCacheSize", DemoConfig.TERRAIN_DRAPE_CACHE_SIZE)
+                .set("drapeWorkingSet", DemoConfig.TERRAIN_DRAPE_WORKING_SET)
+                .set("tileEdgeStitchingEnabled", DemoConfig.TERRAIN_TILE_EDGE_STITCHING)
+                .set("seamlessTileEdgesEnabled", DemoConfig.TERRAIN_SEAMLESS_TILE_EDGES)
+                .set("elevationPrefetchEnabled", DemoConfig.TERRAIN_ELEVATION_PREFETCH)
+                .set("billboardOcclusionEnabled", DemoConfig.TERRAIN_BILLBOARD_OCCLUSION)
+                .set("billboardOcclusionTolerance", DemoConfig.TERRAIN_OCCLUSION_TOLERANCE)
+                .set("textOcclusionOpacity", DemoConfig.TERRAIN_TEXT_OCCLUSION_OPACITY)
+                .set("backgroundBitmapEnabled", DemoConfig.TERRAIN_BACKGROUND_BITMAP)
+                .set("viewDistanceFactor", DemoConfig.VIEW_DISTANCE_FACTOR)
+                .set("maxTileZoomCoarsening", DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING);
         if (!DemoConfig.TERRAIN_FLATTENED.isEmpty()) {
-            terrainOptions.setFlattened(Boolean.parseBoolean(DemoConfig.TERRAIN_FLATTENED));
+            terrain.set("flattened", Boolean.parseBoolean(DemoConfig.TERRAIN_FLATTENED));
         }
-        terrainOptions.setMeshResolution(DemoConfig.TERRAIN_MESH_RESOLUTION);
-        terrainOptions.setCameraClearance(DemoConfig.TERRAIN_CAMERA_CLEARANCE);
-        terrainOptions.setDrapeFillsEnabled(DemoConfig.TERRAIN_DRAPE_FILLS);
-        terrainOptions.setDrapeLinesEnabled(DemoConfig.TERRAIN_DRAPE_LINES);
-        terrainOptions.setBridges3DEnabled(DemoConfig.TERRAIN_BRIDGES_3D);
-        terrainOptions.setNoDrapeLayerFilter(DemoConfig.TERRAIN_NO_DRAPE_FILTER);
-        terrainOptions.setDrapeResolution(DemoConfig.TERRAIN_DRAPE_RESOLUTION);
-        terrainOptions.setDrapeCacheSize(DemoConfig.TERRAIN_DRAPE_CACHE_SIZE);
-        terrainOptions.setDrapeWorkingSet(DemoConfig.TERRAIN_DRAPE_WORKING_SET);
-        terrainOptions.setTileEdgeStitchingEnabled(DemoConfig.TERRAIN_TILE_EDGE_STITCHING);
-        terrainOptions.setSeamlessTileEdgesEnabled(DemoConfig.TERRAIN_SEAMLESS_TILE_EDGES);
-        terrainOptions.setElevationPrefetchEnabled(DemoConfig.TERRAIN_ELEVATION_PREFETCH);
-        terrainOptions.setBillboardOcclusionEnabled(DemoConfig.TERRAIN_BILLBOARD_OCCLUSION);
-        terrainOptions.setBillboardOcclusionTolerance(DemoConfig.TERRAIN_OCCLUSION_TOLERANCE);
-        terrainOptions.setTextOcclusionOpacity(DemoConfig.TERRAIN_TEXT_OCCLUSION_OPACITY);
-        terrainOptions.setBackgroundBitmapEnabled(DemoConfig.TERRAIN_BACKGROUND_BITMAP);
         if (DemoConfig.TERRAIN_MAX_TILE_ZOOM_OFFSET_ENABLED) {
-            terrainOptions.setMaxTileZoomOffset(DemoConfig.TERRAIN_MAX_TILE_ZOOM_OFFSET);
+            terrain.set("maxTileZoomOffset", DemoConfig.TERRAIN_MAX_TILE_ZOOM_OFFSET);
         }
+        terrainOptions.apply(terrain);
         // Fog and view distance go together: the distance ENDS the ground, the fog is what makes
         // it fade out instead of being cut off. The fog itself lives on FogOptions now.
         applyFogOptions();
-        terrainOptions.setViewDistanceFactor(DemoConfig.VIEW_DISTANCE_FACTOR);
-//        terrainOptions.setViewDistance(DemoConfig.VIEW_DISTANCE_METERS);
-        terrainOptions.setMaxTileZoomCoarsening(DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING);
         applyReliefSurface();
         mapView.requestRender();
     }
@@ -1831,101 +1849,100 @@ public class DemoMap {
         if (terrainOptions == null) {
             return;
         }
-        terrainOptions.setSurfaceShaderSource(DemoConfig.RELIEF_SURFACE ? DemoStyles.reliefSurfaceShader() : "");
-        terrainOptions.setSurfaceColorParameter("uPaperColor", color(reliefPaper()));
-        terrainOptions.setSurfaceColorParameter("uShadeColor", color(reliefShade()));
-        terrainOptions.setSurfaceParameter("uShadeStrength", DemoConfig.RELIEF_SHADE_STRENGTH);
-        terrainOptions.setSurfaceParameter("uAmbient", DemoConfig.RELIEF_AMBIENT);
-        terrainOptions.setSurfaceParameter("uHaze", DemoConfig.RELIEF_HAZE);
-        terrainOptions.setSurfaceParameter("uHazeDistance", DemoConfig.RELIEF_HAZE_DISTANCE);
+        terrainOptions.set("surfaceShaderSource", DemoConfig.RELIEF_SURFACE ? DemoStyles.reliefSurfaceShader() : "");
+        callOptions("terrainOptions.setSurfaceColorParameter", "uPaperColor", reliefPaper());
+        callOptions("terrainOptions.setSurfaceColorParameter", "uShadeColor", reliefShade());
+        callOptions("terrainOptions.setSurfaceParameter", "uShadeStrength", DemoConfig.RELIEF_SHADE_STRENGTH);
+        callOptions("terrainOptions.setSurfaceParameter", "uAmbient", DemoConfig.RELIEF_AMBIENT);
+        callOptions("terrainOptions.setSurfaceParameter", "uHaze", DemoConfig.RELIEF_HAZE);
+        callOptions("terrainOptions.setSurfaceParameter", "uHazeDistance", DemoConfig.RELIEF_HAZE_DISTANCE);
         mapView.requestRender();
     }
 
     /** Creates the LightOptions on first call, then pushes every sun/shadow value onto it. */
     public void applyLightOptions() {
         if (lightOptions == null) {
-            lightOptions = new LightOptions();
-            ObjectApi.options(mapView).setLightOptions(lightOptions);
+            lightOptions = map.light(Spec.of("light"));
         }
         if (DemoConfig.SUN_HOUR_UTC >= 0) {
             int hour = (int) DemoConfig.SUN_HOUR_UTC;
             int minute = (int) ((DemoConfig.SUN_HOUR_UTC - hour) * 60);
-            lightOptions.setSunPositionFromTime(DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY,
+            callOptions("lightOptions.setSunPositionFromTime", DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY,
                     hour, minute, DemoConfig.START_LAT, DemoConfig.START_LON);
         } else {
-            lightOptions.setSunAzimuth(DemoConfig.SUN_AZIMUTH);
-            lightOptions.setSunAltitude(DemoConfig.SUN_ALTITUDE);
+            lightOptions.set("sunAzimuth", DemoConfig.SUN_AZIMUTH);
+            lightOptions.set("sunAltitude", DemoConfig.SUN_ALTITUDE);
         }
-        lightOptions.setSunOverridingStyle(DemoConfig.APP_SUN);
-        lightOptions.setDayCycleLightsEnabled(DemoConfig.DAY_CYCLE_LIGHTS);
-        lightOptions.setSunIntensity(DemoConfig.SUN_INTENSITY);
-        lightOptions.setAmbientIntensity(DemoConfig.AMBIENT_INTENSITY);
-        lightOptions.setAmbientColor(new Color(DemoConfig.AMBIENT_COLOR_ARGB));
-        lightOptions.setSunColor(new Color(DemoConfig.SUN_COLOR_ARGB));
-        lightOptions.setTerrainLightingEnabled(DemoConfig.TERRAIN_LIGHTING);
-        lightOptions.setTerrainShadowCastingEnabled(DemoConfig.TERRAIN_SHADOWS);
-        lightOptions.setShadowFollowsBuildingHeight(DemoConfig.SHADOW_FOLLOWS_HEIGHT);
-        lightOptions.setShadowStrength(DemoConfig.SHADOW_STRENGTH);
-        lightOptions.setShadowSoftness(DemoConfig.SHADOW_SOFTNESS);
-        lightOptions.setShadowMapSize(DemoConfig.SHADOW_MAP_SIZE);
-        lightOptions.setShadowCascades(DemoConfig.SHADOW_CASCADES);
-        lightOptions.setShadowBias(DemoConfig.SHADOW_BIAS);
-        lightOptions.setShadowDistance(DemoConfig.SHADOW_DISTANCE);
-        lightOptions.setShadowNormalOffset(DemoConfig.SHADOW_NORMAL_OFFSET);
-        lightOptions.setShadowCasterMargin(DemoConfig.SHADOW_CASTER_MARGIN);
+        lightOptions.apply(Spec.object()
+                .set("sunOverridingStyle", DemoConfig.APP_SUN)
+                .set("dayCycleLightsEnabled", DemoConfig.DAY_CYCLE_LIGHTS)
+                .set("sunIntensity", DemoConfig.SUN_INTENSITY)
+                .set("ambientIntensity", DemoConfig.AMBIENT_INTENSITY)
+                .set("ambientColor", DemoConfig.AMBIENT_COLOR_ARGB)
+                .set("sunColor", DemoConfig.SUN_COLOR_ARGB)
+                .set("terrainLightingEnabled", DemoConfig.TERRAIN_LIGHTING)
+                .set("terrainShadowCastingEnabled", DemoConfig.TERRAIN_SHADOWS)
+                .set("shadowFollowsBuildingHeight", DemoConfig.SHADOW_FOLLOWS_HEIGHT)
+                .set("shadowStrength", DemoConfig.SHADOW_STRENGTH)
+                .set("shadowSoftness", DemoConfig.SHADOW_SOFTNESS)
+                .set("shadowMapSize", DemoConfig.SHADOW_MAP_SIZE)
+                .set("shadowCascades", DemoConfig.SHADOW_CASCADES)
+                .set("shadowBias", DemoConfig.SHADOW_BIAS)
+                .set("shadowDistance", DemoConfig.SHADOW_DISTANCE)
+                .set("shadowNormalOffset", DemoConfig.SHADOW_NORMAL_OFFSET)
+                .set("shadowCasterMargin", DemoConfig.SHADOW_CASTER_MARGIN));
         updateSky();
     }
 
     /** Fog is its own options object and is independent of the terrain - it fogs a plain 2D map too. */
     public void applyFogOptions() {
         if (fogOptions == null) {
-            fogOptions = new FogOptions();
-            ObjectApi.options(mapView).setFogOptions(fogOptions);
+            fogOptions = map.fog(Spec.of("fog"));
         }
-        fogOptions.setEnabled(DemoConfig.FOG_ENABLED);
         // STYLE mode leaves every value at its default so nothing but the style's Map block can be
         // responsible for what is on screen - the point being to show the style winning, and that
         // it can make the fog zoom-dependent, which the options cannot.
         boolean fromStyle = DemoConfig.FOG_SOURCE_STYLE.equals(DemoConfig.FOG_SOURCE);
-        fogOptions.setColor(new Color(fromStyle ? 0 : DemoConfig.FOG_COLOR_ARGB));
-        fogOptions.setRangeStart(DemoConfig.FOG_RANGE_START);
-        fogOptions.setRangeEnd(DemoConfig.FOG_RANGE_END);
-        fogOptions.setHighColor(new Color(fromStyle ? 0 : DemoConfig.FOG_HIGH_COLOR_ARGB));
-        fogOptions.setSpaceColor(new Color(fromStyle ? 0 : DemoConfig.FOG_SPACE_COLOR_ARGB));
-        fogOptions.setStarIntensity(fromStyle ? 0 : DemoConfig.FOG_STAR_INTENSITY);
-        // How much of the sky the haze takes. The SAME term scales the ground, so the two meet at
-        // the skyline with no seam at any tilt - there is no angle to reconcile any more.
-        fogOptions.setHorizonBlend(DemoConfig.FOG_HORIZON_BLEND);
-        // Peaks poking out of a valley haze (mapbox vertical-range).
-        fogOptions.setVerticalRangeStart(DemoConfig.FOG_VERTICAL_START);
-        fogOptions.setVerticalRangeEnd(DemoConfig.FOG_VERTICAL_END);
+        fogOptions.apply(Spec.object()
+                .set("enabled", DemoConfig.FOG_ENABLED)
+                .set("color", fromStyle ? 0 : DemoConfig.FOG_COLOR_ARGB)
+                .set("rangeStart", DemoConfig.FOG_RANGE_START)
+                .set("rangeEnd", DemoConfig.FOG_RANGE_END)
+                .set("highColor", fromStyle ? 0 : DemoConfig.FOG_HIGH_COLOR_ARGB)
+                .set("spaceColor", fromStyle ? 0 : DemoConfig.FOG_SPACE_COLOR_ARGB)
+                .set("starIntensity", fromStyle ? 0 : DemoConfig.FOG_STAR_INTENSITY)
+                // How much of the sky the haze takes. The SAME term scales the ground, so the two meet at
+                // the skyline with no seam at any tilt - there is no angle to reconcile any more.
+                .set("horizonBlend", DemoConfig.FOG_HORIZON_BLEND)
+                // Peaks poking out of a valley haze (mapbox vertical-range).
+                .set("verticalRangeStart", DemoConfig.FOG_VERTICAL_START)
+                .set("verticalRangeEnd", DemoConfig.FOG_VERTICAL_END));
         mapView.requestRender();
     }
 
     /** The sky is always attached so the panel can toggle it live; disabled = no sky at all. */
     public void applySkyOptions() {
         if (skyOptions == null) {
-            skyOptions = new SkyOptions();
-            ObjectApi.options(mapView).setSkyOptions(skyOptions);
+            skyOptions = map.sky(Spec.of("sky"));
         }
-        skyOptions.setEnabled(DemoConfig.SKY_ENABLED);
-        skyOptions.setType("gradient".equals(DemoConfig.SKY_TYPE) ? SkyType.SKY_TYPE_GRADIENT : SkyType.SKY_TYPE_ATMOSPHERE);
-        skyOptions.setQuality("low".equals(DemoConfig.SKY_QUALITY) ? SkyQuality.SKY_QUALITY_LOW
-                : "high".equals(DemoConfig.SKY_QUALITY) ? SkyQuality.SKY_QUALITY_HIGH : SkyQuality.SKY_QUALITY_MEDIUM);
-        skyOptions.setAtmosphereSunIntensity(DemoConfig.SKY_ATMO_SUN);
-        skyOptions.setAtmosphereColor(new Color(DemoConfig.SKY_ATMO_COLOR_ARGB));
-        skyOptions.setHaloColor(new Color(DemoConfig.SKY_ATMO_HALO_ARGB));
-        skyOptions.setAtmosphereLuminance(DemoConfig.SKY_ATMO_LUMINANCE);
+        skyOptions.apply(Spec.object()
+                .set("enabled", DemoConfig.SKY_ENABLED)
+                .set("type", "gradient".equals(DemoConfig.SKY_TYPE) ? SKY_GRADIENT : SKY_ATMOSPHERE)
+                .set("quality", "low".equals(DemoConfig.SKY_QUALITY) ? SKY_LOW : "high".equals(DemoConfig.SKY_QUALITY) ? SKY_HIGH : SKY_MEDIUM)
+                .set("atmosphereSunIntensity", DemoConfig.SKY_ATMO_SUN)
+                .set("atmosphereColor", DemoConfig.SKY_ATMO_COLOR_ARGB)
+                .set("haloColor", DemoConfig.SKY_ATMO_HALO_ARGB)
+                .set("atmosphereLuminance", DemoConfig.SKY_ATMO_LUMINANCE));
         // In the relief view the sky is part of the palette: a light one over the paper, a night
         // one over the ink. Alpha 0 makes it see-through, which is what an AR overlay wants.
         if (DemoConfig.RELIEF_SURFACE || DemoConfig.PEAK_FINDER) {
             // The generated day-cycle shader owns the sky's colours, so it has to go for the
             // palette's own sky to be visible at all (SkyOptions falls back to the built-in sky).
             if (!DemoConfig.DAY_CYCLE) {
-                skyOptions.setShaderSource("");
+                skyOptions.set("shaderSource", "");
             }
-            skyOptions.setSkyColor(color(reliefSky()));
-            ObjectApi.options(mapView).setSkyColor(color(reliefSky()));
+            skyOptions.set("skyColor", reliefSky());
+            map.set("skyColor", reliefSky());
         }
         mapView.requestRender();
     }
@@ -1939,17 +1956,17 @@ public class DemoMap {
         updateSky(); // the hour is also what places the sun, the moon and the stars
         if (!DemoConfig.DAY_CYCLE) {
             if (skyOptions != null) {
-                skyOptions.setShaderSource("");
+                skyOptions.set("shaderSource", "");
             }
             return;
         }
         DemoConfig.TERRAIN_LIGHTING = true;
         DemoConfig.SKY_ENABLED = true;
-        lightOptions.setTerrainLightingEnabled(true);
-        skyOptions.setEnabled(true);
+        lightOptions.set("terrainLightingEnabled", true);
+        skyOptions.set("enabled", true);
         // The sun is computed for the CURRENT map centre, not the start position.
-        MapPos centre = ObjectApi.options(mapView).getBaseProjection().toWgs84(ObjectApi.view(mapView).getFocusPos());
-        DemoSky.applyHour(lightOptions, skyOptions, hourUtc, centre.getY(), centre.getX());
+        Position centre = map.camera().position();
+        DemoSky.applyHour(map, hourUtc, centre.lat, centre.lng);
         mapView.requestRender();
     }
 
@@ -1959,12 +1976,9 @@ public class DemoMap {
 
     /** Note: setFocusPos expects BASE PROJECTION coordinates, so WGS84 must be converted first. */
     public void applyCamera() {
-        Projection proj = ObjectApi.options(mapView).getBaseProjection();
-        ObjectApi.view(mapView).setFocusPos(proj.fromWgs84(new MapPos(DemoConfig.START_LON, DemoConfig.START_LAT)), 0);
-        ObjectApi.view(mapView).setZoom(DemoConfig.START_ZOOM, 0);
         applyLookRange();
-        ObjectApi.view(mapView).setTilt(DemoConfig.START_TILT, 0);
-        ObjectApi.view(mapView).setRotation(DemoConfig.START_ROTATION, 0);
+        map.camera().moveTo(new Position(DemoConfig.START_LON, DemoConfig.START_LAT), DemoConfig.START_ZOOM,
+                DemoConfig.START_ROTATION, DemoConfig.START_TILT);
     }
 
     /**
@@ -1978,46 +1992,46 @@ public class DemoMap {
      * sky - get the full range.
      */
     public void applyLookRange() {
-        Options options = ObjectApi.options(mapView);
-        options.setFreeRoamMode(freeRoamMode(DemoConfig.FREE_ROAM_MODE));
-        options.setPanningSpeedMode(panningSpeedMode(DemoConfig.PANNING_SPEED_MODE));
-        options.setOrbitAroundPivot(DemoConfig.ORBIT_AROUND_PIVOT);
-        options.setFreeRoamLookSensitivity(DemoConfig.FREE_ROAM_LOOK_SENSITIVITY);
-        options.setFreeRoamMoveSpeed(DemoConfig.FREE_ROAM_MOVE_SPEED);
         boolean lookUp = !"off".equals(DemoConfig.FREE_ROAM_MODE) || DemoConfig.STAR_SKY;
         float minTilt = lookUp ? -Math.max(10f, DemoConfig.LOOK_UP_LIMIT) : 10f;
-        options.setTiltRange(new com.massifmaps.core.MapRange(minTilt, 90f));
+        map.apply(Spec.object()
+                .set("freeRoamMode", freeRoamMode(DemoConfig.FREE_ROAM_MODE))
+                .set("panningSpeedMode", panningSpeedMode(DemoConfig.PANNING_SPEED_MODE))
+                .set("orbitAroundPivot", DemoConfig.ORBIT_AROUND_PIVOT)
+                .set("freeRoamLookSensitivity", DemoConfig.FREE_ROAM_LOOK_SENSITIVITY)
+                .set("freeRoamMoveSpeed", DemoConfig.FREE_ROAM_MOVE_SPEED)
+                .set("tiltRange", new double[] { minTilt, 90 }));
     }
 
     /** "map" / "anchored" / "constant" -> the SDK constant. */
-    public static @com.massifmaps.components.PanningSpeedMode.Value int panningSpeedMode(String name) {
+    public static int panningSpeedMode(String name) {
         if ("map".equals(name)) {
-            return com.massifmaps.components.PanningSpeedMode.PANNING_SPEED_MODE_MAP;
+            return PANNING_SPEED_MAP;
         }
         if ("constant".equals(name)) {
-            return com.massifmaps.components.PanningSpeedMode.PANNING_SPEED_MODE_CONSTANT;
+            return PANNING_SPEED_CONSTANT;
         }
-        return com.massifmaps.components.PanningSpeedMode.PANNING_SPEED_MODE_ANCHORED;
+        return PANNING_SPEED_ANCHORED;
     }
 
     /** "off" / "look" / "fps" -> the SDK constant. */
-    public static @com.massifmaps.components.FreeRoamMode.Value int freeRoamMode(String name) {
+    public static int freeRoamMode(String name) {
         if ("look".equals(name)) {
-            return com.massifmaps.components.FreeRoamMode.FREE_ROAM_MODE_LOOK;
+            return FREE_ROAM_LOOK;
         }
         if ("fps".equals(name)) {
-            return com.massifmaps.components.FreeRoamMode.FREE_ROAM_MODE_FIRST_PERSON;
+            return FREE_ROAM_FIRST_PERSON;
         }
-        return com.massifmaps.components.FreeRoamMode.FREE_ROAM_MODE_OFF;
+        return FREE_ROAM_OFF;
     }
 
     // =============================================================================================
     // STAR SKY: the map removed, the background cleared to nothing, only the sky left
     // =============================================================================================
 
-    private Color savedClearColor;
-    private Color savedSkyColor;
-    private com.massifmaps.graphics.Bitmap savedBackgroundBitmap;
+    private long savedClearColor;
+    private long savedSkyColor;
+    private int savedBackgroundBitmap;
     private boolean starSkySaved;
 
     /**
@@ -2053,11 +2067,15 @@ public class DemoMap {
         if (starSkySaved) {
             return;
         }
-        Options options = ObjectApi.options(mapView);
-        savedClearColor = options.getClearColor();
-        savedSkyColor = options.getSkyColor();
-        savedBackgroundBitmap = options.getBackgroundBitmap();
+        savedClearColor = map.options().getLong("clearColor", 0xFFFFFFFFL);
+        savedSkyColor = map.options().getLong("skyColor", 0xFFFFFFFFL);
+        savedBackgroundBitmap = MassifApi.getObject(map.options().handle(), "backgroundBitmap");
         starSkySaved = true;
+    }
+
+    private void applySavedAppearance() {
+        map.set("clearColor", savedClearColor).set("skyColor", savedSkyColor);
+        MassifApi.setObject(map.options().handle(), "backgroundBitmap", savedBackgroundBitmap);
     }
 
     /** Puts back what saveMapAppearance kept - the clear colour, the sky and the background. */
@@ -2065,32 +2083,25 @@ public class DemoMap {
         if (!starSkySaved) {
             return;
         }
-        Options options = ObjectApi.options(mapView);
-        options.setClearColor(savedClearColor);
-        options.setSkyColor(savedSkyColor);
-        options.setBackgroundBitmap(savedBackgroundBitmap);
+        applySavedAppearance();
         starSkySaved = false;
     }
 
     private void enterStarSky() {
         DemoConfig.STAR_SKY = true;
-        Options options = ObjectApi.options(mapView);
         // Transparent, not black: the frame is then a hole that whatever is behind the surface
         // shows through, and it looks black on its own anyway.
-        options.setClearColor(new Color((short) 0, (short) 0, (short) 0, (short) 0));
-        options.setSkyColor(new Color((short) 0, (short) 0, (short) 0, (short) 0));
-        options.setBackgroundBitmap(null);
+        map.set("clearColor", 0).set("skyColor", 0).set("backgroundBitmap", null);
         if (terrainOptions != null) {
-            terrainOptions.setEnabled(false);
+            terrainOptions.set("enabled", false);
         }
         if (skyOptions != null) {
-            skyOptions.setEnabled(false);
+            skyOptions.set("enabled", false);
         }
         setSurfaceTranslucent(DemoConfig.STAR_SKY_TRANSLUCENT);
         setCameraPreviewEnabled(DemoConfig.STAR_SKY_CAMERA);
         rebuildLayers();
-        Log.i(TAG, "star sky on: " + ObjectApi.layers(mapView).count() + " layers, clear "
-                + options.getClearColor().getARGB() + ", background " + options.getBackgroundBitmap());
+        Log.i(TAG, "star sky on: " + map.layerCount() + " layers, clear " + map.options().getLong("clearColor", -1));
         setMapLayerOpacity(1f); // the layers are out of the list now: leave them ready to come back
         applyLookRange();
         setOrientationFollowing(DemoConfig.STAR_SKY_ORIENTATION);
@@ -2101,18 +2112,15 @@ public class DemoMap {
         setOrientationFollowing(false);
         setCameraPreviewEnabled(false);
         DemoConfig.STAR_SKY = false;
-        Options options = ObjectApi.options(mapView);
         if (starSkySaved) {
-            options.setClearColor(savedClearColor);
-            options.setSkyColor(savedSkyColor);
-            options.setBackgroundBitmap(savedBackgroundBitmap);
+            applySavedAppearance();
             starSkySaved = false;
         }
         if (terrainOptions != null) {
-            terrainOptions.setEnabled(DemoConfig.TERRAIN_ENABLED);
+            terrainOptions.set("enabled", DemoConfig.TERRAIN_ENABLED);
         }
         if (skyOptions != null) {
-            skyOptions.setEnabled(DemoConfig.SKY_ENABLED);
+            skyOptions.set("enabled", DemoConfig.SKY_ENABLED);
         }
         if (DemoConfig.STAR_SKY_TRANSLUCENT) {
             setSurfaceTranslucent(false);
@@ -2128,7 +2136,7 @@ public class DemoMap {
         DemoConfig.STAR_SKY_ORIENTATION = enabled;
         if (enabled) {
             if (orientation == null) {
-                orientation = new DemoOrientation(context, mapView);
+                orientation = new DemoOrientation(context, map);
             }
             orientation.start();
         } else if (orientation != null) {
@@ -2177,9 +2185,9 @@ public class DemoMap {
 
     /** Opacity of every layer that is NOT the sky. */
     private void setMapLayerOpacity(float opacity) {
-        for (Map.Entry<Feature, Layer> entry : layers.entrySet()) {
+        for (Map.Entry<Feature, MassifLayer> entry : layers.entrySet()) {
             if (entry.getKey() != Feature.CELESTIAL && entry.getKey() != Feature.STARS) {
-                entry.getValue().setOpacity(opacity);
+                entry.getValue().opacity(opacity);
             }
         }
         mapView.requestRender();
@@ -2222,32 +2230,32 @@ public class DemoMap {
         final float duration = DemoConfig.ANIM_DURATION_S;
         handler.postDelayed(new Runnable() {
             public void run() {
-                Projection proj = ObjectApi.options(mapView).getBaseProjection();
+                MapCamera camera = map.camera();
                 if ("zoom".equals(anim)) {
-                    ObjectApi.view(mapView).setZoom(DemoConfig.START_ZOOM + DemoConfig.ANIM_ZOOM_DELTA, duration);
+                    camera.animate(duration).zoom(DemoConfig.START_ZOOM + DemoConfig.ANIM_ZOOM_DELTA);
                 } else if ("pan".equals(anim)) {
-                    ObjectApi.view(mapView).setFocusPos(proj.fromWgs84(new MapPos(DemoConfig.START_LON + DemoConfig.ANIM_LON_DELTA, DemoConfig.START_LAT + DemoConfig.ANIM_LAT_DELTA)), duration);
+                    camera.animate(duration).position(new Position(DemoConfig.START_LON + DemoConfig.ANIM_LON_DELTA, DemoConfig.START_LAT + DemoConfig.ANIM_LAT_DELTA));
                 } else if ("rotate".equals(anim)) {
-                    ObjectApi.view(mapView).setRotation(DemoConfig.ANIM_ROTATION, duration);
+                    camera.animate(duration).rotation(DemoConfig.ANIM_ROTATION);
                 } else if ("zoomseq".equals(anim)) {
                     // zoom out, back in, out again - each step after the map settled, which is the
                     // repro shape for "stale content stays on screen" bugs.
                     final float zoomOut = DemoConfig.ANIM_ZOOM_OUT;
                     final float zoomIn = DemoConfig.START_ZOOM;
                     final float settle = DemoConfig.ANIM_SETTLE_MS;
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step1 out " + zoomOut); ObjectApi.view(mapView).setZoom(zoomOut, 0); } }, 0);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step2 in " + zoomIn); ObjectApi.view(mapView).setZoom(zoomIn, 0); } }, (long) settle);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step3 out " + zoomOut); ObjectApi.view(mapView).setZoom(zoomOut, 0); } }, (long) (2 * settle));
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step1 out " + zoomOut); map.camera().zoom(zoomOut); } }, 0);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step2 in " + zoomIn); map.camera().zoom(zoomIn); } }, (long) settle);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("zoomseq", "step3 out " + zoomOut); map.camera().zoom(zoomOut); } }, (long) (2 * settle));
                 } else if ("approach".equals(anim)) {
                     // The wrong-scale repro shape: dive close enough for the terrain camera
                     // clearance to engage, pan along the slope, then pull back out.
                     final float close = DemoConfig.ANIM_APPROACH_ZOOM;
                     final float back = DemoConfig.ANIM_ZOOM_OUT;
                     final float settle = DemoConfig.ANIM_SETTLE_MS;
-                    final MapPos panTo = proj.fromWgs84(new MapPos(DemoConfig.START_LON + DemoConfig.ANIM_LON_DELTA, DemoConfig.START_LAT + DemoConfig.ANIM_LAT_DELTA));
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step1 close " + close); ObjectApi.view(mapView).setZoom(close, duration); } }, 0);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step2 pan"); ObjectApi.view(mapView).setFocusPos(panTo, duration); } }, (long) settle);
-                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step3 out " + back); ObjectApi.view(mapView).setZoom(back, duration); } }, (long) (2 * settle));
+                    final Position panTo = new Position(DemoConfig.START_LON + DemoConfig.ANIM_LON_DELTA, DemoConfig.START_LAT + DemoConfig.ANIM_LAT_DELTA);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step1 close " + close); map.camera().animate(duration).zoom(close); } }, 0);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step2 pan"); map.camera().animate(duration).position(panTo); } }, (long) settle);
+                    handler.postDelayed(new Runnable() { public void run() { Log.i("approach", "step3 out " + back); map.camera().animate(duration).zoom(back); } }, (long) (2 * settle));
                 }
             }
         }, (long) DemoConfig.ANIM_DELAY_MS);
@@ -2256,18 +2264,20 @@ public class DemoMap {
     /** PeakFinder-style relief outline post-process effect. */
     public void setReliefOutlineEnabled(boolean enabled) {
         DemoConfig.RELIEF_OUTLINE = enabled;
-        MapRenderer renderer = ObjectApi.renderer(mapView);
+        MassifObject renderer = map.camera().renderer();
         if (enabled) {
             // The SDK provides the mechanism - an offscreen frame, the packed terrain depth and
             // named parameters - and the app provides the look, as a fragment shader string. There
             // is no relief effect in the SDK.
-            reliefEffect = new PostProcessEffect("relief_outline", DemoStyles.reliefOutlineShader());
-            reliefEffect.setTerrainDepthRequired(true);
+            Massif.destroy("effect", "demo-relief-outline");
+            reliefEffect = Massif.object("effect", "demo-relief-outline",
+                    Spec.of("postprocess").set("name", "relief_outline").set("fragmentShader", DemoStyles.reliefOutlineShader()));
+            reliefEffect.set("terrainDepthRequired", true);
             applyReliefOutlineParameters();
-            renderer.setPostProcessEffect(reliefEffect);
+            renderer.set("postProcessEffect", reliefEffect);
         } else {
             reliefEffect = null;
-            renderer.setPostProcessEffect(null);
+            renderer.set("postProcessEffect", null);
         }
         mapView.requestRender();
     }
@@ -2277,20 +2287,20 @@ public class DemoMap {
         if (reliefEffect == null) {
             return;
         }
-        reliefEffect.setFloatParameter("uIntensity", 1.0f);
-        reliefEffect.setFloatParameter("uOutlineWidth", DemoConfig.RELIEF_OUTLINE_WIDTH);
-        reliefEffect.setFloatParameter("uHorizonBoost", DemoConfig.RELIEF_HORIZON_BOOST);
-        reliefEffect.setFloatParameter("uDepthThreshold", DemoConfig.RELIEF_DEPTH_THRESHOLD);
-        reliefEffect.setFloatParameter("uCreaseStrength", DemoConfig.RELIEF_CREASE_STRENGTH);
-        reliefEffect.setFloatParameter("uHaze", DemoConfig.RELIEF_HAZE);
+        reliefEffect.call("setFloatParameter", "uIntensity", 1.0f).close();
+        reliefEffect.call("setFloatParameter", "uOutlineWidth", DemoConfig.RELIEF_OUTLINE_WIDTH).close();
+        reliefEffect.call("setFloatParameter", "uHorizonBoost", DemoConfig.RELIEF_HORIZON_BOOST).close();
+        reliefEffect.call("setFloatParameter", "uDepthThreshold", DemoConfig.RELIEF_DEPTH_THRESHOLD).close();
+        reliefEffect.call("setFloatParameter", "uCreaseStrength", DemoConfig.RELIEF_CREASE_STRENGTH).close();
+        reliefEffect.call("setFloatParameter", "uHaze", DemoConfig.RELIEF_HAZE).close();
         // The depth texture is half resolution (TerrainRenderer::BUFFER_DOWNSCALE), and the two
         // below are what keep the horizon the boldest line: the silhouette test is relaxed by the
         // grazing angle, and terrain-vs-terrain lines fade with distance while the sky's do not.
-        reliefEffect.setFloatParameter("uDepthTexelSize", 2.0f);
-        reliefEffect.setFloatParameter("uGrazingFloor", 0.15f);
-        reliefEffect.setFloatParameter("uDistanceFade", 0.45f);
-        reliefEffect.setColorParameter("uInkColor", color(reliefInk()));
-        reliefEffect.setColorParameter("uPaperColor", color(reliefPaper()));
+        reliefEffect.call("setFloatParameter", "uDepthTexelSize", 2.0f).close();
+        reliefEffect.call("setFloatParameter", "uGrazingFloor", 0.15f).close();
+        reliefEffect.call("setFloatParameter", "uDistanceFade", 0.45f).close();
+        reliefEffect.call("setColorParameter", "uInkColor", reliefInk()).close();
+        reliefEffect.call("setColorParameter", "uPaperColor", reliefPaper()).close();
         mapView.requestRender();
     }
 
@@ -2305,13 +2315,13 @@ public class DemoMap {
                     return; // the style was switched away: stop the loop
                 }
                 paramOn = !paramOn;
-                baseDecoder.setStyleParameter(DemoStyles.BOOL_PARAMETER, Boolean.toString(paramOn));
+                baseDecoder.call("setStyleParameter", DemoStyles.BOOL_PARAMETER, Boolean.toString(paramOn)).close();
                 // The colour parameter takes the live path: no tile is decoded for it
-                baseDecoder.setStyleParameter(DemoStyles.COLOR_PARAMETER, paramOn ? "#9cc3e0" : "#2f6f4f");
+                baseDecoder.call("setStyleParameter", DemoStyles.COLOR_PARAMETER, paramOn ? "#9cc3e0" : "#2f6f4f").close();
                 // The table parameter is set as JSON; the style reads it per road class with get()
-                baseDecoder.setStyleParameter(DemoStyles.TABLE_PARAMETER, paramOn
+                baseDecoder.call("setStyleParameter", DemoStyles.TABLE_PARAMETER, paramOn
                     ? "{\"motorway\":\"#e27d60\",\"trunk\":\"#f0a868\",\"primary\":\"#d9b382\"}"
-                    : "{\"motorway\":\"#7048e8\",\"trunk\":\"#9775fa\",\"primary\":\"#b197fc\"}");
+                    : "{\"motorway\":\"#7048e8\",\"trunk\":\"#9775fa\",\"primary\":\"#b197fc\"}").close();
                 Log.d(TAG, "param " + DemoStyles.BOOL_PARAMETER + "=" + paramOn);
                 handler.postDelayed(this, DemoConfig.PARAM_TOGGLE_INTERVAL_MS);
             }
@@ -2319,12 +2329,17 @@ public class DemoMap {
     }
 
     /** Elevation under a map position; blocks on tile loading, so call it off the UI thread. */
-    public double getElevation(MapPos wgs84Pos) {
-        return terrainOptions != null ? terrainOptions.getElevation(wgs84Pos) : 0;
+    public double getElevation(Position wgs84Pos) {
+        com.massifmaps.api.MassifObject result = map.options().call("terrainOptions.getElevation", wgs84Pos);
+        try {
+            return Double.parseDouble(result.json());
+        } finally {
+            result.close();
+        }
     }
 
-    private static Color color(int argb) {
-        return new Color(argb);
+    private static int color(int argb) {
+        return argb;
     }
     /**
      * Terrain on/off as an EXPAND animation instead of a pop. Enabling flips the flag first and
@@ -2336,8 +2351,8 @@ public class DemoMap {
         final float target = DemoConfig.TERRAIN_EXAGGERATION;
         final long durationMs = DemoConfig.TERRAIN_ANIM_MS;
         if (durationMs <= 0) {
-            terrainOptions.setEnabled(enabled);
-            terrainOptions.setExaggeration(target);
+            terrainOptions.set("enabled", enabled);
+            terrainOptions.set("exaggeration", target);
             return;
         }
         if (enabled) {
@@ -2346,8 +2361,8 @@ public class DemoMap {
             // subdivision: displacing those chords a road straight between its endpoints, which
             // over a valley rides well above the ground - roads in the sky. At exaggeration 0
             // nothing of that is visible, so waiting costs nothing to look at.
-            terrainOptions.setExaggeration(0f);
-            terrainOptions.setEnabled(true);
+            terrainOptions.set("exaggeration", 0f);
+            terrainOptions.set("enabled", true);
             startRampWhenTilesLoaded();
             return;
         }
@@ -2357,14 +2372,14 @@ public class DemoMap {
         animator.setInterpolator(new android.view.animation.DecelerateInterpolator());
         animator.addUpdateListener(new android.animation.ValueAnimator.AnimatorUpdateListener() {
             public void onAnimationUpdate(android.animation.ValueAnimator a) {
-                terrainOptions.setExaggeration(((Float) a.getAnimatedValue()).floatValue());
+                terrainOptions.set("exaggeration", ((Float) a.getAnimatedValue()).floatValue());
             }
         });
         if (!enabled) {
             animator.addListener(new android.animation.AnimatorListenerAdapter() {
                 public void onAnimationEnd(android.animation.Animator a) {
-                    terrainOptions.setEnabled(false);
-                    terrainOptions.setExaggeration(target);
+                    terrainOptions.set("enabled", false);
+                    terrainOptions.set("exaggeration", target);
                 }
             });
         }
@@ -2376,6 +2391,7 @@ public class DemoMap {
         final float target = DemoConfig.TERRAIN_EXAGGERATION;
         final long durationMs = DemoConfig.TERRAIN_ANIM_MS;
         final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        final com.massifmaps.api.Subscription[] loaded = new com.massifmaps.api.Subscription[1];
         final Runnable ramp = new Runnable() {
             private boolean done = false;
             public void run() {
@@ -2383,26 +2399,22 @@ public class DemoMap {
                     return;
                 }
                 done = true;
-                if (baseLayer != null) {
-                    baseLayer.setTileLoadListener(null);
+                if (loaded[0] != null) {
+                    loaded[0].close();
                 }
                 android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, target);
                 a.setDuration(durationMs);
                 a.setInterpolator(new android.view.animation.DecelerateInterpolator());
                 a.addUpdateListener(new android.animation.ValueAnimator.AnimatorUpdateListener() {
                     public void onAnimationUpdate(android.animation.ValueAnimator anim) {
-                        terrainOptions.setExaggeration(((Float) anim.getAnimatedValue()).floatValue());
+                        terrainOptions.set("exaggeration", ((Float) anim.getAnimatedValue()).floatValue());
                     }
                 });
                 a.start();
             }
         };
         if (baseLayer != null) {
-            baseLayer.setTileLoadListener(new com.massifmaps.layers.TileLoadListener() {
-                public void onVisibleTilesLoaded() {
-                    handler.post(ramp);
-                }
-            });
+            loaded[0] = baseLayer.onTilesLoaded(e -> handler.post(ramp));
         }
         // The listener can not fire when every visible tile is already decoded for the terrain
         // (toggling back and forth), so a timeout is what actually starts it in that case.

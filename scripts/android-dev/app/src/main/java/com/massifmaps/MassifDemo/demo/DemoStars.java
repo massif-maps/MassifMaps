@@ -7,16 +7,16 @@ import android.graphics.Typeface;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.massifmaps.celestial.CelestialArc;
-import com.massifmaps.celestial.CelestialObject;
-import com.massifmaps.celestial.CelestialSprite;
-import com.massifmaps.core.DoubleVector;
-import com.massifmaps.core.Variant;
-import com.massifmaps.graphics.Color;
-import com.massifmaps.layers.CelestialEventListener;
-import com.massifmaps.layers.CelestialLayer;
-import com.massifmaps.ui.ClickInfo;
-import com.massifmaps.ui.MapView;
+import com.massifmaps.api.MapEvents;
+import com.massifmaps.api.Massif;
+import com.massifmaps.api.MassifLayer;
+import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.MassifObject;
+import com.massifmaps.api.Spec;
+
+import java.io.File;
+import java.io.FileOutputStream;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,7 +26,7 @@ import java.util.Map;
 /**
  * The star demo: the real sky over the demo's position, right now.
  *
- * Every star is a {@link CelestialSprite} and every constellation figure is one {@link CelestialArc}
+ * Every star is a celestial sprite and every constellation figure is one celestial arc
  * in segment mode, so the whole catalogue is ONE draw call for the stars plus one per figure, and
  * both are clickable. The planets are sprites too - the API does not know what any of them are.
  *
@@ -39,21 +39,30 @@ public final class DemoStars {
     private static final String META_NAME = "name";
     private static final String META_INFO = "info";
 
-    private CelestialLayer layer;
-    private final List<CelestialSprite> stars = new ArrayList<CelestialSprite>();
+    private MassifLayer layer;
+    private int counter;
+    private final List<MassifObject> stars = new ArrayList<MassifObject>();
     private final List<double[]> starEquatorial = new ArrayList<double[]>();   // { ra degrees, dec }
-    private final List<CelestialArc> figures = new ArrayList<CelestialArc>();
-    private final List<CelestialSprite> figureLabels = new ArrayList<CelestialSprite>();
+    private final List<MassifObject> figures = new ArrayList<MassifObject>();
+    private final List<MassifObject> figureLabels = new ArrayList<MassifObject>();
     private final List<double[][]> figureEquatorial = new ArrayList<double[][]>(); // per segment { ra, dec, ra, dec }
-    private final List<CelestialSprite> planets = new ArrayList<CelestialSprite>();
-    private CelestialArc equator;
+    private final List<MassifObject> planets = new ArrayList<MassifObject>();
+    private MassifObject equator;
 
     /** Builds the layer: stars, constellation figures, planets. Positions come from {@link #update}. */
-    public CelestialLayer createLayer(final MapView mapView) {
-        layer = new CelestialLayer();
-        layer.setPostProcessed(false); // see DemoCelestial: the sky objects keep their own look
+    public MassifLayer createLayer(final MassifMap map, final android.content.Context context) {
+        stars.clear();
+        starEquatorial.clear();
+        figures.clear();
+        figureLabels.clear();
+        figureEquatorial.clear();
+        planets.clear();
+        counter = 0;
+        Massif.destroy("layer", "demo-stars");
+        // see DemoCelestial: the sky objects keep their own look
+        layer = Massif.layer("demo-stars", Spec.of("celestial").set("postProcessed", false));
         // The catalogue sizes are in pixels at 160 dpi, the unit the rest of the demo uses.
-        final float density = mapView.getContext().getResources().getDisplayMetrics().density;
+        final float density = context.getResources().getDisplayMetrics().density;
 
         Map<String, double[]> byName = new HashMap<String, double[]>();
         for (String entry : DemoStarCatalogue.STARS) {
@@ -68,17 +77,14 @@ public final class DemoStars {
             double magnitude = Double.parseDouble(parts[3]);
             byName.put(name, new double[] { raDegrees, declination });
 
-            CelestialSprite star = new CelestialSprite();
             // Brighter is bigger, the way a star chart draws them: a magnitude step is a factor of
             // 2.5 in brightness, but on screen a linear size ramp reads better than the real one.
-            star.setScreenSize((float) magnitudeToPixels(magnitude) * density);
-            star.setColor(new Color((short) 255, (short) 255, (short) 250, (short) 255));
-            star.setSoftness(0.45f);
-            star.setClickRadius(1.5f);
-            star.setMetaDataElement(META_NAME, new Variant(name));
-            star.setMetaDataElement(META_INFO, new Variant("mag " + magnitude));
-            layer.add(star);
-            stars.add(star);
+            stars.add(add(Spec.of("sprite")
+                    .set("screenSize", magnitudeToPixels(magnitude) * density)
+                    .set("color", argb(255, 255, 250, 255))
+                    .set("softness", 0.45)
+                    .set("clickRadius", 1.5)
+                    .set("metaData", Spec.object().set(META_NAME, name).set(META_INFO, "mag " + magnitude))));
             starEquatorial.add(new double[] { raDegrees, declination });
         }
 
@@ -96,83 +102,78 @@ public final class DemoStars {
             if (segments.isEmpty()) {
                 continue;
             }
-            CelestialArc arc = new CelestialArc();
-            arc.setColor(new Color((short) 120, (short) 170, (short) 255, (short) 110));
-            arc.setWidth(DemoConfig.STARS_FIGURE_WIDTH * density);
-            arc.setBelowHorizonVisible(false);
-            arc.setClickRadius(DemoConfig.STARS_FIGURE_CLICK_RADIUS);
-            arc.setMetaDataElement(META_NAME, new Variant(figure.getKey()));
-            arc.setMetaDataElement(META_INFO, new Variant(segments.size() + " lines"));
-            layer.add(arc);
-            figures.add(arc);
+            figures.add(add(Spec.of("arc")
+                    .set("color", argb(120, 170, 255, 110))
+                    .set("width", DemoConfig.STARS_FIGURE_WIDTH * density)
+                    .set("belowHorizonVisible", false)
+                    .set("clickRadius", DemoConfig.STARS_FIGURE_CLICK_RADIUS)
+                    .set("metaData", Spec.object().set(META_NAME, figure.getKey()).set(META_INFO, segments.size() + " lines"))));
             figureEquatorial.add(segments.toArray(new double[segments.size()][]));
 
             // The name, IN THE SKY, at the middle of the figure. It is a plain sprite with a
             // bitmap the demo paints - the SDK has no text of its own here, which is exactly what
             // makes it themeable from the app: change the paint, change the label.
-            CelestialSprite label = new CelestialSprite();
-            com.massifmaps.graphics.Bitmap labelBitmap = textBitmap(figure.getKey(), density);
-            label.setBitmap(labelBitmap);
+            int[] side = new int[1];
+            MassifObject labelBitmap = textBitmap(context, figure.getKey(), density, side);
             // The bitmap is square and the text fills its width, so drawing the quad at the
             // bitmap's own pixel size renders the text at the size it was painted - the same for
             // every name. A fixed quad size would shrink the long ones instead.
-            label.setScreenSize(labelBitmap.getWidth() * DemoConfig.STARS_LABEL_SCALE);
-            label.setColor(new Color((short) 255, (short) 255, (short) 255,
-                    (short) Math.round(255 * DemoConfig.STARS_LABEL_OPACITY)));
-            label.setClickRadius(0f); // the figure itself is the clickable thing
-            label.setMetaDataElement(META_NAME, new Variant(figure.getKey()));
-            label.setMetaDataElement(META_INFO, new Variant(""));
-            layer.add(label);
-            figureLabels.add(label);
+            figureLabels.add(add(Spec.of("sprite")
+                    .set("bitmap", labelBitmap.id())
+                    .set("screenSize", side[0] * DemoConfig.STARS_LABEL_SCALE)
+                    .set("color", argb(255, 255, 255, (int) Math.round(255 * DemoConfig.STARS_LABEL_OPACITY)))
+                    .set("clickRadius", 0) // the figure itself is the clickable thing
+                    .set("metaData", Spec.object().set(META_NAME, figure.getKey()).set(META_INFO, ""))));
         }
 
         for (String name : DemoAstro.PLANET_NAMES) {
-            CelestialSprite planet = new CelestialSprite();
-            planet.setAngularSize(DemoConfig.STARS_PLANET_SIZE);
-            planet.setColor(planetColor(name));
-            planet.setSoftness(0.4f);
-            planet.setClickRadius(2.5f);
-            planet.setMetaDataElement(META_NAME, new Variant(name));
-            planet.setMetaDataElement(META_INFO, new Variant("planet"));
-            layer.add(planet);
-            planets.add(planet);
+            planets.add(add(Spec.of("sprite")
+                    .set("angularSize", DemoConfig.STARS_PLANET_SIZE)
+                    .set("color", planetColor(name))
+                    .set("softness", 0.4)
+                    .set("clickRadius", 2.5)
+                    .set("metaData", Spec.object().set(META_NAME, name).set(META_INFO, "planet"))));
         }
 
         // The celestial equator: the one line that makes the sky's rotation readable, and a circle
         // about the pole like the sun's daily path - the same object, radius 90 degrees.
-        equator = new CelestialArc();
-        equator.setColor(new Color((short) 90, (short) 200, (short) 190, (short) 90));
-        equator.setWidth(1.5f);
-        equator.setBelowHorizonVisible(false);
-        equator.setClickRadius(1.5f);
-        equator.setMetaDataElement(META_NAME, new Variant("Celestial equator"));
-        equator.setMetaDataElement(META_INFO, new Variant("declination 0"));
-        layer.add(equator);
+        equator = add(Spec.of("arc")
+                .set("color", argb(90, 200, 190, 90))
+                .set("width", 1.5)
+                .set("belowHorizonVisible", false)
+                .set("clickRadius", 1.5)
+                .set("metaData", Spec.object().set(META_NAME, "Celestial equator").set(META_INFO, "declination 0")));
 
-        layer.setCelestialEventListener(new CelestialEventListener() {
-            @Override
-            public boolean onCelestialObjectClicked(ClickInfo clickInfo, CelestialObject object) {
-                StringBuilder message = new StringBuilder(object.getMetaDataElement(META_NAME).getString());
-                String info = object.getMetaDataElement(META_INFO).getString();
-                if (info != null && info.length() > 0) {
-                    message.append("  ").append(info);
-                }
-                if (object instanceof CelestialSprite) {
-                    // Only a sprite HAS one direction - a curve is a set of them.
-                    message.append("   az ").append(Math.round(object.getAzimuth()))
-                           .append("° alt ").append(Math.round(object.getAltitude())).append("°");
-                }
-                final String text = message.toString();
-                Log.i(TAG, "clicked " + text);
-                mapView.post(new Runnable() {
-                    public void run() {
-                        Toast.makeText(mapView.getContext(), text, Toast.LENGTH_SHORT).show();
-                    }
-                });
-                return true;
+        layer.on(MapEvents.CELESTIAL_CLICKED, e -> {
+            StringBuilder message = new StringBuilder(String.valueOf(e.get("celestialObject.metaData." + META_NAME)));
+            String info = e.get("celestialObject.metaData." + META_INFO);
+            if (info != null && info.length() > 0) {
+                message.append("  ").append(info);
             }
+            String azimuth = e.get("celestialObject.azimuth");
+            // Only a sprite HAS one direction - a curve is a set of them.
+            if (azimuth != null && !Double.isNaN(Double.parseDouble(azimuth))) {
+                message.append("   az ").append(Math.round(Double.parseDouble(azimuth)))
+                       .append("° alt ").append(Math.round(Double.parseDouble(e.get("celestialObject.altitude")))).append("°");
+            }
+            final String text = message.toString();
+            Log.i(TAG, "clicked " + text);
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
         });
         return layer;
+    }
+
+    private MassifObject add(Spec spec) {
+        String id = "demo-star-" + (++counter);
+        Massif.destroy("celestial", id);
+        MassifObject object = Massif.object("celestial", id, spec);
+        layer.call("add", object.handle()).close();
+        return object;
+    }
+
+    /** A colour as the facade's ARGB int. */
+    private static int argb(int r, int g, int b, int a) {
+        return (a & 0xFF) << 24 | (r & 0xFF) << 16 | (g & 0xFF) << 8 | (b & 0xFF);
     }
 
     /**
@@ -186,58 +187,59 @@ public final class DemoStars {
         for (int i = 0; i < stars.size(); i++) {
             double[] eq = starEquatorial.get(i);
             double[] horizon = DemoAstro.toHorizon(eq[0], eq[1], n, lat, lon);
-            CelestialSprite star = stars.get(i);
-            star.setDirection((float) horizon[0], (float) horizon[1], 0);
+            MassifObject star = stars.get(i);
+            star.call("setDirection", horizon[0], horizon[1], 0).close();
             // A star below the horizon is under the ground: not drawn, not clickable, not paid for.
-            star.setVisible(DemoConfig.STARS_STARS && horizon[1] > -2.0);
+            star.set("visible", DemoConfig.STARS_STARS && horizon[1] > -2.0);
         }
 
         for (int i = 0; i < figures.size(); i++) {
             double[][] segments = figureEquatorial.get(i);
-            DoubleVector directions = new DoubleVector();
-            for (double[] segment : segments) {
+            double[] directions = new double[segments.length * 4];
+            for (int s = 0; s < segments.length; s++) {
+                double[] segment = segments[s];
                 double[] from = DemoAstro.toHorizon(segment[0], segment[1], n, lat, lon);
                 double[] to = DemoAstro.toHorizon(segment[2], segment[3], n, lat, lon);
-                directions.add(from[0]);
-                directions.add(from[1]);
-                directions.add(to[0]);
-                directions.add(to[1]);
+                directions[4 * s] = from[0];
+                directions[4 * s + 1] = from[1];
+                directions[4 * s + 2] = to[0];
+                directions[4 * s + 3] = to[1];
             }
-            figures.get(i).setSegments(directions);
-            figures.get(i).setVisible(DemoConfig.STARS_FIGURES);
+            figures.get(i).call("setSegments", (Object) directions).close();
+            figures.get(i).set("visible", DemoConfig.STARS_FIGURES);
 
             // The label goes at the MEAN DIRECTION of the figure, averaged as vectors: averaging
             // azimuths would put a figure straddling north somewhere near south.
             double x = 0, y = 0, z = 0;
-            for (int k = 0; k + 1 < directions.size(); k += 2) {
-                double az = Math.toRadians(directions.get(k)), alt = Math.toRadians(directions.get(k + 1));
+            for (int k = 0; k + 1 < directions.length; k += 2) {
+                double az = Math.toRadians(directions[k]), alt = Math.toRadians(directions[k + 1]);
                 x += Math.cos(alt) * Math.sin(az);
                 y += Math.cos(alt) * Math.cos(az);
                 z += Math.sin(alt);
             }
-            CelestialSprite label = figureLabels.get(i);
+            MassifObject label = figureLabels.get(i);
             double length = Math.sqrt(x * x + y * y + z * z);
             if (length > 0) {
                 double altitude = Math.toDegrees(Math.asin(z / length));
                 double azimuth = DemoAstro.normalizeDegrees(Math.toDegrees(Math.atan2(x, y)));
-                label.setDirection((float) azimuth, (float) altitude, 0);
-                label.setVisible(DemoConfig.STARS_FIGURES && DemoConfig.STARS_LABELS && altitude > 0);
+                label.call("setDirection", azimuth, altitude, 0).close();
+                label.set("visible", DemoConfig.STARS_FIGURES && DemoConfig.STARS_LABELS && altitude > 0);
             } else {
-                label.setVisible(false);
+                label.set("visible", false);
             }
         }
 
         for (int i = 0; i < planets.size(); i++) {
             double[] horizon = DemoAstro.planetHorizon(i, n, lat, lon);
-            CelestialSprite planet = planets.get(i);
-            planet.setDirection((float) horizon[0], (float) horizon[1], 0);
-            planet.setVisible(DemoConfig.STARS_PLANETS && horizon[1] > -2.0);
+            MassifObject planet = planets.get(i);
+            planet.call("setDirection", horizon[0], horizon[1], 0).close();
+            planet.set("visible", DemoConfig.STARS_PLANETS && horizon[1] > -2.0);
         }
 
         // Declination 0 is 90 degrees from the pole, and the pole sits due north (south below the
         // equator) at an altitude equal to the latitude.
-        equator.setCircle(lat >= 0 ? 0f : 180f, (float) Math.abs(lat), 90f);
-        equator.setVisible(DemoConfig.STARS_EQUATOR);
+        equator.call("setCircle", lat >= 0 ? 0f : 180f, Math.abs(lat), 90f).close();
+        equator.set("visible", DemoConfig.STARS_EQUATOR);
     }
 
     /**
@@ -245,7 +247,7 @@ public final class DemoStars {
      * because the sprite quad is: the text is centred in it and the transparent margin costs
      * nothing but texture.
      */
-    private static com.massifmaps.graphics.Bitmap textBitmap(String text, float density) {
+    private MassifObject textBitmap(android.content.Context context, String text, float density, int[] sideOut) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         paint.setTextSize(DemoConfig.STARS_LABEL_TEXT_SIZE * density);
@@ -253,6 +255,7 @@ public final class DemoStars {
         Rect bounds = new Rect();
         paint.getTextBounds(text, 0, text.length(), bounds);
         int side = Math.max(16, Math.max(bounds.width(), bounds.height()) + Math.round(8 * density));
+        sideOut[0] = side;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(side, side, android.graphics.Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         // A dark outline, so a name stays readable over a bright sky as well as over black.
@@ -264,7 +267,18 @@ public final class DemoStars {
         float y = side * 0.5f - bounds.exactCenterY();
         canvas.drawText(text, x, y, outline);
         canvas.drawText(text, x, y, paint);
-        return com.massifmaps.utils.BitmapUtils.createBitmapFromAndroidBitmap(bitmap);
+        // The facade reads an image from a URL, so the painted name goes to a file first.
+        try {
+            File file = new File(context.getCacheDir(), "demo-star-label-" + (++counter) + ".png");
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
+            }
+            String id = "demo-star-label-" + counter;
+            Massif.destroy("bitmap", id);
+            return Massif.object("bitmap", id, Spec.object().set("url", "file://" + file.getAbsolutePath()));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** A star of this magnitude, in screen pixels. */
@@ -273,19 +287,19 @@ public final class DemoStars {
         return Math.max(DemoConfig.STARS_FAINTEST_SIZE, size);
     }
 
-    private static Color planetColor(String name) {
+    private static int planetColor(String name) {
         if ("Mars".equals(name)) {
-            return new Color((short) 255, (short) 130, (short) 90, (short) 255);
+            return argb(255, 130, 90, 255);
         }
         if ("Venus".equals(name)) {
-            return new Color((short) 255, (short) 250, (short) 220, (short) 255);
+            return argb(255, 250, 220, 255);
         }
         if ("Jupiter".equals(name)) {
-            return new Color((short) 255, (short) 235, (short) 180, (short) 255);
+            return argb(255, 235, 180, 255);
         }
         if ("Saturn".equals(name)) {
-            return new Color((short) 240, (short) 220, (short) 160, (short) 255);
+            return argb(240, 220, 160, 255);
         }
-        return new Color((short) 220, (short) 220, (short) 230, (short) 255);
+        return argb(220, 220, 230, 255);
     }
 }

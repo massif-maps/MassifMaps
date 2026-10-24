@@ -3,19 +3,11 @@ package com.massifmaps.MassifDemo.demo;
 import android.content.Context;
 import android.util.Log;
 
-import com.massifmaps.core.BinaryData;
-import com.massifmaps.styles.CartoCSSStyleSet;
-import com.massifmaps.styles.CompiledStyleSet;
-import com.massifmaps.utils.AndroidAssetPackage;
-import com.massifmaps.utils.AssetPackage;
-import com.massifmaps.utils.DirAssetPackage;
-import com.massifmaps.utils.ZippedAssetPackage;
-import com.massifmaps.vectortiles.MBVectorTileDecoder;
+import com.massifmaps.api.Spec;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 
 /**
@@ -40,58 +32,66 @@ public final class DemoStyles {
     /** Set by {@link #create} to whatever was really loaded, for the panel/log to show. */
     public static String lastLoadedDescription = "";
 
+    private static Context appContext;
+
+    /** The context the in-memory style projects are written under, and the APK assets are read from. */
+    public static void init(Context context) {
+        appContext = context.getApplicationContext();
+    }
+
     /**
-     * Builds a decoder for the given style source, falling back down the list (dir -> zip ->
+     * Builds the style SPEC for the given style source, falling back down the list (dir -> zip ->
      * inline) rather than crashing: on a device without the data files the demo must still start.
+     * A spec, not a decoder: the layer that takes it builds the decoder.
      */
-    public static MBVectorTileDecoder create(Context context, DemoConfig.StyleSource source,
-                                             String dataPath) {
+    public static Spec create(Context context, DemoConfig.StyleSource source, String dataPath) {
+        init(context);
         switch (source) {
             case DIR: {
-                AssetPackage pack = openDir(dataPath);
+                Spec pack = openDir(dataPath);
                 if (pack == null) {
                     pack = openZip(dataPath);
                 }
                 if (pack != null) {
-                    return new MBVectorTileDecoder(styleSet(pack));
+                    return mbvtProject(styleSet(pack));
                 }
                 break;
             }
             case ZIP: {
-                AssetPackage pack = openZip(dataPath);
+                Spec pack = openZip(dataPath);
                 if (pack != null) {
-                    return new MBVectorTileDecoder(styleSet(pack));
+                    return mbvtProject(styleSet(pack));
                 }
                 break;
             }
             case ASSETS: {
-                AssetPackage pack = openAppAssets();
+                Spec pack = openAppAssets();
                 if (pack != null) {
-                    return new MBVectorTileDecoder(new CompiledStyleSet(pack, DemoConfig.STYLE_ASSETS_NAME));
+                    return mbvtProject(Spec.of("project").set("assets", pack).set("name", DemoConfig.STYLE_ASSETS_NAME));
                 }
                 break;
             }
             case ASSETZIP: {
-                AssetPackage pack = openAssetZip(context, DemoConfig.STYLE_ASSET_ZIP_NAME);
+                Spec pack = openAssetZip(DemoConfig.STYLE_ASSET_ZIP_NAME);
                 if (pack != null) {
-                    return new MBVectorTileDecoder(styleSet(pack));
+                    return mbvtProject(styleSet(pack));
                 }
                 break;
             }
             case POI: {
                 // The CartoCSS is written here, the FONTS come from the APK asset package: a shield
                 // icon shaped from osm.ttf needs a font, and a bare CartoCSS string carries none.
-                AssetPackage pack = openAppAssets();
+                Spec pack = openAppAssets();
                 if (pack != null) {
                     lastLoadedDescription = "shield test style + app asset fonts";
-                    return new MBVectorTileDecoder(new CartoCSSStyleSet(poiTestStyle(), pack));
+                    return mbvtCss(poiTestStyle(), pack);
                 }
                 break;
             }
             case PROJECT: {
-                MBVectorTileDecoder decoder = createProjectDecoder();
-                if (decoder != null) {
-                    return decoder;
+                Spec style = createProjectDecoder();
+                if (style != null) {
+                    return style;
                 }
                 break;
             }
@@ -100,123 +100,121 @@ public final class DemoStyles {
                 break;
         }
         lastLoadedDescription = "inline CartoCSS";
-        return new MBVectorTileDecoder(new CartoCSSStyleSet(inlineStyle()));
+        return mbvtCss(inlineStyle(), null);
+    }
+
+    private static Spec mbvtProject(Spec project) {
+        return Spec.of("mbvt").set("project", project);
+    }
+
+    /** A CartoCSS style, with an asset package for its fonts and icons when it has one. */
+    private static Spec mbvtCss(String css, Spec assets) {
+        Spec set = Spec.of("cartocss").set("css", css);
+        if (assets != null) {
+            set.set("assets", assets);
+        }
+        return Spec.of("mbvt").set("cartocss", set);
     }
 
     /**
      * The project to compile out of a package that holds several. A converted Mapbox Standard
      * writes one per light preset over a shared style.mss, so --es lightPreset night picks the
-     * dark one. Falls back to whichever project CompiledStyleSet finds first, which is what every
+     * dark one. Without one it is whichever project the package holds first, which is what every
      * single-project style wants.
      */
-    private static CompiledStyleSet styleSet(AssetPackage pack) {
+    private static Spec styleSet(Spec pack) {
+        Spec set = Spec.of("project").set("assets", pack);
         String preset = DemoConfig.LIGHT_PRESET;
         if (preset != null && !preset.isEmpty()) {
-            try {
-                return new CompiledStyleSet(pack, preset);
-            } catch (Exception e) {
-                Log.w(TAG, "no style project '" + preset + "' in this package: " + e.getMessage());
-            }
+            set.set("name", preset);
         }
-        return new CompiledStyleSet(pack);
+        return set;
+    }
+
+    private static Spec fileZip(String path) {
+        return Spec.of("zip").set("data", Spec.of("url").set("url", "file://" + path));
     }
 
     /**
      * The live-editable style: a plain folder on the device, read through the SDK's
-     * DirAssetPackage. Push a modified style with:
+     * "dir" asset package. Push a modified style with:
      *   adb push my-style/. /sdcard/alpimaps_mbtiles/osm/
      * and restart the app - no repackaging, no rebuild.
      */
-    private static AssetPackage openDir(String dataPath) {
+    private static Spec openDir(String dataPath) {
         String dirPath = dataPath + "/" + DemoConfig.STYLE_DIR_NAME;
-        try {
-            DirAssetPackage pack = new DirAssetPackage(dirPath);
-            lastLoadedDescription = "dir " + dirPath + " (" + pack.getAssetNames().size() + " assets)";
-            Log.i(TAG, "style: " + lastLoadedDescription);
-            return pack;
-        } catch (Exception e) {
-            // Missing folder is the normal case on a device where only osm.zip was pushed.
-            Log.w(TAG, "style dir not usable (" + dirPath + "): " + e.getMessage());
+        // Missing folder is the normal case on a device where only osm.zip was pushed.
+        if (!new File(dirPath).isDirectory()) {
+            Log.w(TAG, "style dir not usable (" + dirPath + ")");
             return null;
         }
+        lastLoadedDescription = "dir " + dirPath;
+        Log.i(TAG, "style: " + lastLoadedDescription);
+        return Spec.of("dir").set("path", dirPath);
     }
 
     /**
-     * The style bundled in the APK. Note the asset manager must already be connected, which a
+     * The style bundled in the APK, a FOLDER of assets. Needs the asset manager connected, which a
      * MapView does when it is constructed - so this cannot be called before the map view exists.
      */
-    private static AssetPackage openAppAssets() {
-        try {
-            AndroidAssetPackage pack = new AndroidAssetPackage(DemoConfig.STYLE_ASSETS_PATH);
-            lastLoadedDescription = "app assets " + DemoConfig.STYLE_ASSETS_PATH
-                    + " (" + pack.getAssetNames().size() + " assets)";
-            Log.i(TAG, "style: " + lastLoadedDescription);
-            return pack;
-        } catch (Exception e) {
-            Log.w(TAG, "app asset style not usable (" + DemoConfig.STYLE_ASSETS_PATH + "): " + e.getMessage());
-            return null;
-        }
+    private static Spec openAppAssets() {
+        lastLoadedDescription = "app assets " + DemoConfig.STYLE_ASSETS_PATH;
+        Log.i(TAG, "style: " + lastLoadedDescription);
+        return Spec.of("bundle").set("path", DemoConfig.STYLE_ASSETS_PATH);
     }
 
     /**
      * A style project zip bundled in the APK (assets/styles/<name>.zip, built by gradle's
-     * zipStyleProjects). AndroidAssetPackage cannot be used: it expects a FOLDER of assets, and
-     * these are single zip entries - the same ones the gallery examples reach through the facade
-     * as 'assets://styles/<name>.zip'.
+     * zipStyleProjects), the same one the gallery examples reach as 'assets://styles/<name>.zip'.
+     * A "bundle" package expects a FOLDER of assets, and this is a single zip entry.
      */
-    private static AssetPackage openAssetZip(Context context, String name) {
+    private static Spec openAssetZip(String name) {
         String assetPath = "styles/" + name + ".zip";
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (InputStream in = context.getAssets().open(assetPath)) {
-                byte[] chunk = new byte[16384];
-                int read;
-                while ((read = in.read(chunk)) > 0) {
-                    out.write(chunk, 0, read);
-                }
-            }
+        try (InputStream in = appContext.getAssets().open(assetPath)) {
             lastLoadedDescription = "asset zip " + assetPath;
             Log.i(TAG, "style: " + lastLoadedDescription);
-            return new ZippedAssetPackage(new BinaryData(out.toByteArray()));
+            return Spec.of("zip").set("data", Spec.of("url").set("url", "assets://" + assetPath));
         } catch (Exception e) {
             Log.w(TAG, "asset style zip not usable (" + assetPath + "): " + e.getMessage());
             return null;
         }
     }
 
-    private static AssetPackage openZip(String dataPath) {
+    private static Spec openZip(String dataPath) {
         String zipPath = dataPath + "/" + DemoConfig.STYLE_ZIP_NAME;
-        try {
-            lastLoadedDescription = "zip " + zipPath;
-            Log.i(TAG, "style: " + lastLoadedDescription);
-            return new ZippedAssetPackage(readFile(zipPath));
-        } catch (Exception e) {
-            Log.w(TAG, "style zip not usable (" + zipPath + "): " + e.getMessage());
+        if (!new File(zipPath).isFile()) {
+            Log.w(TAG, "style zip not usable (" + zipPath + ")");
             return null;
         }
+        lastLoadedDescription = "zip " + zipPath;
+        Log.i(TAG, "style: " + lastLoadedDescription);
+        return fileZip(zipPath);
     }
 
     /** Style zip of the offline routes layer. */
-    public static MBVectorTileDecoder createZipDecoder(String zipPath) {
-        try {
-            return new MBVectorTileDecoder(new CompiledStyleSet(new ZippedAssetPackage(readFile(zipPath))));
-        } catch (Exception e) {
-            Log.w(TAG, "could not read " + zipPath + ": " + e.getMessage());
+    public static Spec createZipDecoder(String zipPath) {
+        if (!new File(zipPath).isFile()) {
+            Log.w(TAG, "could not read " + zipPath);
             return null;
         }
+        return mbvtProject(Spec.of("project").set("assets", fileZip(zipPath)));
     }
 
-    public static BinaryData readFile(String path) throws java.io.IOException {
-        File file = new File(path);
-        FileInputStream stream = new FileInputStream(file);
-        try {
-            DataInputStream dataInputStream = new DataInputStream(stream);
-            byte[] bytes = new byte[(int) file.length()];
-            dataInputStream.readFully(bytes);
-            return new BinaryData(bytes);
-        } finally {
-            stream.close();
+    /**
+     * A style project written from strings (project.json + style.mss) and handed over as a zip:
+     * the facade reads package data from a URL, so the bytes go to a file in the app's cache first.
+     */
+    private static Spec projectZip(String name, String projectJson, String mss) throws java.io.IOException {
+        File file = new File(appContext.getCacheDir(), name + ".zip");
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(new FileOutputStream(file))) {
+            String[][] entries = new String[][] { { "project.json", projectJson }, { "style.mss", mss } };
+            for (String[] entry : entries) {
+                zos.putNextEntry(new java.util.zip.ZipEntry(entry[0]));
+                zos.write(entry[1].getBytes("UTF-8"));
+                zos.closeEntry();
+            }
         }
+        return mbvtProject(Spec.of("project").set("assets", fileZip(file.getAbsolutePath())));
     }
 
     // =============================================================================================
@@ -631,7 +629,7 @@ public final class DemoStyles {
      */
     public static final String TABLE_PARAMETER = "road_colors";
 
-    private static MBVectorTileDecoder createProjectDecoder() {
+    private static Spec createProjectDecoder() {
         // 'layers' is TOP -> BOTTOM (reversed into draw order) and must list every composite slot.
         String projectJson = String.join("\n",
             "{",
@@ -664,17 +662,8 @@ public final class DemoStyles {
                 : "#building[zoom>=14] { polygon-fill: " + DemoConfig.INLINE_BUILDING_COLOR + "; }");
 
         try {
-            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-            java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(bos);
-            String[][] entries = new String[][] { { "project.json", projectJson }, { "style.mss", mss } };
-            for (String[] entry : entries) {
-                zos.putNextEntry(new java.util.zip.ZipEntry(entry[0]));
-                zos.write(entry[1].getBytes("UTF-8"));
-                zos.closeEntry();
-            }
-            zos.close();
-            lastLoadedDescription = "in-memory style project";
-            return new MBVectorTileDecoder(new CompiledStyleSet(new ZippedAssetPackage(new BinaryData(bos.toByteArray()))));
+        lastLoadedDescription = "in-memory style project";
+            return projectZip("demo-style-project", projectJson, mss);
         } catch (Exception e) {
             Log.e(TAG, "could not build the style project", e);
             return null;
@@ -695,7 +684,7 @@ public final class DemoStyles {
      * 'filter' mode it also gates a casing attachment, which is what decides whether that geometry
      * exists at all; that is the half no repaint can answer.
      */
-    public static MBVectorTileDecoder createRouteSelectDecoder() {
+    public static Spec createRouteSelectDecoder() {
         String projectJson = String.join("\n",
             "{",
             "  \"styles\": [\"style.mss\"],",
@@ -733,16 +722,7 @@ public final class DemoStyles {
            .append("}");
 
         try {
-            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-            java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(bos);
-            String[][] entries = new String[][] { { "project.json", projectJson }, { "style.mss", mss.toString() } };
-            for (String[] entry : entries) {
-                zos.putNextEntry(new java.util.zip.ZipEntry(entry[0]));
-                zos.write(entry[1].getBytes("UTF-8"));
-                zos.closeEntry();
-            }
-            zos.close();
-            return new MBVectorTileDecoder(new CompiledStyleSet(new ZippedAssetPackage(new BinaryData(bos.toByteArray()))));
+            return projectZip("demo-style-route-select", projectJson, mss.toString());
         } catch (Exception e) {
             Log.e(TAG, "could not build the route selection style", e);
             return null;
@@ -933,7 +913,7 @@ public final class DemoStyles {
      * everything else. [structure] is what a MapBox source tags them with; OpenMapTiles uses
      * [brunnel], and both are matched so the layer works against either source.
      */
-    public static MBVectorTileDecoder createSpanDecoder() {
+    public static Spec createSpanDecoder() {
         StringBuilder mss = new StringBuilder();
         mss.append("#road[structure='bridge'],\n")
            .append("#road[brunnel='bridge'] {\n")
@@ -954,14 +934,11 @@ public final class DemoStyles {
            .append("}");
         String css = mss.toString();
         Log.i(TAG, "span style:\n" + css);
-        AssetPackage pack = openAppAssets();
-        return pack != null
-                ? new MBVectorTileDecoder(new CartoCSSStyleSet(css, pack))
-                : new MBVectorTileDecoder(new CartoCSSStyleSet(css));
+        return mbvtCss(css, openAppAssets());
     }
 
     /** The model rules of the Massif styles (styles/massif/models/models.mss) on the demo's own points. */
-    public static MBVectorTileDecoder createModelDecoder() {
+    public static Spec createModelDecoder() {
         String css = "#trees {\n"
                 + "  model-file: step(random(0, 3), (0, url('models/tree-spreading.glb')), (1, url('models/tree-layered.glb')), (2, url('models/tree-clumped.glb')));\n"
                 + "  model-scale: random(0.8, 1.2);\n"
@@ -974,19 +951,13 @@ public final class DemoStyles {
                 + "  ::rotor { model-file: url('models/wind-turbine-rotor.glb'); model-rotation: random(250, 290);"
                 + " model-z-offset: 81.4; model-spin: 14; model-spin-axis: y; }\n"
                 + "}\n";
-        AssetPackage pack = openAppAssets();
-        return pack != null
-                ? new MBVectorTileDecoder(new CartoCSSStyleSet(css, pack))
-                : new MBVectorTileDecoder(new CartoCSSStyleSet(css));
+        return mbvtCss(css, openAppAssets());
     }
 
-    public static MBVectorTileDecoder createBugDecoder() {
+    public static Spec createBugDecoder() {
         String css = bugStyle();
         Log.i(TAG, "bug repro style:\n" + css);
-        AssetPackage pack = openAppAssets();
-        return pack != null
-                ? new MBVectorTileDecoder(new CartoCSSStyleSet(css, pack))
-                : new MBVectorTileDecoder(new CartoCSSStyleSet(css));
+        return mbvtCss(css, openAppAssets());
     }
 
     /**

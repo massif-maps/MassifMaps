@@ -1,8 +1,10 @@
 package com.massifmaps.MassifDemo.demo;
 
-import com.massifmaps.components.LightOptions;
-import com.massifmaps.components.SkyOptions;
-import com.massifmaps.graphics.Color;
+import com.massifmaps.api.Massif;
+import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.MassifObject;
+import com.massifmaps.api.PropertyGroup;
+import com.massifmaps.api.Spec;
 
 /**
  * Day-cycle demo: sun position, sky/horizon/ground colours, shadow strength and a GENERATED sky
@@ -20,32 +22,27 @@ public final class DemoSky {
      * Applies one hour of the day cycle. lat/lon should be the current map centre, since the sun
      * position is computed for it.
      */
-    public static void applyHour(LightOptions light, SkyOptions sky, float hourUtc, double lat, double lon) {
-        if (light == null || sky == null) {
-            return;
-        }
-        light.setSunPositionFromTime(DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY,
-                (int) hourUtc, (int) ((hourUtc - (int) hourUtc) * 60), lat, lon);
-        float altitude = light.getSunAltitude();
+    public static void applyHour(MassifMap map, float hourUtc, double lat, double lon) {
+        PropertyGroup light = map.light();
+        PropertyGroup sky = map.sky();
+        map.options().call("lightOptions.setSunPositionFromTime", DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH,
+                DemoConfig.SUN_DAY, (int) hourUtc, (int) ((hourUtc - (int) hourUtc) * 60), lat, lon).close();
+        float altitude = (float) light.getDouble("sunAltitude", 0);
 
         // day = 1 well above the horizon, 0 below it, with civil twilight in between.
         float day = Math.max(0f, Math.min(1f, (altitude + 6f) / 12f));
         float warm = 1f - Math.max(0f, Math.min(1f, altitude / 25f)); // reddening near the horizon
 
-        light.setSunColor(new Color(
-                (short) 255,
-                (short) (int) (255 - 90 * warm),
-                (short) (int) (255 - 190 * warm),
-                (short) 255));
-        light.setSunIntensity(0.15f + 0.85f * day);
-        light.setAmbientIntensity(0.25f + 0.55f * day);
-        light.setShadowStrength(DemoConfig.SHADOW_STRENGTH); // the SDK fades it with the sun itself
+        light.set("sunColor", argb(255, (int) (255 - 90 * warm), (int) (255 - 190 * warm)));
+        light.set("sunIntensity", 0.15 + 0.85 * day);
+        light.set("ambientIntensity", 0.25 + 0.55 * day);
+        light.set("shadowStrength", (double) DemoConfig.SHADOW_STRENGTH); // the SDK fades it with the sun itself
 
         int skyR = (int) (10 + 48 * day), skyG = (int) (14 + 102 * day), skyB = (int) (40 + 156 * day);
         int horR = (int) (25 + (146 + 60 * warm) * day), horG = (int) (25 + 181 * day), horB = (int) (55 + 181 * day);
-        sky.setSkyColor(new Color((short) skyR, (short) skyG, (short) skyB, (short) 255));
-        sky.setHorizonColor(new Color((short) horR, (short) horG, (short) horB, (short) 255));
-        sky.setGroundColor(new Color((short) (horR * 0.8), (short) (horG * 0.8), (short) (horB * 0.8), (short) 255));
+        sky.set("skyColor", argb(skyR, skyG, skyB));
+        sky.set("horizonColor", argb(horR, horG, horB));
+        sky.set("groundColor", argb((int) (horR * 0.8), (int) (horG * 0.8), (int) (horB * 0.8)));
 
         // The sun's daily path is a circle; three positions on it define its plane.
         double[] a = sunVectorAt(6, lat, lon), b = sunVectorAt(12, lat, lon), c = sunVectorAt(18, lat, lon);
@@ -62,17 +59,26 @@ public final class DemoSky {
         // The moon rides roughly the opposite side of the same arc, offset by the monthly phase.
         double[] moon = sunVectorAt((hourUtc + 12.7f) % 24f, lat, lon);
 
-        sky.setShaderSource(buildSkyShader(n, moon, day, hourUtc));
+        sky.set("shaderSource", buildSkyShader(n, moon, day, hourUtc));
     }
+
+    private static int argb(int r, int g, int b) {
+        return 0xFF000000 | (r & 0xFF) << 16 | (g & 0xFF) << 8 | (b & 0xFF);
+    }
+
+    /** A LightOptions of its own, only asked where the sun is: the map's would move the sun on the screen. */
+    private static MassifObject probe;
 
     /** Unit vector of the sun at a given hour, in the renderer's east/north/up frame. */
     private static double[] sunVectorAt(float hourUtc, double lat, double lon) {
-        LightOptions probe = new LightOptions();
+        if (probe == null) {
+            probe = Massif.object("options", "demo.sun-probe", Spec.of("light"));
+        }
         int hour = (int) hourUtc;
         int minute = (int) ((hourUtc - hour) * 60);
-        probe.setSunPositionFromTime(DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY, hour, minute, lat, lon);
-        double az = Math.toRadians(probe.getSunAzimuth());
-        double alt = Math.toRadians(probe.getSunAltitude());
+        probe.call("setSunPositionFromTime", DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY, hour, minute, lat, lon).close();
+        double az = Math.toRadians(probe.getDouble("sunAzimuth", 0));
+        double alt = Math.toRadians(probe.getDouble("sunAltitude", 0));
         double cosAlt = Math.cos(alt);
         return new double[] { cosAlt * Math.sin(az), cosAlt * Math.cos(az), Math.sin(alt) };
     }

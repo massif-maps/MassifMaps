@@ -7,7 +7,8 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.Log;
 
-import com.massifmaps.ui.MapView;
+import com.massifmaps.api.MapCamera;
+import com.massifmaps.api.MassifMap;
 
 /**
  * Points the camera where the device points: turning the phone turns the view, raising it looks up.
@@ -29,7 +30,7 @@ public final class DemoOrientation implements SensorEventListener {
     private static final float DEAD_ZONE_DEGREES = 0.3f;
 
     private final Context context;
-    private final MapView mapView;
+    private final MapCamera camera;
     private final float[] rotationMatrix = new float[9];
     private final float[] remapped = new float[9];
     private final float[] orientation = new float[3];
@@ -40,9 +41,9 @@ public final class DemoOrientation implements SensorEventListener {
     private float heading;
     private float elevation;
 
-    public DemoOrientation(Context context, MapView mapView) {
+    public DemoOrientation(Context context, MassifMap map) {
         this.context = context;
-        this.mapView = mapView;
+        this.camera = map.camera();
     }
 
     public boolean isRunning() {
@@ -99,12 +100,11 @@ public final class DemoOrientation implements SensorEventListener {
 
         float tilt = Math.max(-DemoConfig.LOOK_UP_LIMIT, Math.min(90f, elevation));
         float rotation = -heading;
-        if (Math.abs(tilt - ObjectApi.view(mapView).getTilt()) < DEAD_ZONE_DEGREES
-                && Math.abs(((rotation - ObjectApi.view(mapView).getRotation() + 540f) % 360f) - 180f) < DEAD_ZONE_DEGREES) {
+        if (Math.abs(tilt - camera.tilt()) < DEAD_ZONE_DEGREES
+                && Math.abs(((rotation - camera.rotation() + 540f) % 360f) - 180f) < DEAD_ZONE_DEGREES) {
             return;
         }
-        ObjectApi.view(mapView).setTilt(tilt, 0);
-        ObjectApi.view(mapView).setRotation(rotation, 0);
+        camera.moveTo(camera.position(), camera.zoom(), rotation, tilt);
     }
 
     @Override

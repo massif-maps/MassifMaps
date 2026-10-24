@@ -19,6 +19,9 @@
 		"cmake-excludes": "VALHALLA",
 		"defines": "_MASSIF_ROUTING_SUPPORT"
 	},
+	"objectapi": {
+		"defines": "_MASSIF_OBJECTAPI_SUPPORT"
+	},
 	"wkbt": {
 		"defines": "_MASSIF_WKBT_SUPPORT"
 	},

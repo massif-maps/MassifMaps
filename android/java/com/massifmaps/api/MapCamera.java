@@ -52,6 +52,28 @@ public final class MapCamera {
     }
 
     /**
+     * The moves the old MapView had as pan/zoom/rotate/tilt: relative to where the camera is now, and
+     * one move like {@link #moveTo}. {@link #animate} applies to them as to every other move.
+     */
+    public MapCamera panBy(double deltaLng, double deltaLat) {
+        Position now = position();
+        return position(new Position(now.lng + deltaLng, now.lat + deltaLat, now.alt));
+    }
+
+    public MapCamera zoomBy(float delta) {
+        return zoom(zoom() + delta);
+    }
+
+    /** Positive turns clockwise, as the old MapView.rotate did. */
+    public MapCamera rotateBy(float degrees) {
+        return rotation(rotation() + degrees);
+    }
+
+    public MapCamera tiltBy(float degrees) {
+        return tilt(tilt() + degrees);
+    }
+
+    /**
      * Moves everything in ONE move. Four separate setters animate independently and visibly fight
      * each other; this is the call an app actually wants, and the reason the camera is methods
      * rather than writable properties.

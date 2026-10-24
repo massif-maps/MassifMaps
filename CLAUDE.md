@@ -98,7 +98,7 @@ A full build takes 1+ hour, so:
    Add `-DTARGET_OS_ANDROID` for Android-only paths.
 3. **Touched `all/modules/*.i`** → regenerate the wrappers; gradle never runs SWIG:
    ```sh
-   cd scripts && python3 swigpp-java.py --profile "standard+valhalla+geocoding+routing+packagemanager" \
+   cd scripts && python3 swigpp-java.py --profile "standard+objectapi+valhalla+geocoding+routing+packagemanager" \
      --swig /Volumes/dev/carto/mobile-swig/swig
    ```
 4. **Heavier checks are the user's call**: the gradle build, `adb install` + a run at a given camera,

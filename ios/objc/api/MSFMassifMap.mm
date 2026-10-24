@@ -60,6 +60,25 @@ static NSString * const kViewKind = @"view";
                rotation:self.currentRotation tilt:degrees];
 }
 
+- (instancetype)panByLng:(double)deltaLng lat:(double)deltaLat {
+    MSFPosition *now = self.currentPosition;
+    return [self position:[[MSFPosition alloc] initWithLng:now.lng + deltaLng
+                                                       lat:now.lat + deltaLat
+                                                       alt:now.alt]];
+}
+
+- (instancetype)zoomBy:(float)delta {
+    return [self zoom:self.currentZoom + delta];
+}
+
+- (instancetype)rotateBy:(float)degrees {
+    return [self rotation:self.currentRotation + degrees];
+}
+
+- (instancetype)tiltBy:(float)degrees {
+    return [self tilt:self.currentTilt + degrees];
+}
+
 - (instancetype)moveTo:(MSFPosition *)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt {
     float seconds = [self take];
     float height = _climb;

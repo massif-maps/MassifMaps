@@ -1753,6 +1753,27 @@ export class MapCamera {
     }
 
     /**
+     * What the old map view had as pan, zoom, rotate and tilt: relative to where the camera is now, one move
+     * like `moveTo`, animated by `animate`. `panBy` is in degrees; rotation is positive clockwise.
+     */
+    panBy(deltaLng: number, deltaLat: number): this {
+        const [lng, lat, alt] = this.position();
+        return this.moveTo(alt === undefined ? [lng + deltaLng, lat + deltaLat] : [lng + deltaLng, lat + deltaLat, alt]);
+    }
+
+    zoomBy(delta: number): this {
+        return this.zoom(this.zoom() + delta);
+    }
+
+    rotateBy(degrees: number): this {
+        return this.rotation(this.rotation() + degrees);
+    }
+
+    tiltBy(degrees: number): this {
+        return this.tilt(this.tilt() + degrees);
+    }
+
+    /**
      * Position, zoom, rotation and tilt in ONE move.
      *
      * Four separate setters animate independently and visibly fight each other, which is the

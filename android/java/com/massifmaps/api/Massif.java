@@ -1,8 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.datasources.TileDataSource;
-import com.massifmaps.layers.Layer;
-import com.massifmaps.utils.AssetPackage;
 
 /**
  * The registry, for objects that do not belong to a map.
@@ -56,43 +53,6 @@ public final class Massif {
     }
 
     /**
-     * Adopts a layer built with the object API, so it gains an id, properties, methods and events.
-     *
-     * This is how an app moves to the facade a piece at a time: everything it already built keeps
-     * working. The CONCRETE class is recovered, so an adopted VectorTileLayer answers to a vector
-     * tile layer's properties rather than only to Layer's.
-     *
-     * @return The wrapper, or null when the id is taken.
-     */
-    public static MassifLayer adopt(String id, Layer layer) {
-        int handle = MassifInterop.adopt("layer", id, layer);
-        return handle == 0 ? null : new MassifLayer(handle, id, null);
-    }
-
-    /** The same for a source. */
-    public static MassifSource adopt(String id, TileDataSource source) {
-        int handle = MassifInterop.adopt("source", id, source);
-        return handle == 0 ? null : new MassifSource(handle, id);
-    }
-
-    /**
-     * The same for an asset package - including an app's OWN subclass of it.
-     *
-     * This is the one thing a spec cannot build: an app reading its styles from somewhere the SDK
-     * has no factory for subclasses {@link AssetPackage}, adopts the instance here, and every
-     * spec taking an "assets" key then resolves the id:
-     *
-     * <pre>
-     * Massif.adopt("shared", myAssetPackage);
-     * Massif.style("osm", Spec.of("cartocss").set("css", css).set("assets", "shared"));
-     * </pre>
-     */
-    public static MassifObject adopt(String id, AssetPackage assets) {
-        int handle = MassifInterop.adopt("assets", id, assets);
-        return handle == 0 ? null : new MassifObject(handle, "assets", id);
-    }
-
-    /**
      * Builds an object of any kind - the escape hatch for a kind with no named method here.
      *
      * The kinds are the registered spec factories: "source", "style", "layer", "terrain",
@@ -118,11 +78,6 @@ public final class Massif {
     /** Drops an id. Handles held elsewhere go stale rather than dangling. */
     public static boolean destroy(String kind, String id) {
         return MassifApi.unregisterObject(kind, id);
-    }
-
-    /** The object-API source behind an id, for anything the facade does not reach yet. */
-    public static TileDataSource rawSource(String id) {
-        return MassifInterop.getSource(id);
     }
 
     static int create(String kind, String id, Spec spec) {

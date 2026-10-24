@@ -23,7 +23,7 @@ description: MANDATORY skill for ALL commits. Must be used EVERY TIME before cre
      (add `-DTARGET_OS_ANDROID` for Android-only paths; `boost` is only needed for `boost::math::constants::pi` in `vt` — a stub header suffices)
    - **Touched `all/modules/*.i`** → the checked-in wrappers under `generated/` are stale until regenerated, and gradle never runs SWIG. Regenerate and stage the result in the same commit:
      ```sh
-     cd scripts && python3 swigpp-java.py --profile "standard+valhalla+geocoding+routing+packagemanager" --swig /Volumes/dev/carto/mobile-swig/swig
+     cd scripts && python3 swigpp-java.py --profile "standard+objectapi+valhalla+geocoding+routing+packagemanager" --swig /Volumes/dev/carto/mobile-swig/swig
      ```
    - **Renderer / visual changes** cannot be proven by a syntax check. State plainly that an on-device/emulator check is still required (see the [document](../document/SKILL.md) skill's A/B method and the root `CLAUDE.md`), and don't claim it was verified when it wasn't.
 5. **ALWAYS** generate a commit message following the format below

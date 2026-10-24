@@ -159,6 +159,26 @@ the product. There is **no renamed equivalent**; bring your own source.
 
 ## Breaking changes after 6.0.0
 
+### The Android SDK ships without the object API; `objectapi` is a variant
+
+The default Android libraries (`full`, `core`, `lite`) no longer contain the object API's JNI wrappers or
+proxies: `com.massifmaps.layers`, `datasources`, `vectorelements`, `styles`, `geometry`, `components`, `core`
+(`MapPos`, ...), `projections`, `renderers`, `search`, `routing`, `utils` (except `Log`) and `MassifInterop`
+are gone from them. Everything is built from a spec and addressed by handle or path (`MassifMap`, `Massif`,
+`MassifApi`), which is 1.3 MB smaller on arm64.
+
+An app that has not moved depends on the `objectapi` variant instead (`standard+objectapi`):
+
+```groovy
+implementation 'com.github.massif-maps:MassifMaps-android-aar:<version>:objectapi@aar'
+```
+
+Its bridge to the facade moved with it: `Massif.adopt(...)`, `Massif.rawSource`, `MassifMap.adoptLayer`,
+`adoptFirst`, `rawLayer` and `MassifLayer.layer()` are `MassifLegacy.adopt(...)`, `rawSource(id)`,
+`adoptLayer(map, id, index)`, `adoptFirst(map, id, type)`, `rawLayer(map, index)` and `layer(layer)`. The camera
+keeps what `MapView` lost as relative moves on `MapCamera`: `panBy(dLng, dLat)`, `zoomBy`, `rotateBy`, `tiltBy`
+(also on iOS, NativeScript and the web).
+
 ### Android `MapView` no longer carries the object API
 
 `MapView` and `TextureMapView` create their native map themselves and are addressed through the facade, so

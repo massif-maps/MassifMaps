@@ -17,6 +17,7 @@ import com.massifmaps.components.TerrainFlattenMode;
 import com.massifmaps.components.TerrainOptions;
 import com.massifmaps.api.MassifApi;
 import com.massifmaps.api.MassifInterop;
+import com.massifmaps.api.MassifLegacy;
 import com.massifmaps.core.MapPos;
 import com.massifmaps.core.MapPosVector;
 import com.massifmaps.core.MapVec;
@@ -853,12 +854,12 @@ public class DemoMap {
                 mapView.requestRender();
             }
         }, "demo-heatmap").start();
-        return heat.layer();
+        return MassifLegacy.layer(heat);
     }
 
     private Layer createHeatmapLegend() {
         MassifLayer legend = CustomHeatmap.create("demo-custom-overlay", false);
-        return legend != null ? legend.layer() : null;
+        return legend != null ? MassifLegacy.layer(legend) : null;
     }
 
     /**

@@ -2,8 +2,6 @@ package com.massifmaps.MassifDemo.customlayer;
 
 import com.massifmaps.api.Massif;
 import com.massifmaps.api.MassifLayer;
-import com.massifmaps.projections.EPSG3857;
-import com.massifmaps.core.MapPos;
 
 /**
  * The custom layers of src/main/cpp/custom_layer_demo.c: a heatmap legend in screen space and a
@@ -15,6 +13,7 @@ public final class CustomHeatmap {
     /** The grid is N x N cells over a square this many metres across, centred on the start. */
     public static final int N = 160;
     public static final double SIDE_METERS = 8000;
+    private static final double MERCATOR_RADIUS = 6378137;
 
     static {
         System.loadLibrary("massifdemo");
@@ -65,7 +64,6 @@ public final class CustomHeatmap {
      */
     public static void setHeatmap(double lon, double lat, double[] heights) {
         // Mercator metres whatever the base projection: the SDK's world units are that plane.
-        EPSG3857 mercator = new EPSG3857();
         double cosLat = Math.cos(Math.toRadians(lat));
         double[] positions = gridPositions(lon, lat);
         double[][] spots = { { 0, 0, 0.35, 1.0 }, { 0.5, -0.4, 0.2, 0.8 }, { -0.55, 0.45, 0.25, 0.7 } };
@@ -74,10 +72,10 @@ public final class CustomHeatmap {
         for (int k = 0; k < N * N; k++) {
             double height = heights != null && k < heights.length && !Double.isNaN(heights[k]) && heights[k] > -100000 ? heights[k] : 0;
             // 20 m of clearance over the mesh's chords, then the mercator stretch heights carry.
-            MapPos p = mercator.fromWgs84(new MapPos(positions[2 * k], positions[2 * k + 1], (height + 20) / cosLat));
-            xyz[3 * k] = p.getX();
-            xyz[3 * k + 1] = p.getY();
-            xyz[3 * k + 2] = p.getZ();
+            double lonRad = Math.toRadians(positions[2 * k]), latRad = Math.toRadians(positions[2 * k + 1]);
+            xyz[3 * k] = MERCATOR_RADIUS * lonRad;
+            xyz[3 * k + 1] = MERCATOR_RADIUS * Math.log(Math.tan(Math.PI / 4 + latRad / 2));
+            xyz[3 * k + 2] = (height + 20) / cosLat;
             double u = (k % N - (N - 1) / 2.0) / ((N - 1) / 2.0), v = (k / N - (N - 1) / 2.0) / ((N - 1) / 2.0), heat = 0;
             for (double[] spot : spots) {
                 double du = u - spot[0], dv = v - spot[1];

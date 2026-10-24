@@ -1,6 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.layers.Layer;
 import com.massifmaps.ui.MapViewInterface;
 
 /**
@@ -91,6 +90,11 @@ public final class MassifMap implements AutoCloseable {
     /** The Android view this is attached to: every MapViewInterface is a View. */
     public android.view.View view() {
         return (android.view.View) view;
+    }
+
+    /** The map's layer list as a facade object. */
+    MassifObject layersObject() {
+        return layers;
     }
 
     /** The map's Options, as a facade object - every option the SDK has, by path. */
@@ -341,38 +345,6 @@ public final class MassifMap implements AutoCloseable {
         return elements().add(spec);
     }
 
-    /**
-     * Adopts the layer at a stack position, so a map built with the object API can be driven
-     * through the facade without rebuilding it.
-     *
-     * @return The wrapper, or the existing one when the id is already registered.
-     */
-    public MassifLayer adoptLayer(String id, int index) {
-        MassifLayer existing = layer(id);
-        if (existing != null) {
-            return existing;
-        }
-        Layer target = index >= 0 && index < layerCount() ? rawLayer(index) : null;
-        if (target == null) {
-            return null;
-        }
-        int handle = MassifInterop.adopt("layer", id, target);
-        return handle == 0 ? null : new MassifLayer(handle, id, this);
-    }
-
-    /**
-     * Adopts the FIRST layer of a kind, which is what an app usually means by "the base map".
-     * @param type A class from com.massifmaps.layers, e.g. VectorTileLayer.class.
-     */
-    public MassifLayer adoptFirst(String id, Class<? extends Layer> type) {
-        for (int index = 0; index < layerCount(); index++) {
-            if (type.isInstance(rawLayer(index))) {
-                return adoptLayer(id, index);
-            }
-        }
-        return null;
-    }
-
     /** A layer already on this map, by id, or null. */
     public MassifLayer layer(String id) {
         int handle = MassifApi.findObject("layer", id);
@@ -387,11 +359,6 @@ public final class MassifMap implements AutoCloseable {
     /** How many layers the map is showing. */
     public int layerCount() {
         return (int) layers.getLong("count", 0);
-    }
-
-    /** A layer by stack position, for the ones the app did not build through the registry. */
-    public Layer rawLayer(int index) {
-        return MassifInterop.getLayerByHandle(layers.call("get", index).handle());
     }
 
     // --- screen and map ------------------------------------------------------------------------

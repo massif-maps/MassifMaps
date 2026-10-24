@@ -774,7 +774,7 @@ public final class DemoLive extends BroadcastReceiver {
         // builds its layers with the object API, which is exactly the migration case.
         com.massifmaps.api.MassifLayer layer = sugarMap.layer("demoApiLayer");
         if (layer == null) {
-            layer = sugarMap.adoptFirst("demoBase", com.massifmaps.layers.VectorTileLayer.class);
+            layer = com.massifmaps.api.MassifLegacy.adoptFirst(sugarMap, "demoBase", com.massifmaps.layers.VectorTileLayer.class);
         }
         if (layer != null) {
             sugarFeature = layer.onFeatureClick(e ->

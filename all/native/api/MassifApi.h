@@ -76,6 +76,21 @@ namespace massif { namespace api {
         static int drain();
 
         /**
+         * Installs the click bridge of a layer given by handle, so its clicks become facade events on that
+         * handle: a vector tile layer's (`feature.clicked`), a vector layer's elements and a celestial layer's
+         * objects. The listener already there is chained. No object API is needed: the layer is reached by its handle.
+         *
+         * @return False if the handle is not a layer of the matching kind.
+         */
+        static bool attachVectorTileEvents(int handle);
+
+        /** @copydoc MassifApi::attachVectorTileEvents */
+        static bool attachVectorElementEvents(int handle);
+
+        /** @copydoc MassifApi::attachVectorTileEvents */
+        static bool attachCelestialEvents(int handle);
+
+        /**
          * Removes one subscription.
          */
         static bool off(int subscription);

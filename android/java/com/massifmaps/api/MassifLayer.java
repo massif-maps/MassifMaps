@@ -1,10 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.layers.Layer;
-import com.massifmaps.layers.VectorElementEventListener;
-import com.massifmaps.layers.VectorLayer;
-import com.massifmaps.layers.VectorTileLayer;
-import com.massifmaps.layers.VectorTileEventListener;
 
 /**
  * A layer, with the things an app does to one.
@@ -50,20 +45,10 @@ public final class MassifLayer extends MassifObject {
         return this;
     }
 
-    /** The object-API layer, for anything the facade does not reach yet. */
-    public Layer layer() {
-        Layer target = id != null ? MassifInterop.getLayer(id) : null;
-        if (target == null) {
-            throw new MassifException("Layer is no longer registered: " + this);
-        }
-        return target;
-    }
-
     /**
      * Subscribes to feature clicks on this layer.
      *
-     * Installs the bridge on first use and chains to whatever listener was already there, so an
-     * app that also uses the object API keeps working.
+     * Installs the layer's click bridge on first use, chaining whatever listener was already there.
      */
     public Subscription onFeatureClick(MapEvents.Handler<MapEvents.VectorTileClick> handler) {
         return featureClick(handler, null);
@@ -108,15 +93,10 @@ public final class MassifLayer extends MassifObject {
 
     private Subscription elementClick(MapEvents.Handler<MapEvents.ElementClick> handler,
                                       MapEvents.ConsumingHandler<MapEvents.ElementClick> consuming) {
-        Layer target = layer();
-        if (!(target instanceof VectorLayer)) {
-            throw new MassifException("Not a vector element layer: " + this);
-        }
-        VectorLayer vector = (VectorLayer) target;
         if (!elementBridged) {
-            VectorElementEventListener chained = vector.getVectorElementEventListener();
-            vector.setVectorElementEventListener(
-                MassifInterop.createVectorElementEventBridge(handle, chained));
+            if (!MassifApi.attachVectorElementEvents(handle)) {
+                throw new MassifException("Not a vector element layer: " + this);
+            }
             elementBridged = true;
         }
         return subscribe(MapEvents.VECTOR_ELEMENT_CLICKED, handler, consuming,
@@ -149,15 +129,10 @@ public final class MassifLayer extends MassifObject {
 
     private Subscription featureClick(MapEvents.Handler<MapEvents.VectorTileClick> handler,
                                       MapEvents.ConsumingHandler<MapEvents.VectorTileClick> consuming) {
-        Layer target = layer();
-        if (!(target instanceof VectorTileLayer)) {
-            throw new MassifException("Not a vector tile layer: " + this);
-        }
-        VectorTileLayer vector = (VectorTileLayer) target;
         if (!bridged) {
-            VectorTileEventListener chained = vector.getVectorTileEventListener();
-            vector.setVectorTileEventListener(
-                MassifInterop.createVectorTileEventBridge(handle, chained));
+            if (!MassifApi.attachVectorTileEvents(handle)) {
+                throw new MassifException("Not a vector tile layer: " + this);
+            }
             bridged = true;
         }
         return subscribe(MapEvents.VECTOR_TILE_CLICKED, handler, consuming,

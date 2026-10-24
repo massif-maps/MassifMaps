@@ -7,6 +7,15 @@ from build.sdk_build_utils import *
 
 ANDROID_ABIS = ['armeabi-v7a', 'arm64-v8a', 'x86_64']
 
+def hasObjectApi(args):
+  return '_MASSIF_OBJECTAPI_SUPPORT' in args.defines.split(';')
+
+def javaSourceDirs(args, baseDir):
+  dirs = ["%s/generated/android-java/proxies" % baseDir, "%s/android/java" % baseDir]
+  if hasObjectApi(args):
+    dirs.append("%s/android/java-objectapi" % baseDir)
+  return dirs
+
 def javac(args, dir, *cmdArgs):
   return execute(args.javac, dir, *cmdArgs)
 
@@ -106,7 +115,7 @@ def buildAndroidJAR(args):
   print('Using target API %d for Java files' % apiJava)
 
   javaFiles = []
-  for sourceDir in ["%s/generated/android-java/proxies" % baseDir, "%s/android/java" % baseDir]:
+  for sourceDir in javaSourceDirs(args, baseDir):
     for dirpath, dirnames, filenames in os.walk(sourceDir):
       for filename in [f for f in filenames if f.endswith(".java")]:
         if os.name == 'nt':
@@ -170,7 +179,7 @@ def buildAndroidAAR(args):
   #   f.write(pomFile)
 
   javaFiles = []
-  for sourceDir in ["%s/generated/android-java/proxies" % baseDir, "%s/android/java" % baseDir]:
+  for sourceDir in javaSourceDirs(args, baseDir):
     for dirpath, dirnames, filenames in os.walk(sourceDir):
       relpath = os.path.relpath(dirpath, sourceDir)
       makedirs(os.path.join(srcDir, relpath))
@@ -186,6 +195,7 @@ def buildAndroidAAR(args):
     '-p', 'android',
     '--project-cache-dir', buildDir,
     '--gradle-user-home', '%s/gradle' % buildDir,
+    *(['-PobjectApi'] if hasObjectApi(args) else []),
     'assembleRelease'
   ):
     return False

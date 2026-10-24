@@ -175,6 +175,27 @@ runtime 156 KB, the SDK 139 KB, the JNI wrappers 72 KB (2,459 entries), the faca
 names 181 KB of `.rodata` (266 `dynamic_cast` uses rule out `-fno-rtti`), the Brotli dictionary
 123 KB and freetype's Adobe glyph list 56 KB.
 
+## The object API as a variant of its own (Android)
+
+`libmassif.so` carried a JNI wrapper for every class of the object API: 3,195 `Java_*` exports, their
+dynamic-symbol tables, the director classes and the per-class static initialisers. The facade reaches the
+whole SDK by id, handle and path and needs none of it, so those wrappers are now generated only for the
+`objectapi` profile (`scripts/swigpp-java.py` keeps `MassifApi`, `EventListener`, `UiDispatcher`, `Log` and
+`LogEventListener` otherwise). The C++ is the same; only the SWIG wrappers differ.
+
+arm64-v8a Release, `standard` profile, same tree:
+
+| profile | `libmassif.so` | `Java_*` exports | |
+|---|---|---|---|
+| `standard` (surface only) | 7,392,312 | 105 | **-1,324,328 B (-15.2%)** vs the `core` build below |
+| `standard+objectapi` | 8,732,208 | 3,213 | +15,568 B: the three `MassifApi.attach*Events` exports |
+| `core` before the split (`#467`) | 8,716,640 | 3,195 | |
+
+That is more than the 0.83 MB the reach audit estimated from the linker map of the wrapper code and symbol
+tables alone: the rest is `.rodata`, relocations and the wrappers' static initialisers. The Java side shrinks
+too, from 578 SWIG classes (1.84 MB of `.class` bytes) to 10. Nothing here was run on a device beyond the
+demo's gallery example (heatmap, tap, swipe) on an arm64 emulator.
+
 ## Build time
 
 45.6 min of CPU per ABI, four ABIs, each recompiling the same headers. By module: mapnikvt 24%,

@@ -45,6 +45,10 @@ android {
     sourceSets {
         main {
             java.srcDirs = ['../../generated/android-java/proxies', '../../android/java']
+            // Only the objectapi variant has the object API to bridge to (build-android.py passes -PobjectApi).
+            if (project.hasProperty('objectApi')) {
+                java.srcDirs += '../../android/java-objectapi'
+            }
             jniLibs.srcDir '../../dist/android/'
         }
     }

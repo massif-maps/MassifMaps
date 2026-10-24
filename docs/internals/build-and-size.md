@@ -138,6 +138,43 @@ only from `graphtile.h` behind `has_predicted_speed()`. Demand-zero pages cost n
 first predicted-speed decode. Check the symbol type and the guard before "fixing" a large `.bss`
 entry.
 
+## Compiler and linker flags, measured
+
+Android **arm64-v8a, Release, `standard` profile** (the `core` AAR), one flag changed at a time
+against a 9,221,584-byte baseline; a build relinks in under a minute because ThinLTO defers the work.
+Sizes are the stripped `libmassif.so`; nothing here was timed on a device.
+
+| change | file | where it went |
+|---|---|---|
+| `-fno-asynchronous-unwind-tables -funwind-tables` | **−107,232** | `.eh_frame` −107 KB: sync tables drop the epilogue CFI |
+| `-Wl,-mllvm,-enable-merge-functions` | **−74,640** | `.text` −67 KB, merges what `--icf=all` cannot |
+| `cartocss` at `-Oz` | **−171,656** | `.text`; compiles a style once |
+| `freetype` at `-Oz` | **−186,856** | `.text` |
+| all four above | **−504,944 (−5.5%)** | shipped |
+| `vt` at `-Oz` | −285,320 | not taken: decode and label path |
+| `mapnikvt` at `-Oz` | −347,144 | not taken: per-feature path |
+| render and tile dirs at `-Oz` | −736,832 | not taken: [+614 KB buys 3.2% frame time](rendering/10-performance.md) |
+| `tess2` / `zlib`+`brotli`+`zstd` at `-Oz` | −26,920 / −20,800 | not taken: too little for the risk |
+| `-Wl,-mllvm,-machine-outliner-reruns=3` | −3,376 | noise |
+| `-Wl,--exclude-libs,ALL` | 0 | the version script already hides them |
+| `-fno-math-errno` | 0 | Android's clang defaults to it |
+| `-fmerge-all-constants` | −144 | not worth the semantics |
+
+**Sync unwind tables keep exceptions working** but the release build also has `-fomit-frame-pointer`,
+so a crash unwinder walks `.eh_frame`, and a fault inside a function epilogue can now mis-unwind.
+Check that native crash symbolication still resolves before a release. `cartocss` and `freetype`
+are `-Oz` on Android only; iOS and the web were not measured.
+
+**Where the unwind tables are.** `.eh_frame` is 22,189 entries of 34 bytes on average: libc++ and
+runtime 156 KB, the SDK 139 KB, the JNI wrappers 72 KB (2,459 entries), the facade 41 KB, boost
+38 KB, freetype and the image libraries together about 36 KB. So the C-only dependencies the
+"Open" list names hold at most ~40 KB of the 1.2 MB; the JNI wrappers hold more.
+
+**Where `.text` is.** 6.3 MB across 22,611 functions, no single owner: SDK core 26%, libc++ 13%,
+`vt` 11%, `mapnikvt` 9%, JNI wrappers 5%. `std::variant` visitor tables are ~150 KB, `typeinfo`
+names 181 KB of `.rodata` (266 `dynamic_cast` uses rule out `-fno-rtti`), the Brotli dictionary
+123 KB and freetype's Adobe glyph list 56 KB.
+
 ## Build time
 
 45.6 min of CPU per ABI, four ABIs, each recompiling the same headers. By module: mapnikvt 24%,
@@ -175,12 +212,14 @@ entry ever existed) and every job compiled from scratch, with `iOS lite` (72 min
   [mac-catalyst.md](../maintenance/mac-catalyst.md)), but bitcode is still wired in
   `scripts/build-ios.py` (`ENABLE_BITCODE=YES` for armv7/arm64, dead since Xcode 14) and `i386` /
   `armv7` are still in `IOS_ARCHS`, filtered out of the default arch list only.
-- **Unwind tables on the C-only dependencies** (sqlite, libpng, libjpeg, libwebp, freetype, brotli,
-  zstd, miniz) against that 1.69 MB. Risky rather than free: a C++ exception thrown from a callback
-  has to unwind back through those C frames, and without tables that is a `std::terminate`, so it
-  needs the callback paths audited before it can be trusted.
-- Unset and cheap: `-Wl,--exclude-libs,ALL`, `-fmerge-all-constants`, `-fno-math-errno`. No PGO
-  anywhere.
+- **Pruning the JNI layer**, the largest identifiable item left: ~0.58 MB if the classes the app
+  never names go, up to ~0.9 MB for a surface-API-only SDK. It needs the Android map view to stop
+  being a SWIG `BaseMapView` that the facade adopts.
+- **`vt` / `mapnikvt` / render dirs at `-Oz`** (−285 / −347 / −737 KB), which needs a paired device
+  benchmark per [10-performance.md](rendering/10-performance.md).
+- Not worth doing, measured above: unwind tables on the C-only dependencies (~40 KB at best, with
+  the `std::terminate` risk when a C++ exception crosses a C callback), `--exclude-libs`,
+  `-fno-math-errno`, `-fmerge-all-constants`. No PGO anywhere.
 - **RELR** once `minSdk` can be 28; see above.
 
 ## Measured NOT to work — `RegisterNatives`

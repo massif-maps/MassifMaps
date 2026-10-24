@@ -41,7 +41,7 @@ public class FpsCounter extends MapRendererListener {
         root.addView(text, params);
 
         final FpsCounter counter = new FpsCounter(text);
-        mapView.getMapRenderer().setMapRendererListener(counter);
+        ObjectApi.renderer(mapView).setMapRendererListener(counter);
         text.postDelayed(new Runnable() {
             public void run() {
                 if (System.nanoTime() - counter.lastFrame > 1500000000L) {

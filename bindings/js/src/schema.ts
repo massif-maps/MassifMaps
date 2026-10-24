@@ -496,7 +496,7 @@ export const KIND_OF_CLASS: { [cls: string]: string } = {
  *   v void   b bool   i int   f float   s string   j json   d doubles   o object
  */
 export const METHODS: { [cls: string]: string } = {
-    'massif::BaseMapView': 'fitBounds,v;flyTo,v;mapToScreen,j;moveCameraTo,v;moveTo,v;screenToMap,j;stopFlight,v',
+    'massif::BaseMapView': 'cancelAllTasks,v;clearAllCaches,v;clearPreloadingCaches,v;fitBounds,v;flyTo,v;mapToScreen,j;moveCameraTo,v;moveTo,v;screenToMap,j;stopFlight,v',
     'massif::CelestialArc': 'setCircle,v;setDirections,v;setSegments,v',
     'massif::CelestialImage': 'setAnchors,v',
     'massif::CelestialLabel': 'setAnchorPoint,v;setOffset,v',

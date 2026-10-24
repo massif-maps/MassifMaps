@@ -53,6 +53,7 @@ void testNestedSpecProperties();
 void testCAbi();
 void testCAbiEvents();
 void testAdopt();
+void testViewRegistration();
 void testCustomSource();
 void testCustomLayer();
 void testGetterLock();
@@ -467,6 +468,7 @@ int main() {
     testCAbi();
     testCAbiEvents();
     testAdopt();
+    testViewRegistration();
     testCustomSource();
     testCustomLayer();
     testGetterLock();

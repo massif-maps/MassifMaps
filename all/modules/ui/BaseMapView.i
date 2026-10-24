@@ -56,6 +56,10 @@
 !method(massif::BaseMapView, screenToMap, arg(x, float), arg(y, float), returns(json))
 !method(massif::BaseMapView, mapToScreen, arg(pos, pos), returns(json))
 !method(massif::BaseMapView, stopFlight, returns(void))
+// What MapView offered as its own methods, for a view with no object API: drop queued work or caches.
+!method(massif::BaseMapView, cancelAllTasks, returns(void))
+!method(massif::BaseMapView, clearPreloadingCaches, returns(void))
+!method(massif::BaseMapView, clearAllCaches, returns(void))
 
 %include "ui/FlightEasing.h"
 %include "ui/BaseMapView.h"

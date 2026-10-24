@@ -124,6 +124,21 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        Result cancelAllTasks(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<BaseMapView*>(obj)->cancelAllTasks();
+            return RESULT_OK;
+        }
+
+        Result clearPreloadingCaches(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<BaseMapView*>(obj)->clearPreloadingCaches();
+            return RESULT_OK;
+        }
+
+        Result clearAllCaches(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<BaseMapView*>(obj)->clearAllCaches();
+            return RESULT_OK;
+        }
+
     }
 
     void registerCameraMethods() {
@@ -134,6 +149,9 @@ namespace massif { namespace api {
         Methods::registerMethod("massif::BaseMapView", "screenToMap", &screenToMap);
         Methods::registerMethod("massif::BaseMapView", "mapToScreen", &mapToScreen);
         Methods::registerMethod("massif::BaseMapView", "stopFlight", &stopFlight);
+        Methods::registerMethod("massif::BaseMapView", "cancelAllTasks", &cancelAllTasks);
+        Methods::registerMethod("massif::BaseMapView", "clearPreloadingCaches", &clearPreloadingCaches);
+        Methods::registerMethod("massif::BaseMapView", "clearAllCaches", &clearAllCaches);
     }
 
 } }

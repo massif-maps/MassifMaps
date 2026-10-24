@@ -1163,6 +1163,27 @@
       "methods": [
         {
           "cppClass": "massif::BaseMapView",
+          "name": "cancelAllTasks",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "clearAllCaches",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "clearPreloadingCaches",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
           "name": "fitBounds",
           "args": [
             {

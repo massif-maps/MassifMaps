@@ -64,7 +64,7 @@ public final class DemoTests {
     public static void runTwoFingerDrag(final DemoMap demo, final float dx, final float dy) {
         final com.massifmaps.ui.MapView mapView = demo.mapView;
         final Handler handler = new Handler(Looper.getMainLooper());
-        final MapPos before = mapView.getFocusPos();
+        final MapPos before = ObjectApi.view(mapView).getFocusPos();
         final float x1 = 400, x2 = 700, y = 1600;
         final long downTime = android.os.SystemClock.uptimeMillis();
         final int steps = 12;
@@ -95,7 +95,7 @@ public final class DemoTests {
                         2, x1 + dx, y + dy, x2 + dx, y + dy);
                 send(mapView, downTime, android.os.SystemClock.uptimeMillis(),
                         android.view.MotionEvent.ACTION_UP, 1, x1 + dx, y + dy, x2 + dx, y + dy);
-                Log.i(TAG, "two-finger drag (" + dx + "," + dy + "): focus " + before + " -> " + mapView.getFocusPos());
+                Log.i(TAG, "two-finger drag (" + dx + "," + dy + "): focus " + before + " -> " + ObjectApi.view(mapView).getFocusPos());
             }
         }, 60 + (steps + 2) * 25L);
     }
@@ -124,9 +124,9 @@ public final class DemoTests {
     /** Lazily creates (and adds) the layer every test draws its result into. */
     private static LocalVectorDataSource results(DemoMap demo) {
         if (resultSource == null) {
-            Projection proj = demo.mapView.getOptions().getBaseProjection();
+            Projection proj = ObjectApi.options(demo.mapView).getBaseProjection();
             resultSource = new LocalVectorDataSource(proj);
-            demo.mapView.getLayers().add(new VectorLayer(resultSource));
+            ObjectApi.layers(demo.mapView).add(new VectorLayer(resultSource));
         }
         return resultSource;
     }
@@ -351,8 +351,8 @@ public final class DemoTests {
             report(demo, "search needs the vector base layer (LAYERS > base)");
             return;
         }
-        final MapPos centre = demo.mapView.getFocusPos();
-        final Projection projection = demo.mapView.getOptions().getBaseProjection();
+        final MapPos centre = ObjectApi.view(demo.mapView).getFocusPos();
+        final Projection projection = ObjectApi.options(demo.mapView).getBaseProjection();
         new Thread(new Runnable() {
             public void run() {
                 try {
@@ -396,7 +396,7 @@ public final class DemoTests {
             source.addGeoJSONStringFeature(1, "{\"type\":\"Feature\",\"id\":1,\"properties\":{\"name\":\"test\"},"
                     + "\"geometry\":{\"type\":\"LineString\",\"coordinates\":"
                     + "[[5.7249,45.1982],[5.7225,45.1975],[5.7220,45.1949],[5.7201,45.1935],[5.7255,45.1915]]}}");
-            demo.mapView.getLayers().add(new VectorTileLayer(source, decoder));
+            ObjectApi.layers(demo.mapView).add(new VectorTileLayer(source, decoder));
             report(demo, "geojson line added");
         } catch (Exception e) {
             report(demo, "geojson test failed: " + e.getMessage());
@@ -451,8 +451,8 @@ public final class DemoTests {
     public static void runPopupFonts(final DemoMap demo, final String which) {
         // The live camera, for the panel button. At startup the focus latitude is not applied yet,
         // which is why DemoMap passes the configured start position instead.
-        runPopupFonts(demo, which, demo.mapView.getOptions().getBaseProjection()
-                .toWgs84(demo.mapView.getFocusPos()));
+        runPopupFonts(demo, which, ObjectApi.options(demo.mapView).getBaseProjection()
+                .toWgs84(ObjectApi.view(demo.mapView).getFocusPos()));
     }
 
     public static void runPopupFonts(final DemoMap demo, final String which, final MapPos wgs) {
@@ -461,7 +461,7 @@ public final class DemoTests {
                 ? DemoConfig.POPUP_FONTS_SAMPLE : which;
         String[] fonts = fontLists.split("\\|");
         LocalVectorDataSource source = results(demo);
-        Projection proj = demo.mapView.getOptions().getBaseProjection();
+        Projection proj = ObjectApi.options(demo.mapView).getBaseProjection();
         for (int i = 0; i < fonts.length; i++) {
             BalloonPopupStyleBuilder builder = new BalloonPopupStyleBuilder();
             builder.setTitleFontName(fonts[i]);
@@ -519,7 +519,7 @@ public final class DemoTests {
             final VectorTileLayer layer = new VectorTileLayer(source, decoder);
             new Handler(Looper.getMainLooper()).post(new Runnable() {
                 public void run() {
-                    demo.mapView.getLayers().add(layer);
+                    ObjectApi.layers(demo.mapView).add(layer);
                 }
             });
             report(demo, "bench layer " + name + " added (import " + importMs + " ms)");

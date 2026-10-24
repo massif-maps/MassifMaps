@@ -1012,12 +1012,13 @@ map.addLayer("base", Spec.of("vector").set("source", "osm"));
 map.onClick(e -> map.camera().animate(2).moveTo(e.position(), 14));
 ```
 
-**`attach` registers TWO ids, and `close` drops both.** The `Options` goes in under `map:<id>` and
-the `BaseMapView` under `view:<id>` — the view is what carries the camera. They are released
-together on `close`/`-detach`, and the failure mode when one is left behind is silent: the next
-`attach` under the same id finds the stale view handle and reuses it, so the new screen's layers
-build correctly while `camera().moveTo` drives the CLOSED screen's map view and the visible map
-never leaves its default camera.
+**On Android the view registers itself, and `attach` only wraps it.** `MapView` creates its native
+map through [`MapViewHost`](#a-native-owned-map-view-android) and registers three ids that share
+`MapView.getMapId()`: `view:<id>` (the camera), `map:<id>` (the `Options`, and the target of the map's
+events) and `layers:<id>`. `MassifMap.attach(mapView)` reads those handles and adopts nothing, so
+there is no stale-handle failure to guard against: the ids live and die with `MapView.delete()`,
+and `MassifMap.close()` releases only what the map itself built. On iOS the view is still adopted
+by `attach` and released by `-detach`, because `MSFMapView` still owns its `BaseMapView`.
 
 **`Massif.find(kind, id)` / `+[MSFMassif find:objectId:]`** hand back what is already registered,
 as NativeScript's and the web's `find` do — the map's view is one (`find("view", map.options().id())`),
@@ -1402,6 +1403,25 @@ them there gives the facade the path for free.**
 [Projections](#projections). A payload declares none of its own, so it inherits the one attached to
 the event's target.
 
+### A native-owned map view (Android)
+
+`com.massifmaps.ui.MapView` and `TextureMapView` hold no object-API proxy. `MapViewHost`
+(`all/native/api/MapViewHost.h`) creates the `BaseMapView`, registers its `Options` and `Layers`
+beside it (`ViewRegistration`, which is all or nothing and host-tested), keeps the view's
+facade projection equal to `Options.baseProjection`, and installs the event bridge on the `map:<id>`
+handle, so `map.clicked` and the other map events need no listener from the app. The Java view
+reaches it through eight hand-written JNI functions in `android/native/ui/MapViewNative.cpp`
+(create, destroy, the four surface calls, input, and the init that attaches the JVM, the context
+and the asset manager); the redraw request is a `Runnable` called from whichever thread asks.
+
+What a `MapView` offers is therefore the handles (`getViewHandle`, `getMapHandle`,
+`getLayersHandle`, `getMapId`) and three view calls that need no argument: `cancelAllTasks`,
+`clearPreloadingCaches`, `clearAllCaches`, which are also facade methods on `BaseMapView`.
+Everything else is a facade call on a handle. An app still built on the object API gets its
+`Options`, `Layers` and `BaseMapView` back from a handle with `MassifInterop.getOptionsByHandle`,
+`getLayerListByHandle` and `getViewByHandle`: that is the migration path, and the only reason the
+object-API wrappers are still linked for a view.
+
 ### Reaching a real map event
 
 `MapEventBridge` turns the map's listener callbacks into facade events. `BaseMapView` has a
@@ -1409,9 +1429,9 @@ the event's target.
 before the event is emitted, or adopting the facade would silently disconnect existing handlers.
 
 ```java
-int handle = MassifInterop.adopt("options", "demo", mapView.getOptions());
-mapView.setMapEventListener(
-    MassifInterop.createEventBridge(handle, mapView.getMapEventListener()));
+// iOS and the object API: adopt the options and chain the bridge into the single listener slot.
+// On Android the MapView does both when it is created, and `mapView.getMapHandle()` is the handle.
+int handle = mapView.getMapHandle();
 
 MassifApi.on(handle, "map.clicked", listener, /* delivery */ 0, /* coalesce */ false);
 ```

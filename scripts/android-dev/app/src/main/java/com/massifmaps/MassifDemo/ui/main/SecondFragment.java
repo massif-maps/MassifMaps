@@ -1,5 +1,6 @@
 package com.massifmaps.MassifDemo.ui.main;
 
+import com.massifmaps.MassifDemo.demo.ObjectApi;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -88,7 +89,7 @@ public class SecondFragment extends Fragment {
         zoomText = (TextView) view.findViewById(R.id.zoomText);
 
         // Base map options that are not part of the demo configuration itself.
-        final Options options = mapView.getOptions();
+        final Options options = ObjectApi.options(mapView);
         options.setBaseProjection(new EPSG4326());
         options.setZoomGestures(true);
         options.setRestrictedPanning(true);
@@ -197,25 +198,25 @@ public class SecondFragment extends Fragment {
 
     /** Camera readout (also used by scripted runs through logcat) + terrain-aware click probe. */
     private void installMapListener() {
-        mapView.setMapEventListener(new MapEventListener() {
+        ObjectApi.setMapEventListener(mapView, new MapEventListener() {
             @Override
             public void onMapMoved(int reason) {
                 super.onMapMoved(reason);
                 Log.d(TAG, String.format("lat=%.6f lng=%.6f rotation=%.2f z=%.2f tilt=%.0f",
-                        mapView.getFocusPos().getY(), mapView.getFocusPos().getX(),
-                        mapView.getMapRotation(), mapView.getZoom(), mapView.getTilt()));
+                        ObjectApi.view(mapView).getFocusPos().getY(), ObjectApi.view(mapView).getFocusPos().getX(),
+                        ObjectApi.view(mapView).getRotation(), ObjectApi.view(mapView).getZoom(), ObjectApi.view(mapView).getTilt()));
                 if (getActivity() == null) {
                     return;
                 }
                 getActivity().runOnUiThread(new Runnable() {
                     public void run() {
-                        MapPos focus = mapView.getFocusPos();
+                        MapPos focus = ObjectApi.view(mapView).getFocusPos();
                         // mb= is the MapBox zoom the same view is at: their tiles are 512 px wide
                         // and this SDK's are 256, so one level apart. Without it a side-by-side
                         // against mbref.html compares two different zooms.
                         String light = DemoConfig.LIGHT_PRESET.isEmpty() ? "-" : DemoConfig.LIGHT_PRESET;
                         String text = String.format("z=%.2f (mb %.2f)  tilt=%.0f  %s  %.5f, %.5f",
-                                mapView.getZoom(), mapView.getZoom() - 1, mapView.getTilt(), light,
+                                ObjectApi.view(mapView).getZoom(), ObjectApi.view(mapView).getZoom() - 1, ObjectApi.view(mapView).getTilt(), light,
                                 focus.getY(), focus.getX());
                         if (zoomText != null) {
                             zoomText.setText(text);
@@ -232,7 +233,7 @@ public class SecondFragment extends Fragment {
                 super.onMapClicked(mapClickInfo);
                 // clickPos already resolves to the TERRAIN surface; the elevation query itself may
                 // block on tile loading, so it runs off the UI thread.
-                final MapPos wgs84Pos = mapView.getOptions().getBaseProjection().toWgs84(mapClickInfo.getClickPos());
+                final MapPos wgs84Pos = ObjectApi.options(mapView).getBaseProjection().toWgs84(mapClickInfo.getClickPos());
                 new Thread(new Runnable() {
                     public void run() {
                         final double elevation = demo.getElevation(wgs84Pos);

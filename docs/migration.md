@@ -159,6 +159,32 @@ the product. There is **no renamed equivalent**; bring your own source.
 
 ## Breaking changes after 6.0.0
 
+### Android `MapView` no longer carries the object API
+
+`MapView` and `TextureMapView` create their native map themselves and are addressed through the facade, so
+the methods that returned or took an object-API type are **removed**: `getOptions`, `getLayers`,
+`getMapRenderer`, `getBaseMapView`, `getMapEventListener`, `setMapEventListener`, and the camera
+(`getFocusPos`, `setFocusPos`, `getZoom`, `setZoom`, `getTilt`, `setTilt`, `getMapRotation`,
+`setMapRotation`, `pan`, `rotate`, `zoom`, `tilt`, `moveToFitBounds`, `screenToMap`, `mapToScreen`).
+`MapViewInterface` shrinks to the handles, `cancelAllTasks`, `clearPreloadingCaches`,
+`clearAllCaches` and `delete`. `MassifMap.attach(mapView, id)` is `MassifMap.attach(mapView)`: the id is the
+view's, set with `new MapView(context, "id")` or generated.
+
+An app built on the object API keeps its code and reads the same objects from the view's handles:
+
+```java
+Options options = MassifInterop.getOptionsByHandle(mapView.getMapHandle());
+Layers layers = MassifInterop.getLayerListByHandle(mapView.getLayersHandle());
+BaseMapView view = MassifInterop.getViewByHandle(mapView.getViewHandle());  // the camera, and getMapRenderer()
+```
+
+A map listener is no longer installed with `setMapEventListener`: subscribe to `map.clicked` and the other
+map events on `mapView.getMapHandle()` (or `MassifMap.onClick` and friends), or, to keep an object-API
+`MapEventListener`, chain it with
+`view.setMapEventListener(MassifInterop.createEventBridge(mapView.getMapHandle(), listener))`.
+The facade projection of the view now follows `Options.baseProjection` when it changes; it used to be read
+once, when the view was adopted.
+
 ### The Torque animated layer is gone
 
 `TorqueTileLayer`, `TorqueTileDecoder` and the CartoCSS Torque loader are removed, on every platform

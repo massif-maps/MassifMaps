@@ -1,8 +1,7 @@
 package com.massifmaps.api;
 
 import com.massifmaps.layers.Layer;
-import com.massifmaps.ui.MapEventListener;
-import com.massifmaps.ui.MapView;
+import com.massifmaps.ui.MapViewInterface;
 
 /**
  * A map, as an app talks to it.
@@ -14,60 +13,49 @@ import com.massifmaps.ui.MapView;
  * map.onClick(e -&gt; Log.i(TAG, "clicked " + e.position()));
  * </pre>
  *
- * The MapView stays the app's: this attaches to one rather than replacing it, and the object API
- * keeps working alongside. Attaching twice with the same id gives the same map back.
+ * The view owns the native map and registers it under its id (see MapView.getMapId), so there
+ * is nothing to adopt: this wraps the handles the view already has. Attaching twice gives the
+ * same map back.
  */
 public final class MassifMap implements AutoCloseable {
 
     private static final String KIND = "map";
     private static final String VIEW_KIND = "view";
+    private static final String LAYERS_KIND = "layers";
 
-    private final MapView view;
+    private final MapViewInterface view;
     private final MassifObject options;
+    private final MassifObject layers;
     private final MapCamera camera;
     /** Kind and id of everything this map built, so close() releases it. */
     private final java.util.List<String[]> owned = new java.util.ArrayList<>();
     private MassifElements elements;
     private String eventProjection = "";
-    private boolean bridged;
 
-    private MassifMap(MapView view, MassifObject options, MassifObject baseView) {
+    private MassifMap(MapViewInterface view, MassifObject options, MassifObject layers, MassifObject baseView) {
         this.view = view;
         this.options = options;
+        this.layers = layers;
         this.camera = new MapCamera(baseView);
     }
 
-    /** Attaches to a map view under the id "main". */
-    public static MassifMap attach(MapView view) {
-        return attach(view, "main");
-    }
-
     /**
-     * Attaches under a given id, which is what makes more than one map work: every handle, event
-     * and layer belongs to the map it was registered under.
+     * Attaches to a map view, under the id the view was created with.
+     * @throws MassifException when the view has been deleted.
      */
-    public static MassifMap attach(MapView view, String id) {
+    public static MassifMap attach(MapViewInterface view) {
         if (view == null) {
             throw new IllegalArgumentException("Null map view");
         }
-        int handle = MassifApi.findObject(KIND, id);
-        if (handle == 0) {
-            handle = MassifInterop.adopt(KIND, id, view.getOptions());
-            if (handle == 0) {
-                throw new MassifException("Cannot attach map '" + id + "'");
-            }
-        }
-        // The map view is adopted too, under its own kind: it is what carries the CAMERA, and
-        // going through the facade is what gives moveTo the map's projection.
-        int viewHandle = MassifApi.findObject(VIEW_KIND, id);
-        if (viewHandle == 0) {
-            viewHandle = MassifInterop.adopt(VIEW_KIND, id, view.getBaseMapView());
-            if (viewHandle == 0) {
-                throw new MassifException("Cannot attach the map view of '" + id + "'");
-            }
+        int viewHandle = view.getViewHandle();
+        int mapHandle = view.getMapHandle();
+        int layersHandle = view.getLayersHandle();
+        if (viewHandle == 0 || mapHandle == 0 || layersHandle == 0) {
+            throw new MassifException("The map view '" + view.getMapId() + "' has been deleted");
         }
         installUiDispatcher();
-        return new MassifMap(view, new MassifObject(handle, KIND, id),
+        String id = view.getMapId();
+        return new MassifMap(view, new MassifObject(mapHandle, KIND, id), new MassifObject(layersHandle, LAYERS_KIND, id),
                              new MassifObject(viewHandle, VIEW_KIND, id));
     }
 
@@ -100,9 +88,9 @@ public final class MassifMap implements AutoCloseable {
     /** Held for the life of the process: the C++ side keeps only a raw pointer to the director. */
     private static UiDispatcher dispatcher;
 
-    /** The view this is attached to. Nothing here replaces it. */
-    public MapView view() {
-        return view;
+    /** The Android view this is attached to: every MapViewInterface is a View. */
+    public android.view.View view() {
+        return (android.view.View) view;
     }
 
     /** The map's Options, as a facade object - every option the SDK has, by path. */
@@ -232,13 +220,13 @@ public final class MassifMap implements AutoCloseable {
 
     /** Adds a layer built with {@link Massif#layer} to the top of the stack. */
     public MassifLayer add(MassifLayer layer) {
-        view.getLayers().add(layer.layer());
+        layers.call("add", layer.handle());
         return attached(layer);
     }
 
     /** Adds it at a given position. 0 is the bottom. */
     public MassifLayer add(MassifLayer layer, int index) {
-        view.getLayers().insert(index, layer.layer());
+        layers.call("insert", index, layer.handle());
         return attached(layer);
     }
 
@@ -268,7 +256,7 @@ public final class MassifMap implements AutoCloseable {
         }
         MassifLayer layer = layer(id);
         if (layer != null) {
-            view.getLayers().remove(layer.layer());
+            layers.call("remove", layer.handle());
         }
         if (owns || layer != null) {
             MassifApi.unregisterObject("layer", id);
@@ -364,7 +352,7 @@ public final class MassifMap implements AutoCloseable {
         if (existing != null) {
             return existing;
         }
-        Layer target = index >= 0 && index < layerCount() ? view.getLayers().get(index) : null;
+        Layer target = index >= 0 && index < layerCount() ? rawLayer(index) : null;
         if (target == null) {
             return null;
         }
@@ -378,7 +366,7 @@ public final class MassifMap implements AutoCloseable {
      */
     public MassifLayer adoptFirst(String id, Class<? extends Layer> type) {
         for (int index = 0; index < layerCount(); index++) {
-            if (type.isInstance(view.getLayers().get(index))) {
+            if (type.isInstance(rawLayer(index))) {
                 return adoptLayer(id, index);
             }
         }
@@ -392,18 +380,18 @@ public final class MassifMap implements AutoCloseable {
     }
 
     public MassifMap remove(MassifLayer layer) {
-        view.getLayers().remove(layer.layer());
+        layers.call("remove", layer.handle());
         return this;
     }
 
     /** How many layers the map is showing. */
     public int layerCount() {
-        return view.getLayers().count();
+        return (int) layers.getLong("count", 0);
     }
 
     /** A layer by stack position, for the ones the app did not build through the registry. */
     public Layer rawLayer(int index) {
-        return view.getLayers().get(index);
+        return MassifInterop.getLayerByHandle(layers.call("get", index).handle());
     }
 
     // --- screen and map ------------------------------------------------------------------------
@@ -455,7 +443,6 @@ public final class MassifMap implements AutoCloseable {
      * @param throttleMs The window in milliseconds; 0 delivers every event.
      */
     public Subscription onMove(MapEvents.Handler<MapEvents.Move> handler, int throttleMs) {
-        bridge();
         return options.subscribe(MapEvents.MOVED, handler, null, MassifObject.Delivery.UI, false,
                                  eventProjection, MassifObject.EventKind.MOVE, throttleMs);
     }
@@ -485,7 +472,6 @@ public final class MassifMap implements AutoCloseable {
      * than queued, and a slow handler cannot flood the loop.
      */
     public Subscription onInteraction(MapEvents.Handler<MapEvents.Interaction> handler) {
-        bridge();
         return options.subscribe(MapEvents.INTERACTION, handler, null, MassifObject.Delivery.UI,
                                  true, eventProjection, MassifObject.EventKind.INTERACTION);
     }
@@ -497,13 +483,12 @@ public final class MassifMap implements AutoCloseable {
     }
 
     /**
-     * Detaches: removes every handler, takes off and drops every layer this map BUILT, and drops
-     * the map's own id.
+     * Detaches: removes every handler and takes off and drops every layer this map BUILT.
      *
      * Releasing what it built is what makes ids reusable - a screen that opens, builds "basemap"
      * and closes can be opened again with a different spec under the same name. Layers merely
-     * added with {@link #add} are the caller's and are left alone. The MapView is untouched and
-     * keeps working through the object API.
+     * added with {@link #add} are the caller's and are left alone. The MapView is untouched, and so
+     * are the ids it registered: they go with {@link MapViewInterface#delete()}.
      */
     @Override
     public void close() {
@@ -512,42 +497,21 @@ public final class MassifMap implements AutoCloseable {
             if ("layer".equals(object[0])) {
                 MassifLayer layer = layer(object[1]);
                 if (layer != null) {
-                    view.getLayers().remove(layer.layer());
+                    layers.call("remove", layer.handle());
                 }
             }
             MassifApi.unregisterObject(object[0], object[1]);
         }
         owned.clear();
         elements = null;
-        if (options.id != null) {
-            MassifApi.unregisterObject(KIND, options.id);
-            // The view is adopted under the SAME id and has to go with it: left registered, the
-            // next attach reuses it and the camera drives the CLOSED screen's map view.
-            MassifApi.unregisterObject(VIEW_KIND, options.id);
-        }
     }
 
     // --- internals -----------------------------------------------------------------------------
 
     private <E> Subscription on(String event, MapEvents.Handler<E> handler,
                                 MassifObject.EventKind kind) {
-        bridge();
         return options.subscribe(event, handler, null, MassifObject.Delivery.UI, false,
                                  eventProjection, kind);
-    }
-
-    /**
-     * Installs the map's event bridge on first subscription, chaining to whatever listener the app
-     * already had - a single listener slot means adopting the facade would otherwise silently
-     * disconnect its existing handlers.
-     */
-    private void bridge() {
-        if (bridged) {
-            return;
-        }
-        MapEventListener chained = view.getMapEventListener();
-        view.setMapEventListener(MassifInterop.createEventBridge(options.handle, chained));
-        bridged = true;
     }
 
     private MassifLayer attached(MassifLayer layer) {

@@ -1,6 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.components.Layers;
 import com.massifmaps.layers.Layer;
 import com.massifmaps.layers.VectorElementEventListener;
 import com.massifmaps.layers.VectorLayer;
@@ -39,15 +38,15 @@ public final class MassifLayer extends MassifObject {
     /** Moves the layer within the map's stack. 0 is the bottom. */
     public MassifLayer moveTo(int index) {
         // Layers.insert does not take a layer out first: without the remove it is on the stack twice.
-        Layers layers = requireMap().view().getLayers();
-        layers.remove(layer());
-        layers.insert(Math.min(index, layers.count()), layer());
+        MassifMap map = requireMap();
+        map.remove(this);
+        map.add(this, Math.min(index, map.layerCount()));
         return this;
     }
 
     /** Removes it from the map. The object stays registered until it is closed. */
     public MassifLayer detach() {
-        requireMap().view().getLayers().remove(layer());
+        requireMap().remove(this);
         return this;
     }
 

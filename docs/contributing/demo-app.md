@@ -61,6 +61,7 @@ rendering bug reproduces in a minute without the simulator or NativeScript. See
 | `demo/DemoStyles.java` | style decoders (dir / zip / inline CartoCSS / style project) + demo shaders |
 | `demo/DemoSky.java` | day-cycle sun/sky + generated sky shader |
 | `demo/DemoPanel.java` | on-screen panel — writes DemoConfig, then calls a `DemoMap.apply*()` |
+| `demo/ObjectApi.java` | the demo still builds with the object API; a `MapView` no longer carries it, so `ObjectApi.options(mapView)`, `layers`, `view` and `renderer` read it back from the view's handles |
 | `demo/DemoTests.java` | one-shot actions (routing, search, GeoJSON) |
 | `ui/main/SecondFragment.java` | Android glue only (view, permissions, map listener) |
 

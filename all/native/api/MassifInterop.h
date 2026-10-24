@@ -108,6 +108,16 @@ namespace massif {
         static std::shared_ptr<Layer> getLayerByHandle(int handle);
 
         /**
+         * The object-API face of a registered map: its Options (a `map` handle), its Layers (a
+         * `layers` handle) and its view (a `view` handle). For code that still builds with the object
+         * API on a map the SDK created; null when the handle is not of that class.
+         */
+        static std::shared_ptr<Options> getOptionsByHandle(int handle);
+        /** @copydoc MassifInterop::getOptionsByHandle */
+        static std::shared_ptr<Layers> getLayerListByHandle(int handle);
+        /** @copydoc MassifInterop::getOptionsByHandle */
+        static std::shared_ptr<BaseMapView> getViewByHandle(int handle);
+        /**
          * Builds the listener that turns a map's callbacks into facade events on a target.
          * Install it with setMapEventListener; it chains the previous listener since that slot is single:
          * `mapView.setMapEventListener(MassifInterop.createEventBridge(handle, mapView.getMapEventListener()))`.

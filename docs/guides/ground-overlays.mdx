@@ -60,10 +60,10 @@ bitmapPoses.add(new ScreenPos(overlay.getWidth(), 0));
 BitmapOverlayRasterTileDataSource source =
     new BitmapOverlayRasterTileDataSource(0, 20, overlay, proj, mapPoses, bitmapPoses);
 RasterTileLayer layer = new RasterTileLayer(source);
-mapView.getLayers().add(layer);
+MassifInterop.getLayerListByHandle(mapView.getLayersHandle()).add(layer);
 
 // Bitmaps are upsampled on a high-DPI screen; bias the zoom back down or the image goes soft.
-float bias = (float) (Math.log(mapView.getOptions().getDPI() / 160.0f) / Math.log(2));
+float bias = (float) (Math.log(MassifInterop.getOptionsByHandle(mapView.getMapHandle()).getDPI() / 160.0f) / Math.log(2));
 layer.setZoomLevelBias(bias * 0.75f);
 layer.setTileSubstitutionPolicy(TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE);
 ```

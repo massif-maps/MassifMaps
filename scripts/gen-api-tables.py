@@ -224,6 +224,12 @@ def parseIndexed(args):
     extra = extra.strip()
     if re.match(r'^returns\s*\(\s*bool\s*\)$', extra):
       entry['checked'] = True
+    elif re.match(r'^values\s*\(\s*number\s*\)$', extra):
+      entry['bagType'] = 'number'
+      entry['cppType'] = 'float'
+    elif re.match(r'^values\s*\(\s*color\s*\)$', extra):
+      entry['bagType'] = 'number'
+      entry['cppType'] = 'massif::Color'
     elif re.match(r'^values\s*\(\s*json\s*\)$', extra):
       # What one entry holds, for the bindings' typings only - the C++ thunk reads it from the
       # getter's own return type.

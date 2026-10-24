@@ -88,10 +88,14 @@ def enumType(name, enums):
   return ' | '.join('"%s"' % value['name'] for value in values)
 
 
+def bagEntry(kind):
+  return {'string': 'string', 'number': 'number'}.get(kind, 'Json')
+
+
 def valueType(prop, enums):
   # A bag takes an object of entries, whether it is written as a property or as a spec key.
   if prop.get('indexed'):
-    return 'Record<string, %s>' % ('string' if prop['indexed'] == 'string' else 'Json')
+    return 'Record<string, %s>' % bagEntry(prop['indexed'])
   if prop['type'] in SCALARS:
     return SCALARS[prop['type']]
   if prop['type'] == 'ENUM':
@@ -142,7 +146,7 @@ def closure(cppClass, classes, enums, depth=MAX_DEPTH, prefix='', stack=()):
     if prop.get('indexed'):
       # A bag: the property itself takes every key at once, and `path.<anything>` is one entry.
       # The pattern key is what completes `params.water_color` without the SDK knowing the name.
-      entry = 'string' if prop['indexed'] == 'string' else 'Json'
+      entry = bagEntry(prop['indexed'])
       paths[path] = (valueType(prop, enums), prop.get('doc'), False)
       paths['`%s.${string}`' % path] = (entry, prop.get('doc'), False)
     if prop['type'] == 'OBJECT':

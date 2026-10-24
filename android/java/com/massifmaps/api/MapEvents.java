@@ -173,6 +173,11 @@ public final class MapEvents {
             return MassifApi.getInt(payload, "featureId", -1);
         }
 
+        /** Which point of a multi-point feature was hit: the index of the one picked. */
+        public int featurePosIndex() {
+            return (int) getDouble("featurePosIndex", -1);
+        }
+
         /** The style layer the feature came from - "roads", "buildings". */
         public String layerName() {
             return MassifApi.getString(payload, "featureLayerName", "");

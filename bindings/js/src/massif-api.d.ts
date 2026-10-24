@@ -632,6 +632,8 @@ export type TileLODProfile =
     | 'TILE_LOD_PROFILE_MOBILE'
     /** A full level finer than the reference (TileLODFactor 0.5, the historical default), about 4x its tile count. Meant for a desktop or a web page on a real GPU. */
     | 'TILE_LOD_PROFILE_DESKTOP'
+    /** What the getter reports once a LOD number was set on its own. Applying it changes nothing. */
+    | 'TILE_LOD_PROFILE_CUSTOM'
     ;
 
 export type TileSubstitutionPolicy =
@@ -797,6 +799,8 @@ export interface PropertyTypes {
         'frameTimestamps': string[];
         /** Gets the current maximum overzoom level for this layer. */
         'maxOverzoomLevel': number;
+        /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+        'maxStandInLevel': number;
         /** Gets the current maximum underzoom level for this layer. */
         'maxUnderzoomLevel': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -1426,6 +1430,14 @@ export interface PropertyTypes {
         'mapRenderer.mapRendererListener': Handle;
         /** Returns the current post-process effect. Can be null. */
         'mapRenderer.postProcessEffect': Handle;
+        /** Returns the value of a color parameter. */
+        'mapRenderer.postProcessEffect.colorParams': Record<string, Json>;
+        /** Returns the value of a color parameter. */
+        [key: `mapRenderer.postProcessEffect.colorParams.${string}`]: Json;
+        /** Returns the value of a float parameter. */
+        'mapRenderer.postProcessEffect.floatParams': Record<string, Json>;
+        /** Returns the value of a float parameter. */
+        [key: `mapRenderer.postProcessEffect.floatParams.${string}`]: Json;
         /** (read-only) Returns the fragment shader source of the effect. */
         readonly 'mapRenderer.postProcessEffect.fragmentShader': string;
         /** (read-only) Returns the name of the effect. */
@@ -2025,6 +2037,8 @@ export interface PropertyTypes {
         'layerBlendingSpeed': number;
         /** Gets the current maximum overzoom level for this layer. */
         'maxOverzoomLevel': number;
+        /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+        'maxStandInLevel': number;
         /** Gets the current maximum underzoom level for this layer. */
         'maxUnderzoomLevel': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -2139,6 +2153,8 @@ export interface PropertyTypes {
         'terrainOptions.autoFlattenRiseDuration': number;
         /** Returns the tilt at or above which the terrain renders flat. */
         'terrainOptions.autoFlattenTilt': number;
+        /** Returns the terrain background bitmap state. */
+        'terrainOptions.backgroundBitmapEnabled': boolean;
         /** Returns the terrain background color. */
         'terrainOptions.backgroundColor': number;
         /** Returns the billboard/label terrain occlusion state. */
@@ -2205,8 +2221,16 @@ export interface PropertyTypes {
         'terrainOptions.sharedGroundEnabled': boolean;
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'terrainOptions.subdivideDistance': number;
+        /** Returns the value of a terrain surface shader color parameter. */
+        'terrainOptions.surfaceColorParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader color parameter. */
+        [key: `terrainOptions.surfaceColorParams.${string}`]: Json;
         /** Returns the resolution the elevation node field is built at. */
         'terrainOptions.surfaceNodeResolution': number;
+        /** Returns the value of a terrain surface shader float parameter. */
+        'terrainOptions.surfaceParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader float parameter. */
+        [key: `terrainOptions.surfaceParams.${string}`]: Json;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'terrainOptions.surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -2377,6 +2401,8 @@ export interface PropertyTypes {
         'frameNr': number;
         /** Gets the current maximum overzoom level for this layer. */
         'maxOverzoomLevel': number;
+        /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+        'maxStandInLevel': number;
         /** Gets the current maximum underzoom level for this layer. */
         'maxUnderzoomLevel': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -3007,6 +3033,8 @@ export interface PropertyTypes {
         'legacyHeightScaleEnabled': boolean;
         /** Gets the current maximum overzoom level for this layer. */
         'maxOverzoomLevel': number;
+        /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+        'maxStandInLevel': number;
         /** Gets the current maximum underzoom level for this layer. */
         'maxUnderzoomLevel': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -3622,6 +3650,14 @@ export interface PropertyTypes {
         'mapRendererListener': Handle;
         /** Returns the current post-process effect. Can be null. */
         'postProcessEffect': Handle;
+        /** Returns the value of a color parameter. */
+        'postProcessEffect.colorParams': Record<string, Json>;
+        /** Returns the value of a color parameter. */
+        [key: `postProcessEffect.colorParams.${string}`]: Json;
+        /** Returns the value of a float parameter. */
+        'postProcessEffect.floatParams': Record<string, Json>;
+        /** Returns the value of a float parameter. */
+        [key: `postProcessEffect.floatParams.${string}`]: Json;
         /** (read-only) Returns the fragment shader source of the effect. */
         readonly 'postProcessEffect.fragmentShader': string;
         /** (read-only) Returns the name of the effect. */
@@ -4546,6 +4582,8 @@ export interface PropertyTypes {
         'terrain.autoFlattenRiseDuration': number;
         /** Returns the tilt at or above which the terrain renders flat. */
         'terrain.autoFlattenTilt': number;
+        /** Returns the terrain background bitmap state. */
+        'terrain.backgroundBitmapEnabled': boolean;
         /** Returns the terrain background color. */
         'terrain.backgroundColor': number;
         /** Returns the billboard/label terrain occlusion state. */
@@ -4612,8 +4650,16 @@ export interface PropertyTypes {
         'terrain.sharedGroundEnabled': boolean;
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'terrain.subdivideDistance': number;
+        /** Returns the value of a terrain surface shader color parameter. */
+        'terrain.surfaceColorParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader color parameter. */
+        [key: `terrain.surfaceColorParams.${string}`]: Json;
         /** Returns the resolution the elevation node field is built at. */
         'terrain.surfaceNodeResolution': number;
+        /** Returns the value of a terrain surface shader float parameter. */
+        'terrain.surfaceParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader float parameter. */
+        [key: `terrain.surfaceParams.${string}`]: Json;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'terrain.surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4640,6 +4686,8 @@ export interface PropertyTypes {
         'terrainOptions.autoFlattenRiseDuration': number;
         /** Returns the tilt at or above which the terrain renders flat. */
         'terrainOptions.autoFlattenTilt': number;
+        /** Returns the terrain background bitmap state. */
+        'terrainOptions.backgroundBitmapEnabled': boolean;
         /** Returns the terrain background color. */
         'terrainOptions.backgroundColor': number;
         /** Returns the billboard/label terrain occlusion state. */
@@ -4706,8 +4754,16 @@ export interface PropertyTypes {
         'terrainOptions.sharedGroundEnabled': boolean;
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'terrainOptions.subdivideDistance': number;
+        /** Returns the value of a terrain surface shader color parameter. */
+        'terrainOptions.surfaceColorParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader color parameter. */
+        [key: `terrainOptions.surfaceColorParams.${string}`]: Json;
         /** Returns the resolution the elevation node field is built at. */
         'terrainOptions.surfaceNodeResolution': number;
+        /** Returns the value of a terrain surface shader float parameter. */
+        'terrainOptions.surfaceParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader float parameter. */
+        [key: `terrainOptions.surfaceParams.${string}`]: Json;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'terrainOptions.surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4728,6 +4784,8 @@ export interface PropertyTypes {
         'tileLODFactor': number;
         /** Returns how many distinct zoom levels a tilted view may spread over. */
         'tileLODMaxZoomLevelsOnScreen': number;
+        /** Returns the profile the four LOD numbers currently match. */
+        'tileLODProfile': 'TILE_LOD_PROFILE_REFERENCE' | 'TILE_LOD_PROFILE_MOBILE' | 'TILE_LOD_PROFILE_DESKTOP' | 'TILE_LOD_PROFILE_CUSTOM' | number;
         /** Returns how many times more tiles a tilted view may load than a top-down one. */
         'tileLODTileCountRatio': number;
         /** Returns how many zoom levels above its own a coarsened tile may be styled at. */
@@ -5544,6 +5602,14 @@ export interface PropertyTypes {
         'verticalOffset': number;
     };
     'massif::PostProcessEffect': {
+        /** Returns the value of a color parameter. */
+        'colorParams': Record<string, Json>;
+        /** Returns the value of a color parameter. */
+        [key: `colorParams.${string}`]: Json;
+        /** Returns the value of a float parameter. */
+        'floatParams': Record<string, Json>;
+        /** Returns the value of a float parameter. */
+        [key: `floatParams.${string}`]: Json;
         /** (read-only) Returns the fragment shader source of the effect. */
         readonly 'fragmentShader': string;
         /** (read-only) Returns the name of the effect. */
@@ -5643,6 +5709,8 @@ export interface PropertyTypes {
         'frameNr': number;
         /** Gets the current maximum overzoom level for this layer. */
         'maxOverzoomLevel': number;
+        /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+        'maxStandInLevel': number;
         /** Gets the current maximum underzoom level for this layer. */
         'maxUnderzoomLevel': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -5937,6 +6005,8 @@ export interface PropertyTypes {
         'autoFlattenRiseDuration': number;
         /** Returns the tilt at or above which the terrain renders flat. */
         'autoFlattenTilt': number;
+        /** Returns the terrain background bitmap state. */
+        'backgroundBitmapEnabled': boolean;
         /** Returns the terrain background color. */
         'backgroundColor': number;
         /** Returns the billboard/label terrain occlusion state. */
@@ -6003,8 +6073,16 @@ export interface PropertyTypes {
         'sharedGroundEnabled': boolean;
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'subdivideDistance': number;
+        /** Returns the value of a terrain surface shader color parameter. */
+        'surfaceColorParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader color parameter. */
+        [key: `surfaceColorParams.${string}`]: Json;
         /** Returns the resolution the elevation node field is built at. */
         'surfaceNodeResolution': number;
+        /** Returns the value of a terrain surface shader float parameter. */
+        'surfaceParams': Record<string, Json>;
+        /** Returns the value of a terrain surface shader float parameter. */
+        [key: `surfaceParams.${string}`]: Json;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -6386,6 +6464,8 @@ export interface PropertyTypes {
         'frameNr': number;
         /** Gets the current maximum overzoom level for this layer. */
         'maxOverzoomLevel': number;
+        /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+        'maxStandInLevel': number;
         /** Gets the current maximum underzoom level for this layer. */
         'maxUnderzoomLevel': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -6858,6 +6938,8 @@ export interface PropertyTypes {
         'layerBlendingSpeed': number;
         /** Gets the current maximum overzoom level for this layer. */
         'maxOverzoomLevel': number;
+        /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+        'maxStandInLevel': number;
         /** Gets the current maximum underzoom level for this layer. */
         'maxUnderzoomLevel': number;
         /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -9910,6 +9992,10 @@ export type CelestialSpec = CelestialSpec_arc | CelestialSpec_image | CelestialS
 
 export interface EffectSpec_postprocess {
     type: 'postprocess';
+    /** Returns the value of a color parameter. */
+    colorParams?: Record<string, Json>;
+    /** Returns the value of a float parameter. */
+    floatParams?: Record<string, Json>;
     fragmentShader: string;
     name: string;
     /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
@@ -10320,6 +10406,8 @@ export interface LayerSpec_animated_raster {
     frameTimestamps?: string[];
     /** Gets the current maximum overzoom level for this layer. */
     maxOverzoomLevel?: number;
+    /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+    maxStandInLevel?: number;
     /** Gets the current maximum underzoom level for this layer. */
     maxUnderzoomLevel?: number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -10413,6 +10501,8 @@ export interface LayerSpec_composite_vector {
     layerBlendingSpeed?: number;
     /** Gets the current maximum overzoom level for this layer. */
     maxOverzoomLevel?: number;
+    /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+    maxStandInLevel?: number;
     /** Gets the current maximum underzoom level for this layer. */
     maxUnderzoomLevel?: number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -10461,6 +10551,8 @@ export interface LayerSpec_custom_raster {
     frameNr?: number;
     /** Gets the current maximum overzoom level for this layer. */
     maxOverzoomLevel?: number;
+    /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+    maxStandInLevel?: number;
     /** Gets the current maximum underzoom level for this layer. */
     maxUnderzoomLevel?: number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -10569,6 +10661,8 @@ export interface LayerSpec_hillshade {
     legacyHeightScaleEnabled?: boolean;
     /** Gets the current maximum overzoom level for this layer. */
     maxOverzoomLevel?: number;
+    /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+    maxStandInLevel?: number;
     /** Gets the current maximum underzoom level for this layer. */
     maxUnderzoomLevel?: number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -10629,6 +10723,8 @@ export interface LayerSpec_raster {
     frameNr?: number;
     /** Gets the current maximum overzoom level for this layer. */
     maxOverzoomLevel?: number;
+    /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+    maxStandInLevel?: number;
     /** Gets the current maximum underzoom level for this layer. */
     maxUnderzoomLevel?: number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -10718,6 +10814,8 @@ export interface LayerSpec_vector {
     layerBlendingSpeed?: number;
     /** Gets the current maximum overzoom level for this layer. */
     maxOverzoomLevel?: number;
+    /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+    maxStandInLevel?: number;
     /** Gets the current maximum underzoom level for this layer. */
     maxUnderzoomLevel?: number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -10868,6 +10966,8 @@ export interface OptionsSpec_terrain {
     autoFlattenRiseDuration?: number;
     /** Returns the tilt at or above which the terrain renders flat. */
     autoFlattenTilt?: number;
+    /** Returns the terrain background bitmap state. */
+    backgroundBitmapEnabled?: boolean;
     /** Returns the terrain background color. */
     backgroundColor?: number;
     /** Returns the billboard/label terrain occlusion state. */
@@ -10935,8 +11035,12 @@ export interface OptionsSpec_terrain {
     source: Handle | string | SourceSpec;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     subdivideDistance?: number;
+    /** Returns the value of a terrain surface shader color parameter. */
+    surfaceColorParams?: Record<string, Json>;
     /** Returns the resolution the elevation node field is built at. */
     surfaceNodeResolution?: number;
+    /** Returns the value of a terrain surface shader float parameter. */
+    surfaceParams?: Record<string, Json>;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     surfaceShaderSource?: string;
     /** Returns the opacity a label keeps while its anchor is behind 3D content. */
@@ -11410,6 +11514,7 @@ export interface MethodTypes {
     'massif::AssetTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::BalloonPopup': {
@@ -11455,6 +11560,7 @@ export interface MethodTypes {
     'massif::BitmapOverlayRasterTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::BundleAssetPackage': {
@@ -11462,6 +11568,7 @@ export interface MethodTypes {
     'massif::CacheTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::CartoCSSStyleSet': {
@@ -11516,6 +11623,7 @@ export interface MethodTypes {
     'massif::CombinedTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::CompiledStyleSet': {
@@ -11534,9 +11642,14 @@ export interface MethodTypes {
         setModelHighlight: { args: [featureId: number, featurePosIndex: number, color: number]; result: void };
     };
     'massif::ContourTileDataSource': {
+        clearIntervalMultipliers: { args: []; result: void };
+        clearResolutionsForZoom: { args: []; result: void };
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
+        setIntervalMultiplier: { args: [maxZoom: number, multiplier: number]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
+        setResolutionForZoom: { args: [maxZoom: number, resolution: number]; result: void };
     };
     'massif::CullState': {
     };
@@ -11598,6 +11711,7 @@ export interface MethodTypes {
         deleteLayer: { args: [layer: number]; result: void };
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         removeFeature: { args: [layer: number, id: Json]; result: void };
         setLayerGeoJSON: { args: [layer: number, geoJson: Json]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
@@ -11625,6 +11739,7 @@ export interface MethodTypes {
     'massif::HTTPTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::HillshadeRasterTileLayer': {
@@ -11676,6 +11791,7 @@ export interface MethodTypes {
     'massif::MBTilesTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::MBVectorTileDecoder': {
@@ -11722,6 +11838,7 @@ export interface MethodTypes {
     'massif::MapTilerOnlineTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::MapVec': {
@@ -11739,11 +11856,13 @@ export interface MethodTypes {
     'massif::MemoryCacheTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::MergedMBVTTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::MultiGeometry': {
@@ -11768,6 +11887,7 @@ export interface MethodTypes {
         add: { args: [datasource: Handle, tileMask: string]; result: void };
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         remove: { args: [datasource: Handle]; result: boolean };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
@@ -11804,11 +11924,13 @@ export interface MethodTypes {
     'massif::OrderedTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::PMTilesTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::PackageInfo': {
@@ -11830,6 +11952,7 @@ export interface MethodTypes {
     'massif::PackageManagerTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::PackageManagerValhallaRoutingService': {
@@ -11852,6 +11975,7 @@ export interface MethodTypes {
         clear: { args: []; result: void };
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
         startDownloadArea: { args: [bounds: Json, minZoom: number, maxZoom: number, fetchDelay: number]; result: void };
         stopAllDownloads: { args: []; result: void };
@@ -11863,6 +11987,7 @@ export interface MethodTypes {
     'massif::PointDetailTileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::PointGeometry': {
@@ -11896,7 +12021,6 @@ export interface MethodTypes {
     'massif::PopupStyleBuilder': {
     };
     'massif::PostProcessEffect': {
-        setFloatParameter: { args: [name: string, value: number]; result: void };
     };
     'massif::Projection': {
     };
@@ -11960,7 +12084,8 @@ export interface MethodTypes {
     };
     'massif::TerrainOptions': {
         calculateHorizon: { args: [pos: Position, eyeHeight: number, azimuths: Json, maxDistance: number]; result: number[] };
-        setSurfaceParameter: { args: [name: string, value: number]; result: void };
+        getElevation: { args: [pos: Position]; result: number };
+        getElevations: { args: [positions: Position[]]; result: number[] };
     };
     'massif::TerrariumElevationDataDecoder': {
     };
@@ -11978,6 +12103,7 @@ export interface MethodTypes {
     'massif::TileDataSource': {
         getMetaDataElement: { args: [key: string]; result: Json };
         loadTile: { args: [tile: Tile]; result: Handle<'massif::TileData'>; resultClass: 'massif::TileData' };
+        notifyTilesChanged: { args: [removeTiles: boolean]; result: void };
         setMetaDataElement: { args: [key: string, value: Json]; result: void };
     };
     'massif::TileDecoderListener': {
@@ -12086,6 +12212,8 @@ export interface EventTypes {
     'massif::Address': {
     };
     'massif::AnimatedRasterTileLayer': {
+        'tiles.loaded': null;
+        'tiles.preloaded': null;
     };
     'massif::AnimationStyle': {
     };
@@ -12167,6 +12295,8 @@ export interface EventTypes {
     'massif::CompiledStyleSet': {
     };
     'massif::CompositeVectorTileLayer': {
+        'tiles.loaded': null;
+        'tiles.preloaded': null;
         'vectortile.clicked': 'massif::VectorTileClickInfo';
     };
     'massif::ContourTileDataSource': {
@@ -12178,6 +12308,8 @@ export interface EventTypes {
     'massif::CustomPopupHandler': {
     };
     'massif::CustomRasterTileLayer': {
+        'tiles.loaded': null;
+        'tiles.preloaded': null;
     };
     'massif::DataSourceListener': {
     };
@@ -12243,6 +12375,8 @@ export interface EventTypes {
     'massif::HTTPTileDataSource': {
     };
     'massif::HillshadeRasterTileLayer': {
+        'tiles.loaded': null;
+        'tiles.preloaded': null;
     };
     'massif::Label': {
     };
@@ -12301,6 +12435,8 @@ export interface EventTypes {
     'massif::MapRange': {
     };
     'massif::MapRenderer': {
+        'frame.after': null;
+        'frame.before': null;
     };
     'massif::MapRendererListener': {
     };
@@ -12444,6 +12580,8 @@ export interface EventTypes {
     'massif::RasterTileEventListener': {
     };
     'massif::RasterTileLayer': {
+        'tiles.loaded': null;
+        'tiles.preloaded': null;
     };
     'massif::RedrawRequestListener': {
     };
@@ -12510,6 +12648,8 @@ export interface EventTypes {
     'massif::TileInfo': {
     };
     'massif::TileLayer': {
+        'tiles.loaded': null;
+        'tiles.preloaded': null;
     };
     'massif::TileLoadListener': {
     };
@@ -12569,6 +12709,8 @@ export interface EventTypes {
     'massif::VectorTileFeatureCollection': {
     };
     'massif::VectorTileLayer': {
+        'tiles.loaded': null;
+        'tiles.preloaded': null;
         'vectortile.clicked': 'massif::VectorTileClickInfo';
     };
     'massif::VectorTileSearchService': {

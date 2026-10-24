@@ -89,6 +89,10 @@ public final class Spec {
         if (value instanceof Spec) {
             return ((Spec) value).json;
         }
+        if (value instanceof MassifObject) {
+            // A number in a spec is a handle, unsigned: the top bits carry the generation.
+            return ((MassifObject) value).handle() & 0xFFFFFFFFL;
+        }
         if (value instanceof Object[]) {
             JSONArray array = new JSONArray();
             for (Object element : (Object[]) value) {

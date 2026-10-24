@@ -133,9 +133,11 @@ public class PeakFinderExample extends MapExample {
             .set("billboardOcclusionEnabled", true)
             .set("billboardOcclusionTolerance", 0.15)
             .set("maxTileZoomCoarsening", 4));
+        Spec surface = Spec.object();
         for (Object[] parameter : SURFACE) {
-            map.options().call("terrainOptions.setSurfaceParameter", parameter[0], parameter[1]).close();
+            surface.set("terrain.surfaceParams." + parameter[0], parameter[1]);
         }
+        map.apply(surface);
 
         // The ink is a post-process over the frame, reading the terrain's depth. The renderer hangs
         // off the map VIEW, which the map registered under its own id.
@@ -143,9 +145,11 @@ public class PeakFinderExample extends MapExample {
             .set("name", "relief")
             .set("fragmentShader", asset("relief-ink.glsl"))
             .set("terrainDepthRequired", true));
+        Spec inkParams = Spec.object();
         for (Object[] parameter : INK) {
-            ink.call("setFloatParameter", parameter[0], parameter[1]).close();
+            inkParams.set("floatParams." + parameter[0], parameter[1]);
         }
+        ink.apply(inkParams);
         view = Massif.find("view", map.options().id());
         view.set("mapRenderer.postProcessEffect", ink);
 
@@ -232,8 +236,7 @@ public class PeakFinderExample extends MapExample {
     private void setFov(float degrees) {
         map.set("fieldOfViewY", degrees);
         // The ridge term's tap spacing: radians per screen pixel.
-        map.options().call("terrainOptions.setSurfaceParameter", "uPixelAngle",
-                           Math.toRadians(degrees) / Math.max(map.view().getHeight(), 1)).close();
+        map.set("terrain.surfaceParams.uPixelAngle", Math.toRadians(degrees) / Math.max(map.view().getHeight(), 1));
     }
 
     /** The eye stands focusLift over the ground under it, which the renderer keeps every frame. */

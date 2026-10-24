@@ -126,6 +126,15 @@ public final class MassifMap implements AutoCloseable {
         return this;
     }
 
+    /**
+     * A method on the map or on an object under it, by path: <pre>map.call("light.setSunPositionFromTime", 2026, 3, 20, 12, 0, 45.0, 5.7).close();</pre>
+     * The result is the caller's to close.
+     * @see MassifObject#call
+     */
+    public MassifObject call(String method, Object... args) {
+        return options.call(method, args);
+    }
+
     public double getDouble(String path, double defaultValue) {
         return options.getDouble(path, defaultValue);
     }
@@ -228,6 +237,12 @@ public final class MassifMap implements AutoCloseable {
         return attached(layer);
     }
 
+    /** Takes every layer off the map, the ones this map did not build included. Their ids stay registered. */
+    public MassifMap clearLayers() {
+        layers.call("clear").close();
+        return this;
+    }
+
     /** Adds it at a given position. 0 is the bottom. */
     public MassifLayer add(MassifLayer layer, int index) {
         layers.call("insert", index, layer.handle());
@@ -237,6 +252,13 @@ public final class MassifMap implements AutoCloseable {
     /** Builds and adds in one step, which is what an app writes most of the time. */
     public MassifLayer addLayer(String id, Spec spec) {
         MassifLayer layer = add(Massif.layer(id, spec));
+        owned.add(new String[] { "layer", id });
+        return layer;
+    }
+
+    /** Builds a layer this map owns without putting it on the stack: for {@link #add(MassifLayer, int)} or a cached layer. */
+    public MassifLayer buildLayer(String id, Spec spec) {
+        MassifLayer layer = new MassifLayer(Massif.create("layer", id, spec), id, this);
         owned.add(new String[] { "layer", id });
         return layer;
     }

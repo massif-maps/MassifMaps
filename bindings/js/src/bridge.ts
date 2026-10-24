@@ -56,6 +56,8 @@ export interface NativeBridge {
     getDoubles(handle: number): number[];
     /** A blob, without turning it into a string. Null when the path is not one. */
     getData(handle: number, path: string): ArrayBuffer | null;
+    /** Raw bytes in, copied once with no encoding. 0 when the id is taken or there are no bytes. */
+    createData(id: string, bytes: Uint8Array): number;
 
     // --- events -------------------------------------------------------------------------------
     /**

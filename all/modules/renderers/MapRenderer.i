@@ -25,6 +25,9 @@
 
 !shared_ptr(massif::MapRenderer, renderers.MapRenderer)
 
+// Once per frame, on the GL thread: what a frame counter or a profiler hooks. Cheap to leave off: nothing is emitted until attachFrameEvents.
+!event(massif::MapRenderer, frame.before)
+!event(massif::MapRenderer, frame.after)
 %attributestring(massif::MapRenderer, std::shared_ptr<massif::MapRendererListener>, MapRendererListener, getMapRendererListener, setMapRendererListener)
 // Setting the same effect again is how a parameter change on it asks for a frame.
 %attributestring(massif::MapRenderer, std::shared_ptr<massif::PostProcessEffect>, PostProcessEffect, getPostProcessEffect, setPostProcessEffect)

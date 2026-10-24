@@ -93,6 +93,10 @@ namespace massif { namespace api {
         bool readEntry(const Variant& entry, PropertyValue& value);
         void writeEntry(const PropertyValue& value, std::string& entry);
         void writeEntry(const PropertyValue& value, Variant& entry);
+        bool readEntry(float entry, PropertyValue& value);
+        void writeEntry(const PropertyValue& value, float& entry);
+        bool readEntry(const Color& entry, PropertyValue& value);
+        void writeEntry(const PropertyValue& value, Color& entry);
 
     }
 

@@ -236,6 +236,21 @@ void testCAbi() {
     TEST_CHECK(mm_destroy_handle(ctx, blob) == MM_OK, "the result destroys by handle");
     TEST_CHECK(mm_data_size(ctx, blob, "", &size) == MM_BAD_HANDLE, "and is gone");
 
+    // mm_data_create: raw bytes in, which a text-only channel would mangle at the NUL and the high bit.
+    const unsigned char png[] = { 0x89, 0x50, 0x4E, 0x47, 0x00, 0xFF, 0x80, 0x0D, 0x0A };
+    mm_handle made = MM_NULL_HANDLE;
+    TEST_CHECK(mm_data_create(ctx, "icon-png", png, sizeof(png), &made) == MM_OK && made != MM_NULL_HANDLE,
+               "bytes register as a data object under an id");
+    unsigned char back[sizeof(png)] = {};
+    TEST_CHECK(mm_data_copy(ctx, made, "", back, sizeof(back), &copied) == MM_OK &&
+               copied == sizeof(png) && std::memcmp(back, png, sizeof(png)) == 0,
+               "and read back byte for byte, NUL and 0xFF included");
+    TEST_CHECK(mm_data_create(ctx, "icon-png", png, sizeof(png), nullptr) == MM_DUPLICATE_ID,
+               "a taken id is refused");
+    TEST_CHECK(mm_data_create(ctx, "empty", png, 0, nullptr) == MM_BAD_SPEC && mm_data_create(ctx, "null", nullptr, 4, nullptr) == MM_BAD_SPEC,
+               "no bytes is refused rather than registering an empty image");
+    TEST_CHECK(mm_data_create(nullptr, "x", png, sizeof(png), nullptr) == MM_BAD_CONTEXT, "and a null context too");
+
     // call: a bulk numeric result, flat.
     mm_handle ramp = MM_NULL_HANDLE;
     TEST_CHECK(mm_call(ctx, fog, "ramp", "[1000]", &ramp) == MM_OK, "a bulk numeric result");

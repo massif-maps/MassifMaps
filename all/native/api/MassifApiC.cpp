@@ -305,6 +305,30 @@ int mm_get_position(mm_ctx ctx, mm_handle handle, const char* path, const char* 
     return size > count ? MM_BUFFER_TOO_SMALL : MM_OK;
 }
 
+int mm_data_create(mm_ctx ctx, const char* id, const void* bytes, size_t size, mm_handle* out) {
+    Context* context = resolve(ctx);
+    if (!context) {
+        return MM_BAD_CONTEXT;
+    }
+    if (out) {
+        *out = MM_NULL_HANDLE;
+    }
+    if (!bytes || size == 0) {
+        return MM_BAD_SPEC;
+    }
+    Handle handle = NULL_HANDLE;
+    Result result = context->registerObject("data", text(id),
+                                            std::make_shared<BinaryData>(static_cast<const unsigned char*>(bytes), size),
+                                            "massif::BinaryData", handle);
+    if (result != RESULT_OK) {
+        return result;
+    }
+    if (out) {
+        *out = handle;
+    }
+    return MM_OK;
+}
+
 int mm_data_size(mm_ctx ctx, mm_handle handle, const char* path, size_t* size) {
     Context* context = resolve(ctx);
     if (!context) {

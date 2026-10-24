@@ -173,6 +173,19 @@ namespace massif { namespace api {
         return std::vector<unsigned char>(data->data(), data->data() + data->size());
     }
 
+    int MassifApi::createData(const std::string& objectId, const std::vector<unsigned char>& bytes) {
+        if (bytes.empty()) {
+            throw std::runtime_error("createData: no bytes");
+        }
+        Handle handle = NULL_HANDLE;
+        Result result = Context::GetDefault()->registerObject("data", objectId, std::make_shared<BinaryData>(bytes),
+                                                              "massif::BinaryData", handle);
+        if (result != RESULT_OK) {
+            throw std::runtime_error("createData: the id '" + objectId + "' is taken");
+        }
+        return static_cast<int>(handle);
+    }
+
     bool MassifApi::destroy(int handle) {
         return Context::GetDefault()->destroy(static_cast<Handle>(handle));
     }

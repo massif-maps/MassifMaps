@@ -1455,6 +1455,18 @@ export function destroy(kind: Kind | string, id: string): boolean {
  * Wraps a handle the app already has - a payload kept for the length of a handler, a result from
  * a raw call. Nothing is checked; the class is what the paths resolve against.
  */
+/**
+ * Raw bytes as a `data` object a spec can name by id - `{ type: 'bitmap', data: id }` decodes an
+ * image from them. Copied once; no base64, no file.
+ */
+export function createData(id: string, bytes: ArrayBuffer | Uint8Array): MassifObject<'massif::BinaryData'> {
+    const handle = bridge.createData(id, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+    if (!handle) {
+        throw new MassifApiError(`could not create data "${id}": the id is taken or there are no bytes`);
+    }
+    return new MassifObject(handle as Handle<'massif::BinaryData'>, 'massif::BinaryData', id);
+}
+
 export function wrap<C extends ClassName>(handle: number, className: C, id?: string): MassifObject<C> {
     return new MassifObject(handle as Handle<C>, className, id);
 }

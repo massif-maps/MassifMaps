@@ -60,7 +60,7 @@ turning the camera moved far tiles between levels and, with them, which features
 mapbox and maplibre alike**. It costs nothing in the near field, where the discrete zoom bound is
 what stops refinement anyway - it costs where the AREA rule is the binding constraint, up to 4x the
 tiles there, and at a grazing tilt that is most of the frame. It was never a measured decision.
-`Options::setTileLODProfile` names the three densities so a platform picks one instead of
+`Options::setTileLODProfile` (the `tileLODProfile` property on the facade, which reads `CUSTOM` once a LOD number was set on its own) names the three densities so a platform picks one instead of
 discovering this by tuning: `REFERENCE` (1.0), `MOBILE` (0.71, half a level), `DESKTOP` (0.5,
 today's default). Not yet measured against fps on a device - see the PR.
 :::

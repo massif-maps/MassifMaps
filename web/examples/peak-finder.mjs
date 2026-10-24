@@ -42,7 +42,7 @@ export default async function start(host) {
     billboardOcclusionEnabled: true, billboardOcclusionTolerance: label.occlusion, maxTileZoomCoarsening: 4,
   });
   const terrainObject = map.child('terrainOptions');
-  const setSurface = (name, value) => terrainObject.call('setSurfaceParameter', name, value);
+  const setSurface = (name, value) => terrainObject.set(`surfaceParams.${name}`, value);
   for (const [name, value] of Object.entries(SURFACE)) {
     setSurface(name, value);
   }
@@ -54,7 +54,7 @@ export default async function start(host) {
     type: 'postprocess', name: 'relief', fragmentShader: INK_SHADER, terrainDepthRequired: true,
   });
   for (const [name, value] of Object.entries(INK)) {
-    ink.call('setFloatParameter', name, value);
+    ink.set(`floatParams.${name}`, value);
   }
   mapView.set('mapRenderer.postProcessEffect', ink.handle);
 

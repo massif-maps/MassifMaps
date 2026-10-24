@@ -1,5 +1,7 @@
 #include "api/MassifInterop.h"
 #include "api/MassifApi.h"
+#include "layers/TileLayer.h"
+#include "renderers/MapRenderer.h"
 #include "api/Context.h"
 #include "api/MapEventBridge.h"
 #include "components/ClassRegistry.h"
@@ -228,6 +230,27 @@ namespace massif { namespace api {
 
     bool MassifApi::attachVectorElementEvents(int handle) {
         return MassifInterop::attachVectorElementEvents(handle);
+    }
+
+    bool MassifApi::attachTileLoadEvents(int handle) {
+        auto layer = std::dynamic_pointer_cast<TileLayer>(MassifInterop::getLayerByHandle(handle));
+        if (!layer) {
+            return false;
+        }
+        layer->setTileLoadListener(std::make_shared<TileLoadEventBridge>(
+            Context::GetDefault(), static_cast<Handle>(handle), layer->getTileLoadListener()));
+        return true;
+    }
+
+    bool MassifApi::attachFrameEvents(int handle) {
+        auto renderer = std::static_pointer_cast<MapRenderer>(
+            Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::MapRenderer"));
+        if (!renderer) {
+            return false;
+        }
+        renderer->setMapRendererListener(std::make_shared<FrameEventBridge>(
+            Context::GetDefault(), static_cast<Handle>(handle), renderer->getMapRendererListener()));
+        return true;
     }
 
     bool MassifApi::attachCelestialEvents(int handle) {

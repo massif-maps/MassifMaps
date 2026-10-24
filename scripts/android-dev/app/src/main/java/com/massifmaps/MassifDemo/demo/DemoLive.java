@@ -8,7 +8,9 @@ import android.util.Log;
 
 import com.massifmaps.api.EventListener;
 import com.massifmaps.api.MassifApi;
-import com.massifmaps.api.MassifInterop;
+import com.massifmaps.api.Massif;
+import com.massifmaps.api.MassifSource;
+import com.massifmaps.api.Spec;
 
 /**
  * Applies intent extras to a RUNNING demo, so any knob can be changed from adb without a relaunch:
@@ -123,13 +125,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("zoomTo")) {
             // "<zoom>,<seconds>": an animated zoom, the closest a script gets to a slow pinch.
             String[] parts = extras.getString("zoomTo").split(",");
-            ObjectApi.view(demo.mapView).setZoom(Float.parseFloat(parts[0]), parts.length > 1 ? Float.parseFloat(parts[1]) : 1.0f);
+            demo.map.camera().animate(parts.length > 1 ? Float.parseFloat(parts[1]) : 1.0f).zoom(Float.parseFloat(parts[0]));
         }
         if (extras.containsKey("apiCreate")) {
-            // The map's layer list, so a layer built from a spec can be put on the map.
-            if (MassifApi.findObject("layers", "demo") == 0) {
-                MassifInterop.adopt("layers", "demo", ObjectApi.layers(demo.mapView));
-            }
             applyApiCreate(extras.getString("apiCreate"));
         }
         if (extras.containsKey("apiSet")) {
@@ -183,7 +181,12 @@ public final class DemoLive extends BroadcastReceiver {
             return;
         }
         try {
-            Log.i(TAG, "legend " + demo.baseDecoder.getLegend(spec != null ? spec : ""));
+            com.massifmaps.api.MassifObject legend = demo.baseDecoder.call("getLegend", spec != null ? spec : "");
+            try {
+                Log.i(TAG, "legend " + legend.json());
+            } finally {
+                legend.close();
+            }
         } catch (Exception e) {
             Log.w(TAG, "legend failed: " + e.getMessage());
         }
@@ -237,8 +240,8 @@ public final class DemoLive extends BroadcastReceiver {
         }
 
         int handle = MassifApi.findObject(kind, id);
-        if (handle == 0 && "options".equals(kind) && "demo".equals(id)) {
-            handle = MassifInterop.adopt(kind, id, ObjectApi.options(demo.mapView));
+        if (handle == 0 && "demo".equals(id)) {
+            handle = demoHandle(kind);
         }
         if (handle == 0) {
             Log.w(TAG, "apiSet: nothing registered as " + kind + ":" + id);
@@ -296,8 +299,8 @@ public final class DemoLive extends BroadcastReceiver {
             id = parts[1];
         }
         int handle = MassifApi.findObject(kind, id);
-        if (handle == 0 && "options".equals(kind) && "demo".equals(id)) {
-            handle = MassifInterop.adopt(kind, id, ObjectApi.options(demo.mapView));
+        if (handle == 0 && "demo".equals(id)) {
+            handle = demoHandle(kind);
         }
         if (handle == 0) {
             Log.w(TAG, "apiSetAll: nothing registered as " + kind + ":" + id);
@@ -381,29 +384,19 @@ public final class DemoLive extends BroadcastReceiver {
             return;
         }
 
-        // The demo builds its layers with the object API, so the search needs one under an id.
-        com.massifmaps.layers.VectorTileLayer vector = null;
-        for (int i = 0; i < ObjectApi.layers(demo.mapView).count(); i++) {
-            if (ObjectApi.layers(demo.mapView).get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
-                vector = (com.massifmaps.layers.VectorTileLayer) ObjectApi.layers(demo.mapView).get(i);
-                break;
-            }
-        }
-        if (vector == null) {
+        if (demo.baseLayer == null || !"vector".equals(demo.baseLayer.getString("type", "vector"))) {
             Log.w(TAG, "apiSearch: no vector layer to search");
             return;
         }
-        // Re-registered every time: rebuildBaseLayer replaces the SDK layer and the old id goes stale.
-        MassifApi.unregisterObject("layer", "searchBase");
-        MassifInterop.adopt("layer", "searchBase", vector);
+        String searchBase = demo.baseLayer.id();
         MassifApi.unregisterObject("search", "demoSearch");
         final int service = MassifApi.create("search", "demoSearch",
-                                             "{\"type\":\"vectortile\",\"layer\":\"searchBase\"}");
+                                             "{\"type\":\"vectortile\",\"layer\":\"" + searchBase + "\"}");
         if (service == 0) {
             Log.w(TAG, "apiSearch: could not build the service");
             return;
         }
-        int zoom = (int) ObjectApi.view(demo.mapView).getZoom();
+        int zoom = (int) demo.map.camera().zoom();
         MassifApi.setFloat(service, "minZoom", zoom);
         MassifApi.setFloat(service, "maxZoom", zoom);
         MassifApi.setFloat(service, "maxResults", 10);
@@ -421,8 +414,7 @@ public final class DemoLive extends BroadcastReceiver {
         // measured: the whole y=16383 row went past before the call had to be killed.
         // From the MAP's base projection, not the data source's: a MapView coordinate is in the
         // former, and reading it as the latter put the search box near null island.
-        com.massifmaps.core.MapPos focus = ObjectApi.options(demo.mapView).getBaseProjection()
-                .toWgs84(ObjectApi.view(demo.mapView).getFocusPos());
+        com.massifmaps.api.Position focus = demo.map.camera().position();
         double span = 0.1;   // degrees, about 8 km at this latitude - a screenful at z14
         String box = corner(focus, -span, -span) + "," + corner(focus, span, -span) + ","
                    + corner(focus, span, span) + "," + corner(focus, -span, span) + ","
@@ -469,9 +461,9 @@ public final class DemoLive extends BroadcastReceiver {
         Log.i(TAG, "apiSearch '" + label + "' at z" + zoom + " queued as " + apiCall);
     }
 
-    private com.massifmaps.datasources.GeoJSONVectorTileDataSource markerSource;
+    private MassifSource markerSource;
     private int markerLayerIndex = -1;
-    private com.massifmaps.core.MapPos markerCentre;
+    private com.massifmaps.api.Position markerCentre;
 
     /**
      * MARKERS AS TILE FEATURES, to measure what replacing the vector-element path would cost.
@@ -484,27 +476,27 @@ public final class DemoLive extends BroadcastReceiver {
      * drapes on terrain - but moving one means re-tiling, and that is the number that decides it.
      */
     private void applyApiMarkers(int count) {
-        markerCentre = ObjectApi.options(demo.mapView).getBaseProjection()
-                .toWgs84(ObjectApi.view(demo.mapView).getFocusPos());
+        markerCentre = demo.map.camera().position();
 
         long start = System.nanoTime();
         long imported;
         try {
-            markerSource = new com.massifmaps.datasources.GeoJSONVectorTileDataSource(0, 24);
+            Massif.destroy("source", "demo-markers");
+            markerSource = Massif.source("demo-markers", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24));
             markerLayerIndex = markerSource.createLayer("markers");
-            markerSource.setLayerGeoJSONString(markerLayerIndex, markerFeatures(count));
+            markerSource.setLayerGeoJSON(markerLayerIndex, markerFeatures(count));
             imported = (System.nanoTime() - start) / 1000000;
         } catch (Exception e) {
             Log.w(TAG, "apiMarkers failed: " + e);
             return;
         }
 
-        com.massifmaps.styles.CartoCSSStyleSet style = new com.massifmaps.styles.CartoCSSStyleSet(
+        Massif.destroy("style", "demo-markers-style");
+        Massif.style("demo-markers-style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css",
                 "#markers{marker-fill:#e02020;marker-width:10;marker-allow-overlap:false;"
-                + "text-name:[name];text-face-name:'Roboto Regular';text-size:11;text-dy:-12;}");
-        com.massifmaps.layers.VectorTileLayer layer = new com.massifmaps.layers.VectorTileLayer(
-                markerSource, new com.massifmaps.vectortiles.MBVectorTileDecoder(style));
-        ObjectApi.layers(demo.mapView).add(layer);
+                + "text-name:[name];text-face-name:'Roboto Regular';text-size:11;text-dy:-12;}")));
+        Massif.destroy("layer", "demo-markers");
+        demo.map.add(Massif.layer("demo-markers", Spec.of("vector").set("source", "demo-markers").set("style", "demo-markers-style")));
         Log.i(TAG, "apiMarkers " + count + " features imported in " + imported + " ms");
     }
 
@@ -515,8 +507,8 @@ public final class DemoLive extends BroadcastReceiver {
             double angle = i * 2.399963;
             double radius = 0.0006 * Math.sqrt(i);
             json.append(i > 0 ? "," : "").append(feature(i,
-                    markerCentre.getX() + radius * Math.cos(angle),
-                    markerCentre.getY() + radius * Math.sin(angle)));
+                    markerCentre.lng + radius * Math.cos(angle),
+                    markerCentre.lat + radius * Math.sin(angle)));
         }
         return json.append("]}").toString();
     }
@@ -539,20 +531,20 @@ public final class DemoLive extends BroadcastReceiver {
             Log.w(TAG, "apiMarkerDrag: run --es apiMarkers N first");
             return;
         }
-        int zoom = (int) ObjectApi.view(demo.mapView).getZoom();
-        com.massifmaps.core.MapTile tile = tileOf(markerCentre.getX(), markerCentre.getY(), zoom);
+        int zoom = (int) demo.map.camera().zoom();
+        int[] tile = tileOf(markerCentre.lng, markerCentre.lat, zoom);
 
         long notifyNanos = 0, encodeNanos = 0;
         try {
             for (int i = 0; i < updates; i++) {
                 String moved = feature(0,
-                        markerCentre.getX() + 0.0004 * Math.cos(i * 0.2),
-                        markerCentre.getY() + 0.0004 * Math.sin(i * 0.2));
+                        markerCentre.lng + 0.0004 * Math.cos(i * 0.2),
+                        markerCentre.lat + 0.0004 * Math.sin(i * 0.2));
                 long a = System.nanoTime();
-                markerSource.updateGeoJSONStringFeature(markerLayerIndex, moved);
+                markerSource.call("updateFeature", markerLayerIndex, moved).close();
                 long b = System.nanoTime();
                 // What the tile thread would do next, on this thread so it can be timed.
-                markerSource.loadTile(tile);
+                markerSource.call("loadTile", tile).close();
                 encodeNanos += System.nanoTime() - b;
                 notifyNanos += b - a;
             }
@@ -570,13 +562,13 @@ public final class DemoLive extends BroadcastReceiver {
     }
 
     /** The web mercator tile a position falls in, so the bench re-encodes the one that changed. */
-    private static com.massifmaps.core.MapTile tileOf(double lon, double lat, int zoom) {
+    private static int[] tileOf(double lon, double lat, int zoom) {
         int n = 1 << zoom;
         int x = (int) Math.floor((lon + 180.0) / 360.0 * n);
         double rad = Math.toRadians(lat);
         int y = (int) Math.floor((1.0 - Math.log(Math.tan(rad) + 1.0 / Math.cos(rad)) / Math.PI)
                                  / 2.0 * n);
-        return new com.massifmaps.core.MapTile(x, y, zoom, 0);
+        return new int[] { x, y, zoom };
     }
 
     private EventListener apiMoveListener;
@@ -723,8 +715,8 @@ public final class DemoLive extends BroadcastReceiver {
         Log.i(TAG, "apiRoute " + points + " queued as " + apiCall);
     }
 
-    private static String corner(com.massifmaps.core.MapPos centre, double dx, double dy) {
-        return "[" + (centre.getX() + dx) + "," + (centre.getY() + dy) + "]";
+    private static String corner(com.massifmaps.api.Position centre, double dx, double dy) {
+        return "[" + (centre.lng + dx) + "," + (centre.lat + dy) + "]";
     }
 
     private void logCallResult(String what, int result) {
@@ -770,11 +762,10 @@ public final class DemoLive extends BroadcastReceiver {
         sugarClick = sugarMap.onClick(e ->
             Log.i(TAG, "sugar map.clicked at " + e.position() + " type=" + e.clickType()));
 
-        // A layer the demo built through the registry, else ADOPT the first vector one - the demo
-        // builds its layers with the object API, which is exactly the migration case.
+        // A layer the demo built through the registry, else the base map.
         com.massifmaps.api.MassifLayer layer = sugarMap.layer("demoApiLayer");
         if (layer == null) {
-            layer = com.massifmaps.api.MassifLegacy.adoptFirst(sugarMap, "demoBase", com.massifmaps.layers.VectorTileLayer.class);
+            layer = demo.baseLayer;
         }
         if (layer != null) {
             sugarFeature = layer.onFeatureClick(e ->
@@ -826,17 +817,9 @@ public final class DemoLive extends BroadcastReceiver {
         apiSubscription = MassifApi.on(handle, "map.clicked", apiListener, 0, false);
 
         // The layer-level one, which is where a feature payload comes from.
-        com.massifmaps.layers.VectorTileLayer vector = null;
-        for (int i = 0; i < ObjectApi.layers(demo.mapView).count(); i++) {
-            if (ObjectApi.layers(demo.mapView).get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
-                vector = (com.massifmaps.layers.VectorTileLayer) ObjectApi.layers(demo.mapView).get(i);
-                break;
-            }
-        }
-        if (vector != null) {
-            vector.setVectorTileEventListener(MassifInterop.createVectorTileEventBridge(
-                handle, vector.getVectorTileEventListener()));
-            MassifApi.on(handle, "vectortile.clicked", new EventListener() {
+        com.massifmaps.api.MassifLayer vector = demo.baseLayer;
+        if (vector != null && MassifApi.attachVectorTileEvents(vector.handle())) {
+            MassifApi.on(vector.handle(), "vectortile.clicked", new EventListener() {
                 @Override
                 public boolean onEvent(int target, String event, int payload) {
                     Log.i(TAG, "apiEvent " + event
@@ -854,7 +837,18 @@ public final class DemoLive extends BroadcastReceiver {
             }, 0, false, "EPSG:4326");
         }
         Log.i(TAG, "apiEvents on, handle=" + handle + " subscription=" + apiSubscription
-                + " vectorLayer=" + (vector != null ? vector.getClass().getSimpleName() : "none"));
+                + " vectorLayer=" + (vector != null ? vector.id() : "none"));
+    }
+
+    /** The map\'s own objects, addressed as kind:demo: the options and the layer list the view registered. */
+    private int demoHandle(String kind) {
+        if ("options".equals(kind)) {
+            return demo.mapView.getMapHandle();
+        }
+        if ("layers".equals(kind)) {
+            return demo.mapView.getLayersHandle();
+        }
+        return 0;
     }
 
     private static boolean has(Bundle extras, String[] keys) {

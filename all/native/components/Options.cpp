@@ -409,9 +409,29 @@ namespace massif {
             setTileLODFactor(0.5f); // a full level
             setTileStyleZoomLift(2);
             break;
+        case TileLODProfile::TILE_LOD_PROFILE_CUSTOM:
+            return;
         }
         setTileLODMaxZoomLevelsOnScreen(9.314f);
         setTileLODTileCountRatio(3.0f);
+    }
+
+    TileLODProfile::TileLODProfile Options::getTileLODProfile() const {
+        if (getTileLODMaxZoomLevelsOnScreen() != 9.314f || getTileLODTileCountRatio() != 3.0f) {
+            return TileLODProfile::TILE_LOD_PROFILE_CUSTOM;
+        }
+        float factor = getTileLODFactor();
+        int lift = getTileStyleZoomLift();
+        if (factor == 1.0f && lift == 1) {
+            return TileLODProfile::TILE_LOD_PROFILE_REFERENCE;
+        }
+        if (factor == 0.71f && lift == 1) {
+            return TileLODProfile::TILE_LOD_PROFILE_MOBILE;
+        }
+        if (factor == 0.5f && lift == 2) {
+            return TileLODProfile::TILE_LOD_PROFILE_DESKTOP;
+        }
+        return TileLODProfile::TILE_LOD_PROFILE_CUSTOM;
     }
 
     float Options::getDPI() const {

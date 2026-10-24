@@ -116,7 +116,7 @@ static double distance(double lat, double lon, MSFPosition *to) {
     }
     _terrain = [map terrainWithSpec:terrainSpec error:nil];
     [surface() enumerateKeysAndObjectsUsingBlock:^(NSString *name, NSNumber *value, BOOL *stop) {
-        [[map.options call:@"terrainOptions.setSurfaceParameter" args:@[ name, value ] error:nil] destroy];
+        [map set:[@"terrain.surfaceParams." stringByAppendingString:name] value:value];
     }];
 
     // The ink is a post-process over the frame, reading the terrain's depth. The renderer hangs off
@@ -127,7 +127,7 @@ static double distance(double lat, double lon, MSFPosition *to) {
                                          set:@"terrainDepthRequired" value:@YES]
                                     error:nil];
     [ink() enumerateKeysAndObjectsUsingBlock:^(NSString *name, NSNumber *value, BOOL *stop) {
-        [[effect call:@"setFloatParameter" args:@[ name, value ] error:nil] destroy];
+        [effect set:[@"floatParams." stringByAppendingString:name] value:value];
     }];
     _view = [MSFMassif find:@"view" objectId:map.options.objectId];
     [_view set:@"mapRenderer.postProcessEffect" value:effect];
@@ -193,8 +193,7 @@ static double distance(double lat, double lon, MSFPosition *to) {
     // The ridge term's tap spacing: radians per screen pixel.
     UIView *view = _map.view;
     double pixels = MAX(view.bounds.size.height * view.contentScaleFactor, 1);
-    [[_map.options call:@"terrainOptions.setSurfaceParameter"
-                   args:@[ @"uPixelAngle", @(degrees * M_PI / 180 / pixels) ] error:nil] destroy];
+    [_map set:@"terrain.surfaceParams.uPixelAngle" value:@(degrees * M_PI / 180 / pixels)];
 }
 
 /** The eye stands focusLift over the ground under it, which the renderer keeps every frame. */

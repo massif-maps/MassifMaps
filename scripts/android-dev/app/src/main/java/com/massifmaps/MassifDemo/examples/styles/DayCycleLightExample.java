@@ -107,13 +107,7 @@ public class DayCycleLightExample extends MapExample {
     private static final double LON = 2.3376;
     private static final double LAT = 48.8600;
 
-    /**
-     * The EQUINOX, as its Julian day at noon UTC (2026-03-20). On it the sun rises at 6 and sets at
-     * 18 local solar time at every latitude, so the slider's hours mean the same thing anywhere.
-     */
-    private static final double JULIAN_NOON = 2461120.0;
-
-    /** Local solar time: 12 is the sun at its highest, whatever the longitude. */
+    /** Local solar time on the equinox (2026-03-20): 12 is the sun at its highest, whatever the longitude. */
     private static final float START_HOUR = 17.4f;
 
     /**
@@ -349,31 +343,14 @@ public class DayCycleLightExample extends MapExample {
             .set("sunAltitude", (double) sunAltitude));
     }
 
-    /**
-     * Local solar time to a sun position - the NOAA low-accuracy form, good to ~0.1 degree, which
-     * is what LightOptions.setSunPositionFromTime computes in C++; the facade cannot reach that
-     * method, so the example spells it out.
-     */
+    /** Local solar time on the March equinox to a sun position, computed by the SDK in UTC. */
     private void setSunFromHour() {
-        double n = JULIAN_NOON + (hour - LON / 15.0 - 12.0) / 24.0 - 2451545.0;
-        double meanLong = 280.460 + 0.9856474 * n;
-        double meanAnom = Math.toRadians(357.528 + 0.9856003 * n);
-        double eclipticLong = Math.toRadians(
-            meanLong + 1.915 * Math.sin(meanAnom) + 0.020 * Math.sin(2 * meanAnom));
-        double obliquity = Math.toRadians(23.439 - 0.0000004 * n);
-        double rightAsc = Math.atan2(Math.cos(obliquity) * Math.sin(eclipticLong),
-                                     Math.cos(eclipticLong));
-        double decl = Math.asin(Math.sin(obliquity) * Math.sin(eclipticLong));
-
-        // Greenwich mean sidereal time, then the local hour angle.
-        double gmst = (18.697374558 + 24.06570982441908 * n) % 24.0;
-        double hourAngle = Math.toRadians((gmst < 0 ? gmst + 24.0 : gmst) * 15.0 + LON) - rightAsc;
-
-        double lat = Math.toRadians(LAT);
-        sunAltitude = (float) Math.toDegrees(Math.asin(
-            Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(hourAngle)));
-        // atan2 here is measured from south; the SDK wants clockwise from north.
-        sunAzimuth = (float) (Math.toDegrees(Math.atan2(Math.sin(hourAngle),
-            Math.cos(hourAngle) * Math.sin(lat) - Math.tan(decl) * Math.cos(lat))) + 180.0);
+        double utc = hour - LON / 15.0;
+        int dayShift = (int) Math.floor(utc / 24.0);
+        utc -= dayShift * 24.0;
+        host.map().call("light.setSunPositionFromTime", 2026, 3, 20 + dayShift,
+            (int) utc, (int) ((utc - (int) utc) * 60), LAT, LON).close();
+        sunAltitude = (float) host.map().light().getDouble("sunAltitude", 0);
+        sunAzimuth = (float) host.map().light().getDouble("sunAzimuth", 0);
     }
 }

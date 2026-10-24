@@ -92,7 +92,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
 
         mapView = findViewById(R.id.mapView);
         if ("true".equals(getIntent().getStringExtra("showFps"))) {
-            fpsCounter = FpsCounter.attach(mapView, (ViewGroup) findViewById(R.id.exampleRoot));
+            fpsCounter = FpsCounter.attach(com.massifmaps.api.MassifMap.attach(mapView), (ViewGroup) findViewById(R.id.exampleRoot));
         }
         controls = findViewById(R.id.controls);
         sliders = findViewById(R.id.sliders);

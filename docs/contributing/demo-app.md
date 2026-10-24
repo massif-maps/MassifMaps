@@ -57,11 +57,10 @@ rendering bug reproduces in a minute without the simulator or NativeScript. See
 |---|---|
 | `demo/DemoConfig.java` | every default, one static field per knob + the intent-extra key map |
 | `demo/DemoCfg.java` | `cfgBool/cfgFloat/cfgInt/cfgStr/cfgColor/cfgEnum` intent readers (`--es key value`) |
-| `demo/DemoMap.java` | builds/updates the map: layer registry, shared sources, terrain/light/sky, camera |
-| `demo/DemoStyles.java` | style decoders (dir / zip / inline CartoCSS / style project) + demo shaders |
+| `demo/DemoMap.java` | builds/updates the map through the facade only (the bench carries no object API): layer registry, shared sources, terrain/light/sky, camera |
+| `demo/DemoStyles.java` | style specs (dir / zip / inline CartoCSS / style project) + demo shaders |
 | `demo/DemoSky.java` | day-cycle sun/sky + generated sky shader |
 | `demo/DemoPanel.java` | on-screen panel — writes DemoConfig, then calls a `DemoMap.apply*()` |
-| `demo/ObjectApi.java` | the demo still builds with the object API; a `MapView` no longer carries it, so `ObjectApi.options(mapView)`, `layers`, `view` and `renderer` read it back from the view's handles |
 | `demo/DemoTests.java` | one-shot actions (routing, search, GeoJSON) |
 | `ui/main/SecondFragment.java` | Android glue only (view, permissions, map listener) |
 

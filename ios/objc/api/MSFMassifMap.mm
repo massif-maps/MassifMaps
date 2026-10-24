@@ -262,6 +262,10 @@ static void MSFInstallUiDispatcher(void) {
     return [_options apply:values];
 }
 
+- (nullable MSFMassifObject *)call:(NSString *)method args:(nullable NSArray *)args error:(NSError **)error {
+    return [_options call:method args:args error:error];
+}
+
 - (double)getDouble:(NSString *)path defaultValue:(double)defaultValue {
     return [_options getDouble:path defaultValue:defaultValue];
 }

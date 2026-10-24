@@ -91,6 +91,20 @@ namespace massif { namespace api {
         static bool attachCelestialEvents(int handle);
 
         /**
+         * Installs the load bridge of a tile layer given by handle: `tiles.loaded` fires on it when the
+         * visible tiles have arrived, `tiles.preloaded` for the ring around them.
+         * @return False if the handle is not a tile layer.
+         */
+        static bool attachTileLoadEvents(int handle);
+
+        /**
+         * Installs the frame bridge of a renderer given by handle (the `mapRenderer` of a map view):
+         * `frame.before` and `frame.after` fire on it from the GL thread, around every drawn frame.
+         * @return False if the handle is not a renderer.
+         */
+        static bool attachFrameEvents(int handle);
+
+        /**
          * Removes one subscription.
          */
         static bool off(int subscription);
@@ -252,6 +266,16 @@ namespace massif { namespace api {
          * @return The data, empty when the path does not resolve to one.
          */
         static std::vector<unsigned char> getData(int handle, const std::string& path);
+
+        /**
+         * Registers raw bytes as a `data` object a spec can name: `{"type":"bitmap","data":"<id>"}`
+         * decodes an image from them, with no file and no text encoding in between. The bytes are
+         * copied once. `byte[]` in Java, `NSData` in Objective-C.
+         * @param objectId The caller's name for the data. Must be free.
+         * @return The handle.
+         * @throws std::runtime_error When the id is taken or the bytes are empty.
+         */
+        static int createData(const std::string& objectId, const std::vector<unsigned char>& bytes);
 
         /**
          * Drops a handle's id, and with it the context's reference to the object.

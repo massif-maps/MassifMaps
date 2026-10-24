@@ -1123,8 +1123,8 @@ public final class DemoConfig {
     /** Extra height at the middle of the fly-in, in metres: the viewpoint climbs over the way
      *  there like a plane instead of rising straight to its final elevation. */
     public static float PEAK_FINDER_FLY_CLIMB = 1500;
-    /** Timing curve of the fly-in, see com.massifmaps.ui.FlightEasing. 0 EASE, 1 LINEAR. */
-    public static int PEAK_FINDER_FLY_EASING = com.massifmaps.ui.FlightEasing.FLIGHT_EASING_EASE;
+    /** Timing curve of the fly-in, 0 ease, 1 linear, 2 ease-in, 3 ease-out, 4 ease-in-out. */
+    public static int PEAK_FINDER_FLY_EASING = 0;
     /** AR: the relief view over the camera preview. Dark palette, a transparent clear colour and a
      *  translucent GL surface (the map is then composited over the preview), the sky off, and the
      *  device's orientation driving the camera. */

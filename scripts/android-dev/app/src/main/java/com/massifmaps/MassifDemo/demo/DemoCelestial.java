@@ -7,18 +7,14 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.widget.Toast;
 
-import com.massifmaps.celestial.CelestialArc;
-import com.massifmaps.celestial.CelestialObject;
-import com.massifmaps.celestial.CelestialSprite;
-import com.massifmaps.core.DoubleVector;
-import com.massifmaps.core.MapPos;
-import com.massifmaps.core.Variant;
-import com.massifmaps.graphics.Color;
-import com.massifmaps.layers.CelestialEventListener;
-import com.massifmaps.layers.CelestialLayer;
-import com.massifmaps.ui.ClickInfo;
-import com.massifmaps.ui.MapView;
-import com.massifmaps.utils.BitmapUtils;
+import com.massifmaps.api.MapEvents;
+import com.massifmaps.api.Massif;
+import com.massifmaps.api.MassifLayer;
+import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.MassifObject;
+import com.massifmaps.api.Spec;
+
+
 
 /**
  * The sun, the moon and their paths across the day, built on the generic celestial API.
@@ -39,69 +35,70 @@ public final class DemoCelestial {
     /** The sampling step of a daily path, in minutes. 10 is smooth at any field of view. */
     private static final int PATH_STEP_MINUTES = 10;
 
-    private CelestialLayer layer;
-    private CelestialSprite sun;
-    private CelestialSprite moon;
-    private CelestialArc sunPath;
-    private CelestialArc moonPath;
+    private MassifLayer layer;
+    private MassifObject sun;
+    private MassifObject moon;
+    private MassifObject sunPath;
+    private MassifObject moonPath;
+    private MassifMap map;
     private double lastMoonPhase = -1;
 
     /** Builds the layer and its objects. Added FIRST, so the map and the terrain draw over them. */
-    public CelestialLayer createLayer(final MapView mapView) {
-        layer = new CelestialLayer();
+    public MassifLayer createLayer(final MassifMap map, final android.content.Context context) {
+        this.map = map;
+        Massif.destroy("layer", "demo-celestial");
         // Drawn after any post-process effect (still depth-tested, so a path still goes behind
         // the ridges): the relief look is for the ground, not for the objects over it.
-        layer.setPostProcessed(false);
+        layer = Massif.layer("demo-celestial", Spec.of("celestial").set("postProcessed", false));
 
-        sun = new CelestialSprite();
-        sun.setAngularSize(DemoConfig.CELESTIAL_SUN_SIZE);
-        sun.setColor(new Color((short) 255, (short) 244, (short) 214, (short) 255));
-        sun.setSoftness(0.35f);
-        sun.setClickRadius(3f);
-        sun.setMetaDataElement(META_NAME, new Variant("Sun"));
+        sun = add("demo-sun", Spec.of("sprite")
+                .set("angularSize", DemoConfig.CELESTIAL_SUN_SIZE)
+                .set("color", argb(255, 244, 214, 255))
+                .set("softness", 0.35)
+                .set("clickRadius", 3)
+                .set("metaData", Spec.object().set(META_NAME, "Sun")));
+        moon = add("demo-moon", Spec.of("sprite")
+                .set("angularSize", DemoConfig.CELESTIAL_MOON_SIZE)
+                .set("color", argb(245, 245, 235, 255))
+                .set("softness", 0.25)
+                .set("clickRadius", 3)
+                .set("metaData", Spec.object().set(META_NAME, "Moon")));
+        sunPath = add("demo-sun-path", Spec.of("arc")
+                .set("color", argb(255, 216, 120, 160))
+                .set("width", DemoConfig.CELESTIAL_ARC_WIDTH)
+                .set("belowHorizonVisible", false)
+                .set("clickRadius", 2)
+                .set("metaData", Spec.object().set(META_NAME, "Sun path")));
+        moonPath = add("demo-moon-path", Spec.of("arc")
+                .set("color", argb(170, 190, 255, 130))
+                .set("width", DemoConfig.CELESTIAL_ARC_WIDTH)
+                .set("belowHorizonVisible", false)
+                .set("clickRadius", 2)
+                .set("metaData", Spec.object().set(META_NAME, "Moon path")));
+        this.context = context;
 
-        moon = new CelestialSprite();
-        moon.setAngularSize(DemoConfig.CELESTIAL_MOON_SIZE);
-        moon.setColor(new Color((short) 245, (short) 245, (short) 235, (short) 255));
-        moon.setSoftness(0.25f);
-        moon.setClickRadius(3f);
-        moon.setMetaDataElement(META_NAME, new Variant("Moon"));
-
-        sunPath = new CelestialArc();
-        sunPath.setColor(new Color((short) 255, (short) 216, (short) 120, (short) 160));
-        sunPath.setWidth(DemoConfig.CELESTIAL_ARC_WIDTH);
-        sunPath.setBelowHorizonVisible(false);
-        sunPath.setClickRadius(2f);
-        sunPath.setMetaDataElement(META_NAME, new Variant("Sun path"));
-
-        moonPath = new CelestialArc();
-        moonPath.setColor(new Color((short) 170, (short) 190, (short) 255, (short) 130));
-        moonPath.setWidth(DemoConfig.CELESTIAL_ARC_WIDTH);
-        moonPath.setBelowHorizonVisible(false);
-        moonPath.setClickRadius(2f);
-        moonPath.setMetaDataElement(META_NAME, new Variant("Moon path"));
-
-        layer.add(sun);
-        layer.add(moon);
-        layer.add(sunPath);
-        layer.add(moonPath);
-
-        layer.setCelestialEventListener(new CelestialEventListener() {
-            @Override
-            public boolean onCelestialObjectClicked(ClickInfo clickInfo, CelestialObject object) {
-                final String message = object.getMetaDataElement(META_NAME).getString()
-                        + "  az " + Math.round(object.getAzimuth()) + "°  alt " + Math.round(object.getAltitude()) + "°";
-                // The listener is called on the touch thread; a Toast needs the UI thread.
-                mapView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(mapView.getContext(), message, Toast.LENGTH_SHORT).show();
-                    }
-                });
-                return true;
-            }
+        layer.on(MapEvents.CELESTIAL_CLICKED, e -> {
+            final String message = e.get("celestialObject.metaData." + META_NAME)
+                    + "  az " + Math.round(Double.parseDouble(e.get("celestialObject.azimuth")))
+                    + "°  alt " + Math.round(Double.parseDouble(e.get("celestialObject.altitude"))) + "°";
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
         });
         return layer;
+    }
+
+    private android.content.Context context;
+
+    /** A colour as the facade's ARGB int. */
+    private static int argb(int r, int g, int b, int a) {
+        return (a & 0xFF) << 24 | (r & 0xFF) << 16 | (g & 0xFF) << 8 | (b & 0xFF);
+    }
+
+    /** Builds an object under an id and puts it on the layer. */
+    private MassifObject add(String id, Spec spec) {
+        Massif.destroy("celestial", id);
+        MassifObject object = Massif.object("celestial", id, spec);
+        layer.call("add", object.handle()).close();
+        return object;
     }
 
     /**
@@ -121,36 +118,37 @@ public final class DemoCelestial {
         double n = DemoAstro.daysSinceJ2000(DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY, hourUtc);
 
         double[] sunDir = DemoAstro.sunHorizon(n, lat, lon);
-        sun.setDirection((float) sunDir[0], (float) sunDir[1], 0);
+        sun.call("setDirection", sunDir[0], sunDir[1], 0).close();
 
         double[] moonDir = DemoAstro.moonHorizon(n, lat, lon);
-        moon.setDirection((float) moonDir[0], (float) moonDir[1], 0);
+        moon.call("setDirection", moonDir[0], moonDir[1], 0).close();
         updateMoonPhase(n);
 
         // The path across the day, sampled from the same ephemeris every PATH_STEP_MINUTES from
         // midnight to midnight. A circle about the celestial pole would be a good enough sun path
         // (declination barely moves in a day), but the moon's does move - a quarter of the sky in a
         // day - so both are sampled and the two arcs are then the same kind of object.
-        sunPath.setDirections(dailyPath(true, lat, lon));
-        moonPath.setDirections(dailyPath(false, lat, lon));
+        sunPath.call("setDirections", (Object) dailyPath(true, lat, lon)).close();
+        moonPath.call("setDirections", (Object) dailyPath(false, lat, lon)).close();
 
-        sun.setVisible(DemoConfig.CELESTIAL_SUN);
-        moon.setVisible(DemoConfig.CELESTIAL_MOON);
-        sunPath.setVisible(DemoConfig.CELESTIAL_ARC);
-        moonPath.setVisible(DemoConfig.CELESTIAL_MOON_ARC);
+        sun.set("visible", DemoConfig.CELESTIAL_SUN);
+        moon.set("visible", DemoConfig.CELESTIAL_MOON);
+        sunPath.set("visible", DemoConfig.CELESTIAL_ARC);
+        moonPath.set("visible", DemoConfig.CELESTIAL_MOON_ARC);
         android.util.Log.i("DemoCelestial", "sun az " + Math.round(sunDir[0]) + " alt " + Math.round(sunDir[1])
                 + ", moon az " + Math.round(moonDir[0]) + " alt " + Math.round(moonDir[1])
                 + ", hour " + hourUtc + " UTC " + DemoConfig.SUN_YEAR + "-" + DemoConfig.SUN_MONTH + "-" + DemoConfig.SUN_DAY);
     }
 
     /** The body's track over the configured date, as alternating azimuth/altitude degrees. */
-    private static DoubleVector dailyPath(boolean isSun, double lat, double lon) {
-        DoubleVector directions = new DoubleVector();
-        for (int minute = 0; minute <= 24 * 60; minute += PATH_STEP_MINUTES) {
-            double n = DemoAstro.daysSinceJ2000(DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY, minute / 60.0);
+    private static double[] dailyPath(boolean isSun, double lat, double lon) {
+        int count = 24 * 60 / PATH_STEP_MINUTES + 1;
+        double[] directions = new double[2 * count];
+        for (int i = 0; i < count; i++) {
+            double n = DemoAstro.daysSinceJ2000(DemoConfig.SUN_YEAR, DemoConfig.SUN_MONTH, DemoConfig.SUN_DAY, i * PATH_STEP_MINUTES / 60.0);
             double[] horizon = isSun ? DemoAstro.sunHorizon(n, lat, lon) : DemoAstro.moonHorizon(n, lat, lon);
-            directions.add(horizon[0]);
-            directions.add(horizon[1]);
+            directions[2 * i] = horizon[0];
+            directions[2 * i + 1] = horizon[1];
         }
         return directions;
     }
@@ -164,7 +162,7 @@ public final class DemoCelestial {
         double[] phase = DemoAstro.moonPhase(n);
         if (!DemoConfig.CELESTIAL_MOON_PHASE) {
             if (lastMoonPhase >= 0) {
-                moon.setBitmap(null);
+                moon.set("bitmap", null);
                 lastMoonPhase = -1;
             }
             return;
@@ -201,20 +199,27 @@ public final class DemoCelestial {
             // Gibbous: it bulges into the dark half, so the ellipse paints the moon back in.
             canvas.drawOval(terminatorOval, paint);
         }
-        moon.setBitmap(BitmapUtils.createBitmapFromAndroidBitmap(bitmap));
+        moon.set("bitmap", pngBitmap("demo-moon-bitmap", bitmap));
+    }
+
+    static MassifObject pngBitmap(String id, android.graphics.Bitmap bitmap) {
+        java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, png);
+        Massif.destroy("bitmap", id);
+        Massif.destroy("data", id + "-png");
+        return Massif.object("bitmap", id, Spec.object().set("data", Massif.data(id + "-png", png.toByteArray())));
     }
 
     /**
      * An aircraft or a satellite: the same API, anchored above a real place instead of by
      * direction, so it parallaxes with the map like anything else that has a location.
      */
-    public CelestialSprite addAircraft(double lon, double lat, double altitudeMeters) {
-        CelestialSprite aircraft = new CelestialSprite();
-        aircraft.setScreenSize(24f);
-        aircraft.setColor(new Color((short) 255, (short) 255, (short) 255, (short) 255));
-        aircraft.setPosition(new MapPos(lon, lat), altitudeMeters);
-        aircraft.setMetaDataElement(META_NAME, new Variant("Aircraft"));
-        layer.add(aircraft);
+    public MassifObject addAircraft(double lon, double lat, double altitudeMeters) {
+        MassifObject aircraft = add("demo-aircraft", Spec.of("sprite")
+                .set("screenSize", 24)
+                .set("color", 0xFFFFFFFF)
+                .set("metaData", Spec.object().set(META_NAME, "Aircraft")));
+        aircraft.call("setPosition", new double[] { lon, lat }, altitudeMeters).close();
         return aircraft;
     }
 }

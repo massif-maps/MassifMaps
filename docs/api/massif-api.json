@@ -2725,7 +2725,54 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "clearIntervalMultipliers",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "clearResolutionsForZoom",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "setIntervalMultiplier",
+          "args": [
+            {
+              "name": "maxZoom",
+              "type": "int"
+            },
+            {
+              "name": "multiplier",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "setResolutionForZoom",
+          "args": [
+            {
+              "name": "maxZoom",
+              "type": "int"
+            },
+            {
+              "name": "resolution",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CullState": {
@@ -5359,7 +5406,20 @@
       ],
       "aliases": {},
       "methods": [],
-      "events": []
+      "events": [
+        {
+          "cppClass": "massif::MapRenderer",
+          "name": "frame.after",
+          "payload": null,
+          "consumable": false
+        },
+        {
+          "cppClass": "massif::MapRenderer",
+          "name": "frame.before",
+          "payload": null,
+          "consumable": false
+        }
+      ]
     },
     "massif::MapRendererListener": {
       "base": null,
@@ -6474,6 +6534,16 @@
           "doc": "Returns how many distinct zoom levels a tilted view may spread over."
         },
         {
+          "name": "tileLODProfile",
+          "type": "ENUM",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::TileLODProfile::TileLODProfile",
+          "enum": "massif::TileLODProfile::TileLODProfile",
+          "doc": "Returns the profile the four LOD numbers currently match."
+        },
+        {
           "name": "tileLODTileCountRatio",
           "type": "FLOAT",
           "readOnly": false,
@@ -7496,6 +7566,26 @@
       "base": null,
       "properties": [
         {
+          "name": "colorParams",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "indexed": "number",
+          "doc": "Returns the value of a color parameter."
+        },
+        {
+          "name": "floatParams",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "indexed": "number",
+          "doc": "Returns the value of a float parameter."
+        },
+        {
           "name": "fragmentShader",
           "type": "STRING",
           "readOnly": true,
@@ -7533,24 +7623,7 @@
         }
       ],
       "aliases": {},
-      "methods": [
-        {
-          "cppClass": "massif::PostProcessEffect",
-          "name": "setFloatParameter",
-          "args": [
-            {
-              "name": "name",
-              "type": "string"
-            },
-            {
-              "name": "value",
-              "type": "float"
-            }
-          ],
-          "returns": "void",
-          "returnClass": null
-        }
-      ],
+      "methods": [],
       "events": []
     },
     "massif::Projection": {
@@ -8597,6 +8670,15 @@
           "doc": "Returns the tilt at or above which the terrain renders flat."
         },
         {
+          "name": "backgroundBitmapEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the terrain background bitmap state."
+        },
+        {
           "name": "backgroundColor",
           "type": "COLOR",
           "readOnly": false,
@@ -8895,6 +8977,16 @@
           "doc": "Returns the distance geo-three's terrain LOD subdivides at."
         },
         {
+          "name": "surfaceColorParams",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "indexed": "number",
+          "doc": "Returns the value of a terrain surface shader color parameter."
+        },
+        {
           "name": "surfaceNodeResolution",
           "type": "INT",
           "readOnly": false,
@@ -8902,6 +8994,16 @@
           "position": false,
           "cppType": "int",
           "doc": "Returns the resolution the elevation node field is built at."
+        },
+        {
+          "name": "surfaceParams",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "indexed": "number",
+          "doc": "Returns the value of a terrain surface shader float parameter."
         },
         {
           "name": "surfaceShaderSource",
@@ -8995,18 +9097,26 @@
         },
         {
           "cppClass": "massif::TerrainOptions",
-          "name": "setSurfaceParameter",
+          "name": "getElevation",
           "args": [
             {
-              "name": "name",
-              "type": "string"
-            },
-            {
-              "name": "value",
-              "type": "float"
+              "name": "pos",
+              "type": "pos"
             }
           ],
-          "returns": "void",
+          "returns": "float",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "getElevations",
+          "args": [
+            {
+              "name": "positions",
+              "type": "positions"
+            }
+          ],
+          "returns": "doubles",
           "returnClass": null
         }
       ],
@@ -9455,6 +9565,18 @@
         },
         {
           "cppClass": "massif::TileDataSource",
+          "name": "notifyTilesChanged",
+          "args": [
+            {
+              "name": "removeTiles",
+              "type": "bool"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TileDataSource",
           "name": "setMetaDataElement",
           "args": [
             {
@@ -9580,6 +9702,15 @@
           "doc": "Gets the current maximum overzoom level for this layer."
         },
         {
+          "name": "maxStandInLevel",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Gets how many zoom levels up a cached tile may stand in for a missing one."
+        },
+        {
           "name": "maxUnderzoomLevel",
           "type": "INT",
           "readOnly": false,
@@ -9680,7 +9811,20 @@
           "returnClass": null
         }
       ],
-      "events": []
+      "events": [
+        {
+          "cppClass": "massif::TileLayer",
+          "name": "tiles.loaded",
+          "payload": null,
+          "consumable": false
+        },
+        {
+          "cppClass": "massif::TileLayer",
+          "name": "tiles.preloaded",
+          "payload": null,
+          "consumable": false
+        }
+      ]
     },
     "massif::TileLoadListener": {
       "base": null,
@@ -15658,6 +15802,11 @@
         "name": "TILE_LOD_PROFILE_DESKTOP",
         "value": 2,
         "doc": "A full level finer than the reference (TileLODFactor 0.5, the historical default), about 4x its tile count. Meant for a desktop or a web page on a real GPU."
+      },
+      {
+        "name": "TILE_LOD_PROFILE_CUSTOM",
+        "value": 3,
+        "doc": "What the getter reports once a LOD number was set on its own. Applying it changes nothing."
       }
     ],
     "massif::TileSubstitutionPolicy::TileSubstitutionPolicy": [

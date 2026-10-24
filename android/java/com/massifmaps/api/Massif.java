@@ -62,6 +62,18 @@ public final class Massif {
         return new MassifObject(create(kind, id, spec), kind, id);
     }
 
+    /**
+     * Registers raw bytes as a "data" object, copied once with no encoding in between. A spec names
+     * it by id: <pre>Massif.object("bitmap", "icon", Spec.object().set("data", Massif.data("icon-png", png)))</pre>
+     */
+    public static MassifObject data(String id, byte[] bytes) {
+        try {
+            return new MassifObject(MassifApi.createData(id, bytes), "data", id);
+        } catch (RuntimeException e) {
+            throw new MassifException("Cannot create data '" + id + "': " + e.getMessage(), e);
+        }
+    }
+
     public static boolean has(String kind, String id) {
         return MassifApi.findObject(kind, id) != 0;
     }

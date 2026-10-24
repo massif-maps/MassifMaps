@@ -6,14 +6,16 @@ import android.util.TypedValue;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import com.massifmaps.renderers.MapRendererListener;
-import com.massifmaps.ui.MapView;
+import com.massifmaps.api.EventListener;
+import com.massifmaps.api.MassifApi;
+import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.MassifObject;
 
 /**
  * Frames drawn per second and the GL-thread draw time, bottom-left and once a second in logcat
  * (tag 'fps'). WHEN_DIRTY draws only on request, so a still map reads 'idle'.
  */
-public class FpsCounter extends MapRendererListener {
+public class FpsCounter extends EventListener {
     private final TextView text;
     private long windowStart = System.nanoTime();
     private long lastFrame;
@@ -27,7 +29,7 @@ public class FpsCounter extends MapRendererListener {
     }
 
     /** Keep the returned counter referenced: the native side holds the listener weakly. */
-    public static FpsCounter attach(MapView mapView, ViewGroup root) {
+    public static FpsCounter attach(MassifMap map, ViewGroup root) {
         TextView text = new TextView(root.getContext());
         text.setBackgroundColor(0xA0000000);
         text.setTextColor(Color.WHITE);
@@ -41,7 +43,12 @@ public class FpsCounter extends MapRendererListener {
         root.addView(text, params);
 
         final FpsCounter counter = new FpsCounter(text);
-        ObjectApi.renderer(mapView).setMapRendererListener(counter);
+        MassifObject renderer = map.camera().renderer();
+        if (MassifApi.attachFrameEvents(renderer.handle())) {
+            // ORIGIN delivery: the timing is taken on the GL thread, around the frame itself.
+            MassifApi.on(renderer.handle(), "frame.before", counter, 0, false);
+            MassifApi.on(renderer.handle(), "frame.after", counter, 0, false);
+        }
         text.postDelayed(new Runnable() {
             public void run() {
                 if (System.nanoTime() - counter.lastFrame > 1500000000L) {
@@ -54,12 +61,16 @@ public class FpsCounter extends MapRendererListener {
     }
 
     @Override
-    public void onBeforeDrawFrame() {
-        frameStart = System.nanoTime();
+    public boolean onEvent(int target, String event, int payload) {
+        if ("frame.before".equals(event)) {
+            frameStart = System.nanoTime();
+        } else {
+            afterDrawFrame();
+        }
+        return false;
     }
 
-    @Override
-    public void onAfterDrawFrame() {
+    private void afterDrawFrame() {
         long now = System.nanoTime();
         long draw = now - frameStart;
         if (now - lastFrame > 500000000L) {

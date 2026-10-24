@@ -28,6 +28,12 @@
 // from the wrapped source's `dem_encoding` metadata, the same place a hillshade layer reads it.
 !spec(massif::ContourTileDataSource, source, contour, alias(source, dataSource))
 
+// Per-zoom detail: the traced interval and the tracing grid by the highest zoom a rung applies to (-1 = every zoom above the others).
+!method(massif::ContourTileDataSource, setIntervalMultiplier, arg(maxZoom, int), arg(multiplier, float), returns(void))
+!method(massif::ContourTileDataSource, clearIntervalMultipliers, returns(void))
+!method(massif::ContourTileDataSource, setResolutionForZoom, arg(maxZoom, int), arg(resolution, int), returns(void))
+!method(massif::ContourTileDataSource, clearResolutionsForZoom, returns(void))
+
 %attributestring(massif::ContourTileDataSource, std::string, LayerName, getLayerName, setLayerName)
 %attribute(massif::ContourTileDataSource, float, BaseInterval, getBaseInterval, setBaseInterval)
 %attribute(massif::ContourTileDataSource, int, Resolution, getResolution, setResolution)

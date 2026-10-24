@@ -97,6 +97,8 @@
 %attribute(massif::Options, int, TileThreadPoolSize, getTileThreadPoolSize, setTileThreadPoolSize)
 %attribute(massif::Options, int, TileDrawSize, getTileDrawSize, setTileDrawSize)
 %attribute(massif::Options, float, ZoomOffset, getZoomOffset, setZoomOffset)
+// A named set of the four LOD numbers; reads back CUSTOM once one was set on its own.
+%attribute(massif::Options, massif::TileLODProfile::TileLODProfile, TileLODProfile, getTileLODProfile, setTileLODProfile)
 %attribute(massif::Options, float, TileLODFactor, getTileLODFactor, setTileLODFactor)
 %attribute(massif::Options, float, TileLODMaxZoomLevelsOnScreen, getTileLODMaxZoomLevelsOnScreen, setTileLODMaxZoomLevelsOnScreen)
 %attribute(massif::Options, float, TileLODTileCountRatio, getTileLODTileCountRatio, setTileLODTileCountRatio)

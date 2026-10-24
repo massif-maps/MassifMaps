@@ -30,6 +30,9 @@
 // How the facade learns what coordinate system this layer's positions - a click, a feature - are
 // in. dataSource is already declared below.
 !attributestring_polymorphic(massif::TileLayer, projections.Projection, Projection, getProjection)
+// The tiles in view (or the ring around them, for preloaded) have all arrived: what a fade-in waits for.
+!event(massif::TileLayer, tiles.loaded)
+!event(massif::TileLayer, tiles.preloaded)
 %attribute(massif::TileLayer, int, VisibleTileCount, getVisibleTileCount)
 %attribute(massif::TileLayer, int, PreloadingTileCount, getPreloadingTileCount)
 %attribute(massif::TileLayer, int, FrameNr, getFrameNr, setFrameNr)
@@ -39,6 +42,7 @@
 %attribute(massif::TileLayer, float, ZoomLevelBias, getZoomLevelBias, setZoomLevelBias)
 %attribute(massif::TileLayer, int, MaxOverzoomLevel, getMaxOverzoomLevel, setMaxOverzoomLevel)
 %attribute(massif::TileLayer, int, MaxUnderzoomLevel, getMaxUnderzoomLevel, setMaxUnderzoomLevel)
+%attribute(massif::TileLayer, int, MaxStandInLevel, getMaxStandInLevel, setMaxStandInLevel)
 !attributestring_polymorphic(massif::TileLayer, datasources.TileDataSource, DataSource, getDataSource)
 // The spec key is "source"; the property path is the same word.
 !alias(massif::TileLayer, source, dataSource)

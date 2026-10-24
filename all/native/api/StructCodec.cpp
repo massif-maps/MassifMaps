@@ -487,6 +487,25 @@ namespace massif { namespace api { namespace StructCodec {
         return true;
     }
 
+    bool readEntry(float entry, PropertyValue& value) {
+        value = PropertyValue::ofDouble(entry);
+        return true;
+    }
+
+    void writeEntry(const PropertyValue& value, float& entry) {
+        entry = static_cast<float>(value.asDouble());
+    }
+
+    bool readEntry(const Color& entry, PropertyValue& value) {
+        value = PropertyValue::ofLong(static_cast<unsigned int>(entry.getARGB()));
+        value.type = PT_COLOR;
+        return true;
+    }
+
+    void writeEntry(const PropertyValue& value, Color& entry) {
+        decodeColor(value, entry);
+    }
+
     void writeEntry(const PropertyValue& value, std::string& entry) {
         entry = value.asString();
     }

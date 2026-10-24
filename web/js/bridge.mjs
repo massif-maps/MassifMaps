@@ -33,6 +33,7 @@ export function createBridge(module) {
     doublesCount: fn('mm_doubles_count', 'number', ['number', 'number', 'number']),
     doublesCopy: fn('mm_doubles_copy', 'number', ['number', 'number', 'number', 'number', 'number']),
     dataSize: fn('mm_data_size', 'number', ['number', 'number', 'string', 'number']),
+    dataCreate: fn('mm_data_create', 'number', ['number', 'string', 'number', 'number', 'number']),
     dataCopy: fn('mm_data_copy', 'number', ['number', 'number', 'string', 'number', 'number', 'number']),
     on: fn('mm_on', 'number', ['number', 'number', 'string', 'number', 'number', 'string', 'number']),
     off: fn('mm_off', 'number', ['number', 'number']),
@@ -143,6 +144,16 @@ export function createBridge(module) {
       }
       return scratch(size, (buffer) => scratch(4, (copied) =>
         c.dataCopy(ctx, handle, path, buffer, size, copied) === OK ? module.HEAPU8.slice(buffer, buffer + size).buffer : null));
+    },
+
+    createData(id, bytes) {
+      const pointer = module._malloc(bytes.length);
+      try {
+        module.HEAPU8.set(bytes, pointer);
+        return scratch(4, (out) => (c.dataCreate(ctx, id, pointer, bytes.length, out) === OK ? unsigned(out) : 0));
+      } finally {
+        module._free(pointer);
+      }
     },
 
     on(handle, event, handler, delivery, coalesce, projection) {

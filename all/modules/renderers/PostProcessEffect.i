@@ -30,8 +30,9 @@
 %ignore massif::PostProcessEffect::getFloatParameters;
 %ignore massif::PostProcessEffect::getColorParameters;
 
-// The facade's only way to tune an app-supplied effect. No colour arg type: inline colours in the shader source.
-!method(massif::PostProcessEffect, setFloatParameter, arg(name, string), arg(value, float), returns(void))
+// Shader uniforms of an app-supplied effect, by name: set("floatParams.uIntensity", 1), set("colorParams.uTint", "#0af").
+!indexed(massif::PostProcessEffect, floatParams, getFloatParameter, setFloatParameter, values(number))
+!indexed(massif::PostProcessEffect, colorParams, getColorParameter, setColorParameter, values(color))
 
 !standard_equals(massif::PostProcessEffect);
 

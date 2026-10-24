@@ -136,7 +136,11 @@ namespace massif {
              * A full level finer than the reference (TileLODFactor 0.5, the historical default),
              * about 4x its tile count. Meant for a desktop or a web page on a real GPU.
              */
-            TILE_LOD_PROFILE_DESKTOP
+            TILE_LOD_PROFILE_DESKTOP,
+            /**
+             * What the getter reports once a LOD number was set on its own. Applying it changes nothing.
+             */
+            TILE_LOD_PROFILE_CUSTOM
         };
     }
 
@@ -378,6 +382,12 @@ namespace massif {
          * @param profile The profile to apply.
          */
         void setTileLODProfile(TileLODProfile::TileLODProfile profile);
+
+        /**
+         * Returns the profile the four LOD numbers currently match.
+         * @return The profile, or TILE_LOD_PROFILE_CUSTOM when they match none.
+         */
+        TileLODProfile::TileLODProfile getTileLODProfile() const;
 
         /**
          * Returns how many zoom levels above its own a coarsened tile may be styled at.

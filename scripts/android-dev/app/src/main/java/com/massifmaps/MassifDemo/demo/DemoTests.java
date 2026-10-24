@@ -5,32 +5,16 @@ import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.massifmaps.api.Massif;
+import com.massifmaps.api.MassifException;
+import com.massifmaps.api.MassifObject;
+import com.massifmaps.api.MassifSource;
+import com.massifmaps.api.Position;
+import com.massifmaps.api.Spec;
 import com.massifmaps.valhalla.LatLon;
 import com.massifmaps.valhalla.RoutingRequest;
 import com.massifmaps.valhalla.ValhallaOnlineRoutingService;
 import com.massifmaps.valhalla.ValhallaRoutingService;
-import com.massifmaps.core.MapBounds;
-import com.massifmaps.core.MapPos;
-import com.massifmaps.core.MapPosVector;
-import com.massifmaps.core.MapTile;
-import com.massifmaps.datasources.components.TileData;
-import com.massifmaps.datasources.GeoJSONVectorTileDataSource;
-import com.massifmaps.datasources.LocalVectorDataSource;
-import com.massifmaps.geometry.LineGeometry;
-import com.massifmaps.geometry.GeoJSONGeometryReader;
-import com.massifmaps.geometry.PointGeometry;
-import com.massifmaps.graphics.Color;
-import com.massifmaps.layers.VectorLayer;
-import com.massifmaps.layers.VectorTileLayer;
-import com.massifmaps.projections.Projection;
-import com.massifmaps.search.SearchRequest;
-import com.massifmaps.search.VectorTileSearchService;
-import com.massifmaps.styles.CartoCSSStyleSet;
-import com.massifmaps.styles.BalloonPopupStyleBuilder;
-import com.massifmaps.styles.LineStyleBuilder;
-import com.massifmaps.vectorelements.BalloonPopup;
-import com.massifmaps.vectorelements.Line;
-import com.massifmaps.vectortiles.MBVectorTileDecoder;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -49,7 +33,8 @@ public final class DemoTests {
 
     private static final String TAG = "DemoTests";
 
-    private static LocalVectorDataSource resultSource;
+    private static MassifObject resultSource;
+    private static int resultCounter;
 
     /**
      * Drives a TWO-FINGER drag over the map, as a real gesture would.
@@ -64,7 +49,7 @@ public final class DemoTests {
     public static void runTwoFingerDrag(final DemoMap demo, final float dx, final float dy) {
         final com.massifmaps.ui.MapView mapView = demo.mapView;
         final Handler handler = new Handler(Looper.getMainLooper());
-        final MapPos before = ObjectApi.view(mapView).getFocusPos();
+        final Position before = demo.map.camera().position();
         final float x1 = 400, x2 = 700, y = 1600;
         final long downTime = android.os.SystemClock.uptimeMillis();
         final int steps = 12;
@@ -95,7 +80,7 @@ public final class DemoTests {
                         2, x1 + dx, y + dy, x2 + dx, y + dy);
                 send(mapView, downTime, android.os.SystemClock.uptimeMillis(),
                         android.view.MotionEvent.ACTION_UP, 1, x1 + dx, y + dy, x2 + dx, y + dy);
-                Log.i(TAG, "two-finger drag (" + dx + "," + dy + "): focus " + before + " -> " + ObjectApi.view(mapView).getFocusPos());
+                Log.i(TAG, "two-finger drag (" + dx + "," + dy + "): focus " + before + " -> " + demo.map.camera().position());
             }
         }, 60 + (steps + 2) * 25L);
     }
@@ -122,13 +107,21 @@ public final class DemoTests {
 
 
     /** Lazily creates (and adds) the layer every test draws its result into. */
-    private static LocalVectorDataSource results(DemoMap demo) {
+    private static MassifObject results(DemoMap demo) {
         if (resultSource == null) {
-            Projection proj = ObjectApi.options(demo.mapView).getBaseProjection();
-            resultSource = new LocalVectorDataSource(proj);
-            ObjectApi.layers(demo.mapView).add(new VectorLayer(resultSource));
+            Massif.destroy("source", "demo-results");
+            resultSource = Massif.source("demo-results", Spec.of("local").set("projection", Spec.of("EPSG:4326")));
+            Massif.destroy("layer", "demo-results");
+            demo.map.add(Massif.layer("demo-results", Spec.of("elements").set("source", "demo-results")));
         }
         return resultSource;
+    }
+
+    /** An element built from a spec, put on the shared results layer. */
+    private static void addResult(DemoMap demo, Spec element) {
+        String id = "demo-result-" + (++resultCounter);
+        MassifObject object = Massif.object("element", id, element);
+        results(demo).call("add", object.handle()).close();
     }
 
     // =============================================================================================
@@ -208,21 +201,22 @@ public final class DemoTests {
 
     /** Decodes the Valhalla shape of every leg, draws it, and puts an arrow on every turn. */
     private static void drawRoute(DemoMap demo, String rawJson, ValhallaRoutingService service) throws Exception {
-        GeoJSONGeometryReader reader = new GeoJSONGeometryReader();
         JSONArray legs = new JSONObject(rawJson).getJSONObject("trip").getJSONArray("legs");
-        LineStyleBuilder style = new LineStyleBuilder();
-        style.setWidth(4);
-        style.setColor(new Color((short) 255, (short) 0, (short) 0, (short) 255));
+        Massif.destroy("elementstyle", "demo-route-line");
+        Massif.object("elementstyle", "demo-route-line", Spec.of("line").set("width", 4).set("color", 0xFFFF0000));
         demo.clearManeuverArrows();
         int points = 0;
         int arrowCount = 0;
         for (int i = 0; i < legs.length(); i++) {
             JSONObject leg = legs.getJSONObject(i);
-            String coordinates = service.parseShape(leg.getString("shape"));
-            LineGeometry geometry = (LineGeometry) reader.readGeometry("{\"type\":\"LineString\", \"coordinates\":" + coordinates + "}");
-            MapPosVector poses = geometry.getPoses();
-            points += (int) poses.size();
-            results(demo).add(new Line(poses, style.buildStyle()));
+            JSONArray coordinates = new JSONArray(service.parseShape(leg.getString("shape")));
+            double[][] poses = new double[coordinates.length()][];
+            for (int k = 0; k < poses.length; k++) {
+                JSONArray point = coordinates.getJSONArray(k);
+                poses[k] = new double[] { point.getDouble(0), point.getDouble(1) };
+            }
+            points += poses.length;
+            addResult(demo, Spec.of("line").set("poses", poses).set("style", "demo-route-line"));
             arrowCount += addManeuverArrows(demo, leg, poses, arrowCount);
         }
         report(demo, "route drawn (" + points + " points, " + arrowCount + " maneuver arrows)");
@@ -235,7 +229,7 @@ public final class DemoTests {
      *
      * The shape is WGS84 (that is what the GeoJSON reader returns), hence the null projection.
      */
-    private static int addManeuverArrows(DemoMap demo, JSONObject leg, MapPosVector poses, int firstArrowId) {
+    private static int addManeuverArrows(DemoMap demo, JSONObject leg, double[][] poses, int firstArrowId) {
         JSONArray maneuvers = leg.optJSONArray("maneuvers");
         if (maneuvers == null) {
             return 0;
@@ -250,10 +244,20 @@ public final class DemoTests {
             if (index < 0) {
                 continue;
             }
-            demo.setManeuverArrow(firstArrowId + count, demo.maneuverBuilder().buildArrowAtIndex(null, poses, index));
+            demo.setManeuverArrow(firstArrowId + count, buildArrow(demo, poses, index));
             count++;
         }
         return count;
+    }
+
+    /** The arrow GeoJSON of one maneuver, cut by the geometry builder. */
+    private static String buildArrow(DemoMap demo, double[][] poses, int index) {
+        MassifObject arrow = demo.maneuverBuilder().call("buildArrowAtIndex", poses, index);
+        try {
+            return arrow.json();
+        } finally {
+            arrow.close();
+        }
     }
 
     /**
@@ -287,8 +291,7 @@ public final class DemoTests {
         } catch (Exception e) {
             Log.w(TAG, "maneuver gallery failed: " + e.getMessage());
         }
-        demo.maneuverBuilder().setLengthBefore(DemoConfig.MANEUVER_LENGTH_BEFORE);
-        demo.maneuverBuilder().setLengthAfter(DemoConfig.MANEUVER_LENGTH_AFTER);
+        demo.maneuverBuilder().set("lengthBefore", DemoConfig.MANEUVER_LENGTH_BEFORE).set("lengthAfter", DemoConfig.MANEUVER_LENGTH_AFTER);
         Log.i(TAG, "seeded " + count + " gallery maneuver arrows around " + lat + ", " + lon);
         return count;
     }
@@ -300,15 +303,14 @@ public final class DemoTests {
     private static int addGalleryArrow(DemoMap demo, int arrowId, double lon, double lat,
                                        int col, int row, double[][] points, int maneuverIndex,
                                        float lengthBefore, float lengthAfter) {
-        demo.maneuverBuilder().setLengthBefore(lengthBefore);
-        demo.maneuverBuilder().setLengthAfter(lengthAfter);
+        demo.maneuverBuilder().set("lengthBefore", lengthBefore).set("lengthAfter", lengthAfter);
         double east = (col - 1) * GALLERY_SPACING;
         double north = (row - 0.5) * GALLERY_SPACING;
-        MapPosVector poses = new MapPosVector();
-        for (double[] point : points) {
-            poses.add(offsetMeters(lon, lat, east + point[0], north + point[1]));
+        double[][] poses = new double[points.length][];
+        for (int i = 0; i < points.length; i++) {
+            poses[i] = offsetMeters(lon, lat, east + points[i][0], north + points[i][1]);
         }
-        demo.setManeuverArrow(arrowId, demo.maneuverBuilder().buildArrowAtIndex(null, poses, maneuverIndex));
+        demo.setManeuverArrow(arrowId, buildArrow(demo, poses, maneuverIndex));
         return 1;
     }
 
@@ -330,10 +332,10 @@ public final class DemoTests {
     }
 
     /** Offsets a WGS84 position by metres east / north - exact enough over the few hundred here. */
-    private static MapPos offsetMeters(double lon, double lat, double east, double north) {
+    private static double[] offsetMeters(double lon, double lat, double east, double north) {
         double metresPerDegLat = 111320.0;
         double metresPerDegLon = metresPerDegLat * Math.cos(Math.toRadians(lat));
-        return new MapPos(lon + east / metresPerDegLon, lat + north / metresPerDegLat);
+        return new double[] { lon + east / metresPerDegLon, lat + north / metresPerDegLat };
     }
 
 
@@ -346,30 +348,33 @@ public final class DemoTests {
      * the search service reads the same source and decoder the layer renders from.
      */
     public static void runVectorTileSearch(final DemoMap demo) {
-        final VectorTileLayer layer = demo.baseLayer;
-        if (layer == null) {
+        if (demo.baseLayer == null || demo.baseDecoder == null) {
             report(demo, "search needs the vector base layer (LAYERS > base)");
             return;
         }
-        final MapPos centre = ObjectApi.view(demo.mapView).getFocusPos();
-        final Projection projection = ObjectApi.options(demo.mapView).getBaseProjection();
+        final Position centre = demo.map.camera().position();
         new Thread(new Runnable() {
             public void run() {
                 try {
                     long start = System.nanoTime();
-                    VectorTileSearchService service = new VectorTileSearchService(layer.getDataSource(), layer.getTileDecoder());
-                    service.setMinZoom(14);
-                    service.setMaxZoom(14);
-                    service.setSortByDistance(true);
-                    service.setPreventDuplicates(true);
+                    Massif.destroy("search", "demo-tests-search");
+                    MassifObject service = Massif.object("search", "demo-tests-search", Spec.of("vectortile")
+                            .set("source", demo.vectorSource().id()).set("style", demo.baseDecoder.id())
+                            .set("minZoom", 14).set("maxZoom", 14)
+                            .set("sortByDistance", true).set("preventDuplicates", true));
+                    Massif.destroy("geometry", "demo-tests-centre");
+                    MassifObject point = Massif.object("geometry", "demo-tests-centre", Spec.of("point").set("pos", new double[] { centre.lng, centre.lat }));
+                    Massif.destroy("projection", "demo-tests-wgs84");
+                    MassifObject wgs84 = Massif.object("projection", "demo-tests-wgs84", Spec.of("EPSG:4326"));
+                    Massif.destroy("search", "demo-tests-request");
+                    MassifObject request = Massif.object("search", "demo-tests-request", Spec.of("request")
+                            .set("searchRadius", 2000)
+                            .set("filterExpression", "regexp_ilike(class,'.*peak.*') OR regexp_ilike(class,'.*motorway.*')"));
+                    request.set("geometry", point).set("projection", wgs84);
 
-                    SearchRequest request = new SearchRequest();
-                    request.setSearchRadius(2000);
-                    request.setGeometry(new PointGeometry(centre));
-                    request.setProjection(projection);
-                    request.setFilterExpression("regexp_ilike(class,'.*peak.*') OR regexp_ilike(class,'.*motorway.*')");
-
-                    long count = service.findFeatures(request).getFeatureCount();
+                    MassifObject found = service.call("findFeatures", request.handle());
+                    long count = found.getLong("featureCount", 0);
+                    found.close();
                     report(demo, "search: " + count + " features in " + ((System.nanoTime() - start) / 1000000) + " ms");
                 } catch (Exception e) {
                     report(demo, "search failed: " + e.getMessage());
@@ -389,14 +394,16 @@ public final class DemoTests {
      */
     public static void addGeoJSONLine(DemoMap demo) {
         try {
-            MBVectorTileDecoder decoder = new MBVectorTileDecoder(new CartoCSSStyleSet(
-                    "#items { line-color: #374C70; line-cap: round; line-join: round; line-width: 12; }"));
-            GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
-            source.createLayer("items");
-            source.addGeoJSONStringFeature(1, "{\"type\":\"Feature\",\"id\":1,\"properties\":{\"name\":\"test\"},"
+            Massif.destroy("style", "demo-test-line-style");
+            Massif.style("demo-test-line-style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css",
+                    "#items { line-color: #374C70; line-cap: round; line-join: round; line-width: 12; }")));
+            Massif.destroy("source", "demo-test-line-source");
+            MassifSource source = Massif.source("demo-test-line-source", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24));
+            source.setLayerGeoJSON(source.createLayer("items"), "{\"type\":\"Feature\",\"id\":1,\"properties\":{\"name\":\"test\"},"
                     + "\"geometry\":{\"type\":\"LineString\",\"coordinates\":"
                     + "[[5.7249,45.1982],[5.7225,45.1975],[5.7220,45.1949],[5.7201,45.1935],[5.7255,45.1915]]}}");
-            ObjectApi.layers(demo.mapView).add(new VectorTileLayer(source, decoder));
+            Massif.destroy("layer", "demo-test-line");
+            demo.map.add(Massif.layer("demo-test-line", Spec.of("vector").set("source", "demo-test-line-source").set("style", "demo-test-line-style")));
             report(demo, "geojson line added");
         } catch (Exception e) {
             report(demo, "geojson test failed: " + e.getMessage());
@@ -451,26 +458,23 @@ public final class DemoTests {
     public static void runPopupFonts(final DemoMap demo, final String which) {
         // The live camera, for the panel button. At startup the focus latitude is not applied yet,
         // which is why DemoMap passes the configured start position instead.
-        runPopupFonts(demo, which, ObjectApi.options(demo.mapView).getBaseProjection()
-                .toWgs84(ObjectApi.view(demo.mapView).getFocusPos()));
+        runPopupFonts(demo, which, demo.map.camera().position());
     }
 
-    public static void runPopupFonts(final DemoMap demo, final String which, final MapPos wgs) {
+    public static void runPopupFonts(final DemoMap demo, final String which, final Position wgs) {
         String fontLists = (which == null || which.isEmpty()
                 || "sample".equalsIgnoreCase(which) || "true".equalsIgnoreCase(which))
                 ? DemoConfig.POPUP_FONTS_SAMPLE : which;
         String[] fonts = fontLists.split("\\|");
-        LocalVectorDataSource source = results(demo);
-        Projection proj = ObjectApi.options(demo.mapView).getBaseProjection();
         for (int i = 0; i < fonts.length; i++) {
-            BalloonPopupStyleBuilder builder = new BalloonPopupStyleBuilder();
-            builder.setTitleFontName(fonts[i]);
-            builder.setTitleFontSize(18);
-            builder.setDescriptionFontName(fonts[i]);
-            builder.setDescriptionFontSize(14);
-            MapPos pos = proj.fromWgs84(new MapPos(wgs.getX(),
-                    wgs.getY() + 0.0016 * (i - (fonts.length - 1) / 2.0)));
-            source.add(new BalloonPopup(pos, builder.buildStyle(), fonts[i], "Handgloves 0123"));
+            String styleId = "demo-popup-style-" + i;
+            Massif.destroy("elementstyle", styleId);
+            Massif.object("elementstyle", styleId, Spec.of("balloon")
+                    .set("titleFontName", fonts[i]).set("titleFontSize", 18)
+                    .set("descriptionFontName", fonts[i]).set("descriptionFontSize", 14));
+            addResult(demo, Spec.of("balloon")
+                    .set("position", new double[] { wgs.lng, wgs.lat + 0.0016 * (i - (fonts.length - 1) / 2.0) })
+                    .set("style", styleId).set("title", fonts[i]).set("description", "Handgloves 0123"));
         }
         report(demo, "popup fonts: " + fonts.length);
     }
@@ -508,18 +512,22 @@ public final class DemoTests {
             return;
         }
         try {
-            GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
-            source.setSimplifyTolerance(DemoConfig.GEOJSON_BENCH_SIMPLIFY);
+            String id = "demo-bench-" + name.replaceAll("[^A-Za-z0-9]", "-");
+            Massif.destroy("source", id);
+            MassifSource source = Massif.source(id, Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24)
+                    .set("simplifyTolerance", DemoConfig.GEOJSON_BENCH_SIMPLIFY));
             int layerIndex = source.createLayer("route");
             long start = System.nanoTime();
-            source.setLayerGeoJSONString(layerIndex, geoJSON);
+            source.setLayerGeoJSON(layerIndex, geoJSON);
             long importMs = (System.nanoTime() - start) / 1000000L;
 
-            final MBVectorTileDecoder decoder = new MBVectorTileDecoder(new CartoCSSStyleSet(DemoStyles.routeTestStyle()));
-            final VectorTileLayer layer = new VectorTileLayer(source, decoder);
+            Massif.destroy("style", id + "-style");
+            Massif.style(id + "-style", Spec.of("mbvt").set("cartocss", Spec.of("cartocss").set("css", DemoStyles.routeTestStyle())));
+            Massif.destroy("layer", id);
+            final com.massifmaps.api.MassifLayer layer = Massif.layer(id, Spec.of("vector").set("source", id).set("style", id + "-style"));
             new Handler(Looper.getMainLooper()).post(new Runnable() {
                 public void run() {
-                    ObjectApi.layers(demo.mapView).add(layer);
+                    demo.map.add(layer);
                 }
             });
             report(demo, "bench layer " + name + " added (import " + importMs + " ms)");
@@ -537,21 +545,19 @@ public final class DemoTests {
         }
 
         try {
-            GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
-            source.setSimplifyTolerance(DemoConfig.GEOJSON_BENCH_SIMPLIFY);
+            Massif.destroy("source", "demo-bench");
+            MassifSource source = Massif.source("demo-bench", Spec.of("geojson").set("minZoom", 0).set("maxZoom", 24)
+                    .set("simplifyTolerance", DemoConfig.GEOJSON_BENCH_SIMPLIFY));
             int layerIndex = source.createLayer("route");
 
             long importStart = System.nanoTime();
-            source.setLayerGeoJSONString(layerIndex, geoJSON);
+            source.setLayerGeoJSON(layerIndex, geoJSON);
             long importMs = (System.nanoTime() - importStart) / 1000000L;
 
-            // getDataExtent comes back in EPSG3857 metres whatever the base projection is, so undo
-            // the web mercator here rather than going through Projection.
-            MapBounds extent = source.getDataExtent();
-            double centerXm = (extent.getMin().getX() + extent.getMax().getX()) * 0.5;
-            double centerYm = (extent.getMin().getY() + extent.getMax().getY()) * 0.5;
-            double lon = centerXm / 6378137.0 * 180.0 / Math.PI;
-            double lat = Math.toDegrees(Math.atan(Math.sinh(centerYm / 6378137.0)));
+            // The data extent, as the two corners [[minX, minY], [maxX, maxY]] in WGS84.
+            org.json.JSONArray extent = new org.json.JSONArray(source.getString("dataExtent", "[[0,0],[0,0]]"));
+            double lon = (extent.getJSONArray(0).getDouble(0) + extent.getJSONArray(1).getDouble(0)) * 0.5;
+            double lat = (extent.getJSONArray(0).getDouble(1) + extent.getJSONArray(1).getDouble(1)) * 0.5;
             Log.i(TAG, "bench " + name + " centre " + lon + "," + lat);
 
             // Deepest zooms first: that is the order a user zooming in produces, and the order that
@@ -576,13 +582,13 @@ public final class DemoTests {
                             continue;
                         }
                         // The builder measures tile y from the NORTH edge, so this is plain XYZ.
-                        MapTile tile = new MapTile(x, y, zoom, 0);
                         long start = System.nanoTime();
-                        TileData data = source.loadTile(tile);
+                        MassifObject data = source.call("loadTile", new int[] { x, y, zoom });
                         zoomNs += System.nanoTime() - start;
                         tiles++;
-                        if (data != null && data.getData() != null) {
-                            totalBytes += data.getData().size();
+                        if (data != null) {
+                            totalBytes += data.data("data").length;
+                            data.close();
                         }
                     }
                 }

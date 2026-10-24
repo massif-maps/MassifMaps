@@ -140,6 +140,22 @@ public final class MassifLayer extends MassifObject {
                          requireMap().eventProjection(), EventKind.TILE_CLICK);
     }
 
+    private boolean tileLoadBridged;
+
+    /**
+     * Subscribes to the moment every visible tile of this tile layer has arrived, which is what a
+     * fade-in or a screenshot waits for. It fires again after the next change of view.
+     */
+    public Subscription onTilesLoaded(MapEvents.Handler<MapEvents.Event> handler) {
+        if (!tileLoadBridged) {
+            if (!MassifApi.attachTileLoadEvents(handle)) {
+                throw new MassifException("Not a tile layer: " + this);
+            }
+            tileLoadBridged = true;
+        }
+        return subscribe("tiles.loaded", handler, null, Delivery.UI, false, "", EventKind.PLAIN);
+    }
+
     private boolean bridged;
     private boolean elementBridged;
 

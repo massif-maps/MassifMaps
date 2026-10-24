@@ -1722,7 +1722,7 @@ The shader defines `vec4 surfaceColor()` and gets `v_normal` (world space), `v_w
 `v_elevation` (metres, before exaggeration), `v_dist` (metres from the camera), the resolved sun
 (`u_sunDir`, `u_sunColor`, `u_sunIntensity`, `u_ambientIntensity`), the resolved fog (`u_fogColor`,
 `u_fogRange`, plus a `fogAmount(dist)` helper), `u_time`, `u_zoom`, `u_resolution` and every
-parameter set with `setSurfaceParameter` / `setSurfaceColorParameter`. Sun and fog come from
+parameter set with `setSurfaceParameter` / `setSurfaceColorParameter` (the `surfaceParams.<name>` / `surfaceColorParams.<name>` bags on the facade). Sun and fog come from
 `resolveLighting` / `resolveFog` ([08-lighting-sky-fog.md](08-lighting-sky-fog.md)), so a shaded
 surface, the tile content and the sky agree on the light. Redeclaring a provided name is a compile
 error and the shader is dropped (logged, falls back to the bitmap/colour fill) — the same trap as

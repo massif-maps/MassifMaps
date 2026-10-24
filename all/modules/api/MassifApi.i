@@ -80,11 +80,12 @@
     $result = (__bridge_retained void*)[NSData dataWithBytes:$1.data() length:$1.size()];
 %}
 %typemap(objctype) const std::vector<unsigned char>& "NSData*"
-%typemap(objcin) const std::vector<unsigned char>& "$objcinput"
-%typemap(in) const std::vector<unsigned char>& (std::vector<unsigned char> bytes) %{
+%typemap(objcin) const std::vector<unsigned char>& "(__bridge void*)$objcinput"
+// The local is not called `bytes`: SWIG renames a local everywhere in the typemap, NSData's `bytes` property included.
+%typemap(in) const std::vector<unsigned char>& (std::vector<unsigned char> buffer) %{
     NSData* data = (__bridge NSData*)$input;
-    bytes.assign(static_cast<const unsigned char*>(data.bytes), static_cast<const unsigned char*>(data.bytes) + data.length);
-    $1 = &bytes;
+    buffer.assign(static_cast<const unsigned char*>(data.bytes), static_cast<const unsigned char*>(data.bytes) + data.length);
+    $1 = &buffer;
 %}
 #endif
 

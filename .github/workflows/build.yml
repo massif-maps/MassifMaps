@@ -231,6 +231,7 @@ jobs:
   build:
     permissions:
       contents: write
+      actions: write # gh run cancel, when a job fails
     strategy:
       matrix:
         variant: ${{ fromJson(needs.prepare.outputs.variants) }}
@@ -389,6 +390,11 @@ jobs:
         run: |
           cd scripts
           python build-ios.py --profile ${{ matrix.profile }} --build-version ${{ inputs.version }} --configuration=Release --build-xcframework --use-metalangle --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}
       - name: Upload Release Asset
         if: inputs.publish && matrix.variant == 'android'
         env:
@@ -452,6 +458,7 @@ jobs:
   build-routing:
     permissions:
       contents: write
+      actions: write # gh run cancel, when a job fails
     strategy:
       matrix:
         variant: ["android", "ios"]
@@ -605,6 +612,11 @@ jobs:
           cd scripts
           python build-routing-ios.py --build-version ${{ inputs.version }} --build-xcframework --configuration=Release --cmake-options "CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_ENABLE_CACHING=YES;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_CAS_PATH=${{ github.workspace }}/.xcode-cas;CMAKE_XCODE_ATTRIBUTE_COMPILATION_CACHE_LIMIT_SIZE=2147483648"
 
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}
       - name: Upload routing release asset (Android)
         if: inputs.publish && matrix.variant == 'android'
         env:
@@ -669,6 +681,7 @@ jobs:
     if: ${{ !cancelled() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped') }}
     permissions:
       contents: write
+      actions: write # gh run cancel, when a job fails
     env:
       EMSDK_VERSION: '6.0.9'
       VERSION: ${{ needs.create-release.outputs.VERSION || '0.0.0-devel' }}
@@ -698,6 +711,11 @@ jobs:
         run: |
           python3 scripts/npm-packages.py pack "$VERSION" --only api,web
           (cd dist/web && zip -r "../MassifMaps-web-$VERSION.zip" . -x libmassif.a -x 'examples/*')
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}
       - name: Upload Release Asset
         if: inputs.publish
         env:

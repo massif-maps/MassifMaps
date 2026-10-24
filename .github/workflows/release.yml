@@ -97,6 +97,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      actions: write # build.yml cancels the run when a build job fails
     with:
       version: ${{ needs.plan.outputs.sdk }}
       publish: ${{ inputs.publish }}

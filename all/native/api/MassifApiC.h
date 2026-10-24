@@ -213,6 +213,14 @@ MM_API int mm_data_size(mm_ctx ctx, mm_handle handle, const char* path, size_t* 
 MM_API int mm_data_copy(mm_ctx ctx, mm_handle handle, const char* path, void* buffer, size_t size,
                         size_t* copied);
 
+/**
+ * Registers raw bytes as a `data` object a spec can name ({"type":"bitmap","data":"<id>"}). The
+ * bytes are copied.
+ * @param out The handle. Optional.
+ * @return MM_OK, MM_DUPLICATE_ID, or MM_BAD_SPEC for no bytes.
+ */
+MM_API int mm_data_create(mm_ctx ctx, const char* id, const void* bytes, size_t size, mm_handle* out);
+
 /** How many numbers a bulk numeric result holds. */
 MM_API int mm_doubles_count(mm_ctx ctx, mm_handle handle, size_t* count);
 

@@ -60,6 +60,16 @@
   jenv->SetByteArrayRegion($result, 0, static_cast<jsize>($1.size()),
                            reinterpret_cast<const jbyte*>($1.data()));
 }
+%typemap(jni) const std::vector<unsigned char>& "jbyteArray"
+%typemap(jtype) const std::vector<unsigned char>& "byte[]"
+%typemap(jstype) const std::vector<unsigned char>& "byte[]"
+%typemap(javain) const std::vector<unsigned char>& "$javainput"
+%typemap(in) const std::vector<unsigned char>& (std::vector<unsigned char> bytes) {
+  jsize size = jenv->GetArrayLength($input);
+  bytes.resize(static_cast<size_t>(size));
+  jenv->GetByteArrayRegion($input, 0, size, reinterpret_cast<jbyte*>(bytes.data()));
+  $1 = &bytes;
+}
 #endif
 #ifdef SWIGOBJECTIVEC
 %typemap(objctype) std::vector<unsigned char> "NSData*"
@@ -69,9 +79,17 @@
 %typemap(out) std::vector<unsigned char> %{
     $result = (__bridge_retained void*)[NSData dataWithBytes:$1.data() length:$1.size()];
 %}
+%typemap(objctype) const std::vector<unsigned char>& "NSData*"
+%typemap(objcin) const std::vector<unsigned char>& "$objcinput"
+%typemap(in) const std::vector<unsigned char>& (std::vector<unsigned char> bytes) %{
+    NSData* data = (__bridge NSData*)$input;
+    bytes.assign(static_cast<const unsigned char*>(data.bytes), static_cast<const unsigned char*>(data.bytes) + data.length);
+    $1 = &bytes;
+%}
 #endif
 
 %std_exceptions(massif::api::MassifApi::create)
+%std_exceptions(massif::api::MassifApi::createData)
 %std_exceptions(massif::api::MassifApi::call)
 %std_exceptions(massif::api::MassifApi::callAsync)
 

@@ -739,7 +739,7 @@ hand-written in `SpecFactories.cpp` is genuinely adaptive rather than boilerplat
 | still hand-written | why the signature cannot say it |
 |---|---|
 | `projection` | a name registry lookup, not a constructor |
-| `data` | bytes read through `URLFileLoader`, not a constructor |
+| `data` | bytes read through `URLFileLoader`, or handed in with `MassifApi.createData` (`byte[]` / `NSData`, no encoding) and named by id: `{"type":"bitmap","data":"<id>"}` |
 | `bitmap` | `Bitmap::CreateFromCompressed` is a static factory |
 | `geometry` **geojson** | a GeoJSON reader, not a constructor — the shapes themselves build from theirs |
 | `search` **from a layer** | the source and the decoder both come from a layer already on the map |

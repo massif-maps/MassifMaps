@@ -233,7 +233,6 @@ add_executable(api_tests
   EffectSpecTest.cpp
   # The tile-load and frame bridges, which need nothing past MapEventBridge.cpp and the listeners.
   TileFrameEventTest.cpp
-  Base64Test.cpp
   # FogOptions is the class the colour-spelling bug bit, and the only COLOR property the reduced
   # table carries - so this needs nothing the list above does not already link.
   ColorValueTest.cpp

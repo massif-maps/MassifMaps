@@ -265,9 +265,7 @@ public final class DemoStars {
         float y = side * 0.5f - bounds.exactCenterY();
         canvas.drawText(text, x, y, outline);
         canvas.drawText(text, x, y, paint);
-        String id = "demo-star-label-" + (++counter);
-        Massif.destroy("bitmap", id);
-        return Massif.object("bitmap", id, DemoCelestial.pngSpec(bitmap));
+        return DemoCelestial.pngBitmap("demo-star-label-" + (++counter), bitmap);
     }
 
     /** A star of this magnitude, in screen pixels. */

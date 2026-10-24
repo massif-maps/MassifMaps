@@ -268,6 +268,16 @@ namespace massif { namespace api {
         static std::vector<unsigned char> getData(int handle, const std::string& path);
 
         /**
+         * Registers raw bytes as a `data` object a spec can name: `{"type":"bitmap","data":"<id>"}`
+         * decodes an image from them, with no file and no text encoding in between. The bytes are
+         * copied once. `byte[]` in Java, `NSData` in Objective-C.
+         * @param objectId The caller's name for the data. Must be free.
+         * @return The handle.
+         * @throws std::runtime_error When the id is taken or the bytes are empty.
+         */
+        static int createData(const std::string& objectId, const std::vector<unsigned char>& bytes);
+
+        /**
          * Drops a handle's id, and with it the context's reference to the object.
          * @return True when the handle was live.
          */

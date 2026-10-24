@@ -1147,6 +1147,7 @@ public final class ApiNames {
     public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";
     public static final String METHOD_STOP_ALL_DOWNLOADS = "stopAllDownloads";
     public static final String METHOD_STOP_FLIGHT = "stopFlight";
+    public static final String METHOD_TO_GEO_JSON = "toGeoJSON";
     public static final String METHOD_UPDATE_FEATURE = "updateFeature";
 
     // --- events ----------------------------------------------------------

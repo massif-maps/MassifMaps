@@ -2,6 +2,7 @@
 #include "core/MapPos.h"
 #include "geometry/FeatureCollection.h"
 #include "geometry/GeoJSONGeometryWriter.h"
+#include "projections/Projection.h"
 #include "geometry/ManeuverArrowBuilder.h"
 #include "geometry/VectorTileFeatureCollection.h"
 
@@ -58,6 +59,34 @@ namespace massif { namespace api {
                                 result);
         }
 
+        /**
+         * toGeoJSON([sourceProjection]) -> the collection as a GeoJSON FeatureCollection in WGS84.
+         * `sourceProjection` is a projection handle for the coordinates the features are in (a tile
+         * source's own projection); without it they are taken to be WGS84 already.
+         */
+        Result collectionToGeoJSON(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            auto collection = static_cast<FeatureCollection*>(obj);
+            GeoJSONGeometryWriter writer;
+            Handle handle = NULL_HANDLE;
+            if (args.getHandle(0, handle) && handle != NULL_HANDLE) {
+                auto projection = std::static_pointer_cast<Projection>(context.getObject(handle, "massif::Projection"));
+                if (!projection) {
+                    return RESULT_BAD_HANDLE;
+                }
+                writer.setSourceProjection(projection);
+            }
+            std::string json = "{\"type\":\"FeatureCollection\",\"features\":[";
+            for (int i = 0; i < collection->getFeatureCount(); i++) {
+                if (i > 0) {
+                    json += ',';
+                }
+                json += writer.writeFeature(collection->getFeature(i));
+            }
+            result = PropertyValue::ofString(json + "]}");
+            result.type = PT_VARIANT;
+            return RESULT_OK;
+        }
+
         // GeoJSON, not a handle: what a binding does with an arrow is hand it to setLayerGeoJSON.
         Result arrowResult(const std::shared_ptr<FeatureCollection>& arrow, PropertyValue& result) {
             result = PropertyValue::ofString(GeoJSONGeometryWriter().writeFeatureCollection(arrow));
@@ -91,6 +120,7 @@ namespace massif { namespace api {
 
     void registerGeometryMethods() {
         Methods::registerMethod("massif::FeatureCollection", "getFeature", &getFeature);
+        Methods::registerMethod("massif::FeatureCollection", "toGeoJSON", &collectionToGeoJSON);
         Methods::registerMethod("massif::VectorTileFeatureCollection", "getFeature",
                                 &getVectorTileFeature);
         Methods::registerMethod("massif::ManeuverArrowBuilder", "buildArrow", &buildArrow);

@@ -404,6 +404,25 @@ void testCollections() {
     TEST_CHECK(context->call(collection, "getFeature", "[\"2\"]", value) == RESULT_BAD_SPEC,
                "a string index is not coerced");
 
+    // toGeoJSON: coordinates in a tile source's projection come out as WGS84, which getGeometryGeoJSON cannot do.
+    Handle mercator = NULL_HANDLE;
+    context->registerObject("projection", "m", std::make_shared<EPSG3857>(), "massif::EPSG3857", mercator);
+    TEST_CHECK(context->call(collection, "toGeoJSON", "[" + std::to_string(mercator) + "]", value) == RESULT_OK,
+               "a collection writes itself as GeoJSON");
+    Variant plain = Variant::FromString(value.stringValue);
+    TEST_CHECK(plain.getObjectElement("type").getString() == "FeatureCollection" &&
+               plain.getObjectElement("features").getArraySize() == 3, "with its three features");
+    Variant first = plain.getObjectElement("features").getArrayElement(0).getObjectElement("geometry")
+                        .getObjectElement("coordinates");
+    TEST_CHECK(std::abs(first.getArrayElement(0).getDouble()) < 0.01 && std::abs(first.getArrayElement(1).getDouble()) < 0.01,
+               "the metres of the source projection are converted to degrees");
+    TEST_CHECK(context->call(collection, "toGeoJSON", "[]", value) == RESULT_OK &&
+               std::abs(Variant::FromString(value.stringValue).getObjectElement("features").getArrayElement(0)
+                            .getObjectElement("geometry").getObjectElement("coordinates").getArrayElement(0).getDouble() - 10) < 1e-9,
+               "and without a projection they are taken to be WGS84 already");
+    TEST_CHECK(context->call(collection, "toGeoJSON", "[987654]", value) == RESULT_BAD_HANDLE,
+               "a stale projection handle is refused rather than ignored");
+
     // An empty collection has no element 0 - the case a search that found nothing produces.
     Handle empty = NULL_HANDLE;
     context->registerObject("result", "e", std::make_shared<VectorTileFeatureCollection>(

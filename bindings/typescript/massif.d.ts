@@ -8794,6 +8794,7 @@ export interface MethodTypes {
   };
   "massif::FeatureCollection": {
     getFeature: (index: number) => Handle<"massif::Feature">;
+    toGeoJSON: (sourceProjection: Handle) => Json;
   };
   "massif::FeatureCollectionSearchService": {
     findFeatures: (request: Handle) => Handle<"massif::FeatureCollection">;
@@ -9289,6 +9290,7 @@ export interface MethodTypes {
   };
   "massif::VectorTileFeatureCollection": {
     getFeature: (index: number) => Handle<"massif::VectorTileFeature">;
+    toGeoJSON: (sourceProjection: Handle) => Json;
   };
   "massif::VectorTileLayer": {
     clearModelHighlight: () => void;

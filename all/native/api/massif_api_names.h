@@ -626,6 +626,7 @@ const char* massif_property_name(massif_property property);
 #define MASSIF_METHOD_START_DOWNLOAD_AREA "startDownloadArea"
 #define MASSIF_METHOD_STOP_ALL_DOWNLOADS "stopAllDownloads"
 #define MASSIF_METHOD_STOP_FLIGHT "stopFlight"
+#define MASSIF_METHOD_TO_GEO_JSON "toGeoJSON"
 #define MASSIF_METHOD_UPDATE_FEATURE "updateFeature"
 
 #define MASSIF_EVENT_CELESTIAL_CLICKED "celestial.clicked"

@@ -1148,6 +1148,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetSunPositionFromTime;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStartDownloadArea;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopAllDownloads;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopFlight;
+FOUNDATION_EXPORT MassifMethod const MassifMethodToGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodUpdateFeature;
 
 /** An event name. */

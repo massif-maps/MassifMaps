@@ -505,7 +505,7 @@ export const METHODS: { [cls: string]: string } = {
     'massif::CompositeVectorTileLayer': 'addExternalDataSource,v;addVectorDataSource,v;getExternalChildLayer,o,massif::Layer;getExternalDataSourceNames,j;removeExternalDataSource,b;setExternalDataSourceMaxOverzoomLevel,v;setExternalDataSourceZoomLevelBias,v',
     'massif::ContourTileDataSource': 'clearIntervalMultipliers,v;clearResolutionsForZoom,v;setIntervalMultiplier,v;setResolutionForZoom,v',
     'massif::CustomRasterTileLayer': 'addDataSource,v',
-    'massif::FeatureCollection': 'getFeature,o,massif::Feature',
+    'massif::FeatureCollection': 'getFeature,o,massif::Feature;toGeoJSON,j',
     'massif::FeatureCollectionSearchService': 'findFeatures,o,massif::FeatureCollection',
     'massif::GeoJSONVectorTileDataSource': 'addFeature,v;createLayer,i;deleteLayer,v;removeFeature,v;setLayerGeoJSON,v;updateFeature,v',
     'massif::GeocodingService': 'calculateAddresses,j',

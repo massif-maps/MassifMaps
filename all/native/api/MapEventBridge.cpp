@@ -129,3 +129,61 @@ namespace massif { namespace api {
     }
 
 } }
+
+namespace massif { namespace api {
+
+    TileLoadEventBridge::TileLoadEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                                             const std::shared_ptr<TileLoadListener>& chained) :
+        _emitter(context, target), _chained(chained) {
+    }
+
+    TileLoadEventBridge::~TileLoadEventBridge() {
+    }
+
+    void TileLoadEventBridge::onVisibleTilesLoaded() {
+        if (_chained) {
+            _chained->onVisibleTilesLoaded();
+        }
+        _emitter.emit("tiles.loaded", std::shared_ptr<void>(), nullptr);
+    }
+
+    void TileLoadEventBridge::onPreloadingTilesLoaded() {
+        if (_chained) {
+            _chained->onPreloadingTilesLoaded();
+        }
+        _emitter.emit("tiles.preloaded", std::shared_ptr<void>(), nullptr);
+    }
+
+} }
+
+namespace massif { namespace api {
+
+    FrameEventBridge::FrameEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                                       const std::shared_ptr<MapRendererListener>& chained) :
+        _emitter(context, target), _chained(chained) {
+    }
+
+    FrameEventBridge::~FrameEventBridge() {
+    }
+
+    void FrameEventBridge::onSurfaceChanged(int width, int height) {
+        if (_chained) {
+            _chained->onSurfaceChanged(width, height);
+        }
+    }
+
+    void FrameEventBridge::onBeforeDrawFrame() {
+        if (_chained) {
+            _chained->onBeforeDrawFrame();
+        }
+        _emitter.emit("frame.before", std::shared_ptr<void>(), nullptr);
+    }
+
+    void FrameEventBridge::onAfterDrawFrame() {
+        if (_chained) {
+            _chained->onAfterDrawFrame();
+        }
+        _emitter.emit("frame.after", std::shared_ptr<void>(), nullptr);
+    }
+
+} }

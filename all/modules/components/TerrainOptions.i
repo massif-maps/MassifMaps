@@ -29,6 +29,9 @@
 // decoder is picked from the source's own `dem_encoding`, so a spec never names one.
 !spec(massif::TerrainOptions, options, terrain, alias(source, dataSource))
 // The skyline from a viewpoint, per azimuth, in apparent altitude degrees (ElevationManager::calculateHorizon).
+// The ground height under a WGS84 position, in metres; -1000000 when there is no data. Blocks on tile loading.
+!method(massif::TerrainOptions, getElevation, arg(pos, pos), returns(float))
+!method(massif::TerrainOptions, getElevations, arg(positions, positions), returns(doubles))
 !method(massif::TerrainOptions, calculateHorizon, arg(pos, pos), arg(eyeHeight, float), arg(azimuths, json), arg(maxDistance, float), returns(doubles))
 
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)
@@ -66,6 +69,7 @@
 %attribute(massif::TerrainOptions, int, MaxTileZoomOffset, getMaxTileZoomOffset, setMaxTileZoomOffset)
 %attributeval(massif::TerrainOptions, massif::Color, BackgroundColor, getBackgroundColor, setBackgroundColor)
 %attribute(massif::TerrainOptions, float, ViewDistanceFactor, getViewDistanceFactor, setViewDistanceFactor)
+%attribute(massif::TerrainOptions, bool, BackgroundBitmapEnabled, isBackgroundBitmapEnabled, setBackgroundBitmapEnabled)
 %attribute(massif::TerrainOptions, float, ViewDistance, getViewDistance, setViewDistance)
 %attribute(massif::TerrainOptions, float, ViewDistanceMax, getViewDistanceMax, setViewDistanceMax)
 %attribute(massif::TerrainOptions, int, DrapeCacheSize, getDrapeCacheSize, setDrapeCacheSize)
@@ -90,6 +94,7 @@
 %attributestring(massif::TerrainOptions, std::string, SurfaceShaderSource, getSurfaceShaderSource, setSurfaceShaderSource)
 %attribute(massif::TerrainOptions, int, SurfaceNodeResolution, getSurfaceNodeResolution, setSurfaceNodeResolution)
 !method(massif::TerrainOptions, setSurfaceParameter, arg(name, string), arg(value, float), returns(void))
+!method(massif::TerrainOptions, setSurfaceColorParameter, arg(name, string), arg(color, int), returns(void))
 %std_exceptions(massif::TerrainOptions::TerrainOptions)
 
 %ignore massif::TerrainOptions::getSurfaceParameters;

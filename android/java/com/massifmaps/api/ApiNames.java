@@ -96,6 +96,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> B = MassifObject.key("b");
     /** Returns the background bitmap. May be null. */
     public static final MassifObject.Key<MassifObject> BACKGROUND_BITMAP = MassifObject.key("backgroundBitmap");
+    /** Returns the terrain background bitmap state. */
+    public static final MassifObject.Key<Boolean> BACKGROUND_BITMAP_ENABLED = MassifObject.key("backgroundBitmapEnabled");
     /** Returns the background color of the button. */
     public static final MassifObject.Key<Integer> BACKGROUND_COLOR = MassifObject.key("backgroundColor");
     /** Returns the corner radius of the plate. */
@@ -540,6 +542,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> MAX_OVERZOOM_LEVEL = MassifObject.key("maxOverzoomLevel");
     /** Returns the maximum number of results the search service returns. */
     public static final MassifObject.Key<Long> MAX_RESULTS = MassifObject.key("maxResults");
+    /** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+    public static final MassifObject.Key<Long> MAX_STAND_IN_LEVEL = MassifObject.key("maxStandInLevel");
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     public static final MassifObject.Key<Long> MAX_TILE_ZOOM_COARSENING = MassifObject.key("maxTileZoomCoarsening");
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -1075,8 +1079,10 @@ public final class ApiNames {
     public static final String METHOD_CANCEL_ALL_TASKS = "cancelAllTasks";
     public static final String METHOD_CLEAR = "clear";
     public static final String METHOD_CLEAR_ALL_CACHES = "clearAllCaches";
+    public static final String METHOD_CLEAR_INTERVAL_MULTIPLIERS = "clearIntervalMultipliers";
     public static final String METHOD_CLEAR_MODEL_HIGHLIGHT = "clearModelHighlight";
     public static final String METHOD_CLEAR_PRELOADING_CACHES = "clearPreloadingCaches";
+    public static final String METHOD_CLEAR_RESOLUTIONS_FOR_ZOOM = "clearResolutionsForZoom";
     public static final String METHOD_CLEAR_TILE_CACHES = "clearTileCaches";
     public static final String METHOD_CREATE_LAYER = "createLayer";
     public static final String METHOD_DELETE_LAYER = "deleteLayer";
@@ -1100,6 +1106,7 @@ public final class ApiNames {
     public static final String METHOD_MATCH_ROUTE = "matchRoute";
     public static final String METHOD_MOVE_CAMERA_TO = "moveCameraTo";
     public static final String METHOD_MOVE_TO = "moveTo";
+    public static final String METHOD_NOTIFY_TILES_CHANGED = "notifyTilesChanged";
     public static final String METHOD_REFRESH = "refresh";
     public static final String METHOD_REMOVE = "remove";
     public static final String METHOD_REMOVE_EXTERNAL_DATA_SOURCE = "removeExternalDataSource";
@@ -1109,6 +1116,7 @@ public final class ApiNames {
     public static final String METHOD_SET_ANCHOR_POINT = "setAnchorPoint";
     public static final String METHOD_SET_ANCHORS = "setAnchors";
     public static final String METHOD_SET_CIRCLE = "setCircle";
+    public static final String METHOD_SET_COLOR_PARAMETER = "setColorParameter";
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
     public static final String METHOD_SET_DIRECTION = "setDirection";
@@ -1116,16 +1124,20 @@ public final class ApiNames {
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_MAX_OVERZOOM_LEVEL = "setExternalDataSourceMaxOverzoomLevel";
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_ZOOM_LEVEL_BIAS = "setExternalDataSourceZoomLevelBias";
     public static final String METHOD_SET_FLOAT_PARAMETER = "setFloatParameter";
+    public static final String METHOD_SET_INTERVAL_MULTIPLIER = "setIntervalMultiplier";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_MODEL_HIGHLIGHT = "setModelHighlight";
     public static final String METHOD_SET_OFFSET = "setOffset";
     public static final String METHOD_SET_POSITION = "setPosition";
+    public static final String METHOD_SET_RESOLUTION_FOR_ZOOM = "setResolutionForZoom";
     public static final String METHOD_SET_SEGMENTS = "setSegments";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
     public static final String METHOD_SET_SUN_POSITION_FROM_TIME = "setSunPositionFromTime";
+    public static final String METHOD_SET_SURFACE_COLOR_PARAMETER = "setSurfaceColorParameter";
     public static final String METHOD_SET_SURFACE_PARAMETER = "setSurfaceParameter";
+    public static final String METHOD_SET_TILE_LODPROFILE = "setTileLODProfile";
     public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";
     public static final String METHOD_STOP_ALL_DOWNLOADS = "stopAllDownloads";
     public static final String METHOD_STOP_FLIGHT = "stopFlight";
@@ -1138,12 +1150,16 @@ public final class ApiNames {
     public static final String EVENT_DOWNLOAD_FAILED = "download.failed";
     public static final String EVENT_DOWNLOAD_PROGRESS = "download.progress";
     public static final String EVENT_DOWNLOAD_STARTED = "download.started";
+    public static final String EVENT_FRAME_AFTER = "frame.after";
+    public static final String EVENT_FRAME_BEFORE = "frame.before";
     public static final String EVENT_MAP_CLICKED = "map.clicked";
     public static final String EVENT_MAP_IDLE = "map.idle";
     public static final String EVENT_MAP_INTERACTION = "map.interaction";
     public static final String EVENT_MAP_MOVED = "map.moved";
     public static final String EVENT_MAP_STABLE = "map.stable";
     public static final String EVENT_SKY_CLICKED = "sky.clicked";
+    public static final String EVENT_TILES_LOADED = "tiles.loaded";
+    public static final String EVENT_TILES_PRELOADED = "tiles.preloaded";
     public static final String EVENT_VECTORELEMENT_CLICKED = "vectorelement.clicked";
     public static final String EVENT_VECTORTILE_CLICKED = "vectortile.clicked";
 

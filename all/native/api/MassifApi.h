@@ -91,6 +91,20 @@ namespace massif { namespace api {
         static bool attachCelestialEvents(int handle);
 
         /**
+         * Installs the load bridge of a tile layer given by handle: `tiles.loaded` fires on it when the
+         * visible tiles have arrived, `tiles.preloaded` for the ring around them.
+         * @return False if the handle is not a tile layer.
+         */
+        static bool attachTileLoadEvents(int handle);
+
+        /**
+         * Installs the frame bridge of a renderer given by handle (the `mapRenderer` of a map view):
+         * `frame.before` and `frame.after` fire on it from the GL thread, around every drawn frame.
+         * @return False if the handle is not a renderer.
+         */
+        static bool attachFrameEvents(int handle);
+
+        /**
          * Removes one subscription.
          */
         static bool off(int subscription);

@@ -30,6 +30,8 @@
 
 // Fetches one tile. Synchronous - an HTTP source does network I/O, so use callAsync.
 !method(massif::TileDataSource, loadTile, arg(tile, tile), returns(object, massif::TileData))
+// Tells the layers on this source to reload: after the data behind it changed. removeTiles drops the cached ones too.
+!method(massif::TileDataSource, notifyTilesChanged, arg(removeTiles, bool), returns(void))
 // One entry of the source's meta data. The well-known key is "dem_encoding" ("terrarium" or
 // "mapbox"): the terrain, the hillshade and the contours pick their elevation decoder from it,
 // per TILE, so two differently encoded DEM sources can sit behind one OrderedTileDataSource.

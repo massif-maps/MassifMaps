@@ -15,6 +15,7 @@ public final class MapCamera {
     private final MassifObject view;
     private float duration;
     private float climb;
+    private String easing = "";
 
     MapCamera(MassifObject view) {
         this.view = view;
@@ -32,6 +33,15 @@ public final class MapCamera {
      */
     public MapCamera climb(float height) {
         climb = height;
+        return this;
+    }
+
+    /**
+     * The timing curve of the next flight, by its CSS name: "ease" (the default), "linear", "ease-in",
+     * "ease-out" or "ease-in-out". Resets after the move.
+     */
+    public MapCamera easing(String curve) {
+        easing = curve;
         return this;
     }
 
@@ -86,7 +96,9 @@ public final class MapCamera {
         float height = climb;
         climb = 0;
         if (seconds > 0) {
-            view.call("flyTo", pos, zoom, rotation, tilt, height, seconds).close();
+            String curve = easing;
+            easing = "";
+            view.call("flyTo", pos, zoom, rotation, tilt, height, seconds, curve).close();
         } else {
             view.call("moveTo", pos, zoom, rotation, tilt).close();
         }
@@ -143,6 +155,11 @@ public final class MapCamera {
 
     public float tilt() {
         return (float) view.getDouble("tilt", 0);
+    }
+
+    /** The map's renderer, which holds the post-process effect. */
+    public MassifObject renderer() {
+        return view.child("mapRenderer");
     }
 
     /** Where a touch point is on the map. */

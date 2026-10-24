@@ -23,6 +23,8 @@
 !enum(massif::FreeRoamMode::FreeRoamMode)
 !enum(massif::PanningSpeedMode::PanningSpeedMode)
 !enum(massif::TileLODProfile::TileLODProfile)
+// A named set of tile LOD numbers (reference, mobile, desktop). Write-only: it sets the individual knobs, so there is nothing to read back.
+!method(massif::Options, setTileLODProfile, arg(profile, int), returns(void))
 !shared_ptr(massif::Options, components.Options)
 
 // The map events. They fire on whatever handle the Options were registered under.

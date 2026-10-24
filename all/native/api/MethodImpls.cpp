@@ -22,6 +22,8 @@
 #include "graphics/Color.h"
 #include "layers/CelestialLayer.h"
 #include "terrain/ElevationManager.h"
+#include "components/Options.h"
+#include "datasources/ContourTileDataSource.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
 #include "datasources/MultiTileDataSource.h"
@@ -518,6 +520,28 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** setColorParameter(name, argb) - a colour uniform of a post-process effect. */
+        Result setEffectColorParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string name;
+            long long argb = 0;
+            if (!args.getString(0, name) || !args.getLong(1, argb)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<PostProcessEffect*>(obj)->setColorParameter(name, Color(static_cast<int>(argb)));
+            return RESULT_OK;
+        }
+
+        /** setSurfaceColorParameter(name, argb) - a colour uniform of the terrain's surface shader. */
+        Result setSurfaceColorParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string name;
+            long long argb = 0;
+            if (!args.getString(0, name) || !args.getLong(1, argb)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<TerrainOptions*>(obj)->setSurfaceColorParameter(name, Color(static_cast<int>(argb)));
+            return RESULT_OK;
+        }
+
         /** setFloatParameter(name, value) - a float uniform of a post-process effect. */
         Result setEffectFloatParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             std::string name;
@@ -533,6 +557,74 @@ namespace massif { namespace api {
          * calculateHorizon(pos, eyeHeight, [azimuths], maxDistance) -> a handle onto one apparent
          * altitude per azimuth (ElevationManager::calculateHorizon). WGS84, like getElevation.
          */
+        Result setTileLODProfile(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long profile = 0;
+            if (!args.getLong(0, profile)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<Options*>(obj)->setTileLODProfile(static_cast<TileLODProfile::TileLODProfile>(profile));
+            return RESULT_OK;
+        }
+
+        Result notifyTilesChanged(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            bool removeTiles = false;
+            if (!args.getBool(0, removeTiles)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<TileDataSource*>(obj)->notifyTilesChanged(removeTiles);
+            return RESULT_OK;
+        }
+
+        Result setContourIntervalMultiplier(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long maxZoom = 0;
+            double multiplier = 0;
+            if (!args.getLong(0, maxZoom) || !args.getDouble(1, multiplier)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<ContourTileDataSource*>(obj)->setIntervalMultiplier(static_cast<int>(maxZoom), static_cast<float>(multiplier));
+            return RESULT_OK;
+        }
+
+        Result clearContourIntervalMultipliers(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<ContourTileDataSource*>(obj)->clearIntervalMultipliers();
+            return RESULT_OK;
+        }
+
+        Result setContourResolutionForZoom(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long maxZoom = 0, resolution = 0;
+            if (!args.getLong(0, maxZoom) || !args.getLong(1, resolution)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<ContourTileDataSource*>(obj)->setResolutionForZoom(static_cast<int>(maxZoom), static_cast<int>(resolution));
+            return RESULT_OK;
+        }
+
+        Result clearContourResolutionsForZoom(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<ContourTileDataSource*>(obj)->clearResolutionsForZoom();
+            return RESULT_OK;
+        }
+
+        /** WGS84: -1000000 for a position with no data, as TerrainOptions::getElevation says. */
+        Result getTerrainElevation(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            MapPos pos;
+            if (!args.getPosWgs84(0, pos)) {
+                return RESULT_BAD_SPEC;
+            }
+            result = PropertyValue::ofDouble(static_cast<TerrainOptions*>(obj)->getElevation(pos));
+            return RESULT_OK;
+        }
+
+        /** getElevations([[x, y], ...]) WGS84 -> handle onto a flat array of metres; read with getDoubles. */
+        Result getTerrainElevations(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::vector<MapPos> positions;
+            if (!args.getPositionsWgs84(0, positions)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto elevations = std::make_shared<std::vector<double> >(
+                static_cast<TerrainOptions*>(obj)->getElevations(positions));
+            return objectResult(context, elevations, Context::DOUBLE_VECTOR_CLASS, result);
+        }
+
         Result calculateHorizon(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
             MapPos pos;
             double eyeHeight = 0, maxDistance = 0;
@@ -864,8 +956,18 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialLabel", "setAnchorPoint", &setLabelAnchorPoint);
         registerMethod("massif::CelestialLabel", "setOffset", &setLabelOffset);
         registerMethod("massif::TerrainOptions", "calculateHorizon", &calculateHorizon);
+        registerMethod("massif::Options", "setTileLODProfile", &setTileLODProfile);
+        registerMethod("massif::TileDataSource", "notifyTilesChanged", &notifyTilesChanged);
+        registerMethod("massif::ContourTileDataSource", "setIntervalMultiplier", &setContourIntervalMultiplier);
+        registerMethod("massif::ContourTileDataSource", "clearIntervalMultipliers", &clearContourIntervalMultipliers);
+        registerMethod("massif::ContourTileDataSource", "setResolutionForZoom", &setContourResolutionForZoom);
+        registerMethod("massif::ContourTileDataSource", "clearResolutionsForZoom", &clearContourResolutionsForZoom);
+        registerMethod("massif::TerrainOptions", "getElevation", &getTerrainElevation);
+        registerMethod("massif::TerrainOptions", "getElevations", &getTerrainElevations);
         registerMethod("massif::TerrainOptions", "setSurfaceParameter", &setSurfaceParameter);
         registerMethod("massif::PostProcessEffect", "setFloatParameter", &setEffectFloatParameter);
+        registerMethod("massif::PostProcessEffect", "setColorParameter", &setEffectColorParameter);
+        registerMethod("massif::TerrainOptions", "setSurfaceColorParameter", &setSurfaceColorParameter);
         registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);

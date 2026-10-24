@@ -96,6 +96,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAzimuth;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyB;
 /** Returns the background bitmap. May be null. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBackgroundBitmap;
+/** Returns the terrain background bitmap state. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyBackgroundBitmapEnabled;
 /** Returns the background color of the button. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBackgroundColor;
 /** Returns the corner radius of the plate. */
@@ -540,6 +542,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxFeatures;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxOverzoomLevel;
 /** Returns the maximum number of results the search service returns. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxResults;
+/** Gets how many zoom levels up a cached tile may stand in for a missing one. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxStandInLevel;
 /** Returns how many zoom levels below the camera a tile may coarsen to. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxTileZoomCoarsening;
 /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -1076,8 +1080,10 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCancelAllTasks;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClear;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearAllCaches;
+FOUNDATION_EXPORT MassifMethod const MassifMethodClearIntervalMultipliers;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearModelHighlight;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearPreloadingCaches;
+FOUNDATION_EXPORT MassifMethod const MassifMethodClearResolutionsForZoom;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearTileCaches;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCreateLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodDeleteLayer;
@@ -1101,6 +1107,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodMapToScreen;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMatchRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMoveCameraTo;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMoveTo;
+FOUNDATION_EXPORT MassifMethod const MassifMethodNotifyTilesChanged;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRefresh;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRemove;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRemoveExternalDataSource;
@@ -1110,6 +1117,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSet;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetAnchorPoint;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetAnchors;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCircle;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetColorParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetDirection;
@@ -1117,16 +1125,20 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetDirections;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceMaxOverzoomLevel;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceZoomLevelBias;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetFloatParameter;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetIntervalMultiplier;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetModelHighlight;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetOffset;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetPosition;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetResolutionForZoom;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSegments;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSunPositionFromTime;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetSurfaceColorParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSurfaceParameter;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetTileLODProfile;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStartDownloadArea;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopAllDownloads;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopFlight;
@@ -1140,12 +1152,16 @@ FOUNDATION_EXPORT MassifEvent const MassifEventDownloadCompleted;
 FOUNDATION_EXPORT MassifEvent const MassifEventDownloadFailed;
 FOUNDATION_EXPORT MassifEvent const MassifEventDownloadProgress;
 FOUNDATION_EXPORT MassifEvent const MassifEventDownloadStarted;
+FOUNDATION_EXPORT MassifEvent const MassifEventFrameAfter;
+FOUNDATION_EXPORT MassifEvent const MassifEventFrameBefore;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapClicked;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapIdle;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapInteraction;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapMoved;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapStable;
 FOUNDATION_EXPORT MassifEvent const MassifEventSkyClicked;
+FOUNDATION_EXPORT MassifEvent const MassifEventTilesLoaded;
+FOUNDATION_EXPORT MassifEvent const MassifEventTilesPreloaded;
 FOUNDATION_EXPORT MassifEvent const MassifEventVectorelementClicked;
 FOUNDATION_EXPORT MassifEvent const MassifEventVectortileClicked;
 

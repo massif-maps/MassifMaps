@@ -10,6 +10,8 @@
 #include "api/Context.h"
 #include "components/DirectorPtr.h"
 #include "layers/CelestialEventListener.h"
+#include "layers/TileLoadListener.h"
+#include "renderers/MapRendererListener.h"
 #include "layers/VectorElementEventListener.h"
 #include "layers/VectorTileEventListener.h"
 #include "ui/MapEventListener.h"
@@ -97,6 +99,42 @@ namespace massif { namespace api {
     private:
         PayloadEmitter _emitter;
         DirectorPtr<VectorElementEventListener> _chained;
+    };
+
+    /**
+     * Turns the renderer's per-frame callbacks into `frame.before` and `frame.after` on it. Both fire on
+     * the GL thread, so a subscription that wants the draw time has to be delivered there (ORIGIN).
+     */
+    class FrameEventBridge : public MapRendererListener {
+    public:
+        FrameEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                         const std::shared_ptr<MapRendererListener>& chained);
+        virtual ~FrameEventBridge();
+
+        virtual void onSurfaceChanged(int width, int height);
+        virtual void onBeforeDrawFrame();
+        virtual void onAfterDrawFrame();
+
+    private:
+        PayloadEmitter _emitter;
+        DirectorPtr<MapRendererListener> _chained;
+    };
+
+    /**
+     * Turns a tile layer's load callbacks into `tiles.loaded` and `tiles.preloaded` on the layer.
+     */
+    class TileLoadEventBridge : public TileLoadListener {
+    public:
+        TileLoadEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                            const std::shared_ptr<TileLoadListener>& chained);
+        virtual ~TileLoadEventBridge();
+
+        virtual void onVisibleTilesLoaded();
+        virtual void onPreloadingTilesLoaded();
+
+    private:
+        PayloadEmitter _emitter;
+        DirectorPtr<TileLoadListener> _chained;
     };
 
     /**

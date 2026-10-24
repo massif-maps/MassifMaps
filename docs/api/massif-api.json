@@ -2725,7 +2725,54 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "clearIntervalMultipliers",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "clearResolutionsForZoom",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "setIntervalMultiplier",
+          "args": [
+            {
+              "name": "maxZoom",
+              "type": "int"
+            },
+            {
+              "name": "multiplier",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::ContourTileDataSource",
+          "name": "setResolutionForZoom",
+          "args": [
+            {
+              "name": "maxZoom",
+              "type": "int"
+            },
+            {
+              "name": "resolution",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CullState": {
@@ -5359,7 +5406,20 @@
       ],
       "aliases": {},
       "methods": [],
-      "events": []
+      "events": [
+        {
+          "cppClass": "massif::MapRenderer",
+          "name": "frame.after",
+          "payload": null,
+          "consumable": false
+        },
+        {
+          "cppClass": "massif::MapRenderer",
+          "name": "frame.before",
+          "payload": null,
+          "consumable": false
+        }
+      ]
     },
     "massif::MapRendererListener": {
       "base": null,
@@ -6563,7 +6623,20 @@
         "sky": "skyOptions",
         "terrain": "terrainOptions"
       },
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::Options",
+          "name": "setTileLODProfile",
+          "args": [
+            {
+              "name": "profile",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": [
         {
           "cppClass": "massif::Options",
@@ -7534,6 +7607,22 @@
       ],
       "aliases": {},
       "methods": [
+        {
+          "cppClass": "massif::PostProcessEffect",
+          "name": "setColorParameter",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "color",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
         {
           "cppClass": "massif::PostProcessEffect",
           "name": "setFloatParameter",
@@ -8597,6 +8686,15 @@
           "doc": "Returns the tilt at or above which the terrain renders flat."
         },
         {
+          "name": "backgroundBitmapEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the terrain background bitmap state."
+        },
+        {
           "name": "backgroundColor",
           "type": "COLOR",
           "readOnly": false,
@@ -8991,6 +9089,46 @@
             }
           ],
           "returns": "doubles",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "getElevation",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            }
+          ],
+          "returns": "float",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "getElevations",
+          "args": [
+            {
+              "name": "positions",
+              "type": "positions"
+            }
+          ],
+          "returns": "doubles",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "setSurfaceColorParameter",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "color",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
           "returnClass": null
         },
         {
@@ -9455,6 +9593,18 @@
         },
         {
           "cppClass": "massif::TileDataSource",
+          "name": "notifyTilesChanged",
+          "args": [
+            {
+              "name": "removeTiles",
+              "type": "bool"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TileDataSource",
           "name": "setMetaDataElement",
           "args": [
             {
@@ -9580,6 +9730,15 @@
           "doc": "Gets the current maximum overzoom level for this layer."
         },
         {
+          "name": "maxStandInLevel",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Gets how many zoom levels up a cached tile may stand in for a missing one."
+        },
+        {
           "name": "maxUnderzoomLevel",
           "type": "INT",
           "readOnly": false,
@@ -9680,7 +9839,20 @@
           "returnClass": null
         }
       ],
-      "events": []
+      "events": [
+        {
+          "cppClass": "massif::TileLayer",
+          "name": "tiles.loaded",
+          "payload": null,
+          "consumable": false
+        },
+        {
+          "cppClass": "massif::TileLayer",
+          "name": "tiles.preloaded",
+          "payload": null,
+          "consumable": false
+        }
+      ]
     },
     "massif::TileLoadListener": {
       "base": null,

@@ -1,3 +1,4 @@
+#include "api/Base64.h"
 #include "api/Context.h"
 #include "api/ElementSpecs.h"
 #include "api/Projections.h"
@@ -89,9 +90,20 @@ namespace massif { namespace api {
          */
         Result buildData(Context&, const Variant& spec, ObjectRef& object,
                          std::set<std::string>& consumed) {
-            std::string type = stringAt(spec, "type", "url");
+            std::string type = stringAt(spec, "type", spec.containsObjectKey("base64") ? "base64" : "url");
             consumed.insert("type");
             consumed.insert("url");
+            consumed.insert("base64");
+            if (type == "base64") {
+                std::vector<unsigned char> bytes;
+                if (!decodeBase64(stringAt(spec, "base64"), bytes) || bytes.empty()) {
+                    Log::Error("Spec: a base64 data spec needs a non-empty, valid \"base64\"");
+                    return RESULT_BAD_SPEC;
+                }
+                object.obj = std::make_shared<BinaryData>(bytes);
+                object.cppClass = "massif::BinaryData";
+                return RESULT_OK;
+            }
             if (type != "url") {
                 Log::Errorf("Spec: no data type '%s'", type.c_str());
                 return RESULT_UNKNOWN_TYPE;
@@ -132,13 +144,13 @@ namespace massif { namespace api {
         Result buildBitmap(Context& context, const Variant& spec, ObjectRef& object,
                            std::set<std::string>& consumed) {
             std::shared_ptr<void> data;
-            // Either an inline { "type": "url", … } or the id of a registered `data`.
+            // Either an inline { "type": "url" | "base64", … } or the id of a registered `data`.
             Result result = childOf(context, spec, "data", "data", "massif::BinaryData", data);
             if (result != RESULT_OK) {
                 // A bare url is the common case, so accept it without the wrapper.
                 Variant inlineSpec = spec;
-                if (!spec.containsObjectKey("url")) {
-                    Log::Error("Spec: a bitmap needs a \"url\" or a \"data\"");
+                if (!spec.containsObjectKey("url") && !spec.containsObjectKey("base64")) {
+                    Log::Error("Spec: a bitmap needs a \"url\", a \"base64\" or a \"data\"");
                     return RESULT_UNKNOWN_PROPERTY;
                 }
                 ObjectRef bytes;
@@ -148,6 +160,7 @@ namespace massif { namespace api {
                     return result;
                 }
                 consumed.insert("url");
+                consumed.insert("base64");
                 data = bytes.obj;
             }
             consumed.insert("type");

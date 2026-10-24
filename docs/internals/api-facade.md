@@ -735,7 +735,7 @@ hand-written in `SpecFactories.cpp` is genuinely adaptive rather than boilerplat
 | still hand-written | why the signature cannot say it |
 |---|---|
 | `projection` | a name registry lookup, not a constructor |
-| `data` | bytes read through `URLFileLoader`, not a constructor |
+| `data` | bytes read through `URLFileLoader`, or inline as `{"base64": "…"}`; a `bitmap` takes either key bare |
 | `bitmap` | `Bitmap::CreateFromCompressed` is a static factory |
 | `geometry` **geojson** | a GeoJSON reader, not a constructor — the shapes themselves build from theirs |
 | `search` **from a layer** | the source and the decoder both come from a layer already on the map |

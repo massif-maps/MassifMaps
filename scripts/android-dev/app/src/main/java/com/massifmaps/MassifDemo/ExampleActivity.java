@@ -1,6 +1,5 @@
 package com.massifmaps.MassifDemo;
 
-import com.massifmaps.MassifDemo.demo.ObjectApi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -30,11 +29,8 @@ import com.massifmaps.MassifDemo.examples.Examples;
 import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.MassifDemo.examples.ExampleSettings;
 import com.massifmaps.api.MassifMap;
-import com.massifmaps.components.PanningMode;
-import com.massifmaps.components.RenderProjectionMode;
 import com.massifmaps.api.Position;
-import com.massifmaps.projections.EPSG4326;
-import com.massifmaps.ui.MapEventListener;
+import com.massifmaps.api.Spec;
 import com.massifmaps.ui.MapView;
 
 /**
@@ -135,17 +131,16 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
 
         // Lon/lat everywhere. Every example is written in degrees, and an example that had to
         // convert would be teaching the wrong thing.
-        ObjectApi.options(mapView).setBaseProjection(new EPSG4326());
-        ObjectApi.options(mapView).setRestrictedPanning(true);
-        ObjectApi.options(mapView).setSeamlessPanning(true);
-        ObjectApi.options(mapView).setPanningMode(PanningMode.PANNING_MODE_STICKY);
-        ObjectApi.options(mapView).setRotatable(true);
-        // What every other map app does and nobody thinks about: double-tap-and-drag to zoom, and
-        // a two-finger tap to zoom out. Both are one flag.
-        ObjectApi.options(mapView).setZoomGestures(true);
-        ObjectApi.options(mapView).setClickTypeDetection(true);
-
         map = MassifMap.attach(mapView).eventProjection("EPSG:4326");
+        map.set("baseProjection", map.object("projection", "base", Spec.of("EPSG:4326")))
+           .set("restrictedPanning", true)
+           .set("seamlessPanning", true)
+           .set("panningMode", 1)          // sticky
+           .set("rotatable", true)
+           // What every other map app does and nobody thinks about: double-tap-and-drag to zoom, and
+           // a two-finger tap to zoom out. Both are one flag.
+           .set("zoomGestures", true)
+           .set("clickTypeDetection", true);
         installCameraReadout();
         // '--es ui false' strips the chrome, the same key the bench uses. A gallery vignette is a
         // picture of the MAP; the back button and the caption are the app around it.
@@ -235,9 +230,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         }
         // On this thread, not posted: switching the surface re-derives the camera, so it has to
         // land BEFORE applyCameraOverrides rather than race it.
-        ObjectApi.options(mapView).setRenderProjectionMode("true".equals(extras.getString("globe"))
-                ? RenderProjectionMode.RENDER_PROJECTION_MODE_SPHERICAL
-                : RenderProjectionMode.RENDER_PROJECTION_MODE_PLANAR);
+        map.set("renderProjectionMode", "true".equals(extras.getString("globe")) ? 1 : 0);
     }
 
     /**
@@ -281,13 +274,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
      * Every move, as the bench does - a settled-only readout misses the frame an artifact showed on.
      */
     private void installCameraReadout() {
-        ObjectApi.setMapEventListener(mapView, new MapEventListener() {
-            @Override
-            public void onMapMoved(int reason) {
-                super.onMapMoved(reason);
-                logCamera();
-            }
-        });
+        map.onMove(e -> logCamera());
     }
 
     /**

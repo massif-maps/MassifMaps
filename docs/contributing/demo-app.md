@@ -322,7 +322,7 @@ A/B-ing a regression takes two steps, not one:
 
 ```sh
 git checkout <sha> -- all/ libs-massif/           # 1. old sources (libs-massif is in-tree since 2026-08-23)
-cd scripts && python3 swigpp-java.py --profile "standard+valhalla+geocoding+routing+packagemanager" \
+cd scripts && python3 swigpp-java.py --profile "standard+objectapi+valhalla+geocoding+routing+packagemanager" \
   --swig /Volumes/dev/carto/mobile-swig/swig       # 2. regenerate wrappers, else the build fails
 ```
 

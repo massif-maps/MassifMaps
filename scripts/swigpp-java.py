@@ -491,9 +491,19 @@ def transformSwigFile(sourcePath, outPath, headerDirs, packageName):
   with open(outPath, 'w') as f:
     f.writelines([line + '\n' for line in lines_out])
 
+# Without the objectapi profile only the facade's own entry points get a Java wrapper; everything else
+# is the object API. gen-api-tables.py reads every module regardless, so the facade still reaches the
+# whole SDK by id and path.
+SURFACE_MODULES = ['api/MassifApi', 'api/EventListener', 'api/UiDispatcher', 'utils/Log', 'utils/LogEventListener']
+
+def isSurfaceModule(packageName, fileName):
+  return '%s/%s' % (packageName, os.path.splitext(fileName)[0]) in SURFACE_MODULES
+
 def transformSwigPackage(args, sourceDir, outDir, packageName):
   for fileName in os.listdir(sourceDir):
     if fileName == 'NutiSwig.i':
+      continue
+    if '_MASSIF_OBJECTAPI_SUPPORT' not in argsDefines and not isSurfaceModule(packageName, fileName):
       continue
     sourcePath = os.path.join(sourceDir, fileName)
     if not os.path.isfile(sourcePath):

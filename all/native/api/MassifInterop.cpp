@@ -1,4 +1,5 @@
 #include "api/MassifInterop.h"
+#include "api/MassifApi.h"
 #include "api/Context.h"
 #include "api/MapEventBridge.h"
 #include "components/ClassRegistry.h"
@@ -218,6 +219,19 @@ namespace massif { namespace api {
         layer->setCelestialEventListener(std::make_shared<CelestialEventBridge>(
             Context::GetDefault(), static_cast<Handle>(handle), layer->getCelestialEventListener()));
         return true;
+    }
+
+    // Declared on MassifApi, defined here: the layer classes they reach are not MassifApi's to name.
+    bool MassifApi::attachVectorTileEvents(int handle) {
+        return MassifInterop::attachVectorTileEvents(handle);
+    }
+
+    bool MassifApi::attachVectorElementEvents(int handle) {
+        return MassifInterop::attachVectorElementEvents(handle);
+    }
+
+    bool MassifApi::attachCelestialEvents(int handle) {
+        return MassifInterop::attachCelestialEvents(handle);
     }
 
 } }

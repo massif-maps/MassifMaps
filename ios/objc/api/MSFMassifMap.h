@@ -53,6 +53,15 @@ NS_SWIFT_NAME(MapCamera)
 - (instancetype)tilt:(float)degrees;
 
 /**
+ * What MSFMapView had as pan, zoom, rotate and tilt: relative to where the camera is now, and one move
+ * like moveTo. animate: applies to them. Rotation is positive clockwise; panBy is in degrees.
+ */
+- (instancetype)panByLng:(double)deltaLng lat:(double)deltaLat;
+- (instancetype)zoomBy:(float)delta;
+- (instancetype)rotateBy:(float)degrees;
+- (instancetype)tiltBy:(float)degrees;
+
+/**
  * Moves everything in ONE flight. Four separate setters animate independently and visibly fight
  * each other; this is the call an app actually wants.
  */

@@ -11830,6 +11830,7 @@ export interface MethodTypes {
     'massif::MapRange': {
     };
     'massif::MapRenderer': {
+        capturePNG: { args: [waitWhileUpdating: boolean]; result: Handle<'massif::BinaryData'>; resultClass: 'massif::BinaryData' };
     };
     'massif::MapRendererListener': {
     };

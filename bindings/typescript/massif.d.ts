@@ -8937,6 +8937,7 @@ export interface MethodTypes {
   "massif::MapRange": {
   };
   "massif::MapRenderer": {
+    capturePNG: (waitWhileUpdating: boolean) => Handle<"massif::BinaryData">;
   };
   "massif::MapRendererListener": {
   };

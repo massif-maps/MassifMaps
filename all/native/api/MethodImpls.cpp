@@ -19,8 +19,11 @@
 #include "celestial/CelestialImage.h"
 #include "celestial/CelestialLabel.h"
 #include "celestial/CelestialObject.h"
+#include "graphics/Bitmap.h"
 #include "graphics/Color.h"
 #include "layers/CelestialLayer.h"
+#include "renderers/MapRenderer.h"
+#include "renderers/RendererCaptureListener.h"
 #include "terrain/ElevationManager.h"
 #include "components/Options.h"
 #include "datasources/ContourTileDataSource.h"
@@ -39,6 +42,9 @@
 #include "vectortiles/VectorTileDecoder.h"
 #include "utils/Log.h"
 
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <typeinfo>
 
 #ifdef _MASSIF_SEARCH_SUPPORT
@@ -568,6 +574,45 @@ namespace massif { namespace api {
             return objectResult(context, elevations, Context::DOUBLE_VECTOR_CLASS, result);
         }
 
+        class CaptureWaiter : public RendererCaptureListener {
+        public:
+            virtual void onMapRendered(const std::shared_ptr<Bitmap>& bitmap) {
+                std::lock_guard<std::mutex> lock(_mutex);
+                _bitmap = bitmap;
+                _done = true;
+                _condition.notify_all();
+            }
+
+            std::shared_ptr<Bitmap> wait(std::chrono::seconds timeout) {
+                std::unique_lock<std::mutex> lock(_mutex);
+                _condition.wait_for(lock, timeout, [this] { return _done; });
+                return _bitmap;
+            }
+
+        private:
+            std::mutex _mutex;
+            std::condition_variable _condition;
+            std::shared_ptr<Bitmap> _bitmap;
+            bool _done = false;
+        };
+
+        /**
+         * capturePNG(waitWhileUpdating) -> a handle onto the PNG of the next rendered frame. It blocks
+         * until the render thread has drawn it, so call it with callAsync; a single-threaded host
+         * (the web) never draws while it waits and gets RESULT_FAILED after the timeout.
+         */
+        Result captureRenderingPng(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            bool waitWhileUpdating = false;
+            args.getBool(0, waitWhileUpdating);
+            auto waiter = std::make_shared<CaptureWaiter>();
+            static_cast<MapRenderer*>(obj)->captureRendering(waiter, waitWhileUpdating);
+            std::shared_ptr<Bitmap> bitmap = waiter->wait(std::chrono::seconds(waitWhileUpdating ? 60 : 10));
+            if (!bitmap) {
+                return RESULT_FAILED;
+            }
+            return objectResult(context, bitmap->compressToPNG(), "massif::BinaryData", result);
+        }
+
         /**
          * calculateHorizon(pos, eyeHeight, [azimuths], maxDistance) -> a handle onto one apparent
          * altitude per azimuth (ElevationManager::calculateHorizon). WGS84, like getElevation.
@@ -903,6 +948,7 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialLabel", "setAnchorPoint", &setLabelAnchorPoint);
         registerMethod("massif::CelestialLabel", "setOffset", &setLabelOffset);
         registerMethod("massif::TerrainOptions", "calculateHorizon", &calculateHorizon);
+        registerMethod("massif::MapRenderer", "capturePNG", &captureRenderingPng);
         registerMethod("massif::TileDataSource", "notifyTilesChanged", &notifyTilesChanged);
         registerMethod("massif::ContourTileDataSource", "setIntervalMultiplier", &setContourIntervalMultiplier);
         registerMethod("massif::ContourTileDataSource", "clearIntervalMultipliers", &clearContourIntervalMultipliers);

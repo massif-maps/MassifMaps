@@ -554,6 +554,7 @@ MassifMethod const MassifMethodCalculateAddresses = @"calculateAddresses";
 MassifMethod const MassifMethodCalculateHorizon = @"calculateHorizon";
 MassifMethod const MassifMethodCalculateRoute = @"calculateRoute";
 MassifMethod const MassifMethodCancelAllTasks = @"cancelAllTasks";
+MassifMethod const MassifMethodCapturePNG = @"capturePNG";
 MassifMethod const MassifMethodClear = @"clear";
 MassifMethod const MassifMethodClearAllCaches = @"clearAllCaches";
 MassifMethod const MassifMethodClearIntervalMultipliers = @"clearIntervalMultipliers";

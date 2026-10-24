@@ -192,6 +192,13 @@ map.apply(Spec.object().set("terrain.surfaceParams.uHaze", 0.4).set("tileLODProf
 
 The C++ methods are unchanged, so the object API is not affected.
 
+### Capturing a frame without the object API
+
+`MapRenderer.captureRendering` takes a listener, an SDK type. The facade has `capturePNG(waitWhileUpdating)` on the
+renderer instead: it blocks until the next frame is drawn and returns the PNG bytes, so call it with `callAsync`.
+`MassifMap.capture(wait, callback)` on Android and `map.capturePng(wait)` in JavaScript wrap it. A single-threaded
+host (the web) never draws while it waits and gets a failure after the timeout.
+
 ### Android `MapView` no longer carries the object API
 
 `MapView` and `TextureMapView` create their native map themselves and are addressed through the facade, so

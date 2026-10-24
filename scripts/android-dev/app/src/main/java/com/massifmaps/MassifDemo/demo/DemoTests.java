@@ -7,6 +7,7 @@ import android.widget.Toast;
 
 import com.massifmaps.api.Massif;
 import com.massifmaps.api.MassifException;
+import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.MassifSource;
 import com.massifmaps.api.Position;
@@ -606,6 +607,16 @@ public final class DemoTests {
             report(demo, "bench failed: " + e.getMessage());
             Log.e(TAG, "bench failed", e);
         }
+    }
+
+    /** The next frame as PNG bytes, through the facade: no object API involved. */
+    public static void runCapture(final DemoMap demo) {
+        demo.map.capture(false, new MassifMap.CaptureCallback() {
+            public void onCapture(byte[] png) {
+                boolean valid = png != null && png.length > 8 && png[1] == 'P' && png[2] == 'N' && png[3] == 'G';
+                report(demo, "capture: " + (png == null ? "failed" : png.length + " bytes, png=" + valid));
+            }
+        });
     }
 
     // =============================================================================================

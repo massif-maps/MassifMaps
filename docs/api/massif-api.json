@@ -5405,7 +5405,20 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::MapRenderer",
+          "name": "capturePNG",
+          "args": [
+            {
+              "name": "waitWhileUpdating",
+              "type": "bool"
+            }
+          ],
+          "returns": "object",
+          "returnClass": "massif::BinaryData"
+        }
+      ],
       "events": [
         {
           "cppClass": "massif::MapRenderer",

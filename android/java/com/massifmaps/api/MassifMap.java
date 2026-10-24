@@ -126,6 +126,25 @@ public final class MassifMap implements AutoCloseable {
         return this;
     }
 
+    public interface CaptureCallback {
+        /** @param png The PNG bytes, or null when the capture failed. Called on the UI thread. */
+        void onCapture(byte[] png);
+    }
+
+    /**
+     * Captures the next rendered frame as PNG, through the facade. @param waitWhileUpdating holds it
+     * until the tiles have settled.
+     * @return A call id for {@link MassifObject#cancel(int)}.
+     */
+    public int capture(boolean waitWhileUpdating, final CaptureCallback callback) {
+        return camera().renderer().callAsync("capturePNG", new MassifObject.Callback() {
+            @Override
+            public void onResult(MassifObject result) {
+                callback.onCapture(result != null ? result.data("") : null);
+            }
+        }, waitWhileUpdating);
+    }
+
     /**
      * A method on the map or on an object under it, by path: <pre>map.call("light.setSunPositionFromTime", 2026, 3, 20, 12, 0, 45.0, 5.7).close();</pre>
      * The result is the caller's to close.

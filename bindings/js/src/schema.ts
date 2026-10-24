@@ -516,6 +516,7 @@ export const METHODS: { [cls: string]: string } = {
     'massif::LocalVectorDataSource': 'add,v;clear,v;remove,b',
     'massif::MBVectorTileDecoder': 'addFallbackFont,v;getLegend,j;getStyleParameter,s;setStyleParameter,b;setStyleParameters,v',
     'massif::ManeuverArrowBuilder': 'buildArrow,j;buildArrowAtIndex,j',
+    'massif::MapRenderer': 'capturePNG,o,massif::BinaryData',
     'massif::MultiOSMOfflineGeocodingService': 'add,v;remove,b',
     'massif::MultiOSMOfflineReverseGeocodingService': 'add,v;remove,b',
     'massif::MultiTileDataSource': 'add,v;remove,b',

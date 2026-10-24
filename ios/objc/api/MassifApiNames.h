@@ -1088,6 +1088,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateAddresses;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateHorizon;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCancelAllTasks;
+FOUNDATION_EXPORT MassifMethod const MassifMethodCapturePNG;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClear;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearAllCaches;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearIntervalMultipliers;

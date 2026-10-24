@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.3.0] - 2026-10-24
+
+### Breaking changes
+
+- **api:** reach terrain elevation, contour ladder and tile/frame events from the facade; uniforms and LOD profile become properties ([#471](https://github.com/massif-maps/MassifMaps/pull/471)) ([`ae1f2ea`](https://github.com/massif-maps/MassifMaps/commit/ae1f2ea164927e2b9e650f48671a7ca6b0498783))
+  the demo no longer builds with the object API; bench code that used SDK classes directly must go through Massif/MassifMap and specs.
+- **android:** ship the SDK without the object API wrappers, as a separate objectapi variant ([#470](https://github.com/massif-maps/MassifMaps/pull/470)) ([`e71f21c`](https://github.com/massif-maps/MassifMaps/commit/e71f21c0eb8ded5181220e978f208e5f449dba7a))
+  the default Android libraries no longer contain the object API (layers, datasources, vectorelements, styles, geometry, components, core, projections, renderers, search, routing, utils except Log, and MassifInterop). Use the objectapi variant, and MassifLegacy for what Massif and MassifMap adopted. See docs/migration.md.
+- **android:** let MapView own its native map and drop the object API from it ([#469](https://github.com/massif-maps/MassifMaps/pull/469)) ([`13c5645`](https://github.com/massif-maps/MassifMaps/commit/13c5645b727928684bd7deee02f6d8b5a23bb0cc))
+  com.massifmaps.ui.MapView, TextureMapView and MapViewInterface no longer have getOptions, getLayers, getMapRenderer, getBaseMapView, get/setMapEventListener or the camera methods; MassifMap.attach(view, id) is attach(view), the id being the view's. See docs/migration.md.
+- **layers:** remove the Torque animated tile layer ([#454](https://github.com/massif-maps/MassifMaps/pull/454)) ([`87a3ca2`](https://github.com/massif-maps/MassifMaps/commit/87a3ca28c2466204ca392def2d48f2b554fbb71d))
+  TorqueTileLayer, TorqueTileDecoder and Torque CartoCSS styles are gone, with no replacement. See docs/migration.md.
+
+### New features
+
+- **api:** capture a frame and write search results as WGS84 GeoJSON, with no object API ([#472](https://github.com/massif-maps/MassifMaps/pull/472)) ([`4edadb0`](https://github.com/massif-maps/MassifMaps/commit/4edadb096d6676a0c01612a660bbc34825b5d641))
+- **api:** reach terrain elevation, contour ladder and tile/frame events from the facade; uniforms and LOD profile become properties ([#471](https://github.com/massif-maps/MassifMaps/pull/471)) ([`ae1f2ea`](https://github.com/massif-maps/MassifMaps/commit/ae1f2ea164927e2b9e650f48671a7ca6b0498783))
+- **android:** ship the SDK without the object API wrappers, as a separate objectapi variant ([#470](https://github.com/massif-maps/MassifMaps/pull/470)) ([`e71f21c`](https://github.com/massif-maps/MassifMaps/commit/e71f21c0eb8ded5181220e978f208e5f449dba7a))
+- **android:** let MapView own its native map and drop the object API from it ([#469](https://github.com/massif-maps/MassifMaps/pull/469)) ([`13c5645`](https://github.com/massif-maps/MassifMaps/commit/13c5645b727928684bd7deee02f6d8b5a23bb0cc))
+- **api:** let a native app draw its own GL into the map through a custom layer ([#463](https://github.com/massif-maps/MassifMaps/pull/463)) ([`7ee8fb3`](https://github.com/massif-maps/MassifMaps/commit/7ee8fb36827829f3059d2a8f26077e41bb04de88))
+- **release:** release the SDK, styles and style tools on their own semver, one bump each ([#459](https://github.com/massif-maps/MassifMaps/pull/459)) ([`7333a14`](https://github.com/massif-maps/MassifMaps/commit/7333a14bba1c64e86026fc8c18d3e404afdf4617))
+- **layers:** cross-fade time-stepped raster tiles in one draw ([#455](https://github.com/massif-maps/MassifMaps/pull/455)) ([`ebeb18c`](https://github.com/massif-maps/MassifMaps/commit/ebeb18c5fb21a5e2e6964f9d51a0f0188a9c6147))
+- **layers:** remove the Torque animated tile layer ([#454](https://github.com/massif-maps/MassifMaps/pull/454)) ([`87a3ca2`](https://github.com/massif-maps/MassifMaps/commit/87a3ca28c2466204ca392def2d48f2b554fbb71d))
+
+### Bug fixes
+
+- **ios:** build the byte[]/NSData data channel again, and stop the CI run on the first failed build ([#473](https://github.com/massif-maps/MassifMaps/pull/473)) ([`d434495`](https://github.com/massif-maps/MassifMaps/commit/d434495a9d46a5158f6e34c2c00d6ef7dc61a0a5))
+- **ios:** require mac catalyst 15 in generated Package.swift ([#466](https://github.com/massif-maps/MassifMaps/pull/466)) ([`b04d059`](https://github.com/massif-maps/MassifMaps/commit/b04d059a98812191907bfbe745b5b34cf637708e))
+- **demo:** link libmassifdemo with 16 KB pages so Android 16 stops warning about it ([#468](https://github.com/massif-maps/MassifMaps/pull/468)) ([`ffa63e3`](https://github.com/massif-maps/MassifMaps/commit/ffa63e351e2944a181955a873b6df9787353cb04))
+- **release:** pick what to bump from a dropdown in the Release workflow ([#460](https://github.com/massif-maps/MassifMaps/pull/460)) ([`203b098`](https://github.com/massif-maps/MassifMaps/commit/203b098b98909e2a63538709d1b1b5f8bed0747a))
+- **renderers:** stop labels, POIs and trees blinking on each moveTo while following the user ([#457](https://github.com/massif-maps/MassifMaps/pull/457)) ([`0ac7046`](https://github.com/massif-maps/MassifMaps/commit/0ac704692e202ab89cfcfdabe368b7462f461a1d))
+- **layers:** style every tile of a flat top-down map at the camera's zoom ([#456](https://github.com/massif-maps/MassifMaps/pull/456)) ([`882a3df`](https://github.com/massif-maps/MassifMaps/commit/882a3dfc69b80a709c58c307e0a90ab898597cc9))
+- **labels:** stop labels blinking when the zoom crosses an integer level ([#453](https://github.com/massif-maps/MassifMaps/pull/453)) ([`1062522`](https://github.com/massif-maps/MassifMaps/commit/1062522f83a6aa4525396e1b9ec7558083595a39))
+
 ## [v6.2.1] - 2026-10-19
 
 ### Bug fixes

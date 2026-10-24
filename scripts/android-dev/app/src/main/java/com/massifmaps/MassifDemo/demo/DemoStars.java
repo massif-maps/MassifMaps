@@ -14,8 +14,6 @@ import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.Spec;
 
-import java.io.File;
-import java.io.FileOutputStream;
 
 
 import java.util.ArrayList;
@@ -267,18 +265,9 @@ public final class DemoStars {
         float y = side * 0.5f - bounds.exactCenterY();
         canvas.drawText(text, x, y, outline);
         canvas.drawText(text, x, y, paint);
-        // The facade reads an image from a URL, so the painted name goes to a file first.
-        try {
-            File file = new File(context.getCacheDir(), "demo-star-label-" + (++counter) + ".png");
-            try (FileOutputStream out = new FileOutputStream(file)) {
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
-            }
-            String id = "demo-star-label-" + counter;
-            Massif.destroy("bitmap", id);
-            return Massif.object("bitmap", id, Spec.object().set("url", "file://" + file.getAbsolutePath()));
-        } catch (java.io.IOException e) {
-            throw new IllegalStateException(e);
-        }
+        String id = "demo-star-label-" + (++counter);
+        Massif.destroy("bitmap", id);
+        return Massif.object("bitmap", id, DemoCelestial.pngSpec(bitmap));
     }
 
     /** A star of this magnitude, in screen pixels. */

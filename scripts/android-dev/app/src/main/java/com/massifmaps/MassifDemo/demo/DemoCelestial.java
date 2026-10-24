@@ -14,8 +14,6 @@ import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.Spec;
 
-import java.io.File;
-import java.io.FileOutputStream;
 
 
 /**
@@ -201,17 +199,14 @@ public final class DemoCelestial {
             // Gibbous: it bulges into the dark half, so the ellipse paints the moon back in.
             canvas.drawOval(terminatorOval, paint);
         }
-        // The facade reads an image from a URL, so the painted moon goes to a file first.
-        try {
-            File file = new File(context.getCacheDir(), "demo-moon.png");
-            try (FileOutputStream out = new FileOutputStream(file)) {
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
-            }
-            Massif.destroy("bitmap", "demo-moon-bitmap");
-            moon.set("bitmap", Massif.object("bitmap", "demo-moon-bitmap", Spec.object().set("url", "file://" + file.getAbsolutePath())));
-        } catch (java.io.IOException e) {
-            android.util.Log.w("DemoCelestial", "moon phase image not written: " + e.getMessage());
-        }
+        Massif.destroy("bitmap", "demo-moon-bitmap");
+        moon.set("bitmap", Massif.object("bitmap", "demo-moon-bitmap", pngSpec(bitmap)));
+    }
+
+    static Spec pngSpec(android.graphics.Bitmap bitmap) {
+        java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, png);
+        return Spec.object().set("base64", android.util.Base64.encodeToString(png.toByteArray(), android.util.Base64.NO_WRAP));
     }
 
     /**

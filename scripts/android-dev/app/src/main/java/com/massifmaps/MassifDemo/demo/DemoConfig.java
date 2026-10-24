@@ -515,6 +515,8 @@ public final class DemoConfig {
      *  camera stays put and the view pitches up (Options.setTiltRange). 0 stops at the horizon,
      *  which is what a map does by default. */
     public static float LOOK_UP_LIMIT = 90f;
+    /** Captures one frame through the facade 45 s after the map is built, and logs its size: --es captureTest true. */
+    public static boolean CAPTURE_TEST = false;
     public static boolean CELESTIAL = true;
     public static boolean CELESTIAL_SUN = true;
     public static boolean CELESTIAL_MOON = true;
@@ -1412,6 +1414,7 @@ public final class DemoConfig {
         FREE_ROAM_LOOK_SENSITIVITY = DemoCfg.cfgFloat("lookSensitivity", FREE_ROAM_LOOK_SENSITIVITY);
         FREE_ROAM_MOVE_SPEED = DemoCfg.cfgFloat("moveSpeed", FREE_ROAM_MOVE_SPEED);
         LOOK_UP_LIMIT = DemoCfg.cfgFloat("lookUp", LOOK_UP_LIMIT);
+        CAPTURE_TEST = DemoCfg.cfgBool("captureTest", CAPTURE_TEST);
         CELESTIAL = DemoCfg.cfgBool("celestial", CELESTIAL);
         CELESTIAL_SUN = DemoCfg.cfgBool("celestialSun", CELESTIAL_SUN);
         CELESTIAL_MOON = DemoCfg.cfgBool("celestialMoon", CELESTIAL_MOON);

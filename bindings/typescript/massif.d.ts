@@ -8794,6 +8794,7 @@ export interface MethodTypes {
   };
   "massif::FeatureCollection": {
     getFeature: (index: number) => Handle<"massif::Feature">;
+    toGeoJSON: (sourceProjection: Handle) => Json;
   };
   "massif::FeatureCollectionSearchService": {
     findFeatures: (request: Handle) => Handle<"massif::FeatureCollection">;
@@ -8937,6 +8938,7 @@ export interface MethodTypes {
   "massif::MapRange": {
   };
   "massif::MapRenderer": {
+    capturePNG: (waitWhileUpdating: boolean) => Handle<"massif::BinaryData">;
   };
   "massif::MapRendererListener": {
   };
@@ -9288,6 +9290,7 @@ export interface MethodTypes {
   };
   "massif::VectorTileFeatureCollection": {
     getFeature: (index: number) => Handle<"massif::VectorTileFeature">;
+    toGeoJSON: (sourceProjection: Handle) => Json;
   };
   "massif::VectorTileLayer": {
     clearModelHighlight: () => void;

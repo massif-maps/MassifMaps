@@ -1218,6 +1218,9 @@ public final class DemoPanel {
         button(context, "online routing test", new Action() {
             public void run() { DemoTests.runOnlineRouting(demo); }
         });
+        button(context, "capture frame (facade)", new Action() {
+            public void run() { DemoTests.runCapture(demo); }
+        });
         button(context, "vector tile search test", new Action() {
             public void run() { DemoTests.runVectorTileSearch(demo); }
         });

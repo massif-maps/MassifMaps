@@ -32,6 +32,8 @@
 // Setting the same effect again is how a parameter change on it asks for a frame.
 %attributestring(massif::MapRenderer, std::shared_ptr<massif::PostProcessEffect>, PostProcessEffect, getPostProcessEffect, setPostProcessEffect)
 %std_exceptions(massif::MapRenderer::captureRendering)
+// The next frame as PNG bytes, for a binding with no object API. Blocks until drawn: use callAsync.
+!method(massif::MapRenderer, capturePNG, arg(waitWhileUpdating, bool), returns(object, massif::BinaryData))
 %ignore massif::MapRenderer::MapRenderer;
 %ignore massif::MapRenderer::init;
 %ignore massif::MapRenderer::deinit;

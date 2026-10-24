@@ -1087,6 +1087,7 @@ public final class ApiNames {
     public static final String METHOD_CALCULATE_HORIZON = "calculateHorizon";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
     public static final String METHOD_CANCEL_ALL_TASKS = "cancelAllTasks";
+    public static final String METHOD_CAPTURE_PNG = "capturePNG";
     public static final String METHOD_CLEAR = "clear";
     public static final String METHOD_CLEAR_ALL_CACHES = "clearAllCaches";
     public static final String METHOD_CLEAR_INTERVAL_MULTIPLIERS = "clearIntervalMultipliers";
@@ -1146,6 +1147,7 @@ public final class ApiNames {
     public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";
     public static final String METHOD_STOP_ALL_DOWNLOADS = "stopAllDownloads";
     public static final String METHOD_STOP_FLIGHT = "stopFlight";
+    public static final String METHOD_TO_GEO_JSON = "toGeoJSON";
     public static final String METHOD_UPDATE_FEATURE = "updateFeature";
 
     // --- events ----------------------------------------------------------

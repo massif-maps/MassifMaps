@@ -1829,6 +1829,11 @@ export class MapCamera {
     }
 
     /** Whether a flight is running. */
+    /** The map's renderer: where the post-process effect and the frame capture live. */
+    renderer(): MassifObject<'massif::MapRenderer'> {
+        return this.view.child('mapRenderer') as MassifObject<'massif::MapRenderer'>;
+    }
+
     isMoving(): boolean {
         return this.view.get('flightActive') as boolean;
     }
@@ -2166,6 +2171,14 @@ export class MassifMap extends MassifObject<'massif::Options'> {
     }
 
     /** The camera. See MapCamera - a move is a flight, not a property. */
+    /**
+     * The next rendered frame as PNG bytes, through the facade: it needs no object API. `wait` holds
+     * the capture until the tiles have settled. Null when the capture failed or timed out.
+     */
+    capturePng(wait = false): CancellablePromise<ArrayBuffer | null> {
+        return this.camera().renderer().callAsync('capturePNG', [wait] as never, ((result: MassifObject) => result.getData('')) as never) as CancellablePromise<ArrayBuffer | null>;
+    }
+
     camera(): MapCamera {
         if (!this.mCamera) {
             // The map view is adopted under its own kind: it is what carries the camera, and

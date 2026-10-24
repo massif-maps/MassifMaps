@@ -169,6 +169,13 @@ public class DemoMap {
         rebuildLayers();
         applyCamera();
 
+        if (DemoConfig.CAPTURE_TEST) {
+            handler.postDelayed(new Runnable() {
+                public void run() {
+                    DemoTests.runCapture(DemoMap.this);
+                }
+            }, 45000);
+        }
         if (DemoConfig.RELIEF_OUTLINE) {
             // Attaching a post-process effect before the GL surface exists leaves the offscreen
             // colour buffer unwritten and the screen black, so wait for the first frames.

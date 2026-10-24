@@ -1431,13 +1431,13 @@ export interface PropertyTypes {
         /** Returns the current post-process effect. Can be null. */
         'mapRenderer.postProcessEffect': Handle;
         /** Returns the value of a color parameter. */
-        'mapRenderer.postProcessEffect.colorParams': Record<string, Json>;
+        'mapRenderer.postProcessEffect.colorParams': Record<string, number>;
         /** Returns the value of a color parameter. */
-        [key: `mapRenderer.postProcessEffect.colorParams.${string}`]: Json;
+        [key: `mapRenderer.postProcessEffect.colorParams.${string}`]: number;
         /** Returns the value of a float parameter. */
-        'mapRenderer.postProcessEffect.floatParams': Record<string, Json>;
+        'mapRenderer.postProcessEffect.floatParams': Record<string, number>;
         /** Returns the value of a float parameter. */
-        [key: `mapRenderer.postProcessEffect.floatParams.${string}`]: Json;
+        [key: `mapRenderer.postProcessEffect.floatParams.${string}`]: number;
         /** (read-only) Returns the fragment shader source of the effect. */
         readonly 'mapRenderer.postProcessEffect.fragmentShader': string;
         /** (read-only) Returns the name of the effect. */
@@ -2222,15 +2222,15 @@ export interface PropertyTypes {
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'terrainOptions.subdivideDistance': number;
         /** Returns the value of a terrain surface shader color parameter. */
-        'terrainOptions.surfaceColorParams': Record<string, Json>;
+        'terrainOptions.surfaceColorParams': Record<string, number>;
         /** Returns the value of a terrain surface shader color parameter. */
-        [key: `terrainOptions.surfaceColorParams.${string}`]: Json;
+        [key: `terrainOptions.surfaceColorParams.${string}`]: number;
         /** Returns the resolution the elevation node field is built at. */
         'terrainOptions.surfaceNodeResolution': number;
         /** Returns the value of a terrain surface shader float parameter. */
-        'terrainOptions.surfaceParams': Record<string, Json>;
+        'terrainOptions.surfaceParams': Record<string, number>;
         /** Returns the value of a terrain surface shader float parameter. */
-        [key: `terrainOptions.surfaceParams.${string}`]: Json;
+        [key: `terrainOptions.surfaceParams.${string}`]: number;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'terrainOptions.surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -3651,13 +3651,13 @@ export interface PropertyTypes {
         /** Returns the current post-process effect. Can be null. */
         'postProcessEffect': Handle;
         /** Returns the value of a color parameter. */
-        'postProcessEffect.colorParams': Record<string, Json>;
+        'postProcessEffect.colorParams': Record<string, number>;
         /** Returns the value of a color parameter. */
-        [key: `postProcessEffect.colorParams.${string}`]: Json;
+        [key: `postProcessEffect.colorParams.${string}`]: number;
         /** Returns the value of a float parameter. */
-        'postProcessEffect.floatParams': Record<string, Json>;
+        'postProcessEffect.floatParams': Record<string, number>;
         /** Returns the value of a float parameter. */
-        [key: `postProcessEffect.floatParams.${string}`]: Json;
+        [key: `postProcessEffect.floatParams.${string}`]: number;
         /** (read-only) Returns the fragment shader source of the effect. */
         readonly 'postProcessEffect.fragmentShader': string;
         /** (read-only) Returns the name of the effect. */
@@ -4651,15 +4651,15 @@ export interface PropertyTypes {
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'terrain.subdivideDistance': number;
         /** Returns the value of a terrain surface shader color parameter. */
-        'terrain.surfaceColorParams': Record<string, Json>;
+        'terrain.surfaceColorParams': Record<string, number>;
         /** Returns the value of a terrain surface shader color parameter. */
-        [key: `terrain.surfaceColorParams.${string}`]: Json;
+        [key: `terrain.surfaceColorParams.${string}`]: number;
         /** Returns the resolution the elevation node field is built at. */
         'terrain.surfaceNodeResolution': number;
         /** Returns the value of a terrain surface shader float parameter. */
-        'terrain.surfaceParams': Record<string, Json>;
+        'terrain.surfaceParams': Record<string, number>;
         /** Returns the value of a terrain surface shader float parameter. */
-        [key: `terrain.surfaceParams.${string}`]: Json;
+        [key: `terrain.surfaceParams.${string}`]: number;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'terrain.surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4755,15 +4755,15 @@ export interface PropertyTypes {
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'terrainOptions.subdivideDistance': number;
         /** Returns the value of a terrain surface shader color parameter. */
-        'terrainOptions.surfaceColorParams': Record<string, Json>;
+        'terrainOptions.surfaceColorParams': Record<string, number>;
         /** Returns the value of a terrain surface shader color parameter. */
-        [key: `terrainOptions.surfaceColorParams.${string}`]: Json;
+        [key: `terrainOptions.surfaceColorParams.${string}`]: number;
         /** Returns the resolution the elevation node field is built at. */
         'terrainOptions.surfaceNodeResolution': number;
         /** Returns the value of a terrain surface shader float parameter. */
-        'terrainOptions.surfaceParams': Record<string, Json>;
+        'terrainOptions.surfaceParams': Record<string, number>;
         /** Returns the value of a terrain surface shader float parameter. */
-        [key: `terrainOptions.surfaceParams.${string}`]: Json;
+        [key: `terrainOptions.surfaceParams.${string}`]: number;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'terrainOptions.surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -5603,13 +5603,13 @@ export interface PropertyTypes {
     };
     'massif::PostProcessEffect': {
         /** Returns the value of a color parameter. */
-        'colorParams': Record<string, Json>;
+        'colorParams': Record<string, number>;
         /** Returns the value of a color parameter. */
-        [key: `colorParams.${string}`]: Json;
+        [key: `colorParams.${string}`]: number;
         /** Returns the value of a float parameter. */
-        'floatParams': Record<string, Json>;
+        'floatParams': Record<string, number>;
         /** Returns the value of a float parameter. */
-        [key: `floatParams.${string}`]: Json;
+        [key: `floatParams.${string}`]: number;
         /** (read-only) Returns the fragment shader source of the effect. */
         readonly 'fragmentShader': string;
         /** (read-only) Returns the name of the effect. */
@@ -6074,15 +6074,15 @@ export interface PropertyTypes {
         /** Returns the distance geo-three's terrain LOD subdivides at. */
         'subdivideDistance': number;
         /** Returns the value of a terrain surface shader color parameter. */
-        'surfaceColorParams': Record<string, Json>;
+        'surfaceColorParams': Record<string, number>;
         /** Returns the value of a terrain surface shader color parameter. */
-        [key: `surfaceColorParams.${string}`]: Json;
+        [key: `surfaceColorParams.${string}`]: number;
         /** Returns the resolution the elevation node field is built at. */
         'surfaceNodeResolution': number;
         /** Returns the value of a terrain surface shader float parameter. */
-        'surfaceParams': Record<string, Json>;
+        'surfaceParams': Record<string, number>;
         /** Returns the value of a terrain surface shader float parameter. */
-        [key: `surfaceParams.${string}`]: Json;
+        [key: `surfaceParams.${string}`]: number;
         /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
         'surfaceShaderSource': string;
         /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -9993,9 +9993,9 @@ export type CelestialSpec = CelestialSpec_arc | CelestialSpec_image | CelestialS
 export interface EffectSpec_postprocess {
     type: 'postprocess';
     /** Returns the value of a color parameter. */
-    colorParams?: Record<string, Json>;
+    colorParams?: Record<string, number>;
     /** Returns the value of a float parameter. */
-    floatParams?: Record<string, Json>;
+    floatParams?: Record<string, number>;
     fragmentShader: string;
     name: string;
     /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
@@ -11036,11 +11036,11 @@ export interface OptionsSpec_terrain {
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     subdivideDistance?: number;
     /** Returns the value of a terrain surface shader color parameter. */
-    surfaceColorParams?: Record<string, Json>;
+    surfaceColorParams?: Record<string, number>;
     /** Returns the resolution the elevation node field is built at. */
     surfaceNodeResolution?: number;
     /** Returns the value of a terrain surface shader float parameter. */
-    surfaceParams?: Record<string, Json>;
+    surfaceParams?: Record<string, number>;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     surfaceShaderSource?: string;
     /** Returns the opacity a label keeps while its anchor is behind 3D content. */

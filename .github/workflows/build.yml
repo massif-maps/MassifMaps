@@ -25,11 +25,14 @@ jobs:
     outputs:
       variants: ${{ steps.set.outputs.variants }}
       profiles: ${{ steps.set.outputs.profiles }}
+      android_profiles: ${{ steps.set.outputs.android_profiles }}
     steps:
       - id: set
         run: |
           echo 'variants=["android","ios"]' >> $GITHUB_OUTPUT
           echo 'profiles=["full","standard", "lite"]' >> $GITHUB_OUTPUT
+          # Android only: the object API is split out of the default AAR there (iOS still ships it whole).
+          echo 'android_profiles=["full","standard","lite","standard+objectapi"]' >> $GITHUB_OUTPUT
 
   api-bindings:
     # The facade's generated bindings - the typings an integration actually reads. The C++ property
@@ -236,6 +239,9 @@ jobs:
       matrix:
         variant: ${{ fromJson(needs.prepare.outputs.variants) }}
         profile: ${{ fromJson(needs.prepare.outputs.profiles) }}
+        include:
+          - variant: android
+            profile: standard+objectapi
     runs-on: ${{ matrix.variant == 'android' && 'ubuntu-latest' || 'macos-latest' }}
     needs: [create-release, prepare, release-preflight]
     if: ${{ !cancelled() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped') }}
@@ -790,7 +796,7 @@ jobs:
 
       - name: Generate jitpack.yml then publish/tag
         run: |
-          PROFILES_CSV=$(echo '${{ needs.prepare.outputs.profiles }}' | python3 -c 'import json,sys; print(",".join(json.load(sys.stdin)))')
+          PROFILES_CSV=$(echo '${{ needs.prepare.outputs.android_profiles }}' | python3 -c 'import json,sys; print(",".join(json.load(sys.stdin)))')
           python ./scripts/generate-jitpack.py --version ${{ inputs.version }} --profiles $PROFILES_CSV
           cd mobile-sdk-android-aar
           mv -f ../dist/android/jitpack.yml ./

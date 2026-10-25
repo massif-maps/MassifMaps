@@ -77,6 +77,10 @@ Testing what a run published, channel by channel: [Testing a release](release-te
 
 `build.yml` builds the web SDK next to Android and iOS, from the SDK version:
 
+- `build`: Android and iOS for `full`, `standard` and `lite`, and on Android only `standard+objectapi`
+  (`massif-android-<version>-objectapi.aar`, the `objectapi` classifier on JitPack): the object API's
+  wrappers, which the other Android AARs no longer carry. iOS ships the object API in every build, so
+  the Swift package has no such variant.
 - `build-web`: the web module twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`
   ([variants](../maintenance/web-build.md#variants)); `MassifMaps-web-<version>.zip` on the GitHub
   release (`dist/web`, the files an app serves), and the `@massif-maps/api` and `@massif-maps/web`

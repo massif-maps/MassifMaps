@@ -10,7 +10,8 @@ Always use the latest version from the
 [Releases page](https://github.com/massif-maps/MassifMaps/releases). The version below is an example.
 :::
 
-Every package, variant and release asset is listed in [Packages](packages.md).
+Every package and release asset is listed in [Packages](packages.md); what each variant contains, and
+how to pick one, in [Variants](variants.md).
 
 ## Android
 
@@ -26,6 +27,9 @@ dependencies {
     implementation 'com.github.massif-maps:MassifMaps-android-aar:6.0.2'
 }
 ```
+
+That is the `full` build. A smaller one, or the one that still carries the object API, is a classifier of the
+same artifact: `...:6.0.2:core@aar`, `:lite@aar`, `:objectapi@aar` ([variants](variants.md#android)).
 
 Add the INTERNET permission to `AndroidManifest.xml` (needed for online tiles/services):
 
@@ -43,7 +47,8 @@ Use Swift Package Manager:
    ```
    https://github.com/massif-maps/MassifMaps-ios-swift
    ```
-3. Pick a version and add it to your target.
+3. Pick a version and add one product to your target: `MassifMaps` (full), `MassifMapsCore` or `MassifMapsLite`
+   ([variants](variants.md#ios)).
 
 You can also download a prebuilt framework from the
 [Releases page](https://github.com/massif-maps/MassifMaps/releases).

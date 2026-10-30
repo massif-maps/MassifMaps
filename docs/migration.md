@@ -167,7 +167,8 @@ proxies: `com.massifmaps.layers`, `datasources`, `vectorelements`, `styles`, `ge
 are gone from them. Everything is built from a spec and addressed by handle or path (`MassifMap`, `Massif`,
 `MassifApi`), which is 1.3 MB smaller on arm64.
 
-An app that has not moved depends on the `objectapi` variant instead (`standard+objectapi`):
+An app that has not moved depends on the `objectapi` variant instead (`standard+objectapi`; every variant is
+described in [Variants](getting-started/variants.md)):
 
 ```groovy
 implementation 'com.github.massif-maps:MassifMaps-android-aar:<version>:objectapi@aar'

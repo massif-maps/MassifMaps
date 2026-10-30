@@ -5,10 +5,6 @@
 #include <string>
 #include <vector>
 
-namespace sqlite3pp {
-    class database;
-}
-
 inline void append_double(char* buf, size_t buf_size, std::string& out, double value) {
     // "%.17g" = closest equivalent to default to_chars for double
     int n = std::snprintf(buf, buf_size, "%.6f", value);
@@ -135,16 +131,10 @@ namespace routing {
         std::string parseShape(const std::string& shape);
 
     private:
-        // Database lifecycle helpers
-        std::vector<std::shared_ptr<sqlite3pp::database>> acquireDatabases() const;
-        void releaseDatabases() const;
-
         static std::vector<std::string> splitKeys(const std::string& param);
 
         mutable std::mutex          _mutex;
         std::vector<std::string>    _paths;          // registered MBTiles file paths
-        mutable std::vector<std::shared_ptr<sqlite3pp::database>> _openDbs; // currently open handles
-        mutable int                 _activeCount = 0; // in-flight request count
         std::string                 _profile;
         std::string                 _configuration;  // Valhalla config as JSON string
     };

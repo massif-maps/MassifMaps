@@ -18,10 +18,6 @@
 #include <map>
 #include <mutex>
 
-namespace sqlite3pp {
-    class database;
-}
-
 namespace massif {
 
     /**

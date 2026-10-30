@@ -21,6 +21,8 @@ android {
             cmake {
                 cppFlags "-std=c++17"
                 arguments "-DANDROID_STL=c++_static",
+                          "-DSINGLE_LIBRARY=ON",
+                          "-DSQLITE_SHARED=ON",
                           "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
                           "-DSDK_VERSION=Devel"
             }

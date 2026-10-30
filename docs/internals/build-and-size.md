@@ -214,8 +214,11 @@ entry ever existed) and every job compiled from scratch, with `iOS lite` (72 min
 - **Android** — ccache in `.ccache` inside the workspace, `CCACHE_COMPILERCHECK=content` (the NDK is
   restored from a cache on every run, so its `mtime` is new each time and the default check
   misses everything), 2 GB, and a `restore`/`save` pair with `if: always()` so a failed release
-  still keeps the objects it compiled. One cache per profile: a profile changes `SDK_CPP_DEFINES`,
-  which is on every compile line, so profiles share nothing. The scripts build `armeabi-v7a`,
+  still keeps the objects it compiled. One cache per profile, falling back to the `full` one:
+  a profile changes `SDK_CPP_DEFINES` on every compile line, but ccache hashes the preprocessed
+  source when that misses, so a TU that reads none of the changed macros still hits (all of
+  `libs-*` does). Measured on arm64-v8a, cold cache, `standard` then `full`: 721 of 943 compiles
+  hit. The scripts build `armeabi-v7a`,
   `arm64-v8a`, `x86_64` by default; 32-bit `x86` is gone from the scripts and the dev app too.
 - **iOS** — the Xcode generator ignores `CMAKE_<LANG>_COMPILER_LAUNCHER`, so ccache cannot reach
   it. Xcode 26 compilation caching does: `COMPILATION_CACHE_ENABLE_CACHING` +

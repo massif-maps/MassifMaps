@@ -354,6 +354,7 @@ jobs:
           key: ccache-${{ matrix.variant }}-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ccache-${{ matrix.variant }}-${{ matrix.profile }}-
+            ccache-${{ matrix.variant }}-full-
 
       # Xcode 26 compilation caching: the Xcode generator ignores CMAKE_<LANG>_COMPILER_LAUNCHER, so
       # ccache cannot reach these compiles.

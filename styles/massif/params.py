@@ -34,6 +34,8 @@ PARAMS = {
     'fast_context': {'default': 0, 'values': SWITCH},
     # one-way arrows: 0 from z16 as ever; 1 from z15, closer, opaque; 2 as 1 and 1.3 times as large
     'oneway_emphasis': {'default': 0, 'values': [0, 1, 2]},
+    # the waymarked-route network (outdoor, topo) at 0.35 of its opacity; SDK only, opacity alone so a toggle redraws
+    'route_focus': {'default': 0, 'values': SWITCH},
     # separated cycleways teal and 1.5 times as wide
     'cycle_focus': {'default': 0, 'values': SWITCH},
     'sac_scale_labels': {'default': 0, 'values': SWITCH},

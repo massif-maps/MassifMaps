@@ -368,6 +368,9 @@ Switches (0/1):
   from z17, opacity 1. 2: as 1, 1.3 times as large, spaced 90 from z17. One layer pair per level
   (`oneway`, `oneway-e1`, `oneway-e2`), gated on the parameter. A hollow contraflow arrow for bikes
   waits for an `oneway_bicycle` attribute in the tiles (not there yet).
+- `route_focus` (0) — the waymarked-route network (`route-bicycle`, `route-hiking`: outdoor, topo) at 0.35
+  of its opacity, for an app colouring a route over it. SDK only, read by `line-opacity` alone, so a
+  toggle redraws without a re-decode. The network has no label or shield layer here, so nothing else to hide.
 - `cycle_focus` (0) — separated cycleways (`cycleway`, `tunnel-cycleway`, `bridge-cycleway`) teal
   `#65AAA2` (Alpimaps' `surfaceColors.cycleway`; e-ink keeps its grey) and 1.5 times as wide. A
   change is a re-decode (`line-width` is baked). They start at z13 as ever, not z12.

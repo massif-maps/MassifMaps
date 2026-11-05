@@ -795,7 +795,7 @@ Map {
   line-cap: 'round';
   line-color: @route_bicycle_stroke;
   line-width: linear([view::zoom], (9, (([network] = 1 || [network] = 2) ? 2 : 1.2)), (14, (([network] = 1 || [network] = 2) ? 5 : 3.5)), (18, 8));
-  line-opacity: linear([view::zoom], (9, 0.5), (14, 0.4));
+  line-opacity: linear([view::zoom], (9, (0.5 * (([param::route_focus] = 1) ? 0.35 : 1))), (14, (0.4 * (([param::route_focus] = 1) ? 0.35 : 1))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #route[zoom >= 9][class = 'hiking']['param::variant' != 'streets']['param::variant' != 'hybrid']['param::variant' != 'eink']::route_hiking {
@@ -803,7 +803,7 @@ Map {
   line-cap: 'round';
   line-color: @route_hiking_stroke;
   line-width: linear([view::zoom], (9, (([network] = 1 || [network] = 2) ? 2 : 1.2)), (14, (([network] = 1 || [network] = 2) ? 5 : 3.5)), (18, 8));
-  line-opacity: linear([view::zoom], (9, 0.5), (14, 0.4));
+  line-opacity: linear([view::zoom], (9, (0.5 * (([param::route_focus] = 1) ? 0.35 : 1))), (14, (0.4 * (([param::route_focus] = 1) ? 0.35 : 1))));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #transportation[zoom >= 15][class = 'path'][subclass != 'steps'][subclass != 'path'][subclass != 'bridleway'][brunnel != 'tunnel'][brunnel != 'bridge']['param::path_osm' = 0]['param::trails' = 1]::urban_path_casing {

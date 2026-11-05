@@ -3434,6 +3434,7 @@
     "road_osm_low": 0,
     "road_shields": 1,
     "rock_pattern_zoom": 12,
+    "route_focus": 0,
     "sac_scale_labels": 0,
     "scrub_pattern_zoom": 12,
     "show_boundaries": 1,

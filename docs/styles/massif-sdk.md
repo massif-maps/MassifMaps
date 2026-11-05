@@ -60,6 +60,7 @@ The ones an app usually sets:
 | `road_osm_low` | 0 | major roads drawn as OSM Carto draws them at low zoom |
 | `fast_context` | 0 | 1 draws a red casing on roads tagged 70 km/h or more, motorways apart (z12+, where the tiles carry `maxspeed`) |
 | `oneway_emphasis` | 0 | 0 arrows from z16; 1 from z15, closer and opaque; 2 the same, 1.3 times as large |
+| `route_focus` | 0 | 1 fades the hiking and cycling route network (outdoor, topo) to 0.35 of its opacity, live |
 | `cycle_focus` | 0 | 1 draws separated cycleways teal and 1.5 times as wide |
 | `lighting` | 1 (0 on e-ink) | 0 draws every colour flat, lit by no hour |
 | `models_3d` | 0 | 1 draws 3D trees and spinning wind turbines in place of the tree icons, on tilesets that carry the points; the `.glb` files are not packaged, add [them](https://github.com/massif-maps/MassifMaps/tree/master/styles/massif/models) under `models/` |

@@ -29,6 +29,7 @@
       "models_3d",
       "fast_context",
       "oneway_emphasis",
+      "route_focus",
       "cycle_focus",
       "sac_scale_labels",
       "trails",
@@ -124788,6 +124789,13 @@
         0,
         1,
         2
+      ]
+    },
+    "route_focus": {
+      "default": 0,
+      "values": [
+        0,
+        1
       ]
     },
     "cycle_focus": {

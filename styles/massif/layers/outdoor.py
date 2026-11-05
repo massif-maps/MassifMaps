@@ -178,8 +178,12 @@ def routes(v):
     c = v.palette
     width = zoom_ramp(9, ['match', get('network'), [1, 2], 2, 1.2], 14, ['match', get('network'), [1, 2], 5, 3.5],
                       18, 8)
+    # SDK only: `route_focus` 1 scales the opacity by 0.35, in an opacity alone so a toggle only redraws
+    focus = ['match', ['config', 'route_focus'], 1, 0.35, 1]
     return [layer('route-' + cls, 'line', 'route', source='routes', minzoom=9, filter=['==', get('class'), cls],
                   layout={'line-join': 'round', 'line-cap': 'round'},
                   paint={'line-color': c['route-' + cls], 'line-width': width,
-                         'line-opacity': zoom_ramp(9, 0.5, 14, 0.4)}, emissive=0.5)
+                         'line-opacity': zoom_ramp(9, 0.5, 14, 0.4)},
+                  metadata={'massif:paint': {'line-opacity': zoom_ramp(9, ['*', 0.5, focus], 14, ['*', 0.4, focus])}},
+                  emissive=0.5)
             for cls in ('bicycle', 'hiking')]

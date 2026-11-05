@@ -22,7 +22,8 @@ namespace massif::vt {
         A_VERTEXOFFSET,
         A_INSTANCEPOSITION,
         A_INSTANCETRANSFORM,
-        A_INSTANCECOLOR
+        A_INSTANCECOLOR,
+        A_VERTEXPROGRESS
     };
 
     enum : int {
@@ -129,7 +130,9 @@ namespace massif::vt {
         U_ALPHACUTOFF,
         U_RASTER1,
         U_RASTER2,
-        U_RASTER3
+        U_RASTER3,
+        U_GRADIENT,
+        U_GRADIENTROWTABLE
     };
 
     enum : unsigned int {
@@ -212,7 +215,8 @@ namespace massif::vt {
         { "aVertexOffset",   A_VERTEXOFFSET },
         { "aInstancePosition",  A_INSTANCEPOSITION },
         { "aInstanceTransform", A_INSTANCETRANSFORM },
-        { "aInstanceColor",     A_INSTANCECOLOR }
+        { "aInstanceColor",     A_INSTANCECOLOR },
+        { "aVertexProgress",    A_VERTEXPROGRESS }
     };
 
     static const std::map<std::string, int> uniformMap = {
@@ -319,7 +323,9 @@ namespace massif::vt {
         { "uAlphaCutoff",          U_ALPHACUTOFF },
         { "uRaster1",              U_RASTER1 },
         { "uRaster2",              U_RASTER2 },
-        { "uRaster3",              U_RASTER3 }
+        { "uRaster3",              U_RASTER3 },
+        { "uGradient",             U_GRADIENT },
+        { "uGradientRowTable",     U_GRADIENTROWTABLE }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -1912,6 +1918,12 @@ namespace massif::vt {
         uniform vec2 uUVScale;
         uniform float uStrokeScaleTable[16];
         #endif
+        #ifdef LINE_GRADIENT
+        // Progress along the source line, and the ramp's row in the atlas (< 0: no ramp, as for the border pass).
+        attribute float aVertexProgress;
+        uniform float uGradientRowTable[16];
+        varying highp vec2 vGradient;
+        #endif
         uniform float uBinormalScale;
         #ifdef TERRAIN
         uniform highp vec2 uScreenScale; // x = viewport aspect (w/h), y = NDC height of one line-width unit
@@ -1975,6 +1987,9 @@ namespace massif::vt {
             vec4 color = uColorTable[styleIndex];
         #ifdef PATTERN
             vUV = uUVScale * aVertexUV + vec2(aVertexAttribs[3] * roundedWidth * uStrokeScaleTable[styleIndex], 0.0);
+        #endif
+        #ifdef LINE_GRADIENT
+            vGradient = vec2(aVertexProgress, uGradientRowTable[styleIndex]);
         #endif
             vDist = vec2(aVertexAttribs[1], aVertexAttribs[2]) * (roundedWidth * gamma); // will be 0,0 for polygons
             vWidth = width > 0.0 ? (width - 1.0) * gamma + 1.0 : 1.0; // will be 1 for polygons
@@ -2055,6 +2070,10 @@ namespace massif::vt {
         uniform sampler2D uPattern;
         varying highp_opt vec2 vUV;
         #endif
+        #ifdef LINE_GRADIENT
+        uniform sampler2D uGradient;
+        varying highp vec2 vGradient;
+        #endif
         uniform mediump float uAntialiasScale;
         uniform highp vec2 uTileUnitScale;
         varying mediump vec2 vTileUnit;
@@ -2094,6 +2113,11 @@ namespace massif::vt {
         #else
             lowp vec4 color = vColor * a;
         #endif
+        #ifdef LINE_GRADIENT
+            if (vGradient.y >= 0.0) {
+                color *= texture2D(uGradient, vGradient);
+            }
+        #endif
             color = applyDrapeMask(color, vTileUnit);
         #ifdef TERRAIN
             // transparent fragments must not write depth or they block later layers
@@ -2111,6 +2135,10 @@ namespace massif::vt {
         #endif
         }
     )GLSL";
+
+    // Same sources with the ramp lookup compiled in, so a plain line pays for none of it.
+    static const std::string lineGradientVsh = "#define LINE_GRADIENT\n" + lineVsh;
+    static const std::string lineGradientFsh = "#define LINE_GRADIENT\n" + lineFsh;
 
     static const std::string polygonVsh = R"GLSL(
         attribute vec3 aVertexPosition;

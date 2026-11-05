@@ -776,6 +776,7 @@ namespace massif::vt {
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
 
         const CompiledBitmap& buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps);
+        int gradientAtlasRow(const std::shared_ptr<const ColorRamp>& ramp);
         const CompiledBitmap& buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap);
         const CompiledGeometry* buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry);
         void bindSurfaceSkirtAttrib(const ShaderProgram& shaderProgram, const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams);
@@ -1114,6 +1115,14 @@ namespace massif::vt {
         };
         std::unordered_map<const TileGeometry*, OwnedCompiledGeometry> _compiledTileGeometryMap;
         std::map<std::weak_ptr<const Bitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const Bitmap>>> _compiledBitmapMap;
+        // line-gradient ramps, one texel row each; a row is free once its ramp is gone.
+        struct GradientAtlas {
+            GLuint texture = 0;
+            int capacity = 0;
+            std::vector<std::weak_ptr<const ColorRamp>> rows;
+            std::unordered_map<const ColorRamp*, int> index;
+        };
+        GradientAtlas _gradientAtlas;
         std::map<std::weak_ptr<const TileBitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const TileBitmap>>> _compiledTileBitmapMap;
         std::map<std::weak_ptr<const TileSurface>, CompiledSurface, std::owner_less<std::weak_ptr<const TileSurface>>> _compiledTileSurfaceMap;
         std::map<int, CompiledLabelBatch> _compiledLabelBatches;

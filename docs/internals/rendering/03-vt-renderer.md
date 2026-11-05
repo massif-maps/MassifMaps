@@ -186,6 +186,44 @@ casing/fill pair, for the same two draws.
   covers the border too.
 - Ordering against **other** style layers is unchanged: the pair sits where the layer sits.
 
+## Line gradients (`line-gradient`)
+
+mapbox's `line-gradient`: the colour along a line is a ramp over its progress, 0 at the start of the
+source feature and 1 at its end. Where the progress comes from is the hard part, since a tile holds
+a piece of the line: see [GeoJSON vector tiles](/docs/features/geojson-vector-tiles#line-metrics).
+
+- **Progress is a vertex field.** `createLineProgressProcessor` takes the piece's range with the
+  vertices; `tesselateLine` already counts the distance along the piece in `u`, so a gradient line
+  just keeps `du_dl = 1` and `fillLineProgress` turns each vertex's `u` into
+  `start + (end - start) * u / pieceLength`. Joins, caps and arrows reuse their end vertex's `u`, so
+  they land inside the range. A `float` per vertex (`progressOffset`): 16-bit steps are 15 m on a
+  1000 km route, and a hard stop would show them.
+- **A geometry is all gradient or none.** The field costs 4 bytes a vertex (12 to 16 for a plain 2D
+  line), so a gradient line starts its own geometry and a plain line never pays for it. A polygon
+  outline never joins one either.
+- **The ramp is one slot.** `LineStyle::gradient` is a shared `ColorRamp`: 2048 premultiplied RGBA8
+  texels. `LineGradient.cpp` interns them by content, so every feature carrying the same stops
+  names the same object, and the slot dedup in `createLineProcessor` (a pointer compare) shares one
+  slot. Without that each feature of a route layer would take a slot of its own.
+- **One shader variant, no flag.** The flag word is full, so `linegradient` is a second program
+  built from the same sources behind `#define LINE_GRADIENT`; a plain line compiles none of it.
+  The colour table entry is only a tint (opacity), `colour = tint * texture2D(uGradient, (progress, row))`,
+  so dash patterns, lighting, fog, terrain shading and shadows apply as before.
+- **The atlas** (`gradientAtlasRow`): one texture, a row per live ramp, grown by doubling and
+  freed with the ramp. `NEAREST` and `CLAMP_TO_EDGE`: filtering would smear a hard stop over a
+  whole texel (about 20 m on a 20 km route at 1024 texels, 10 px at z16). Smooth ramps stay smooth,
+  neighbouring texels differ by less than one 8-bit step. Texture unit 4.
+- **The border pass turns the ramp off** (row -1), so a casing keeps its own colour.
+- **Edge accuracy** is half a texel: route length / 4096.
+
+Limits: a tile with no line metrics draws the first stop; `line-emissive-strength` does not apply
+to the ramp; a ramp is baked at decode, so changing it re-decodes the layer (like any baked
+property). The fragment `highp` varying needs ESSL 3.00, which every program here is.
+
+Tests: `tests/vt/LineGradientTest.cpp` (progress per vertex, one slot per ramp, geometry split),
+`tests/style/LineGradientTest.cpp` (ramp baking), `tests/style/LineProgressTest.cpp` (builder to
+decoder). The shader and the atlas are device checks.
+
 ## Line end arrows
 
 `line-end-arrow: true` puts an arrow head on a line's last vertex, sized by `line-arrow-width` and

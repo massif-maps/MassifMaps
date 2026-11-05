@@ -25,6 +25,7 @@ public final class ExampleRegistry {
         com.massifmaps.MassifDemo.examples.terrain.AtmosphereExample.class,
         com.massifmaps.MassifDemo.examples.terrain.CelestialObjectsExample.class,
         com.massifmaps.MassifDemo.examples.terrain.CustomLayerHeatmapExample.class,
+        com.massifmaps.MassifDemo.examples.terrain.LineGradientStressExample.class,
         com.massifmaps.MassifDemo.examples.terrain.PeakFinderExample.class,
         com.massifmaps.MassifDemo.examples.annotations.MarkersExample.class,
         com.massifmaps.MassifDemo.examples.interaction.FeatureClickExample.class,

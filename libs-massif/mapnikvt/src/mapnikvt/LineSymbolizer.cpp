@@ -106,22 +106,23 @@ namespace massif::mvt {
         if (occlusionOpacity > 0.0f) {
             style.occlusionOpacity = std::min(occlusionOpacity, 1.0f);
         }
+        style.gradient = _strokeGradient.getValue(exprContext);
 
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 
         return [style, strokeMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             bool suppressWarning = false;
-            if (auto lineProcessor = layerBuilder.createLineProcessor(style, strokeMap)) {
+            if (auto lineProcessor = layerBuilder.createLineProgressProcessor(style, strokeMap)) {
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
-                            lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
+                            lineProcessor(featureCollection.getLocalId(featureIndex), vertices, lineGeometry->getProgress());
                         }
                     }
                     else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& verticesList : polygonGeometry->getPolygonList()) {
                             for (const auto& vertices : verticesList) {
-                                lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
+                                lineProcessor(featureCollection.getLocalId(featureIndex), vertices, std::nullopt);
                             }
                         }
                     }

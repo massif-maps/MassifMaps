@@ -86,6 +86,36 @@ PMTiles, MBTiles) carry none.
 Turning it on re-tiles the layer, and costs one more feature per cut line piece and two small
 values per piece in each tile.
 
+### Colouring a line along its length
+
+With line metrics on, a style can colour a line by how far along it is, `line-gradient`, as in
+Mapbox's `line-gradient`. The ramp is a list of stops, position `0..1` and colour:
+
+```css
+/* the same ramp for every route */
+#routes { line-width: 5; line-gradient: linear([mapnik::line_progress], (0, #2ecc71), (0.5, #f1c40f), (1, #e74c3c)); }
+
+/* a ramp per route: a string the app puts on the feature */
+#routes { line-width: 5; line-gradient: [gradient]; }
+```
+
+```json
+{"type": "Feature", "properties": {"gradient": "0:#2ecc71,0.37:#f1c40f,1:#e74c3c"},
+ "geometry": {"type": "LineString", "coordinates": [[6.1, 45.1], [6.2, 45.2]]}}
+```
+
+- **Smooth or hard.** `linear(...)` and the plain string blend between stops. `step(...)`, or a
+  string that starts with `step;`, holds each colour until the next stop, which is how a route is
+  coloured per segment. Two stops at the same position make a hard edge inside a smooth ramp.
+- **The gradient is a string**, not an array: array properties are flattened when a tile is
+  encoded. JSON stops (`[[0,"#fff"],[1,"#000"]]`) work too, and so does a table style parameter,
+  `line-gradient: [param::route_gradient]`.
+- **Limits.** A ramp is 2048 texels, so a route has at most 2048 distinct colour regions and a hard
+  edge is placed to within route length / 4096. The string rides in every tile the route touches:
+  keep it to a few hundred stops. Tiles from sources without line metrics draw the first stop.
+- `line-color` is replaced, `line-opacity` still applies, and the casing of `line-border-width`
+  keeps its own colour.
+
 ## Why it changed
 
 The old tiler scanned every feature of a layer for **every** tile, and kept one re-simplified copy of

@@ -16,6 +16,7 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/TransformUtils.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Value.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Feature.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/LineGradient.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParserUtils.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/GeneratorUtils.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParseTables.cpp"
@@ -65,6 +66,7 @@ add_executable(style_tests
   RandomExpressionTest.cpp
   RenderModeAlignmentTest.cpp
   LineProgressTest.cpp
+  LineGradientTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

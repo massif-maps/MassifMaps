@@ -33,6 +33,7 @@ void testNullishCoalescing();
 void testRandomExpression();
 void testRenderModeAlignment();
 void testLineProgress();
+void testLineGradient();
 
 int main() {
     testLayerConfig();
@@ -62,6 +63,7 @@ int main() {
     testRandomExpression();
     testRenderModeAlignment();
     testLineProgress();
+    testLineGradient();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

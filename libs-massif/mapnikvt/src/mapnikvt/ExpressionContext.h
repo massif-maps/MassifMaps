@@ -41,6 +41,9 @@ namespace massif::mvt {
         // What [mapnik::seed], random()'s default seed, reads: one placed instance of a feature
         // (a point of a MultiPoint) when set, else the feature id.
         void setInstanceSeed(std::optional<long long> seed) { _instanceSeed = seed; }
+
+        // What [mapnik::line_progress] reads while a line-gradient ramp is sampled.
+        void setLineProgress(double progress) { _lineProgress = progress; }
         const std::shared_ptr<const FeatureData>& getFeatureData() const { return _featureData; }
 
         void setStyleParameterStore(std::shared_ptr<const StyleParameterStore> paramStore) { _styleParameterStore = std::move(paramStore); }
@@ -86,6 +89,7 @@ namespace massif::mvt {
         float _scaleDenom = zoom2ScaleDenominator(0);
         std::shared_ptr<const FeatureData> _featureData;
         std::optional<long long> _instanceSeed;
+        std::optional<double> _lineProgress;
         std::shared_ptr<const StyleParameterStore> _styleParameterStore;
         bool _styleParamOverride = false;
         std::string _styleParamOverrideName;

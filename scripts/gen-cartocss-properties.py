@@ -54,6 +54,7 @@ TYPE_KINDS = {
     "StringProperty": "string",
     "ValueProperty": "value",
     "TransformProperty": "transform",
+    "GradientProperty": "gradient",
     "CompOpProperty": "comp-op",
     "LineJoinModeProperty": "enum",
     "LineCapModeProperty": "enum",

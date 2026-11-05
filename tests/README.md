@@ -29,7 +29,7 @@ linked too (it needs only zlib): what an overzoomed tile keeps of a merged Multi
 (`LabelPlateBitmap.h`, header-only) — what the fill and border shapes in one atlas cell have to
 satisfy for one quad to draw both — line-label layout (`Label.cpp`): that a glyph run stays on the
 line it names — and line tesselation (`TileLayerBuilder.cpp` and the six TUs it names): how far out
-of its own width a line reaches at a join. That last chain wants tess2 and bidi but **no font** —
+of its own width a line reaches at a join, and the per-vertex progress a gradient line carries. That last chain wants tess2 and bidi but **no font** —
 `TextFormatter` reaches `Font` through its interface only, so freetype and harfbuzz stay out.
 Anything reaching GL still belongs behind a device check instead.
 

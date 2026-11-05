@@ -30,6 +30,12 @@ PARAMS = {
     # SDK only: 3D trees and wind turbines (models.mss) in place of the tree icons. Off: they cost GPU
     # time and shadows, and only some tilesets carry the tree points
     'models_3d': {'default': 0, 'values': SWITCH},
+    # a red outer casing on roads tagged 70 km/h or more (not motorways), from z12 where the tiles carry maxspeed
+    'fast_context': {'default': 0, 'values': SWITCH},
+    # one-way arrows: 0 from z16 as ever; 1 from z15, closer, opaque; 2 as 1 and 1.3 times as large
+    'oneway_emphasis': {'default': 0, 'values': [0, 1, 2]},
+    # separated cycleways teal and 1.5 times as wide
+    'cycle_focus': {'default': 0, 'values': SWITCH},
     'sac_scale_labels': {'default': 0, 'values': SWITCH},
     # outdoor's trails (by difficulty, MTB, SAC grades) rather than streets' paths: 1 on outdoor, topo, e-ink
     'trails': {'default': 0, 'values': SWITCH},

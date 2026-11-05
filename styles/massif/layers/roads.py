@@ -1,4 +1,4 @@
-from lib import from_zoom, gate, get, halo, in_class, layer, scaled, zoom_ramp
+from lib import from_zoom, gate, get, halo, in_class, layer, padded, scaled, zoom_ramp
 from layers import outdoor
 
 CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']
@@ -185,14 +185,18 @@ def draw_once(c, id, metadata=None):
     return {**(metadata or {}), 'massif:draw-once': id} if c.get('draw-once') else metadata
 
 
+def road_casing(c, casing):
+    return scaled(osm_low_steps(major_only_below(casing, c.get('casing-from', 14))) if c.get('casing-low') else from_zoom(casing, 14),
+                  c.get('casing-scale', 1))
+
+
 def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None, layout=None, fill_opacity=None,
               case_cap=None, maxzoom=None, minzoom_param=None):
     layout = layout or {'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY}
     case_layout = {**layout, 'line-cap': case_cap} if case_cap else layout
     # e-ink orders the major roads by the weight of their outline, having no colour to do it with; the
     # small ones stay uncased below z14 as elsewhere, a grey line rather than a heavy double one
-    casing = scaled(osm_low_steps(major_only_below(casing, c.get('casing-from', 14))) if c.get('casing-low') else from_zoom(casing, 14),
-                    c.get('casing-scale', 1))
+    casing = road_casing(c, casing)
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:
         case_paint['line-dasharray'] = dash
@@ -216,6 +220,21 @@ def low_casing(v, filter, id='road-casing-low', maxzoom=14):
                        layout={'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY},
                        paint={'line-color': case_color(c), 'line-gap-width': WIDTH, 'line-width': LOW_CASING_WIDTH},
                        metadata=draw_once(c, id), emissive=0), v, 'road_osm_low')]
+
+
+FAST_SPEED = 70
+
+
+def fast_casing(v, *tests):
+    """`fast_context`: a red band 1 dp outside the road's own casing, under it, on every road tagged
+    FAST_SPEED km/h or more bar a motorway"""
+    c = v.palette
+    return [gate(layer('road-fast-casing', 'line', 'transportation', minzoom=11,
+                       filter=['all', in_class(CLASSES), ['!=', get('class'), 'motorway'], *tests, ['>=', get('maxspeed'), FAST_SPEED]],
+                       layout={'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY},
+                       paint={'line-color': c['fast-case'], 'line-gap-width': WIDTH,
+                              'line-width': padded(road_casing(c, CASING_WIDTH), 1)},
+                       metadata=draw_once(c, 'road-fast-casing'), emissive=0), v, 'fast_context')]
 
 
 def paths(v, brunnel_test, prefix='', minzoom=12, trails=False):
@@ -263,13 +282,19 @@ def osm_footway(c, id, filter, minzoom, v, dashed=None):
                               'line-dasharray': [1.3, 2.3]}, emissive=0.4), v, 'path_osm')]
 
 
+def cycle_focus(normal, focus):
+    return normal if normal == focus else ['match', ['config', 'cycle_focus'], 1, focus, normal]
+
+
 def cycleway(c, brunnel_test, prefix=''):
     """Standard's cycleway: a green dash laid over the roads, since a cycle track so often runs
-    beside one and would otherwise vanish under its casing."""
+    beside one and would otherwise vanish under its casing. `cycle_focus`: teal and 1.5 times as wide."""
     # from z13, where a city's cycle network starts to matter (Standard waits for z15)
+    width = [(13, 0.8), (18, 2), (22, 20)]
     return [layer(prefix + 'cycleway', 'line', 'transportation', minzoom=13,
                   filter=['all', ['==', get('class'), 'path'], ['==', get('subclass'), 'cycleway'], brunnel_test],
-                  paint={'line-color': c['cycleway'], 'line-width': zoom_ramp(13, 0.8, 18, 2, 22, 20),
+                  paint={'line-color': cycle_focus(c['cycleway'], c['cycleway-focus']),
+                         'line-width': zoom_ramp(*[x for z, w in width for x in (z, cycle_focus(w, round(w * 1.5, 2)))]),
                          'line-opacity': zoom_ramp(13, 0, 13.5, 1),
                          'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 16, ['literal', [1, 1]]]},
                   emissive=0.6)]
@@ -360,6 +385,7 @@ def ground(v):
       + low_casing(v, ['all', in_class(CLASSES), not_tunnel, no_ramp])
       + low_casing(v, ['all', in_class(CLASSES), ['==', get('brunnel'), 'tunnel'], no_ramp], 'road-tunnel-casing-low', 13)
       + plain_brunnels(v, no_ramp)
+      + fast_casing(v, surface, no_ramp)
       + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH)
       + unpaved(c, surface) + cycleway(c, surface) + [
         # private and no-access ways: the casing's red dashes, the OSM convention MapTiler also draws
@@ -367,21 +393,33 @@ def ground(v):
               filter=['all', ['!=', get('class'), 'path'], ['in', get('access'), ['literal', ['no', 'private']]]],
               paint={'line-color': c['no-access'], 'line-width': zoom_ramp(14, 0.8, 15, 1, 18, 4, 22, 20, base=1.5),
                      'line-dasharray': [1, 3]}, emissive=0.4),
-    ] + oneway(c))
+    ] + oneway(v))
 
 
-def oneway(c):
+# per `oneway_emphasis`: the first zoom, the spacing (below z17, from it), the opacity and the icon size ramp
+ONEWAY = {
+    0: (16, (200, 200), 0.8, zoom_ramp(16, 0.6, 18, 1)),
+    1: (15, (200, 120), 1, zoom_ramp(15, 0.45, 16, 0.6, 18, 1)),
+    2: (15, (200, 90), 1, zoom_ramp(15, 0.6, 16, 0.8, 18, 1.3)),
+}
+
+
+def oneway(v):
+    c = v.palette
     base = ['all', in_class(CLASSES), ['!=', get('class'), 'motorway']]
     # its own layer per arrow colour: an icon that differs by variant is data-driven, and a data-driven
     # icon converts to a shield, which drops the line placement. A dark arrow in a white edge, which
     # reads on a white street, a coloured major and a night road alike
     arrow = c.get('oneway-arrow', 'ink')
-    return [layer('oneway' + ('' if arrow == 'ink' else '-' + arrow) + suffix, 'symbol', 'transportation', minzoom=16,
-                  filter=base + [['==', get('oneway'), value]],
-                  layout={'symbol-placement': 'line', 'symbol-spacing': 200, 'icon-image': icon,
-                          'icon-size': zoom_ramp(16, 0.6, 18, 1), 'icon-rotation-alignment': 'map',
-                          'icon-allow-overlap': True, 'icon-ignore-placement': True},
-                  paint={'icon-opacity': 0.8}, emissive={'icon-emissive-strength': 1})
+    # TODO(alpimaps#127): a hollow contraflow arrow for bikes where `oneway_bicycle` = no, once the tiles carry it
+    return [gate(layer('oneway' + ('' if arrow == 'ink' else '-' + arrow) + suffix + ('-e%d' % emphasis if emphasis else ''),
+                       'symbol', 'transportation', minzoom=minzoom, filter=base + [['==', get('oneway'), value]],
+                       layout={'symbol-placement': 'line',
+                               'symbol-spacing': spacing[0] if spacing[0] == spacing[1] else ['step', ['zoom'], spacing[0], 17, spacing[1]],
+                               'icon-image': icon, 'icon-size': size, 'icon-rotation-alignment': 'map',
+                               'icon-allow-overlap': True, 'icon-ignore-placement': True},
+                       paint={'icon-opacity': opacity}, emissive={'icon-emissive-strength': 1}), v, 'oneway_emphasis', emphasis)
+            for emphasis, (minzoom, spacing, opacity, size) in ONEWAY.items()
             for suffix, value, icon in (('', 1, 'oneway-' + arrow), ('-reverse', -1, 'oneway-reverse-' + arrow))]
 
 

@@ -249,6 +249,7 @@ MassifProperty const MassifPropertyLengthBefore = @"lengthBefore";
 MassifProperty const MassifPropertyLightOptions = @"lightOptions";
 MassifProperty const MassifPropertyLineEndType = @"lineEndType";
 MassifProperty const MassifPropertyLineJoinType = @"lineJoinType";
+MassifProperty const MassifPropertyLineMetrics = @"lineMetrics";
 MassifProperty const MassifPropertyLineStyle = @"lineStyle";
 MassifProperty const MassifPropertyLocalAssetNames = @"localAssetNames";
 MassifProperty const MassifPropertyLocalPackages = @"localPackages";

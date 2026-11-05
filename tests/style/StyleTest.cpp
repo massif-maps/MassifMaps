@@ -32,6 +32,7 @@ void testFieldValuePrefilter();
 void testNullishCoalescing();
 void testRandomExpression();
 void testRenderModeAlignment();
+void testLineProgress();
 
 int main() {
     testLayerConfig();
@@ -60,6 +61,7 @@ int main() {
     testNullishCoalescing();
     testRandomExpression();
     testRenderModeAlignment();
+    testLineProgress();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

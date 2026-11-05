@@ -73,7 +73,7 @@ export const PROPS: { [cls: string]: string } = {
     'massif::FogOptions': 'color,c;enabled,b;highColor,c;horizonBlend,f;rangeEnd,f;rangeStart,f;shaderSource,s;spaceColor,c;starIntensity,f;verticalRangeEnd,f;verticalRangeStart,f',
     'massif::GeoJSONGeometryReader': 'targetProjection,o,massif::Projection',
     'massif::GeoJSONGeometryWriter': 'sourceProjection,o,massif::Projection;z,b',
-    'massif::GeoJSONVectorTileDataSource': 'defaultLayerBuffer,f;simplifyTolerance,f',
+    'massif::GeoJSONVectorTileDataSource': 'defaultLayerBuffer,f;lineMetrics,b;simplifyTolerance,f',
     'massif::GeocodingRequest': 'location,p;locationRadius,f;projection,o,massif::Projection;query,s',
     'massif::GeocodingResult': 'address,t;featureCollection,o,massif::FeatureCollection;projection,o,massif::Projection;rank,f',
     'massif::GeocodingService': 'autocomplete,b;language,s;maxResults,i',

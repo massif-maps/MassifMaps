@@ -45,6 +45,9 @@ namespace massif::mbvtbuilder {
 
         explicit MBVTTileBuilder(int minZoom, int maxZoom);
 
+        bool getLineMetrics() const;
+        void setLineMetrics(bool lineMetrics);
+
         float getSimplifyTolerance() const;
         void setSimplifyTolerance(float tolerance);
 
@@ -100,6 +103,7 @@ namespace massif::mbvtbuilder {
 
         float _simplifyTolerance = 1.0f;
         float _defaultLayerBuffer = 4.0f;
+        bool _lineMetrics = false;
 
         std::map<LayerIndex, Layer> _layers;
 

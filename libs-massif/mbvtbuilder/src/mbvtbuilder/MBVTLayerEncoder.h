@@ -24,10 +24,16 @@ namespace massif::mbvtbuilder {
     public:
         using Point = cglib::vec2<float>;
 
+        // The part of the source line a tile's piece of it covers, 0..1.
+        struct LineProgress {
+            double start = 0;
+            double end = 1;
+        };
+
         explicit MBVTLayerEncoder(const std::string& name, int version = 0, int extent = 0);
 
         void addMultiPoint(std::uint64_t id, const std::vector<Point>& coords, const picojson::value& properties);
-        void addMultiLineString(std::uint64_t id, const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties);
+        void addMultiLineString(std::uint64_t id, const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties, const LineProgress* lineProgress = nullptr);
         void addMultiPolygon(std::uint64_t id, const std::vector<std::vector<Point>>& ringsList, const picojson::value& properties);
 
         protobuf::encoded_message buildLayer() const;
@@ -36,7 +42,7 @@ namespace massif::mbvtbuilder {
         static constexpr int DEFAULT_LAYER_VERSION = 2;
         static constexpr int DEFAULT_LAYER_EXTENT = 4096;
 
-        void importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties);
+        void importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties, const LineProgress* lineProgress = nullptr);
         void importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags, const bool encodeObjects);
 
         static std::vector<std::uint32_t> encodePointCoordinates(const std::vector<Point>& coords, float scale);

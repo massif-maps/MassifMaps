@@ -68,7 +68,23 @@ Style it by layer name, like any other vector source:
 | `setLayerFeatureCollection(index, projection, collection)` | replace it from SDK geometry |
 | `addGeoJSONFeature` / `updateGeoJSONFeature` / `removeGeoJSONFeature` | incremental edits (also `…StringFeature`) |
 | `SimplifyTolerance` | Douglas-Peucker tolerance, in **tile pixels** |
+| `LineMetrics` | tag every tile piece of a line with the part of the original line it covers (default `false`, tiles unchanged); needed by a line gradient, see below |
 | `DefaultLayerBuffer` | tile overflow, in **tile pixels** of a 256-px tile (default `4`); applies to layers created afterwards |
+
+## Line metrics
+
+A line is cut into one piece per tile it crosses, and a gradient along it needs to know where each
+piece sits in the whole. With `LineMetrics = true` the builder writes that range, `0..1` of the
+original line, on every piece as two tags, `mapbox_clip_start` and `mapbox_clip_end` (geojson-vt's
+own names). A line that was not cut is the whole line, `0..1`.
+
+The range is measured in Web Mercator units, not metres, as in Mapbox, so it drifts from geodesic
+distance away from the equator. The tags are not feature fields: a style cannot read them, and
+pieces of one line keep sharing their feature data. Tiles from any other source (OpenMapTiles,
+PMTiles, MBTiles) carry none.
+
+Turning it on re-tiles the layer, and costs one more feature per cut line piece and two small
+values per piece in each tile.
 
 ## Why it changed
 

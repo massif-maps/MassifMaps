@@ -497,6 +497,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyLightOptions;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLineEndType;
 /** Returns the join type of the line. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLineJoinType;
+/** Returns true if tiles carry each line's progress along the original feature. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLineMetrics;
 /** Returns the line style. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLineStyle;
 /** Returns the list of assets found in the bundle, ignoring the base asset package. */

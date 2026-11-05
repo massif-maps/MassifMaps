@@ -250,6 +250,7 @@ static const char* const kNames[] = {
     "lightOptions",
     "lineEndType",
     "lineJoinType",
+    "lineMetrics",
     "lineStyle",
     "localAssetNames",
     "localPackages",

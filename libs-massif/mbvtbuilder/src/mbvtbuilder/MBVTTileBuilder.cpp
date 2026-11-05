@@ -23,6 +23,7 @@ namespace massif::mbvtbuilder
         double bufferFraction = 0; // tile buffer, as a fraction of a tile
         std::uint16_t extent = 0;
         int maxZoom = 0;
+        bool lineMetrics = false; // baked into every slice's clip range, so a change drops the index
 
         int rootZoom = 0;
         std::uint32_t rootX = 0;
@@ -145,7 +146,7 @@ namespace massif::mbvtbuilder
         // Encodes one geojson-vt tile feature; multi and single geometries share one MVT geometry type.
         struct TileFeatureEncoder
         {
-            TileFeatureEncoder(std::uint64_t id, const picojson::value &properties, MBVTLayerEncoder &layerEncoder) : _id(id), _properties(properties), _layerEncoder(layerEncoder) {}
+            TileFeatureEncoder(std::uint64_t id, const picojson::value &properties, MBVTLayerEncoder &layerEncoder, const MBVTLayerEncoder::LineProgress *lineProgress) : _id(id), _properties(properties), _layerEncoder(layerEncoder), _lineProgress(lineProgress) {}
 
             bool operator()(const mapbox::geometry::point<std::int16_t> &pos) const
             {
@@ -219,7 +220,7 @@ namespace massif::mbvtbuilder
                 {
                     return false;
                 }
-                _layerEncoder.addMultiLineString(_id, tileCoordsList, _properties);
+                _layerEncoder.addMultiLineString(_id, tileCoordsList, _properties, _lineProgress);
                 return true;
             }
 
@@ -265,9 +266,21 @@ namespace massif::mbvtbuilder
             const std::uint64_t _id;
             const picojson::value &_properties;
             MBVTLayerEncoder &_layerEncoder;
+            const MBVTLayerEncoder::LineProgress *_lineProgress;
         };
 
-        bool encodeTile(const MBVTLayerData &layerData, const mapbox::geojsonvt::Tile &tile, MBVTLayerEncoder &layerEncoder)
+        // geojson-vt tags a cut line with its range of the original; an uncut one has none, so it is whole.
+        MBVTLayerEncoder::LineProgress readLineProgress(const mapbox::feature::property_map &properties)
+        {
+            auto read = [&properties](const char *key, double fallback)
+            {
+                auto it = properties.find(key);
+                return (it != properties.end() && it->second.is<double>() && std::isfinite(it->second.get<double>()) ? it->second.get<double>() : fallback);
+            };
+            return { read("mapbox_clip_start", 0.0), read("mapbox_clip_end", 1.0) };
+        }
+
+        bool encodeTile(const MBVTLayerData &layerData, const mapbox::geojsonvt::Tile &tile, MBVTLayerEncoder &layerEncoder, bool lineMetrics)
         {
             bool featuresAdded = false;
             for (const auto &feature : tile.features)
@@ -283,7 +296,12 @@ namespace massif::mbvtbuilder
                 }
                 const MBVTLayerData::FeatureInfo &info = layerData.infos[slot];
 
-                TileFeatureEncoder encoder(info.id, info.properties, layerEncoder);
+                MBVTLayerEncoder::LineProgress lineProgress;
+                if (lineMetrics)
+                {
+                    lineProgress = readLineProgress(feature.properties);
+                }
+                TileFeatureEncoder encoder(info.id, info.properties, layerEncoder, lineMetrics ? &lineProgress : nullptr);
                 if (mapbox::util::apply_visitor(encoder, feature.geometry))
                 {
                     featuresAdded = true;
@@ -292,14 +310,14 @@ namespace massif::mbvtbuilder
             return featuresAdded;
         }
 
-        mapbox::geojsonvt::TileOptions makeTileOptions(float simplifyTolerance, float layerBuffer, int tilePixels, float subpixelDivider)
+        mapbox::geojsonvt::TileOptions makeTileOptions(float simplifyTolerance, float layerBuffer, int tilePixels, float subpixelDivider, bool lineMetrics)
         {
             mapbox::geojsonvt::TileOptions tileOptions;
             tileOptions.extent = TILE_EXTENT;
             // A fraction of a tile pixel, constant on screen across zooms, in geojson-vt's tile extent units.
             tileOptions.tolerance = static_cast<double>(simplifyTolerance) * TILE_EXTENT / (tilePixels * subpixelDivider);
             tileOptions.buffer = static_cast<std::uint16_t>(std::max(0.0f, std::round(layerBuffer * TILE_EXTENT)));
-            tileOptions.lineMetrics = false;
+            tileOptions.lineMetrics = lineMetrics;
             return tileOptions;
         }
 
@@ -312,9 +330,9 @@ namespace massif::mbvtbuilder
             const double p = static_cast<double>(tileOptions.buffer) / tileOptions.extent;
 
             auto features = mapbox::geojsonvt::detail::convert(data.features, tolerance, false);
-            auto left = mapbox::geojsonvt::detail::clip<0>(features, (tileX - p) / z2, (tileX + 1 + p) / z2, -1, 2, false);
-            auto clipped = mapbox::geojsonvt::detail::clip<1>(left, (tileY - p) / z2, (tileY + 1 + p) / z2, -1, 2, false);
-            return mapbox::geojsonvt::detail::InternalTile({ clipped, static_cast<std::uint8_t>(zoom), static_cast<std::uint32_t>(tileX), static_cast<std::uint32_t>(tileY), tileOptions.extent, tolerance, false }).tile;
+            auto left = mapbox::geojsonvt::detail::clip<0>(features, (tileX - p) / z2, (tileX + 1 + p) / z2, -1, 2, tileOptions.lineMetrics);
+            auto clipped = mapbox::geojsonvt::detail::clip<1>(left, (tileY - p) / z2, (tileY + 1 + p) / z2, -1, 2, tileOptions.lineMetrics);
+            return mapbox::geojsonvt::detail::InternalTile({ clipped, static_cast<std::uint8_t>(zoom), static_cast<std::uint32_t>(tileX), static_cast<std::uint32_t>(tileY), tileOptions.extent, tolerance, tileOptions.lineMetrics }).tile;
         }
 
         MBVTTileIndex::Node makeNode(MBVTTileIndex::VTFeatures features)
@@ -384,12 +402,13 @@ namespace massif::mbvtbuilder
                 index->extent = tileOptions.extent;
                 index->maxZoom = std::min(maxZoom, 24);
                 index->bufferFraction = static_cast<double>(tileOptions.buffer) / tileOptions.extent;
+                index->lineMetrics = tileOptions.lineMetrics;
                 // Vertex importances are computed once, against the tolerance of the DEEPEST zoom;
                 // every tile then just filters on them, which is what removes the per-zoom pass.
                 index->tolerance = (tileOptions.tolerance / tileOptions.extent) / static_cast<double>(1u << index->maxZoom);
 
                 auto converted = mapbox::geojsonvt::detail::convert(data.features, index->tolerance, false);
-                auto wrapped = mapbox::geojsonvt::detail::wrap(converted, index->bufferFraction, false);
+                auto wrapped = mapbox::geojsonvt::detail::wrap(converted, index->bufferFraction, index->lineMetrics);
                 findRootTile(wrapped, index->bufferFraction, index->maxZoom, index->rootZoom, index->rootX, index->rootY);
                 index->nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(index->rootZoom), index->rootX, index->rootY), makeNode(std::move(wrapped)));
 
@@ -457,13 +476,13 @@ namespace massif::mbvtbuilder
 
                 const double z2 = static_cast<double>(1u << z);
                 // Axis-separated, geojson-vt's way: one x pass feeds both of its children.
-                auto left = mapbox::geojsonvt::detail::clip<0>(node->features, (x - p) / z2, (x + 0.5 + p) / z2, -1, 2, false);
-                auto right = mapbox::geojsonvt::detail::clip<0>(node->features, (x + 0.5 - p) / z2, (x + 1 + p) / z2, -1, 2, false);
+                auto left = mapbox::geojsonvt::detail::clip<0>(node->features, (x - p) / z2, (x + 0.5 + p) / z2, -1, 2, index.lineMetrics);
+                auto right = mapbox::geojsonvt::detail::clip<0>(node->features, (x + 0.5 - p) / z2, (x + 1 + p) / z2, -1, 2, index.lineMetrics);
 
-                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2, y * 2), makeNode(mapbox::geojsonvt::detail::clip<1>(left, (y - p) / z2, (y + 0.5 + p) / z2, -1, 2, false)));
-                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2, y * 2 + 1), makeNode(mapbox::geojsonvt::detail::clip<1>(left, (y + 0.5 - p) / z2, (y + 1 + p) / z2, -1, 2, false)));
-                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2 + 1, y * 2), makeNode(mapbox::geojsonvt::detail::clip<1>(right, (y - p) / z2, (y + 0.5 + p) / z2, -1, 2, false)));
-                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2 + 1, y * 2 + 1), makeNode(mapbox::geojsonvt::detail::clip<1>(right, (y + 0.5 - p) / z2, (y + 1 + p) / z2, -1, 2, false)));
+                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2, y * 2), makeNode(mapbox::geojsonvt::detail::clip<1>(left, (y - p) / z2, (y + 0.5 + p) / z2, -1, 2, index.lineMetrics)));
+                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2, y * 2 + 1), makeNode(mapbox::geojsonvt::detail::clip<1>(left, (y + 0.5 - p) / z2, (y + 1 + p) / z2, -1, 2, index.lineMetrics)));
+                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2 + 1, y * 2), makeNode(mapbox::geojsonvt::detail::clip<1>(right, (y - p) / z2, (y + 0.5 + p) / z2, -1, 2, index.lineMetrics)));
+                index.nodes.emplace(mapbox::geojsonvt::toID(static_cast<std::uint8_t>(z + 1), x * 2 + 1, y * 2 + 1), makeNode(mapbox::geojsonvt::detail::clip<1>(right, (y + 0.5 - p) / z2, (y + 1 + p) / z2, -1, 2, index.lineMetrics)));
             }
 
             nodeZoom = zoom;
@@ -486,7 +505,7 @@ namespace massif::mbvtbuilder
             const double tolerance = index.tolerance * static_cast<double>(1u << (index.maxZoom - zoom));
             if (nodeZoom == zoom)
             {
-                return mapbox::geojsonvt::detail::InternalTile({ node->features, static_cast<std::uint8_t>(zoom), static_cast<std::uint32_t>(tileX), static_cast<std::uint32_t>(tileY), index.extent, tolerance, false }).tile;
+                return mapbox::geojsonvt::detail::InternalTile({ node->features, static_cast<std::uint8_t>(zoom), static_cast<std::uint32_t>(tileX), static_cast<std::uint32_t>(tileY), index.extent, tolerance, index.lineMetrics }).tile;
             }
 
             // Stopped on a coarser node: cut the wanted tile straight out of it. Not cached - the
@@ -514,14 +533,27 @@ namespace massif::mbvtbuilder
                 return mapbox::geojsonvt::Tile();
             }
 
-            auto left = mapbox::geojsonvt::detail::clip<0>(candidates, minX, maxX, -1, 2, false);
-            auto clipped = mapbox::geojsonvt::detail::clip<1>(left, minY, maxY, -1, 2, false);
-            return mapbox::geojsonvt::detail::InternalTile({ clipped, static_cast<std::uint8_t>(zoom), static_cast<std::uint32_t>(tileX), static_cast<std::uint32_t>(tileY), index.extent, tolerance, false }).tile;
+            auto left = mapbox::geojsonvt::detail::clip<0>(candidates, minX, maxX, -1, 2, index.lineMetrics);
+            auto clipped = mapbox::geojsonvt::detail::clip<1>(left, minY, maxY, -1, 2, index.lineMetrics);
+            return mapbox::geojsonvt::detail::InternalTile({ clipped, static_cast<std::uint8_t>(zoom), static_cast<std::uint32_t>(tileX), static_cast<std::uint32_t>(tileY), index.extent, tolerance, index.lineMetrics }).tile;
         }
     }
 
     MBVTTileBuilder::MBVTTileBuilder(int minZoom, int maxZoom) : _minZoom(minZoom), _maxZoom(maxZoom)
     {
+    }
+
+    bool MBVTTileBuilder::getLineMetrics() const
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _lineMetrics;
+    }
+
+    void MBVTTileBuilder::setLineMetrics(bool lineMetrics)
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _lineMetrics = lineMetrics;
+        invalidateCache();
     }
 
     float MBVTTileBuilder::getSimplifyTolerance() const
@@ -843,19 +875,19 @@ namespace massif::mbvtbuilder
             }
 
             MBVTLayerEncoder layerEncoder(layer.name);
-            mapbox::geojsonvt::TileOptions tileOptions = makeTileOptions(_simplifyTolerance, layer.buffer, TILE_PIXELS, TILE_SUBPIXEL_TOLERANCE_DIVIDER);
+            mapbox::geojsonvt::TileOptions tileOptions = makeTileOptions(_simplifyTolerance, layer.buffer, TILE_PIXELS, TILE_SUBPIXEL_TOLERANCE_DIVIDER, _lineMetrics);
             bool featuresAdded = false;
             if (_minZoom == _maxZoom)
             {
                 // A builder pinned to one zoom (a contour tile, say) only ever yields a single tile,
                 // so there is nothing for an index to amortise: cut that tile directly.
                 mapbox::geojsonvt::Tile tile = buildSingleTile(*layer.data, tileOptions, zoom, tileX, tileY);
-                featuresAdded = encodeTile(*layer.data, tile, layerEncoder);
+                featuresAdded = encodeTile(*layer.data, tile, layerEncoder, _lineMetrics);
             }
             else
             {
                 MBVTTileIndex &index = ensureIndex(*layer.data, tileOptions, _maxZoom);
-                featuresAdded = encodeTile(*layer.data, buildIndexedTile(index, zoom, tileX, tileY), layerEncoder);
+                featuresAdded = encodeTile(*layer.data, buildIndexedTile(index, zoom, tileX, tileY), layerEncoder, _lineMetrics);
             }
 
             if (featuresAdded)

@@ -34,6 +34,16 @@ namespace massif::mvt {
             // Detect if there are any keys we can use as a feature id...
             _keyFieldMap.resize(_layer->keys_size(), -1);
             for (int i = 0; i < _layer->keys_size(); i++) {
+                // The builder's line progress rides with the geometry, not as a feature field: a field would
+                // give every tile piece its own feature data, and so its own style processor.
+                if (_layer->keys(i) == "mapbox_clip_start") {
+                    _clipStartKey = i;
+                    continue;
+                }
+                if (_layer->keys(i) == "mapbox_clip_end") {
+                    _clipEndKey = i;
+                    continue;
+                }
                 if (_layer->keys(i) == "id" || _layer->keys(i) == "osm_id" || _layer->keys(i) == "cartodb_id") {
                     _idKey = i;
                 }
@@ -190,7 +200,7 @@ namespace massif::mvt {
                     if (verticesList.empty()) {
                         return std::shared_ptr<Geometry>();
                     }
-                    auto geometry = std::make_shared<Geometry>(LineGeometry(std::move(verticesList)));
+                    auto geometry = std::make_shared<Geometry>(LineGeometry(std::move(verticesList), readLineProgress(_layer->features(_index))));
                     _geometryCache->put(_index, geometry);
                     return geometry;
                 }
@@ -328,6 +338,30 @@ namespace massif::mvt {
             }
         }
 
+        std::optional<LineGeometry::Progress> readLineProgress(const vector_tile::Tile::Feature& feature) const {
+            if (_clipStartKey < 0 || _clipEndKey < 0) {
+                return std::nullopt;
+            }
+            std::optional<double> start, end;
+            for (int k = 0; k + 1 < feature.tags_size(); k += 2) {
+                std::optional<double>* target = (feature.tags(k) == _clipStartKey ? &start : feature.tags(k) == _clipEndKey ? &end : nullptr);
+                int valueIdx = feature.tags(k + 1);
+                if (target && valueIdx >= 0 && valueIdx < _layer->values_size()) {
+                    const Value value = convertValue(_layer->values(valueIdx));
+                    if (const long long* i = std::get_if<long long>(&value)) {
+                        *target = static_cast<double>(*i);
+                    }
+                    else if (const double* d = std::get_if<double>(&value)) {
+                        *target = *d;
+                    }
+                }
+            }
+            if (!start || !end) {
+                return std::nullopt;
+            }
+            return LineGeometry::Progress { *start, *end };
+        }
+
         // The features getGeometry would clip away, skipped before any style rule reads their tags.
         void skipClipped() {
             if (_featureBounds) {
@@ -371,6 +405,8 @@ namespace massif::mvt {
 
         int _index = 0;
         int _idKey = -1;
+        int _clipStartKey = -1;
+        int _clipEndKey = -1;
         long long _layerIndexOffset = 0;
         std::vector<int> _fieldKeys;
         std::vector<int> _keyFieldMap;

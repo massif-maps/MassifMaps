@@ -9,10 +9,13 @@
 
 #include <memory>
 #include <list>
+#include <optional>
 #include <vector>
 #include <variant>
 
 #include <cglib/vec.h>
+
+#include "vt/ColorRamp.h"
 
 namespace massif::mvt {
     class PointGeometry final {
@@ -47,14 +50,19 @@ namespace massif::mvt {
         using Vertices = std::vector<cglib::vec2<float>>;
         using VerticesList = std::vector<Vertices>;
 
-        explicit LineGeometry(VerticesList verticesList) : _verticesList(std::move(verticesList)) { }
+        // The part of the source line this geometry covers; absent when the source has no line metrics.
+        using Progress = vt::LineProgress;
+
+        explicit LineGeometry(VerticesList verticesList, std::optional<Progress> progress = std::nullopt) : _verticesList(std::move(verticesList)), _progress(progress) { }
         
         const VerticesList& getVerticesList() const { return _verticesList; }
+        const std::optional<Progress>& getProgress() const { return _progress; }
         
         Vertices getMidPoints() const;
 
     private:
         VerticesList _verticesList;
+        std::optional<Progress> _progress;
     };
 
     class PolygonGeometry final {

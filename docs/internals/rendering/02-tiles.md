@@ -439,7 +439,7 @@ classic map has a second cap on top, **the level of a reference distance that no
 
 | | cap | floor (terrain) | style zoom |
 |---|---|---|---|
-| classic planar layer | `floor(view zoom)`, plus `MaxTileZoomOffset` if set, the data's max zoom (+ overzoom with terrain), and the **reference level** | `floor(view zoom) - MaxTileZoomCoarsening`, under the DEM's detail limit and the view distance's | the view zoom, floored and held between the tile's zoom and the lift; the camera's when flat top-down, without terrain |
+| classic planar layer | `floor(view zoom)`, plus `MaxTileZoomOffset` if set, the data's max zoom (+ overzoom with terrain), and the **reference level** | `floor(view zoom) - MaxTileZoomCoarsening`, under the DEM's detail limit and the view distance's | the view zoom, floored and held between the tile's zoom and the lift; the camera's when flat top-down, unless terrain is drawn in 3D |
 | free roam imagery | the data's only | none | n/a (raster) |
 | globe | the camera's zoom | as classic | the camera's target; **the area rule** |
 
@@ -524,13 +524,13 @@ is likely, not shown). The data decides the rest: a z13 tile of a source that pu
 styled.
 
 **The exception is a flat view** (`DistanceTileLOD::isFlat`: tilt within `FLAT_TILT_TOLERANCE`, 1 degree, of straight down;
-a classic planar layer without terrain, never free roam imagery). Every tile is then styled at the view zoom of the
+a classic planar layer whose terrain, if any, is not drawn in 3D (`TerrainOptions::isActive`: attached but flattened counts as flat, the app's default in 2D), never free roam imagery). Every tile is then styled at the view zoom of the
 camera's own distance, so one style zoom covers the screen. By their own distance the tiles at the top and bottom of a
 tall phone screen are farther from the eye than the centre ones, about 0.1 level lower (diagnosed, not measured): at camera
 zoom 19.0 the centre read 19 and the edges 18, so alpimaps drew trees as icons in the middle and as points at the edges.
 The test is the view's tilt alone, so tilting across it re-styles through the same staleness test as any
 other view zoom change, and a tile whose style zoom lies within the hysteresis of the new one is kept. A tilted view is unchanged.
-With terrain the distance is the ground's, and a nearer ridge does read a finer zoom, so it keeps the per-tile rule.
+With terrain drawn in 3D the distance is the ground's, and a nearer ridge does read a finer zoom, so it keeps the per-tile rule.
 Which tiles are drawn is not touched: at tilt 0 the edge tiles can still be a tile level coarser than the centre ones
 (the cut reads the same distance), only the rules they match are the camera's.
 

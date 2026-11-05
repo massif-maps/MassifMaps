@@ -535,6 +535,9 @@ namespace {
         TEST_CHECK(DistanceTileLOD::isFlat(90.0) && DistanceTileLOD::isFlat(89.5) && DistanceTileLOD::isFlat(90.0 - DistanceTileLOD::FLAT_TILT_TOLERANCE),
                    "a view straight down, or within the tolerance of it, is flat");
         TEST_CHECK(!DistanceTileLOD::isFlat(88.9) && !DistanceTileLOD::isFlat(60.0) && !DistanceTileLOD::isFlat(0.0), "and one tilted past it is not");
+        TEST_CHECK(DistanceTileLOD::flatStyleDistance(90.0, false, camera) == camera, "a flat view with no terrain, or terrain attached but flattened, styles at the camera's distance");
+        TEST_CHECK(DistanceTileLOD::flatStyleDistance(90.0, true, camera) == 0.0 && DistanceTileLOD::flatStyleDistance(60.0, false, camera) == 0.0,
+                   "but not one with terrain drawn in 3D, nor a tilted one");
 
         // The grazing allowance: a tile seen head on is judged by pixels alone, one seen at a grazing angle may span more.
         view.farCoarsening = 0.5;

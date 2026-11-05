@@ -37,6 +37,7 @@ const UNARY_FN: Record<string, string> = {
 const BINARY_FN: Record<string, string> = { '^': 'pow' };
 
 const GEOMETRY_TYPE_FIELD = '[mapnik::geometry_type]';
+export const LINE_PROGRESS_INPUT = '[mapnik::line_progress]';
 
 /**
  * AND as nested ternaries, because `&&` cannot be parsed at all.
@@ -191,6 +192,10 @@ export function translateExpression(expr: Json, notes?: string[]): string {
 
         case 'geometry-type':
             return GEOMETRY_TYPE_FIELD;
+
+        // Survives the fold only as the input of a line-gradient ramp; anywhere else it is 0.
+        case 'line-progress':
+            return LINE_PROGRESS_INPUT;
 
         case 'id':
             return '[mapnik::feature_id]';
@@ -441,9 +446,11 @@ function translateStep(args: Json[]): string {
     // per-feature decision, which is a chain of ternaries. Unlike `interpolate` there is nothing to
     // unroll - a step has finitely many outcomes, one per stop. Mapbox Standard sizes 10 label
     // layers by `["step", ["get", "sizerank"], …]`, which was 35 text-sizes dropped.
-    if (translateExpression(args[0]) !== zoomInput()) return stepOnField(args);
+    const onProgress = translateExpression(args[0]) === LINE_PROGRESS_INPUT;
+    if (translateExpression(args[0]) !== zoomInput() && !onProgress) return stepOnField(args);
     const input = requireZoom(args[0], 'step');
-    const stops = [`(0, ${translateExpression(args[1])})`];
+    // A stop at 0 already covers the whole domain of a progress, so the base would be a duplicate key.
+    const stops = onProgress && args[2] === 0 ? [] : [`(0, ${translateExpression(args[1])})`];
     for (let i = 2; i < args.length; i += 2) {
         stops.push(`(${translateExpression(args[i])}, ${translateExpression(args[i + 1])})`);
     }
@@ -567,7 +574,7 @@ function stepOnField(args: Json[]): string {
 function requireZoom(input: Json, where: string): string {
     const translated = translateExpression(input);
     // The scene brightness is a view variable too, and a ramp over it interpolates the same way.
-    if (translated !== zoomInput() && translated !== BRIGHTNESS_INPUT) {
+    if (translated !== zoomInput() && translated !== BRIGHTNESS_INPUT && translated !== LINE_PROGRESS_INPUT) {
         throw new Untranslatable(`${where} over ${translated} rather than zoom`);
     }
     return translated;

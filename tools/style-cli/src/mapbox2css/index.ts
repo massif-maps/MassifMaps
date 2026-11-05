@@ -1,7 +1,7 @@
 import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteContourFilter } from './contour.js';
 import { foldCasings } from './casing.js';
 import { Coverage } from './coverage.js';
-import { Untranslatable, expandTokens, setTileDrawSize, translateExpression, zoomInput, zoomOffsetLevels } from './expression.js';
+import { LINE_PROGRESS_INPUT, Untranslatable, expandTokens, setTileDrawSize, translateExpression, zoomInput, zoomOffsetLevels } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
@@ -1817,6 +1817,12 @@ function layerDeclarations(
             if (translated === null) continue;
             out.push(`text-occlusion-opacity: ${translated};`);
             coverage.emit('text-occlusion-opacity');
+            continue;
+        }
+
+        // The pattern is its own symbolizer and paints the whole stroke, so there is nothing left to colour.
+        if (name === 'line-gradient' && layer.paint?.['line-pattern'] !== undefined) {
+            coverage.drop(name, 'a line-pattern paints the whole stroke', layer.id);
             continue;
         }
 
@@ -3928,6 +3934,9 @@ function tryTranslate(value: Json, name: string, layerId: string, coverage: Cove
         const translated = fontList !== undefined
             ? translateExpression(fontList, notes)
             : translateExpression(value, notes);
+        if (name !== 'line-gradient' && translated.includes(LINE_PROGRESS_INPUT)) {
+            throw new Untranslatable('line-progress outside line-gradient');
+        }
         notes.forEach((note) => coverage.approximate(note));
         return translated;
     } catch (error) {

@@ -78,7 +78,7 @@ parameter while `massif:sdk-layer` stays literal for a standalone layer. The rul
 These are CartoCSS gaps, not converter bugs — the report names them one by one:
 
 - **Layer types with no symbolizer** — `heatmap`, and `symbol` layers that have only an icon.
-- **Properties** — `line-blur`, `line-gap-width`, `line-gradient`, `fill-extrusion-pattern`, every
+- **Properties** — `fill-extrusion-pattern`, every
   `*-translate`, most `raster-*` adjustments.
 - **Expressions with no CartoCSS form** — `feature-state`, `within`, `let`/`var`, `number-format`,
   `image`, `%`, `abs`/`floor`/`ceil`, and `interpolate` over anything other than zoom.

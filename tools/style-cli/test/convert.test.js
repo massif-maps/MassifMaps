@@ -649,3 +649,76 @@ test('a shared attachment drawn at several depths is one project entry, at the l
     ];
     assert.deepEqual(projectEntries(drawOrder), ['park::label', 'poi::spring', 'park::name', 'poi::poi']);
 });
+
+// The allowlist is generated from the renderer's bindings; line-gradient joins it with the renderer.
+const gradientTable = table.properties.some((p) => p.cartocss === 'line-gradient')
+    ? table
+    : {
+        ...table,
+        properties: [...table.properties, {
+            cartocss: 'line-gradient', mapnik: 'stroke-gradient', symbolizer: 'line', kind: 'value',
+            type: 'GradientProperty', default: '', live: false, baked: false,
+        }],
+    };
+
+function routeStyle(paint, extra = {}) {
+    return {
+        version: 8,
+        sources: { route: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, lineMetrics: true } },
+        layers: [{ id: 'route', type: 'line', source: 'route', 'source-layer': 'route', paint: { 'line-width': 4, ...paint }, ...extra }],
+    };
+}
+
+function gradientLine(paint, extra) {
+    const { mss, coverage } = convert(routeStyle(paint, extra), gradientTable, NO_PALETTE);
+    return { coverage, line: mss.split('\n').find((l) => l.includes('line-gradient:')) };
+}
+
+test('line-gradient over line-progress is a linear ramp over mapnik::line_progress', () => {
+    const { line } = gradientLine({
+        'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#2ecc71', 0.5, '#f1c40f', 1, '#e74c3c'],
+    });
+    assert.match(line, /line-gradient: linear\(\[mapnik::line_progress\], \(0, #2ecc71\), \(0\.5, #f1c40f\), \(1, #e74c3c\)\);/);
+});
+
+test('line-gradient step is a hard-edged step()', () => {
+    const { line } = gradientLine({
+        'line-gradient': ['step', ['line-progress'], '#2ecc71', 0.4, '#f1c40f', 0.8, '#e74c3c'],
+    });
+    assert.match(line, /line-gradient: step\(\[mapnik::line_progress\], \(0, #2ecc71\), \(0\.4, #f1c40f\), \(0\.8, #e74c3c\)\);/);
+    const { line: atZero } = gradientLine({
+        'line-gradient': ['step', ['line-progress'], '#000000', 0, '#2ecc71', 0.5, '#e74c3c'],
+    });
+    assert.match(atZero, /step\(\[mapnik::line_progress\], \(0, #2ecc71\), \(0\.5, #e74c3c\)\)/);
+});
+
+test('line-gradient carries an exponential base', () => {
+    const { line } = gradientLine({
+        'line-gradient': ['interpolate', ['exponential', 2], ['line-progress'], 0, '#000000', 1, '#ffffff'],
+    });
+    assert.match(line, /line-gradient: exponential\(2, \[mapnik::line_progress\], \(0, #000000\), \(1, #ffffff\)\);/);
+});
+
+test('line-gradient is dropped under a line-pattern and kept with a line-dasharray', () => {
+    const gradient = ['interpolate', ['linear'], ['line-progress'], 0, '#000000', 1, '#ffffff'];
+    const pattern = gradientLine({ 'line-gradient': gradient, 'line-pattern': 'hatch' });
+    assert.equal(pattern.line, undefined);
+    assert.match(pattern.coverage.dropped.get('line-gradient').reason, /line-pattern/);
+    assert.match(gradientLine({ 'line-gradient': gradient, 'line-dasharray': [2, 1] }).line, /line-gradient: linear\(/);
+});
+
+test('line-progress outside line-gradient is not carried', () => {
+    const progress = ['interpolate', ['linear'], ['line-progress'], 0, 1, 1, 8];
+    const { mss, coverage } = convert(routeStyle({ 'line-width': progress }), gradientTable, NO_PALETTE);
+    assert.doesNotMatch(mss, /line_progress/);
+    assert.ok(coverage.dropped.has('line-width'));
+});
+
+test('line-progress in a filter still folds to 0', () => {
+    // 0 < 0.5 is true, so the clause folds out of the `all` around it.
+    const run = (filter) => convert(
+        routeStyle({ 'line-color': '#ff0000' }, { filter }), gradientTable, NO_PALETTE).mss;
+    const folded = run(['all', ['has', 'name'], ['<', ['line-progress'], 0.5]]);
+    assert.doesNotMatch(folded, /line_progress/);
+    assert.equal(folded, run(['has', 'name']));
+});

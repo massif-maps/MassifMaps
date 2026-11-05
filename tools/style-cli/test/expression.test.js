@@ -329,3 +329,14 @@ test('a zoom test inside a FILTER is per tile, not per frame', () => {
         setTileDrawSize(256);
     }
 });
+
+test('a ramp over line-progress translates to the line_progress input', () => {
+    assert.equal(
+        translateExpression(['interpolate', ['linear'], ['line-progress'], 0, 1, 1, 5]),
+        'linear([mapnik::line_progress], (0, 1), (1, 5))',
+    );
+    assert.equal(
+        translateExpression(['step', ['line-progress'], 1, 0.5, 5]),
+        'step([mapnik::line_progress], (0, 1), (0.5, 5))',
+    );
+});

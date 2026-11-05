@@ -279,7 +279,12 @@ every label in the style, while the coverage report still counted their properti
 `pitch`, `distance-from-center` and `line-progress` therefore resolve to what a flat, centred view
 sees, the clause folds to `true`, and the filter around it drops it.
 
-One exception: an `interpolate` whose input is `["pitch"]` stays live and becomes a ramp over
+One exception is `line-progress`: an `interpolate` or `step` whose input is `["line-progress"]` stays
+as it is, because it is the ramp of `line-gradient` and becomes `linear([mapnik::line_progress], …)`,
+`step(…)` or `exponential(base, …)`. Anywhere else it still folds to 0. A `line-pattern` paints the
+whole stroke, so a gradient beside one is dropped; beside a `line-dasharray` it is kept.
+
+Another: an `interpolate` whose input is `["pitch"]` stays live and becomes a ramp over
 `[view::tilt]`, each key turned into `90 - pitch`. Neither MapBox nor maplibre has that in paint, so
 only a `massif:paint` value can state it — Massif fades its buildings that way.
 
@@ -736,7 +741,7 @@ Every skipped property is counted and named — `mapbox2css` prints a coverage r
 turns any drop into a non-zero exit. What it refuses, and why:
 
 - **Layer types** with no symbolizer: `heatmap`.
-- **The gap list** — `line-gradient`, `fill-extrusion-pattern`,
+- **The gap list** — `fill-extrusion-pattern`,
   every `*-translate`, most `raster-*` adjustments. These are the CartoCSS gaps, not converter bugs.
 - **Expressions with no CartoCSS form**: `feature-state`, `within`, `number-format`,
   `image`, `%` (absent from the grammar), `abs`/`floor`/`ceil` (absent from `_basicFuncMap`), and

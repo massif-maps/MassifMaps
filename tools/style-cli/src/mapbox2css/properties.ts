@@ -26,6 +26,7 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
         'line-offset': 'line-offset',
         'line-gap-width': 'line-gap-width',
         'line-blur': 'line-blur',
+        'line-gradient': 'line-gradient',
         'line-border-width': 'line-border-width',
         'line-border-color': 'line-border-color',
         'line-dasharray': 'line-dasharray',
@@ -101,7 +102,6 @@ export const VALUE_MAP: Record<string, Record<string, string>> = {
  * docs/contributing/style-tools.md.
  */
 export const KNOWN_GAPS: Record<string, string> = {
-    'line-gradient': 'no CartoCSS equivalent',
     'line-translate': 'screen-space translate has no equivalent',
     'line-translate-anchor': 'screen-space translate has no equivalent',
     'fill-translate': 'screen-space translate has no equivalent',

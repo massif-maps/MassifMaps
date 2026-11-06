@@ -34,6 +34,12 @@ def layers(v):
         layer('waterway-intermittent' + suffix, 'line', 'waterway', minzoom=12,
               filter=['all', ground, ['==', get('intermittent'), 1]],
               paint={'line-color': stream, 'line-width': WIDTH, 'line-dasharray': dash_seasonal}, metadata=night),
+    ] + ([] if mono else [
+        # a culvert or covered stream, dashed like a road tunnel; 0.5 would vanish at a stream's width
+        layer('waterway-tunnel', 'line', 'waterway', minzoom=12, filter=['==', get('brunnel'), 'tunnel'],
+              paint={'line-color': stream, 'line-width': WIDTH, 'line-opacity': 0.8, 'line-dasharray': [2, 3]},
+              metadata=night),
+    ]) + [
         layer('water', 'fill', 'water', filter=['!=', get('brunnel'), 'tunnel'],
               paint={'fill-color': c['water'], 'fill-antialias': False},
               metadata={'massif:paint': {'fill-color': by_hour(c['water-night'], c['water'])}},

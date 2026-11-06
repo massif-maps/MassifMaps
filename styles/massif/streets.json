@@ -2465,6 +2465,163 @@
       }
     },
     {
+      "id": "waterway-tunnel",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "waterway",
+      "minzoom": 12,
+      "filter": [
+        "==",
+        [
+          "get",
+          "brunnel"
+        ],
+        "tunnel"
+      ],
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "river",
+            "canal"
+          ],
+          "hsl(200, 100%, 80%)",
+          "hsl(205, 75%, 66%)"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.3
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            0.5,
+            0
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            0.8,
+            0.1
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            1.6,
+            0.6
+          ],
+          16,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            3.5,
+            1.6
+          ],
+          20,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            8,
+            4
+          ]
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          2,
+          3
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "river",
+                "canal"
+              ],
+              "hsl(200, 100%, 62%)",
+              "hsl(205, 75%, 48%)"
+            ],
+            0.3,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "river",
+                "canal"
+              ],
+              "hsl(200, 100%, 80%)",
+              "hsl(205, 75%, 66%)"
+            ]
+          ]
+        }
+      }
+    },
+    {
       "id": "water",
       "type": "fill",
       "source": "openmaptiles",

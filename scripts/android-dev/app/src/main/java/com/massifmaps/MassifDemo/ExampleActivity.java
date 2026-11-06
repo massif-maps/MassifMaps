@@ -213,6 +213,9 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         if (map != null) {
             map.close();
         }
+        if (mapView != null) {
+            mapView.delete(); // nothing else frees the native map
+        }
         super.onDestroy();
     }
 

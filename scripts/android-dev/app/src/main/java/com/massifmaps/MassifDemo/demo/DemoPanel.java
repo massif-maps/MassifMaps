@@ -73,6 +73,20 @@ public final class DemoPanel {
     private static final List<Row> rows = new ArrayList<Row>();
     private static final List<Section> sectionList = new ArrayList<Section>();
 
+    /** The statics hold views, so the last activity would outlive its screen. */
+    public static void release() {
+        statusText = null;
+        styleText = null;
+        slotText = null;
+        gearButton = null;
+        elevationWidget = null;
+        elevationText = null;
+        sections = null;
+        currentContent = null;
+        rows.clear();
+        sectionList.clear();
+    }
+
     /** One filterable row: the view to hide, and the text a filter matches against. */
     private static final class Row {
         final View view;

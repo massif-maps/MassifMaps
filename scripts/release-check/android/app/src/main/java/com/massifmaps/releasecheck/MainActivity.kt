@@ -16,10 +16,12 @@ import com.massifmaps.valhalla.ValhallaRoutingService
 /** The published AARs used as an app would: a map from the SDK, and the routing library beside it. */
 class MainActivity : Activity() {
     private val lines = mutableListOf<String>()
+    private var mapView: MapView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val mapView = MapView(this)
+        this.mapView = mapView
         val status = TextView(this).apply { setBackgroundColor(Color.argb(230, 255, 255, 255)); setPadding(16, 16, 16, 16) }
         setContentView(FrameLayout(this).apply {
             addView(mapView)
@@ -37,6 +39,11 @@ class MainActivity : Activity() {
             ValhallaRoutingService().use { "profile ${it.profile}" }
         }
         status.text = lines.joinToString("\n")
+    }
+
+    override fun onDestroy() {
+        mapView?.delete()
+        super.onDestroy()
     }
 
     private fun check(name: String, block: () -> Any?) {

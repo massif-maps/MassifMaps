@@ -134,6 +134,42 @@ Any `{z}/{x}/{y}.pbf` endpoint on the OpenMapTiles schema works. For a real styl
 style **project** instead of inline CartoCSS — see [style sets](/docs/api/reference/styleset),
 and [the style CLI](/docs/tools/style-cli) if you are converting one from MapBox.
 
+## When the screen closes
+
+The map is registered by id, so leaving the screen does not free it: do it yourself, or every open
+keeps its tiles, terrain and Activity.
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+```kotlin
+override fun onDestroy() {
+    map.close()        // the layers and sources it built
+    mapView.delete()   // the native map; nothing else frees it
+    super.onDestroy()
+}
+```
+
+</TabItem>
+<TabItem value="ios" label="iOS">
+
+```swift
+deinit { map.detach() }
+```
+
+</TabItem>
+<TabItem value="nativescript" label="NativeScript">
+
+The view releases the map when it is disposed; nothing to add.
+
+</TabItem>
+<TabItem value="web" label="Web">
+
+One map per page: closing the page frees it.
+
+</TabItem>
+</Tabs>
+
 ## The same thing with the object API
 
 The classic class-per-capability API is still fully supported, and is what the

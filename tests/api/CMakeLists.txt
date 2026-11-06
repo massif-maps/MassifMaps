@@ -347,6 +347,10 @@ add_executable(api_tests
   # Same: TerrainOcclusion.h is the label-vs-terrain depth compare, and nothing else.
   TerrainOcclusionTest.cpp
   ManeuverArrowTest.cpp
+  # The GL resource queue only; GLContext is stubbed in the test, the GL headers are all it needs.
+  GLResourceManagerTest.cpp
+  "${SDK_BASE_DIR}/all/native/renderers/utils/GLResourceManager.cpp"
+  "${SDK_BASE_DIR}/all/native/renderers/utils/GLResource.cpp"
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"
@@ -379,7 +383,8 @@ target_include_directories(api_tests PRIVATE
   # symlink this expects.
   "${SDK_BASE_DIR}/libs-external/boost"
   "${SDK_BASE_DIR}/libs-external/rapidjson/include"
-  "${SDK_BASE_DIR}/libs-external/tinyformat")
+  "${SDK_BASE_DIR}/libs-external/tinyformat"
+  "${SDK_BASE_DIR}/libs-external/angle-metal/include")
 
 find_package(ZLIB REQUIRED)
 target_link_libraries(api_tests PRIVATE ZLIB::ZLIB)

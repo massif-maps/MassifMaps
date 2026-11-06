@@ -31,8 +31,16 @@ namespace massif {
     }
     
     void GLResourceManager::setGLThreadId(std::thread::id id) {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _glThreadId = id;
+        std::vector<std::unique_ptr<GLResource> > abandoned;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _glThreadId = id;
+            if (id == std::thread::id()) {
+                // Nobody drains the queue again, and what it holds can hold this manager back.
+                std::swap(abandoned, _deleteQueue);
+                _createQueue.clear();
+            }
+        }
     }
     
     void GLResourceManager::setGLContext(void* context) {
@@ -109,6 +117,9 @@ namespace massif {
 
     void GLResourceManager::deleteResource(std::unique_ptr<GLResource> resource) {
         if (resource) {
+            if (getGLThreadId() == std::thread::id()) {
+                return; // the context is gone with its GL names; only the memory is left to free
+            }
             if (isOnGLContext()) {
                 resource->destroy();
             } else {

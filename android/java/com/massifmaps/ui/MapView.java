@@ -146,9 +146,8 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
     }
 
     /**
-     * Deletes the resources associated with the MapView.
-     * The method can be used to dispose native objects immediately,
-     * without waiting for next GC cycle.
+     * Deletes the native map behind the MapView. Nothing else does: the garbage collector never frees
+     * it, so a screen that does not call this from its onDestroy keeps the whole map in memory.
      */
     @Override
     public synchronized void delete() {

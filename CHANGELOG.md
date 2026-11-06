@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.5.0] - 2026-11-06
+
+### Breaking changes
+
+- remove the Xamarin target ([#488](https://github.com/massif-maps/MassifMaps/pull/488)) ([`f537446`](https://github.com/massif-maps/MassifMaps/commit/f5374466b45d6df50b02fd2a1a252c5cef0722b2))
+  the Xamarin Android/iOS NuGet packages and `build-xamarin.py` no longer exist; `swigpp-csharp.py` accepts only `winphone`.
+
+### New features
+
+- **vt:** colour a line along its length with line-gradient ([#481](https://github.com/massif-maps/MassifMaps/pull/481)) ([`5a36b3d`](https://github.com/massif-maps/MassifMaps/commit/5a36b3d05a044831b3a1cc8c07c483b6473e6f86))
+
+### Bug fixes
+
+- **demo:** release the iOS bench's ids and the release-check map; document the teardown ([#487](https://github.com/massif-maps/MassifMaps/pull/487)) ([`e7aae58`](https://github.com/massif-maps/MassifMaps/commit/e7aae583615b9ce98ae61509469ab80f615a2194))
+- **renderers:** free a deleted map's renderers and terrain caches instead of pinning them ([#485](https://github.com/massif-maps/MassifMaps/pull/485)) ([`68a25c1`](https://github.com/massif-maps/MassifMaps/commit/68a25c1e7e6d3ed20325c7b49d6ace62c353750f))
+- **demo:** release the map and what a demo screen registered when it closes ([#486](https://github.com/massif-maps/MassifMaps/pull/486)) ([`5fefaec`](https://github.com/massif-maps/MassifMaps/commit/5fefaec42b89cb9cd4c909a60f337764c20203c8))
+- **terrain:** paint the hillshade on first draw instead of after a pan ([#482](https://github.com/massif-maps/MassifMaps/pull/482)) ([`7cca465`](https://github.com/massif-maps/MassifMaps/commit/7cca4654c0386d1f113e545dd867b1f111b29311))
+- **layers:** style a flat map's tiles at the camera's zoom when terrain is attached but flattened ([#479](https://github.com/massif-maps/MassifMaps/pull/479)) ([`8141f38`](https://github.com/massif-maps/MassifMaps/commit/8141f38554d3e3d7e152f730059462e3f1d56365))
+
 ## [v6.4.0] - 2026-10-24
 
 

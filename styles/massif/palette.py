@@ -45,8 +45,10 @@ STREETS = {
     'depth-200': 'hsl(200, 100%, 72%)',
     'depth-7000': 'hsl(200, 100%, 64%)',
     'water': 'hsl(200, 100%, 80%)',
-    # a stream is a line a pixel or two wide: in the water's own tint it vanishes
+    # a stream is a line a pixel or two wide: in the water's own tint it vanishes (rivers and canals
+    # still take `water`, see layers/water.py)
     'waterway': 'hsl(205, 75%, 66%)',
+    'waterway-night': 'hsl(205, 75%, 48%)',
     'water-night': 'hsl(200, 100%, 62%)',
     'water-label': 'hsl(205, 60%, 30%)',
     'water-halo': 'hsla(0, 0%, 100%, 0.55)',
@@ -172,6 +174,7 @@ TOPO = {
     'glacier': 'hsl(0, 0%, 100%)',
     'water': 'hsl(199, 44%, 62%)',
     'waterway': 'hsl(199, 50%, 50%)',
+    'waterway-night': 'hsl(199, 50%, 40%)',
     'water-label': 'hsl(205, 60%, 18%)',
     'water-halo': 'hsla(0, 0%, 100%, 0.7)',
     'relief': 0.5,

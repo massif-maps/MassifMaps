@@ -520,19 +520,19 @@ Map {
 #waterway[zoom >= 8][brunnel != 'tunnel'][intermittent != 1]['param::variant' != 'hybrid']['param::variant' != 'eink']::waterway {
   line-cap: 'round';
   line-join: 'round';
-  line-color: (([param::variant] = 'topo') ? @waterway_stroke : @waterway);
+  line-color: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, (([class] = 'river' || [class] = 'canal') ? @water_night : @waterway_stroke)), (0.3, (([class] = 'river' || [class] = 'canal') ? @text_fill : @waterway_stroke_2))) : linear([view::brightness], (0.25, (([class] = 'river' || [class] = 'canal') ? @water_night : @waterway_night)), (0.3, (([class] = 'river' || [class] = 'canal') ? @water : @waterway))));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-opacity: linear([view::zoom], (8, 0), (8.5, 1));
   line-emissive-strength: 0;
 }
 #waterway[zoom >= 12][intermittent = 1][brunnel != 'tunnel']['param::variant' != 'hybrid']['param::variant' != 'eink']::waterway_intermittent {
-  line-color: (([param::variant] = 'topo') ? @waterway_stroke : @waterway);
+  line-color: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, (([class] = 'river' || [class] = 'canal') ? @water_night : @waterway_stroke)), (0.3, (([class] = 'river' || [class] = 'canal') ? @text_fill : @waterway_stroke_2))) : linear([view::brightness], (0.25, (([class] = 'river' || [class] = 'canal') ? @water_night : @waterway_night)), (0.3, (([class] = 'river' || [class] = 'canal') ? @water : @waterway))));
   line-width: exponential(1.3, [view::zoom], (8, (([class] = 'river' || [class] = 'canal') ? 0.5 : 0)), (9, (([class] = 'river' || [class] = 'canal') ? 0.8 : 0.1)), (12, (([class] = 'river' || [class] = 'canal') ? 1.6 : 0.6)), (16, (([class] = 'river' || [class] = 'canal') ? 3.5 : 1.6)), (20, (([class] = 'river' || [class] = 'canal') ? 8 : 4)));
   line-dasharray: step([zoom], (12, '2.58,1.72'), (15, '5.34,3.56'), (18, '9.44,6.3'));
   line-emissive-strength: 0;
 }
 #water[brunnel != 'tunnel']['param::variant' != 'hybrid']::water {
-  polygon-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_night), (0.3, @water_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @water_night), (0.3, @water))));
+  polygon-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_night), (0.3, @text_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @water_night), (0.3, @water))));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : linear([view::zoom], (5, 0.1), (7, 0)));
 }
 #water[brunnel != 'tunnel']['param::variant' = 'eink']::water_pattern {
@@ -556,7 +556,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #depth[zoom < 8][min_depth = 0]['param::variant' != 'hybrid']::water_depth_ocean {
-  polygon-fill: (([param::variant] = 'topo') ? @water_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @water));
+  polygon-fill: (([param::variant] = 'topo') ? @text_fill : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : @water));
   polygon-opacity: linear([view::zoom], (6, 1), (8, 0));
   polygon-emissive-strength: 0;
 }
@@ -3396,7 +3396,7 @@ Map {
   text-size: linear([view::zoom], (9, 9), (18, 14));
   text-character-spacing: (0.05 * linear([view::zoom], (9, 9), (18, 14)));
   text-max-char-angle-delta: 30;
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @text_fill), (0.3, @text_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_3)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
   text-halo-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @halo_night), (0.3, @text_halo_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo)))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -3413,7 +3413,7 @@ Map {
   text-size: linear([view::zoom], (9, 9), (18, 14));
   text-character-spacing: (0.05 * linear([view::zoom], (9, 9), (18, 14)));
   text-max-char-angle-delta: 30;
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @text_fill), (0.3, @text_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_3)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
   text-halo-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @halo_night), (0.3, @text_halo_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo)))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -3429,7 +3429,7 @@ Map {
   text-face-name: @font_italic;
   text-size: linear([view::zoom], (14, 9), (18, 12));
   text-max-char-angle-delta: 30;
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @text_fill), (0.3, @text_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_3)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
   text-halo-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @halo_night), (0.3, @text_halo_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo)))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -3446,7 +3446,7 @@ Map {
   text-size: linear([view::zoom], (12, 9), (18, 14));
   text-character-spacing: (0.05 * linear([view::zoom], (12, 9), (18, 14)));
   text-wrap-width: (5 * linear([view::zoom], (12, 9), (18, 14)));
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @text_fill), (0.3, @text_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_3)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
   text-halo-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @halo_night), (0.3, @text_halo_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo)))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);
@@ -3462,7 +3462,7 @@ Map {
   text-size: linear([view::zoom], (3, (([class] = 'ocean' || [class] = 'sea') ? 12 : 10)), (14, (([class] = 'ocean' || [class] = 'sea') ? 18 : 13)));
   text-character-spacing: ((([class] = 'ocean') ? 0.25 : (([class] = 'sea') ? 0.15 : 0.01)) * linear([view::zoom], (3, (([class] = 'ocean' || [class] = 'sea') ? 12 : 10)), (14, (([class] = 'ocean' || [class] = 'sea') ? 18 : 13))));
   text-wrap-width: (7 * linear([view::zoom], (3, (([class] = 'ocean' || [class] = 'sea') ? 12 : 10)), (14, (([class] = 'ocean' || [class] = 'sea') ? 18 : 13))));
-  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @water_fill), (0.3, @text_fill)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_2)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
+  text-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @text_fill), (0.3, @text_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @water), (0.3, @text_fill_3)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @glacier_low), (0.3, @background)) : linear([view::brightness], (0.25, @water), (0.3, @water_label)))));
   text-halo-fill: (([param::variant] = 'topo') ? linear([view::brightness], (0.25, @halo_night), (0.3, @text_halo_fill_2)) : (([param::variant] = 'hybrid') ? linear([view::brightness], (0.25, @text_halo_fill), (0.3, @text_halo_fill)) : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @background), (0.3, @glacier_low)) : linear([view::brightness], (0.25, @halo_night), (0.3, @water_halo)))));
   text-halo-radius: (([param::variant] = 'eink') ? 2 : 1);
   text-occlusion-opacity: (([param::label_occlusion] = 0) ? 1 : 0);

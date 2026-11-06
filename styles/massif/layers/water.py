@@ -13,7 +13,11 @@ def layers(v):
     ground = ['!=', get('brunnel'), 'tunnel']
     line = {'line-cap': 'round', 'line-join': 'round'}
     mono = v.flags.get('mono', False)
-    stream = c.get('waterway', c['water'])
+    small = c.get('waterway', c['water'])
+    # a river or canal line takes the water's colour so it melts into its polygon; a stream keeps the darker tone
+    stream = small if mono else ['match', get('class'), ['river', 'canal'], c['water'], small]
+    night = {} if mono else {'massif:paint': {'line-color': by_hour(
+        ['match', get('class'), ['river', 'canal'], c['water-night'], c.get('waterway-night', small)], stream)}}
     # e-ink: a river is a dashed grey line and a lake ruled lines inside a light shore, so neither
     # reads as a road's white ribbon between two dark casings
     suffix, dash, dash_seasonal = ('-mono', [5, 2], [1, 2]) if mono else ('', None, [3, 2])
@@ -26,10 +30,10 @@ def layers(v):
                  paint={'line-color': c['waterway-bed'], 'line-width': padded(WIDTH, 2.5)})] if mono else []
     return bed + [
         layer('waterway' + suffix, 'line', 'waterway', minzoom=8,
-              filter=['all', ground, ['!=', get('intermittent'), 1]], layout=line, paint=running),
+              filter=['all', ground, ['!=', get('intermittent'), 1]], layout=line, paint=running, metadata=night),
         layer('waterway-intermittent' + suffix, 'line', 'waterway', minzoom=12,
               filter=['all', ground, ['==', get('intermittent'), 1]],
-              paint={'line-color': stream, 'line-width': WIDTH, 'line-dasharray': dash_seasonal}),
+              paint={'line-color': stream, 'line-width': WIDTH, 'line-dasharray': dash_seasonal}, metadata=night),
         layer('water', 'fill', 'water', filter=['!=', get('brunnel'), 'tunnel'],
               paint={'fill-color': c['water'], 'fill-antialias': False},
               metadata={'massif:paint': {'fill-color': by_hour(c['water-night'], c['water'])}},

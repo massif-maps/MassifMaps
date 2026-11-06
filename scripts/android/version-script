@@ -1,4 +1,4 @@
 {
   local: *;
-  global: Java_*; CSharp_*; SWIG*; mm_*; sqlite3_*;
+  global: Java_*; CSharp_*; SWIG*; mm_*; sqlite3_*; vr_*;
 };

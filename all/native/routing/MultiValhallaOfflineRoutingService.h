@@ -17,10 +17,6 @@
 #include <mutex>
 #include <string>
 
-namespace sqlite3pp {
-    class database;
-}
-
 namespace massif {
 
     /**

@@ -12,10 +12,6 @@
 #include "core/MapTile.h"
 #include "packagemanager/handlers/PackageHandler.h"
 
-namespace sqlite3pp {
-    class database;
-}
-
 namespace massif {
     
     class ValhallaRoutingPackageHandler : public PackageHandler {
@@ -23,15 +19,12 @@ namespace massif {
         explicit ValhallaRoutingPackageHandler(const std::string& fileName);
         virtual ~ValhallaRoutingPackageHandler();
 
-        std::shared_ptr<sqlite3pp::database> getDatabase();
+        const std::string& getFilePath() const { return _fileName; }
 
         virtual void onImportPackage();
         virtual void onDeletePackage();
 
         virtual std::shared_ptr<PackageTileMask> calculateTileMask() const;
-
-    private:
-        std::shared_ptr<sqlite3pp::database> _packageDb;
     };
     
 }

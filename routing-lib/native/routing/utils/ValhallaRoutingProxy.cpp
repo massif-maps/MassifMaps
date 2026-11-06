@@ -1,9 +1,10 @@
 #include "ValhallaRoutingProxy.h"
-#include "../../../assets/ValhallaDefaultConfig.h"
 #include "../../exceptions/Exceptions.h"
 #include "../../log/Log.h"
 
+#ifndef VR_ENGINE_ONLY
 #include "../../network/HTTPClient.h"
+#endif
 
 #include <sqlite3pp.h>
 
@@ -85,10 +86,6 @@ void ValhallaRoutingProxy::AddLocale(const std::string& key, const std::string& 
     if (g_valhallaLocales.find(key) == g_valhallaLocales.end()) {
         g_valhallaLocales.emplace(key, json);
     }
-}
-
-std::string ValhallaRoutingProxy::GetDefaultConfiguration() {
-    return valhalla_default_config;
 }
 
 // -------------------------------------------------------------------------
@@ -207,6 +204,7 @@ std::string ValhallaRoutingProxy::CallRaw(
     return result;
 }
 
+#ifndef VR_ENGINE_ONLY
 std::string ValhallaRoutingProxy::CallRaw(
         HTTPClient& httpClient,
         const std::string& baseURL,
@@ -219,5 +217,6 @@ std::string ValhallaRoutingProxy::CallRaw(
     Log::debugf("ValhallaRoutingProxy::CallRaw (HTTP): url=%s", url.c_str());
     return httpClient.post(url, jsonBody, headers);
 }
+#endif
 
 } // namespace routing

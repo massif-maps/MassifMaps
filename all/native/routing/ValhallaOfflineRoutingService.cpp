@@ -13,15 +13,15 @@
 namespace massif {
 
     ValhallaOfflineRoutingService::ValhallaOfflineRoutingService(const std::string& path) :
-        _database(std::make_unique<sqlite3pp::database>()),
+        _path(path),
         _profile("pedestrian"),
         _configuration(ValhallaRoutingProxy::GetDefaultConfiguration()),
         _mutex()
     {
-        if (_database->connect_v2(path.c_str(), SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX) != SQLITE_OK) {
+        sqlite3pp::database database;
+        if (database.connect_v2(path.c_str(), SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX) != SQLITE_OK) {
             throw FileException("Failed to open routing database", path);
         }
-        _database->execute("PRAGMA temp_store=MEMORY");
     }
 
     ValhallaOfflineRoutingService::~ValhallaOfflineRoutingService() {
@@ -80,7 +80,7 @@ namespace massif {
             profile = _profile;
             configuration = _configuration;
         }
-        return ValhallaRoutingProxy::MatchRoute(std::vector<std::shared_ptr<sqlite3pp::database> > { _database }, profile, configuration, request);
+        return ValhallaRoutingProxy::MatchRoute(std::vector<std::string> { _path }, profile, configuration, request);
     }
 
     std::shared_ptr<RoutingResult> ValhallaOfflineRoutingService::calculateRoute(const std::shared_ptr<RoutingRequest>& request) const {
@@ -97,7 +97,7 @@ namespace massif {
             configuration = _configuration;
         }
 
-        return ValhallaRoutingProxy::CalculateRoute(std::vector<std::shared_ptr<sqlite3pp::database> > { _database }, profile, configuration, request);
+        return ValhallaRoutingProxy::CalculateRoute(std::vector<std::string> { _path }, profile, configuration, request);
     }
 
     void ValhallaOfflineRoutingService::addLocale(const std::string& key, const std::string& json) const {

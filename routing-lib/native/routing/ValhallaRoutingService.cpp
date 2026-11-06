@@ -1,11 +1,10 @@
 #include "ValhallaRoutingService.h"
-#include "utils/ValhallaRoutingProxy.h"
+#include "../engine/valhalla_engine.h"
 #include "../exceptions/Exceptions.h"
 #include "../log/Log.h"
 #include "../utils/StringUtils.h"
 
 #include <picojson/picojson.h>
-#include <sqlite3pp.h>
 #include <stdexcept>
 #include <functional>
 
@@ -21,15 +20,11 @@ namespace routing {
     ValhallaRoutingService::ValhallaRoutingService(std::vector<std::string> paths) :
         _paths(std::move(paths)),
         _profile("pedestrian"),
-        _configuration(ValhallaRoutingProxy::GetDefaultConfiguration())
+        _configuration(vr_default_config())
     {
     }
 
     ValhallaRoutingService::~ValhallaRoutingService() {
-        // Close any databases that may still be open. Should only happen if the
-        // service is destroyed while a request is in flight (API misuse).
-        std::lock_guard<std::mutex> lk(_mutex);
-        _openDbs.clear();
     }
 
     // -----------------------------------------------------------------------
@@ -122,61 +117,7 @@ namespace routing {
     // -----------------------------------------------------------------------
 
     void ValhallaRoutingService::addLocale(const std::string& key, const std::string& json) {
-        ValhallaRoutingProxy::AddLocale(key, json);
-    }
-
-    // -----------------------------------------------------------------------
-    // Database lifecycle helpers
-    //
-    // Databases are opened lazily when the first request arrives (_activeCount
-    // goes from 0→1) and closed when the last request completes (1→0).
-    // Valhalla's GraphReader requires sqlite3pp::database objects.
-    // All access to _paths, _openDbs, _activeCount is guarded by _mutex.
-    // -----------------------------------------------------------------------
-
-    std::vector<std::shared_ptr<sqlite3pp::database>> ValhallaRoutingService::acquireDatabases() const {
-        std::lock_guard<std::mutex> lk(_mutex);
-
-        if (_paths.empty()) {
-            throw GenericException("No MBTiles databases registered");
-        }
-
-        if (_activeCount == 0) {
-            // Open all registered databases.
-            std::vector<std::shared_ptr<sqlite3pp::database>> newDbs;
-            newDbs.reserve(_paths.size());
-            try {
-                for (const auto& path : _paths) {
-                    auto db = std::make_shared<sqlite3pp::database>();
-                    int rc = db->connect_v2(path.c_str(),
-                                            SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX);
-                    if (rc != SQLITE_OK) {
-                        throw std::runtime_error("Cannot open '" + path + "': sqlite error " +
-                                                 std::to_string(rc));
-                    }
-                    // Performance tuning for read-only access
-                    db->execute("PRAGMA journal_mode=OFF");
-                    db->execute("PRAGMA temp_store=MEMORY");
-                    db->execute("PRAGMA synchronous=OFF");
-                    db->execute("PRAGMA cache_size=2000");
-                    newDbs.push_back(std::move(db));
-                }
-            } catch (...) {
-                // newDbs' shared_ptrs will clean up on destruction
-                throw;
-            }
-            _openDbs = std::move(newDbs);
-        }
-
-        ++_activeCount;
-        return _openDbs;  // copy of shared_ptrs; valid while _activeCount > 0
-    }
-
-    void ValhallaRoutingService::releaseDatabases() const {
-        std::lock_guard<std::mutex> lk(_mutex);
-        if (--_activeCount == 0) {
-            _openDbs.clear();
-        }
+        vr_add_locale(key.c_str(), json.c_str());
     }
 
     // -----------------------------------------------------------------------
@@ -188,10 +129,16 @@ namespace routing {
         // Snapshot mutable state under the lock.
         std::string profile;
         std::string config;
+        std::vector<std::string> paths;
         {
             std::lock_guard<std::mutex> lk(_mutex);
             profile = _profile;
             config  = _configuration;
+            paths   = _paths;
+        }
+
+        if (paths.empty()) {
+            throw GenericException("No MBTiles databases registered");
         }
 
         // Inject "costing" from the service profile if the caller has not
@@ -206,21 +153,27 @@ namespace routing {
             }
         }
 
-        // Open (or share already-open) databases for this request.
-        auto dbs = acquireDatabases();
-
-        // RAII guard: decrement active count and conditionally close DBs.
-        struct ReleaseGuard {
-            const ValhallaRoutingService& svc;
-            ~ReleaseGuard() { svc.releaseDatabases(); }
-        } guard{*this};
-
         Log::debugf("ValhallaRoutingService::callRaw: endpoint=%s, dbs=%d",
-                    endpoint.c_str(), static_cast<int>(dbs.size()));
+                    endpoint.c_str(), static_cast<int>(paths.size()));
 
-        return ValhallaRoutingProxy::CallRaw(dbs, config, endpoint, body);
+        std::vector<const char*> pathPointers;
+        pathPointers.reserve(paths.size());
+        for (const std::string& path : paths) {
+            pathPointers.push_back(path.c_str());
+        }
+        char* result = nullptr;
+        char* error = nullptr;
+        int status = vr_call(pathPointers.data(), static_cast<int>(pathPointers.size()), config.c_str(),
+                             endpoint.c_str(), body.c_str(), &result, &error);
+        std::string resultString = result ? result : "";
+        std::string errorString = error ? error : "";
+        vr_free(result);
+        vr_free(error);
+        if (status != 0) {
+            throw GenericException(errorString);
+        }
+        return resultString;
     }
-    
 
     std::string ValhallaRoutingService::parseShape(const std::string &shapeStr) {
         // Decode the compact valhalla shape into a vector of PointLL (lon, lat)

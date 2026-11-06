@@ -107,6 +107,16 @@ table plus `metadata`), so the built tiles have to be packed into one.
 Offline routing runs on the device's CPU, so a very long route over a large package takes seconds
 rather than the hundreds of milliseconds a server takes. Keep the packages regional.
 
+:::note Android: the engine is a separate library
+Offline Valhalla runs in `libvalhalla_routing.so`, which the `full` AAR ships and `libmassif.so` loads
+on the first offline call. Without it, creating an offline service throws `Valhalla engine not found`.
+An app that only routes online can drop it:
+
+```groovy
+android { packaging { jniLibs { excludes += "**/libvalhalla_routing.so" } } }
+```
+:::
+
 ## Reading the result
 
 | | |

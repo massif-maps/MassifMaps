@@ -25,8 +25,9 @@ def detectAndroidAPIs(args):
 def buildRoutingSO(args, abi):
     version = getVersion(args.buildversion, args.buildnumber) if args.configuration == 'Release' else 'Devel'
     baseDir = getBaseDir()
-    buildDir = getBuildDir('routing-android', abi)
-    distDir  = getDistDir('routing-android')
+    flavor   = 'routing-android-shared' if args.sharedstl else 'routing-android'
+    buildDir = getBuildDir(flavor, abi)
+    distDir  = getDistDir(flavor)
     defines  = ["-D%s" % d for d in args.defines.split(';') if d]
     options  = ["-D%s" % o for o in args.cmakeoptions.split(';') if o]
 
@@ -45,11 +46,13 @@ def buildRoutingSO(args, abi):
         "-DCMAKE_ANDROID_NDK='%s'" % args.androidndkpath,
         "-DCMAKE_ANDROID_ARCH_ABI='%s'" % abi,
         '-DSINGLE_LIBRARY:BOOL=ON',
-        "-DANDROID_STL='c++_static'",
+        '-DSQLITE_SHARED:BOOL=ON',
+        "-DANDROID_STL='%s'" % ('c++_shared' if args.sharedstl else 'c++_static'),
         "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
         "-DANDROID_NDK='%s'" % args.androidndkpath,
         "-DANDROID_ABI='%s'" % abi,
-        "-DANDROID_PLATFORM='android-%d'" % (api64 if '64' in abi else api32),
+        "-DANDROID_PLATFORM='android-%d'" % (max(api64 if '64' in abi else api32, 23) if args.sharedstl else (api64 if '64' in abi else api32)),
+        '-DPACK_DYN_RELOCS:BOOL=%s' % ('ON' if args.sharedstl else 'OFF'),
         "-DANDROID_ARM_NEON:BOOL=%s" % ('ON' if abi == 'arm64-v8a' or api32 >= 19 else 'OFF'),
         "-DSDK_CPP_DEFINES=%s" % " ".join(defines),
         "-DSDK_VERSION='%s'" % version,
@@ -68,7 +71,8 @@ def buildRoutingSO(args, abi):
 
     soFile = '%s/libvalhalla_routing.so' % buildDir
     destDir = '%s/%s' % (distDir, abi)
-    return makedirs(destDir) and copyfile(soFile, '%s/libvalhalla_routing.so' % destDir)
+    sqliteSo = '%s/libsqlite.so' % buildDir
+    return makedirs(destDir) and copyfile(soFile, '%s/libvalhalla_routing.so' % destDir) and (not os.path.exists(sqliteSo) or copyfile(sqliteSo, '%s/libsqlite.so' % destDir))
 
 
 def buildRoutingAAR(args):
@@ -124,6 +128,10 @@ parser.add_argument('--cmake-options',    dest='cmakeoptions',   default='',    
 parser.add_argument('--gradle',           dest='gradle',         default='gradle', help='Gradle executable')
 parser.add_argument('--configuration',    dest='configuration',  default='Release',
                     choices=['Release', 'RelWithDebInfo', 'Debug'])
+parser.add_argument('--shared-stl',       dest='sharedstl',      default=False, action='store_true',
+                    help='Link libc++_shared.so, for an app that already ships it for libmassif.so')
+parser.add_argument('--no-aar',           dest='noaar',          default=False, action='store_true',
+                    help='Build the .so files only, for build-android.py to package')
 parser.add_argument('--build-number',     dest='buildnumber',    default='',       help='Build sequence number')
 parser.add_argument('--build-version',    dest='buildversion',   default='%s-devel' % SDK_VERSION,
                     help='Build version, embedded in the dist file name')
@@ -153,7 +161,7 @@ if not args.ninjapath and not checkExecutable(args.make, '--help'):
     print('Failed to find ninja or make executable. Use --ninja or --make to specify its location')
     sys.exit(-1)
 
-if not checkExecutable(args.gradle, '--help'):
+if not args.noaar and not checkExecutable(args.gradle, '--help'):
     print('Failed to find Gradle executable. Use --gradle to specify its location')
     sys.exit(-1)
 
@@ -163,6 +171,8 @@ for abi in args.androidabi:
         sys.exit(-1)
 
 # 2) Package AAR via gradle (picks up pre-built .so from dist/routing-android/)
+if args.noaar:
+    sys.exit(0)
 if not buildRoutingAAR(args):
     sys.exit(-1)
 

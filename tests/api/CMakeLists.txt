@@ -347,11 +347,17 @@ add_executable(api_tests
   # Same: TerrainOcclusion.h is the label-vs-terrain depth compare, and nothing else.
   TerrainOcclusionTest.cpp
   ManeuverArrowTest.cpp
+  # The Valhalla engine client, against a stub engine. Both TUs get the Valhalla define on their own:
+  # defining it for the whole target would pull the Valhalla routing services into RoutingMethods.cpp.
+  ValhallaEngineTest.cpp
+  "${SDK_BASE_DIR}/all/native/routing/utils/ValhallaEngine.cpp"
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"
   ${TEST_SDK_SOURCES})
 
+set_source_files_properties(ValhallaEngineTest.cpp "${SDK_BASE_DIR}/all/native/routing/utils/ValhallaEngine.cpp"
+  PROPERTIES COMPILE_DEFINITIONS "_MASSIF_VALHALLA_ROUTING_SUPPORT")
 set_source_files_properties("${TEST_TABLE_DIR}/PropertyTable.inc" PROPERTIES HEADER_FILE_ONLY TRUE)
 set_source_files_properties("${TEST_SCHEMA_DIR}/massif-api.json" PROPERTIES HEADER_FILE_ONLY TRUE)
 

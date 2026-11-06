@@ -18,6 +18,7 @@ namespace massif::mvt {
             bindProperty("stroke-width", &_strokeWidth, true); // sizes the stroke pattern raster
             bindProperty("stroke-opacity", &_strokeOpacity);
             bindProperty("stroke-emissive-strength", &_strokeEmissive);
+            bindProperty("stroke-gradient", &_strokeGradient, true); // baked into the ramp the tile carries
             bindProperty("stroke-linejoin", &_strokeLinejoin);
             bindProperty("stroke-linecap", &_strokeLinecap);
             bindProperty("stroke-dasharray", &_strokeDashArray);
@@ -58,6 +59,7 @@ namespace massif::mvt {
         FloatFunctionProperty _strokeOpacity = FloatFunctionProperty(1.0f);
         // mapbox's line-emissive-strength: 1 draws the line as authored, 0 hands it to the light.
         FloatFunctionProperty _strokeEmissive = FloatFunctionProperty(1.0f);
+        GradientProperty _strokeGradient;
         LineJoinModeProperty _strokeLinejoin = LineJoinModeProperty("miter");
         LineCapModeProperty _strokeLinecap = LineCapModeProperty("butt");
         StringProperty _strokeDashArray = StringProperty("");

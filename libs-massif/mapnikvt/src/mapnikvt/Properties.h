@@ -10,6 +10,7 @@
 #include "Expression.h"
 #include "ExpressionContext.h"
 #include "ExpressionUtils.h"
+#include "LineGradient.h"
 #include "ParserUtils.h"
 #include "StringUtils.h"
 #include "TransformUtils.h"
@@ -206,6 +207,60 @@ namespace massif::mvt {
             Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return ValueConverter<std::string>::convert(val);
         }
+    };
+
+    // A colour along a line (line-gradient): stops in a string or a table, or an expression of [mapnik::line_progress]
+    // sampled across the line. Built once per feature data, never per frame.
+    struct GradientProperty : GenericValueProperty<std::shared_ptr<const vt::ColorRamp>> {
+        GradientProperty() { initialize(std::monostate()); }
+
+        virtual void setExpression(const Expression& expr) override {
+            _expr = expr;
+            _defined = true;
+            _contextVars = _viewStateVars = _styleParamVars = _usesProgress = false;
+            std::visit(ExpressionVariableVisitor([this](const std::shared_ptr<VariableExpression>& varExpr) {
+                if (auto val = std::get_if<Value>(&varExpr->getVariableExpression())) {
+                    std::string name = ValueConverter<std::string>::convert(*val);
+                    if (name == "mapnik::line_progress") {
+                        _usesProgress = true;
+                    }
+                    else if (ExpressionContext::isViewStateVariable(name)) {
+                        _viewStateVars = true;
+                    }
+                    else if (ExpressionContext::isStyleParameterVariable(name)) {
+                        _styleParamVars = true;
+                    }
+                    else {
+                        _contextVars = true;
+                    }
+                }
+                else {
+                    _contextVars = _viewStateVars = _styleParamVars = true;
+                }
+            }), expr);
+            if (!_contextVars && !_viewStateVars && !_styleParamVars) {
+                _value = buildValue(ExpressionContext());
+            }
+        }
+
+    protected:
+        virtual std::shared_ptr<const vt::ColorRamp> buildValue(const ExpressionContext& context) const override {
+            if (!_usesProgress) {
+                return buildLineGradient(evalExpression(_expr, context, nullptr, _defaultValue));
+            }
+            ExpressionContext sampling = context;
+            return buildLineGradient([&](double progress) {
+                sampling.setLineProgress(progress);
+                try {
+                    return premultiplyColor(convertColor(evalExpression(_expr, sampling, nullptr, _defaultValue)));
+                }
+                catch (const std::exception&) {
+                    return vt::Color();
+                }
+            });
+        }
+
+        bool _usesProgress = false;
     };
 
     struct TransformProperty : GenericValueProperty<std::optional<vt::Transform>> {

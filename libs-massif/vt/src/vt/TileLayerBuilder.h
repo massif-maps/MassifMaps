@@ -53,6 +53,7 @@ namespace massif::vt {
         using PointProcessor = std::function<void(long long id, const Vertex& vertex, int geoPointIndex)>;
         using TextProcessor = std::function<void(long long id, const Vertex& vertex, const std::string& text, int geoPointIndex)>;
         using LineProcessor = std::function<void(long long id, const Vertices& vertices)>;
+        using LineProgressProcessor = std::function<void(long long id, const Vertices& vertices, const std::optional<LineProgress>& progress)>;
         using PolygonProcessor = std::function<void(long long id, const VerticesList& verticesList)>;
         using Polygon3DProcessor = std::function<void(long long id, const VerticesList& verticesList, float minHeight, float maxHeight)>;
         using PointLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
@@ -95,6 +96,7 @@ namespace massif::vt {
         PointProcessor createPointProcessor(const PointStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
         TextProcessor createTextProcessor(const TextStyle& style, const TextFormatter& formatter);
         LineProcessor createLineProcessor(const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap);
+        LineProgressProcessor createLineProgressProcessor(const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap);
         PolygonProcessor createPolygonProcessor(const PolygonStyle& style);
         Polygon3DProcessor createPolygon3DProcessor(const Polygon3DStyle& style);
         PointLabelProcessor createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
@@ -133,6 +135,8 @@ namespace massif::vt {
             std::array<FloatFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> borderWidthFuncs;
             std::array<StrokeMap::StrokeId, TileGeometry::StyleParameters::MAX_PARAMETERS> lineStrokeIds;
             std::array<bool, TileGeometry::StyleParameters::MAX_PARAMETERS> arrowOnly; // this slot is a `line-arrow-only` style
+            std::array<std::shared_ptr<const ColorRamp>, TileGeometry::StyleParameters::MAX_PARAMETERS> gradients; // see TileGeometry::StyleParameters::gradients
+            bool gradient = false; // a gradient geometry takes gradient lines only
             std::array<bool, TileGeometry::StyleParameters::MAX_PARAMETERS> patternUsed; // this slot is a patterned fill
             std::shared_ptr<const StrokeMap> strokeMap;
             std::shared_ptr<const GlyphMap> glyphMap;
@@ -171,11 +175,12 @@ namespace massif::vt {
         // deck-shaped ring are its ends. Shared by the flat bed and the extruded deck.
         static SpanVertexInfo spanInfoForRing(const Vertices& ring, long long id, float baseOffset = 0.0f);
 
+        void fillLineProgress(const Vertices& vertices, const std::optional<LineProgress>& progress, float duDl, std::size_t firstVertex);
         void packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         // The skirt stream, packed once per layer into its own POLYGON3DGROUND geometry.
         void packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         void setBaseFootprints(TileGeometry& geometry, const std::vector<std::size_t>& indexTable, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<float>& heights, float heightScale) const;
-        void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<SpanVertexInfo>& spanInfos, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
+        void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<float>& progress, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<SpanVertexInfo>& spanInfos, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         void registerStyleVariantSlot(int styleIndex);
 
         bool tesselateGlyph(const cglib::vec2<float>& point, std::int8_t styleIndex, const cglib::vec2<float>& pen, const cglib::vec2<float>& size, const GlyphMap::Glyph* glyph);
@@ -233,6 +238,7 @@ namespace massif::vt {
         VertexArray<cglib::vec2<float>> _texCoords;
         VertexArray<cglib::vec2<float>> _binormals;
         VertexArray<float> _heights;
+        VertexArray<float> _progress; // a gradient geometry only: per vertex, 0..1 along the source line
         VertexArray<cglib::vec4<std::int8_t>> _attribs;
         // A SPAN/UNDERGROUND line's own two ends and feature id, stamped on every vertex it produced.
         // The renderer resolves the ground at the PORTALS and interpolates along the chord, so the DEM

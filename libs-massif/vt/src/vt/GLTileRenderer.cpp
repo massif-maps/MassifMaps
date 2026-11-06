@@ -1557,6 +1557,7 @@ namespace massif::vt {
         _shaderProgramMap.clear();
         _shaderProgramCache.clear();
         _compiledBitmapMap.clear();
+        _gradientAtlas = GradientAtlas();
         _compiledTileBitmapMap.clear();
         _compiledTileSurfaceMap.clear();
         _compiledTileGeometryMap.clear();
@@ -1637,6 +1638,10 @@ namespace massif::vt {
             deleteCompiledBitmap(it->second);
         }
         _compiledBitmapMap.clear();
+        if (_gradientAtlas.texture != 0) {
+            glDeleteTextures(1, &_gradientAtlas.texture);
+        }
+        _gradientAtlas = GradientAtlas();
 
         for (auto it = _compiledTileBitmapMap.begin(); it != _compiledTileBitmapMap.end(); it++) {
             deleteCompiledBitmap(it->second);
@@ -7486,6 +7491,7 @@ namespace massif::vt {
         // their own model.
         bool terrainLit = terrainVTF && !_shadowCasterViewProj && _terrainLighting.enabled && geometry->getType() != TileGeometry::Type::POLYGON3D;
         unsigned int lightFlag = terrainLit ? GEOMETRY_LIGHT_FLAG : 0;
+        bool lineGradient = geometry->getType() == TileGeometry::Type::LINE && geometry->getVertexGeometryLayoutParameters().progressOffset >= 0;
         unsigned int terrainFlag = flatDrape
             ? (sphericalDrape ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0)
             : ((_terrainMode ? TERRAIN_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
@@ -7494,9 +7500,13 @@ namespace massif::vt {
         case TileGeometry::Type::POINT:
             shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag());
             break;
-        case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | (styleGapWidth ? GAPWIDTH_FLAG : 0) | (styleBlur ? BLUR_FLAG : 0) | (_drawOncePass == DrawOncePass::CORE ? DRAW_ONCE_CORE_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0));
+        case TileGeometry::Type::LINE: {
+            unsigned int lineFlags = (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | (styleGapWidth ? GAPWIDTH_FLAG : 0) | (styleBlur ? BLUR_FLAG : 0) | (_drawOncePass == DrawOncePass::CORE ? DRAW_ONCE_CORE_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0);
+            shaderProgramPtr = lineGradient
+                ? &buildShaderProgram("linegradient", lineGradientVsh, lineGradientFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, lineFlags)
+                : &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, lineFlags);
             break;
+        }
         case TileGeometry::Type::POLYGON:
             shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0));
             break;
@@ -7747,6 +7757,25 @@ namespace massif::vt {
             return;
         }
 
+        // A gradient slot's colour is a tint: the ramp supplies the colour, the style's opacity is what is left.
+        std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> gradientRows, noGradientRows;
+        if (lineGradient) {
+            std::array<int, TileGeometry::StyleParameters::MAX_PARAMETERS> rows;
+            for (int i = 0; i < styleParams.parameterCount; i++) {
+                rows[i] = (styleParams.gradients[i] ? gradientAtlasRow(styleParams.gradients[i]) : -1);
+            }
+            for (int i = 0; i < styleParams.parameterCount; i++) {
+                gradientRows[i] = (rows[i] >= 0 ? (rows[i] + 0.5f) / _gradientAtlas.capacity : -1.0f);
+                if (rows[i] >= 0) {
+                    float alpha = colors[i][3];
+                    colors[i] = cglib::vec4<float>(alpha, alpha, alpha, alpha);
+                }
+            }
+            noGradientRows.fill(-1.0f);
+            glUniform1fv(shaderProgram.uniforms[U_GRADIENTROWTABLE], styleParams.parameterCount, gradientRows.data());
+            glUniform1i(shaderProgram.uniforms[U_GRADIENT], 4);
+        }
+
         glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], styleParams.parameterCount, colors[0].data());
         
         if (styleParams.pattern) {
@@ -7793,10 +7822,19 @@ namespace massif::vt {
         }
         VT_STAT_SPLIT(geomBindNs, statClock);
 
+        if (lineGradient) {
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, _gradientAtlas.texture);
+            glActiveTexture(GL_TEXTURE0);
+        }
+
         // The same buffer, extruded wider by the vertex shader. Drawn for the WHOLE batch first,
         // which is mapbox's casing-layer-under-fill-layer order and what keeps a junction clean.
         if (styleBorder) {
             glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], styleParams.parameterCount, borderColors[0].data());
+            if (lineGradient) {
+                glUniform1fv(shaderProgram.uniforms[U_GRADIENTROWTABLE], styleParams.parameterCount, noGradientRows.data());
+            }
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, borderWidths.data());
             if (styleGapWidth) {
                 glUniform1fv(shaderProgram.uniforms[U_GAPWIDTHTABLE], styleParams.parameterCount, borderGapWidths.data());
@@ -7806,6 +7844,9 @@ namespace massif::vt {
             VT_STAT_ADD(geometryIndices, geometry->getIndicesCount());
 
             glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], styleParams.parameterCount, colors[0].data());
+            if (lineGradient) {
+                glUniform1fv(shaderProgram.uniforms[U_GRADIENTROWTABLE], styleParams.parameterCount, gradientRows.data());
+            }
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, fillWidths.data());
             if (styleGapWidth) {
                 glUniform1fv(shaderProgram.uniforms[U_GAPWIDTHTABLE], styleParams.parameterCount, fillGapWidths.data());
@@ -7834,6 +7875,11 @@ namespace massif::vt {
 
         if (styleParams.pattern) {
             glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        if (lineGradient) {
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glActiveTexture(GL_TEXTURE0);
         }
 
         checkGLError();
@@ -8172,6 +8218,10 @@ namespace massif::vt {
                 enableVertexAttrib(shaderProgram.attribs[A_VERTEXCHORD], 1, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.chordOffset));
             }
 
+            if (vertexGeomLayoutParams.progressOffset >= 0) {
+                enableVertexAttrib(shaderProgram.attribs[A_VERTEXPROGRESS], 1, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.progressOffset));
+            }
+
         }
 
         if (!(vertexGeomLayoutParams.attribsOffset >= 0)) {
@@ -8194,6 +8244,10 @@ namespace massif::vt {
         if (findGeometryVAO(compiledGeometry, shaderProgram.program) != 0) {
             glBindVertexArray(0);
         } else {
+
+            if (vertexGeomLayoutParams.progressOffset >= 0) {
+                disableVertexAttrib(shaderProgram.attribs[A_VERTEXPROGRESS]);
+            }
 
             if (vertexGeomLayoutParams.chordOffset >= 0) {
                 disableVertexAttrib(shaderProgram.attribs[A_VERTEXCHORD]);
@@ -8360,6 +8414,60 @@ namespace massif::vt {
             it = _compiledBitmapMap.emplace(bitmap, compiledBitmap).first;
         }
         return it->second;
+    }
+
+    int GLTileRenderer::gradientAtlasRow(const std::shared_ptr<const ColorRamp>& ramp) {
+        GradientAtlas& atlas = _gradientAtlas;
+        auto upload = [&atlas](int row, const ColorRamp& source) {
+            glBindTexture(GL_TEXTURE_2D, atlas.texture);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, row, ColorRamp::WIDTH, 1, GL_RGBA, GL_UNSIGNED_BYTE, source.texels.data());
+        };
+
+        if (auto it = atlas.index.find(ramp.get()); it != atlas.index.end() && atlas.rows[it->second].lock() == ramp) {
+            return it->second;
+        }
+
+        int row = -1;
+        for (std::size_t i = 0; i < atlas.rows.size() && row < 0; i++) {
+            if (atlas.rows[i].expired()) {
+                row = static_cast<int>(i);
+            }
+        }
+        if (row >= 0) {
+            for (auto it = atlas.index.begin(); it != atlas.index.end(); ) {
+                it = (it->second == row ? atlas.index.erase(it) : std::next(it));
+            }
+        }
+        else {
+            if (static_cast<int>(atlas.rows.size()) >= atlas.capacity) {
+                GLuint oldTexture = atlas.texture;
+                atlas.capacity = std::max(16, atlas.capacity * 2);
+                glGenTextures(1, &atlas.texture);
+                glBindTexture(GL_TEXTURE_2D, atlas.texture);
+                // Nearest, so a hard stop stays one texel wide instead of blending over it.
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ColorRamp::WIDTH, atlas.capacity, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+                for (std::size_t i = 0; i < atlas.rows.size(); i++) {
+                    if (std::shared_ptr<const ColorRamp> live = atlas.rows[i].lock()) {
+                        upload(static_cast<int>(i), *live);
+                    }
+                }
+                if (oldTexture != 0) {
+                    glDeleteTextures(1, &oldTexture);
+                }
+            }
+            row = static_cast<int>(atlas.rows.size());
+            atlas.rows.emplace_back();
+        }
+
+        atlas.rows[row] = ramp;
+        atlas.index[ramp.get()] = row;
+        upload(row, *ramp);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return row;
     }
 
     const GLTileRenderer::CompiledBitmap & GLTileRenderer::buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap) {

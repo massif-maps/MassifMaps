@@ -12,6 +12,7 @@
 #include "Bitmap.h"
 #include "Font.h"
 #include "ViewState.h"
+#include "ColorRamp.h"
 #include "StrokeMap.h"
 #include "GlyphMap.h"
 #include "TextFormatter.h"
@@ -195,6 +196,9 @@ namespace massif::vt {
         // mapbox's line-occlusion-opacity: set = the line is live (never draped) and is drawn a second time
         // at this opacity where 3D content hides it. Unset = hidden there. Not in the ctor, like the label's.
         std::optional<float> occlusionOpacity;
+
+        // mapbox's line-gradient: the colour along the line. Not in the ctor, like the label's.
+        std::shared_ptr<const ColorRamp> gradient;
 
         bool hasEndArrow() const { return (endArrowWidth > 0 && endArrowLength > 0) || (endArrowShape && endArrowShape->size() >= 3); }
 

@@ -23,13 +23,13 @@ generated-table lookups, the base-class chain, handle generations and the stale-
 of a style layer that also carries ordinary line/text rules, which is what a converted MapBox style
 produces. Only the TUs the model needs are linked — the symbolizer implementations pull vt's tile
 builders in, so a case that needs one belongs behind a device check instead. The MVT decoder is
-linked too (it needs only zlib): what an overzoomed tile keeps of a merged MultiPoint.
+linked too (it needs only zlib): what an overzoomed tile keeps of a merged MultiPoint. So is the GeoJSON tile builder: the line progress it tags a cut line with, read back through the decoder, and the `line-gradient` ramp a stop list bakes to.
 
 `vt/` covers what of the renderer links without the renderer: the label plate cell
 (`LabelPlateBitmap.h`, header-only) — what the fill and border shapes in one atlas cell have to
 satisfy for one quad to draw both — line-label layout (`Label.cpp`): that a glyph run stays on the
 line it names — and line tesselation (`TileLayerBuilder.cpp` and the six TUs it names): how far out
-of its own width a line reaches at a join. That last chain wants tess2 and bidi but **no font** —
+of its own width a line reaches at a join, and the per-vertex progress a gradient line carries. That last chain wants tess2 and bidi but **no font** —
 `TextFormatter` reaches `Font` through its interface only, so freetype and harfbuzz stay out.
 Anything reaching GL still belongs behind a device check instead.
 

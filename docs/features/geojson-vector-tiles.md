@@ -68,7 +68,53 @@ Style it by layer name, like any other vector source:
 | `setLayerFeatureCollection(index, projection, collection)` | replace it from SDK geometry |
 | `addGeoJSONFeature` / `updateGeoJSONFeature` / `removeGeoJSONFeature` | incremental edits (also `…StringFeature`) |
 | `SimplifyTolerance` | Douglas-Peucker tolerance, in **tile pixels** |
+| `LineMetrics` | tag every tile piece of a line with the part of the original line it covers (default `false`, tiles unchanged); needed by a line gradient, see below |
 | `DefaultLayerBuffer` | tile overflow, in **tile pixels** of a 256-px tile (default `4`); applies to layers created afterwards |
+
+## Line metrics
+
+A line is cut into one piece per tile it crosses, and a gradient along it needs to know where each
+piece sits in the whole. With `LineMetrics = true` the builder writes that range, `0..1` of the
+original line, on every piece as two tags, `mapbox_clip_start` and `mapbox_clip_end` (geojson-vt's
+own names). A line that was not cut is the whole line, `0..1`.
+
+The range is measured in Web Mercator units, not metres, as in Mapbox, so it drifts from geodesic
+distance away from the equator. The tags are not feature fields: a style cannot read them, and
+pieces of one line keep sharing their feature data. Tiles from any other source (OpenMapTiles,
+PMTiles, MBTiles) carry none.
+
+Turning it on re-tiles the layer, and costs one more feature per cut line piece and two small
+values per piece in each tile.
+
+### Colouring a line along its length
+
+With line metrics on, a style can colour a line by how far along it is, `line-gradient`, as in
+Mapbox's `line-gradient`. The ramp is a list of stops, position `0..1` and colour:
+
+```css
+/* the same ramp for every route */
+#routes { line-width: 5; line-gradient: linear([mapnik::line_progress], (0, #2ecc71), (0.5, #f1c40f), (1, #e74c3c)); }
+
+/* a ramp per route: a string the app puts on the feature */
+#routes { line-width: 5; line-gradient: [gradient]; }
+```
+
+```json
+{"type": "Feature", "properties": {"gradient": "0:#2ecc71,0.37:#f1c40f,1:#e74c3c"},
+ "geometry": {"type": "LineString", "coordinates": [[6.1, 45.1], [6.2, 45.2]]}}
+```
+
+- **Smooth or hard.** `linear(...)` and the plain string blend between stops. `step(...)`, or a
+  string that starts with `step;`, holds each colour until the next stop, which is how a route is
+  coloured per segment. Two stops at the same position make a hard edge inside a smooth ramp.
+- **The gradient is a string**, not an array: array properties are flattened when a tile is
+  encoded. JSON stops (`[[0,"#fff"],[1,"#000"]]`) work too, and so does a table style parameter,
+  `line-gradient: [param::route_gradient]`.
+- **Limits.** A ramp is 2048 texels, so a route has at most 2048 distinct colour regions and a hard
+  edge is placed to within route length / 4096. The string rides in every tile the route touches:
+  keep it to a few hundred stops. Tiles from sources without line metrics draw the first stop.
+- `line-color` is replaced, `line-opacity` still applies, and the casing of `line-border-width`
+  keeps its own colour.
 
 ## Why it changed
 

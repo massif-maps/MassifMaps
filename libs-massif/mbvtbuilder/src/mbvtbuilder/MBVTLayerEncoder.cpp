@@ -18,9 +18,9 @@ namespace massif::mbvtbuilder {
         importEncodedFeature(id, static_cast<int>(vector_tile::Tile_GeomType_POINT), geometry, properties);
     }
     
-    void MBVTLayerEncoder::addMultiLineString(std::uint64_t id, const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties) {
+    void MBVTLayerEncoder::addMultiLineString(std::uint64_t id, const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties, const LineProgress* lineProgress) {
         std::vector<std::uint32_t> geometry = encodeLineStringCoordinates(coordsList, static_cast<float>(_extent));
-        importEncodedFeature(id, static_cast<int>(vector_tile::Tile_GeomType_LINESTRING), geometry, properties);
+        importEncodedFeature(id, static_cast<int>(vector_tile::Tile_GeomType_LINESTRING), geometry, properties, lineProgress);
     }
     
     void MBVTLayerEncoder::addMultiPolygon(std::uint64_t id, const std::vector<std::vector<Point>>& ringsList, const picojson::value& properties) {
@@ -58,7 +58,7 @@ namespace massif::mbvtbuilder {
         return encodedLayer;
     }
 
-    void MBVTLayerEncoder::importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties) {
+    void MBVTLayerEncoder::importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties, const LineProgress* lineProgress) {
         if (geometry.empty()) {
             return;
         }
@@ -72,6 +72,11 @@ namespace massif::mbvtbuilder {
             }
         } else {
             importProperty("value", properties, tags, false);
+        }
+        if (lineProgress) {
+            // Outside $$properties$$: that is read back for picking, and these are not the feature's.
+            importProperty("mapbox_clip_start", picojson::value(lineProgress->start), tags, false);
+            importProperty("mapbox_clip_end", picojson::value(lineProgress->end), tags, false);
         }
 
         protobuf::encoded_message encodedFeature = encodeFeature(id, type, tags, geometry);

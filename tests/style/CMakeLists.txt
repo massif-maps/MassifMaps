@@ -16,6 +16,7 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/TransformUtils.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Value.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Feature.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/LineGradient.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParserUtils.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/GeneratorUtils.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParseTables.cpp"
@@ -29,6 +30,9 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Predicate.cpp"
   # The MVT decoder, for a MultiPoint's part indices under overzoom. Needs zlib only.
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/MBVTFeatureDecoder.cpp"
+  # The GeoJSON tile builder, for the line progress it tags a cut line with, read back by the decoder.
+  "${SDK_BASE_DIR}/libs-massif/mbvtbuilder/src/mbvtbuilder/MBVTTileBuilder.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mbvtbuilder/src/mbvtbuilder/MBVTLayerEncoder.cpp"
   # No dependencies at all, so the font-name parser costs nothing to link here.
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/FontNames.cpp"
 )
@@ -61,6 +65,8 @@ add_executable(style_tests
   NullishCoalescingTest.cpp
   RandomExpressionTest.cpp
   RenderModeAlignmentTest.cpp
+  LineProgressTest.cpp
+  LineGradientTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE
@@ -69,6 +75,10 @@ target_include_directories(style_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../api"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src"
   "${SDK_BASE_DIR}/libs-massif/cartocss/src"
+  "${SDK_BASE_DIR}/libs-massif/mbvtbuilder/src"
+  "${SDK_BASE_DIR}/libs-external/geojsonvt/geojson-vt-cpp/include"
+  "${SDK_BASE_DIR}/libs-external/geojsonvt/geometry.hpp/include"
+  "${SDK_BASE_DIR}/libs-external/geojsonvt/variant/include"
   # vt headers only - no vt object is linked.
   "${SDK_BASE_DIR}/libs-massif/vt/src"
   "${SDK_BASE_DIR}/libs-external/cglib"

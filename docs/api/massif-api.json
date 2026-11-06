@@ -3299,6 +3299,15 @@
           "doc": "Returns the default layer buffer in tile pixels."
         },
         {
+          "name": "lineMetrics",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns true if tiles carry each line's progress along the original feature."
+        },
+        {
           "name": "simplifyTolerance",
           "type": "FLOAT",
           "readOnly": false,

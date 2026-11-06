@@ -288,8 +288,18 @@ namespace massif::vt {
     }
 
     TileLayerBuilder::LineProcessor TileLayerBuilder::createLineProcessor(const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap) {
-        if (style.widthFunc == FloatFunction(0)) {
+        LineProgressProcessor processor = createLineProgressProcessor(style, strokeMap);
+        if (!processor) {
             return LineProcessor();
+        }
+        return [processor](long long id, const Vertices& vertices) {
+            processor(id, vertices, std::nullopt);
+        };
+    }
+
+    TileLayerBuilder::LineProgressProcessor TileLayerBuilder::createLineProgressProcessor(const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap) {
+        if (style.widthFunc == FloatFunction(0)) {
+            return LineProgressProcessor();
         }
 
         cglib::vec2<float> translate(0, 0);
@@ -303,8 +313,12 @@ namespace massif::vt {
             }
         }
 
+        bool gradient = style.gradient != nullptr;
         if ((_builderParameters.strokeMap && _builderParameters.strokeMap != strokeMap) || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
+        }
+        else if (_builderParameters.type != TileGeometry::Type::NONE && _builderParameters.gradient != gradient) {
+            appendGeometry(); // the progress is a vertex field, so a gradient geometry takes gradient lines only
         }
         else if (!(_builderParameters.type == TileGeometry::Type::LINE || (_builderParameters.type == TileGeometry::Type::POLYGON && !_builderParameters.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
             appendGeometry();
@@ -313,6 +327,7 @@ namespace massif::vt {
             appendGeometry(); // the span slot and the ghost pass are per geometry - see BuilderParameters
         }
         _builderParameters.type = TileGeometry::Type::LINE;
+        _builderParameters.gradient = gradient;
         _builderParameters.elevationMode = style.elevationMode;
         _builderParameters.occlusionOpacity = style.occlusionOpacity;
         _builderParameters.strokeMap = strokeMap;
@@ -322,7 +337,7 @@ namespace massif::vt {
         const StrokeMap::Stroke* stroke = (strokeId != 0 ? strokeMap->getStroke(strokeId) : nullptr);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.emissiveFuncs[styleIndex] == style.emissiveFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.offsetFuncs[styleIndex] == style.offsetFunc && _builderParameters.gapWidthFuncs[styleIndex] == style.gapWidthFunc && _builderParameters.blurFuncs[styleIndex] == style.blurFunc && _builderParameters.borderColorFuncs[styleIndex] == style.borderColorFunc && _builderParameters.borderWidthFuncs[styleIndex] == style.borderWidthFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId && _builderParameters.arrowOnly[styleIndex] == style.endArrowOnly) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.emissiveFuncs[styleIndex] == style.emissiveFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.offsetFuncs[styleIndex] == style.offsetFunc && _builderParameters.gapWidthFuncs[styleIndex] == style.gapWidthFunc && _builderParameters.blurFuncs[styleIndex] == style.blurFunc && _builderParameters.borderColorFuncs[styleIndex] == style.borderColorFunc && _builderParameters.borderWidthFuncs[styleIndex] == style.borderWidthFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId && _builderParameters.arrowOnly[styleIndex] == style.endArrowOnly && _builderParameters.gradients[styleIndex] == style.gradient) {
                 break;
             }
         }
@@ -338,15 +353,19 @@ namespace massif::vt {
             _builderParameters.borderWidthFuncs[styleIndex] = style.borderWidthFunc;
             _builderParameters.lineStrokeIds[styleIndex] = strokeId;
             _builderParameters.arrowOnly[styleIndex] = style.endArrowOnly;
+            _builderParameters.gradients[styleIndex] = style.gradient;
         }
         registerStyleVariantSlot(styleIndex);
 
-        return [style, transform, invTransTransform, styleIndex, stroke, strokeMap, this](long long id, const Vertices& vertices) {
+        return [style, transform, invTransTransform, styleIndex, stroke, strokeMap, this](long long id, const Vertices& vertices, const std::optional<LineProgress>& progress) {
             std::size_t i0 = _coords.size();
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
             std::size_t texStart = _texCoords.size();
             std::size_t indexStart = _indices.size();
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
+            if (style.gradient) {
+                fillLineProgress(vertices, progress, stroke ? _tileSize / stroke->scale : 1.0f, i0);
+            }
             if (stroke && strokeMap && _indices.size() > indexStart) {
                 // u counts from the SOURCE line's start, millions under deep overzoom, and packGeometry's one int16
                 // scale then steps tens of texels: drop whole atlas periods, which changes no pixel.
@@ -388,6 +407,20 @@ namespace massif::vt {
         };
     }
 
+    // The u of every vertex a line just produced is its distance along the piece; the piece covers
+    // [start, end] of the source line. Without a range the gradient is drawn at its first stop.
+    void TileLayerBuilder::fillLineProgress(const Vertices& vertices, const std::optional<LineProgress>& progress, float duDl, std::size_t firstVertex) {
+        double length = 0;
+        for (std::size_t i = 1; i < vertices.size(); i++) {
+            length += cglib::length(vertices[i] - vertices[i - 1]);
+        }
+        _progress.fill(0.0f, firstVertex - _progress.size());
+        for (std::size_t i = firstVertex; i < _coords.size(); i++) {
+            double t = (progress && length > 0 && i < _texCoords.size() ? std::clamp(static_cast<double>(_texCoords[i](0)) / duDl / length, 0.0, 1.0) : 0.0);
+            _progress.append(static_cast<float>(progress ? progress->start + (progress->end - progress->start) * t : 0.0));
+        }
+    }
+
     TileLayerBuilder::PolygonProcessor TileLayerBuilder::createPolygonProcessor(const PolygonStyle& style) {
         cglib::vec2<float> translate(0, 0);
         std::optional<cglib::mat2x2<float>> transform;
@@ -404,7 +437,7 @@ namespace massif::vt {
         // (and the other way round) on a per-slot flag, because alternating the two was 48% of
         // every geometry draw in a city frame - see docs/internals/rendering/10-performance.md.
         bool patternConflict = style.pattern && _builderParameters.pattern && _builderParameters.pattern != style.pattern;
-        if (patternConflict || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        if (patternConflict || _builderParameters.gradient || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
         else if (!(_builderParameters.type == TileGeometry::Type::POLYGON || (_builderParameters.type == TileGeometry::Type::LINE && !style.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
@@ -940,7 +973,7 @@ namespace massif::vt {
             }
             offset += count;
 
-            packGeometry(TileGeometry::Type::POLYGON3DGROUND, 3, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, VertexArray<SpanVertexInfo>(), remappedIndices, remappedIds, geoPosIndexes, styleParameters, std::vector<TileGeometry::FeatureStyleRange>(), geometryList);
+            packGeometry(TileGeometry::Type::POLYGON3DGROUND, 3, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, VertexArray<float>(), remappedAttribs, VertexArray<SpanVertexInfo>(), remappedIndices, remappedIds, geoPosIndexes, styleParameters, std::vector<TileGeometry::FeatureStyleRange>(), geometryList);
         }
     }
 
@@ -1008,6 +1041,7 @@ namespace massif::vt {
         _texCoords.clear();
         _binormals.clear();
         _heights.clear();
+        _progress.clear();
         _attribs.clear();
         _spanInfos.clear();
         _polygon3DAnchorExtent = 0.0f;
@@ -1042,6 +1076,7 @@ namespace massif::vt {
             styleParameters.strokeScales[i] = (stroke ? stroke->scale : 0);
             styleParameters.patternScales[i] = (_builderParameters.patternUsed[i] ? 1.0f : 0.0f);
             styleParameters.arrowOnly[i] = _builderParameters.arrowOnly[i];
+            styleParameters.gradients[i] = _builderParameters.gradients[i];
         }
         if (_builderParameters.translate != cglib::vec2<float>(0, 0)) {
             styleParameters.translate = _builderParameters.translate * (1.0f / _tileSize);
@@ -1185,6 +1220,8 @@ namespace massif::vt {
             remappedBinormals.reserve(binormals.size());
             VertexArray<float> remappedHeights;
             remappedHeights.reserve(heights.size());
+            VertexArray<float> remappedProgress;
+            remappedProgress.reserve(_progress.size());
             VertexArray<SpanVertexInfo> remappedSpanInfos;
             remappedSpanInfos.reserve(spanInfos.size());
             VertexArray<std::size_t> remappedIndices;
@@ -1218,6 +1255,9 @@ namespace massif::vt {
                     if (!heights.empty()) {
                         remappedHeights.append(heights[index]);
                     }
+                    if (!_progress.empty()) {
+                        remappedProgress.append(_progress[index]);
+                    }
                     if (!spanInfos.empty()) {
                         remappedSpanInfos.append(spanInfos[index]);
                     }
@@ -1242,7 +1282,7 @@ namespace massif::vt {
             }
 
             std::size_t geometryCount = geometryList.size();
-            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedSpanInfos, remappedIndices, remappedIds, remappedGeoPosIndexes, styleParameters, std::move(remappedStyleRanges), geometryList);
+            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedProgress, remappedAttribs, remappedSpanInfos, remappedIndices, remappedIds, remappedGeoPosIndexes, styleParameters, std::move(remappedStyleRanges), geometryList);
             if (geometryList.size() > geometryCount && !_polygon3DFootprints.empty() && !texCoords.empty()) {
                 setBaseFootprints(*geometryList.back(), indexTable, texCoords, heights, heightScale);
             }
@@ -1282,7 +1322,7 @@ namespace massif::vt {
         geometry.setBaseFootprints(std::move(anchors), std::move(runs));
     }
 
-    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<SpanVertexInfo>& spanInfos, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t>& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
+    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<float>& progress, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<SpanVertexInfo>& spanInfos, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t>& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
         if (indices.empty()) {
             return;
         }
@@ -1320,6 +1360,11 @@ namespace massif::vt {
             vertexGeomLayoutParams.heightOffset = vertexGeomLayoutParams.vertexSize;
             vertexGeomLayoutParams.vertexSize += sizeof(std::int16_t);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
+        }
+
+        if (!progress.empty()) {
+            vertexGeomLayoutParams.progressOffset = vertexGeomLayoutParams.vertexSize;
+            vertexGeomLayoutParams.vertexSize += sizeof(float);
         }
 
         // The ground an extrusion stands on, resolved on the CPU after the fact and patched into
@@ -1393,6 +1438,11 @@ namespace massif::vt {
                 for (int j = 0; j < dimensions; j++) {
                     compressedBinormalPtr[j] = static_cast<std::int16_t>(binormal(j) * binormalScale);
                 }
+            }
+
+            if (!progress.empty()) {
+                float vertexProgress = progress[i];
+                std::memcpy(baseCompressedPtr + vertexGeomLayoutParams.progressOffset, &vertexProgress, sizeof(float));
             }
 
             if (!heights.empty()) {
@@ -2063,6 +2113,9 @@ namespace massif::vt {
             v1 = stroke->y0 + 0.5f;
             v0 = stroke->y1 - 0.5f;
             du_dl = _tileSize / stroke->scale;
+        }
+        else if (style.gradient) {
+            du_dl = 1.0f; // u is then the distance along the line, which fillLineProgress turns into progress
         }
 
         VertexArray<cglib::vec2<float>> points;

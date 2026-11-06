@@ -497,6 +497,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> LINE_END_TYPE = MassifObject.key("lineEndType");
     /** Returns the join type of the line. */
     public static final MassifObject.Key<String> LINE_JOIN_TYPE = MassifObject.key("lineJoinType");
+    /** Returns true if tiles carry each line's progress along the original feature. */
+    public static final MassifObject.Key<Boolean> LINE_METRICS = MassifObject.key("lineMetrics");
     /** Returns the line style. */
     public static final MassifObject.Key<MassifObject> LINE_STYLE = MassifObject.key("lineStyle");
     /** Returns the list of assets found in the bundle, ignoring the base asset package. */

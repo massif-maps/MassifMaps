@@ -35,6 +35,9 @@ namespace massif::mvt {
             if (name == "mapnik::seed" && _instanceSeed) {
                 return Value(*_instanceSeed);
             }
+            if (name == "mapnik::line_progress") {
+                return _lineProgress ? Value(*_lineProgress) : Value();
+            }
             if (!_featureData) { // evaluated outside a tile, e.g. LayerConfigResolver
                 return Value();
             }

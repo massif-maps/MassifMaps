@@ -687,6 +687,7 @@ namespace massif::css {
         { "line-color", "stroke" },
         { "line-opacity", "stroke-opacity" },
         { "line-emissive-strength", "stroke-emissive-strength" },
+        { "line-gradient", "stroke-gradient" },
         { "line-width", "stroke-width" },
         { "line-dasharray", "stroke-dasharray" },
         { "line-join", "stroke-linejoin" },

@@ -24,6 +24,7 @@ add_executable(vt_tests
   ExtrusionGroundSkirtClipTest.cpp
   LineJoinTest.cpp
   LineEndArrowClipTest.cpp
+  LineGradientTest.cpp
   ExtrusionBaseTest.cpp
   ExtrusionFloorTest.cpp
   ExtrusionFloorClipTest.cpp

@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-264 properties across 13 symbolizers.
+265 properties across 13 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 64 of 264.
+Live-capable properties: 64 of 265.
 
 ## `building`
 
@@ -96,6 +96,7 @@ Live-capable properties: 64 of 264.
 | `line-end-arrow` | `end-arrow` | bool | `false` |  |  |
 | `line-gap-width` | `gap-width` | float | `0.0` | yes |  |
 | `line-geometry-transform` | `geometry-transform` | transform |  |  |  |
+| `line-gradient` | `stroke-gradient` | gradient |  |  | yes |
 | `line-join` | `stroke-linejoin` | enum | `miter` |  |  |
 | `line-miterlimit` | `stroke-miterlimit` | float | `4.0` |  | yes |
 | `line-occlusion-opacity` | `occlusion-opacity` | float | `0.0` |  | yes |

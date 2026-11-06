@@ -2631,6 +2631,8 @@ export interface PropertyTypes {
     readonly "dataExtent": Bounds;
     /** Returns the default layer buffer in tile pixels. */
     "defaultLayerBuffer": number;
+    /** Returns true if tiles carry each line's progress along the original feature. */
+    "lineMetrics": boolean;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
     "maxOverzoomLevel": number;
     /** (read-only) Returns the maximum zoom level supported by this data source. */
@@ -8392,6 +8394,8 @@ export interface SourceSpec_geojson {
   type: "geojson";
   /** Returns the default layer buffer in tile pixels. */
   defaultLayerBuffer?: number;
+  /** Returns true if tiles carry each line's progress along the original feature. */
+  lineMetrics?: boolean;
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
   maxZoom?: number;

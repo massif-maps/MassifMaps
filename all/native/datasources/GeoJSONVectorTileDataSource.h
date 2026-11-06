@@ -48,6 +48,17 @@ namespace massif {
         void setSimplifyTolerance(float tolerance);
 
         /**
+         * Returns true if tiles carry each line's progress along the original feature.
+         * @return True if line metrics are enabled.
+         */
+        bool isLineMetrics() const;
+        /**
+         * Enables the progress of each line along its original feature, which a 'line-gradient' style reads. Like Mapbox's 'lineMetrics'.
+         * @param enabled True to emit line progress. The default is false, which leaves the tiles unchanged.
+         */
+        void setLineMetrics(bool enabled);
+
+        /**
          * Returns the default layer buffer in tile pixels.
          * @return The default layer buffer in tile pixels.
          */

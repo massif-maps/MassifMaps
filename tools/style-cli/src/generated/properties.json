@@ -476,6 +476,16 @@
       "baked": false
     },
     {
+      "cartocss": "line-gradient",
+      "mapnik": "stroke-gradient",
+      "symbolizer": "line",
+      "kind": "gradient",
+      "type": "GradientProperty",
+      "default": "",
+      "live": false,
+      "baked": true
+    },
+    {
       "cartocss": "line-join",
       "mapnik": "stroke-linejoin",
       "symbolizer": "line",

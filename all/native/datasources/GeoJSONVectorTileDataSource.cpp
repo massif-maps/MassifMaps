@@ -80,6 +80,21 @@ namespace massif
         notifyTilesChanged(false);
     }
 
+    bool GeoJSONVectorTileDataSource::isLineMetrics() const
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _tileBuilder->getLineMetrics();
+    }
+
+    void GeoJSONVectorTileDataSource::setLineMetrics(bool enabled)
+    {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _tileBuilder->setLineMetrics(enabled);
+        }
+        notifyTilesChanged(false);
+    }
+
     float GeoJSONVectorTileDataSource::getDefaultLayerBuffer() const
     {
         std::lock_guard<std::mutex> lock(_mutex);

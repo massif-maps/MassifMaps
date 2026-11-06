@@ -16,6 +16,7 @@ void testExtrusionShadowTop();
 void testExtrusionGroundSkirtClip();
 void testLineJoinReach();
 void testLineEndArrowClip();
+void testLineGradient();
 void testExtrusionBase();
 void testExtrusionFloor();
 void testExtrusionFloorClip();
@@ -85,6 +86,7 @@ int main() {
     testExtrusionGroundSkirtClip();
     testLineJoinReach();
     testLineEndArrowClip();
+    testLineGradient();
     testExtrusionBase();
     testExtrusionFloor();
     testExtrusionFloorClip();

@@ -69,6 +69,9 @@ namespace massif::vt {
             // for lines: the slot is a `line-arrow-only` style, which draws a head and nothing else.
             // Drawn after the shafts of every tile of the layer (ArrowHeadPass.h).
             std::array<bool, MAX_PARAMETERS> arrowOnly;
+            // for lines: the slot's colour along the line, or null for a plain colour. A geometry holds
+            // either all gradient slots or none, and its vertices then carry their progress.
+            std::array<std::shared_ptr<const ColorRamp>, MAX_PARAMETERS> gradients;
 
             StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64), arrowOnly() { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
@@ -115,12 +118,14 @@ namespace massif::vt {
             // Span fills and decks: unclamped chord parameter (SpanGeometry::chordParamRaw); the shader
             // discards past the portals. 0.5 until resolved, leaving the deck whole.
             int chordOffset;
+            // Lines with a gradient: the vertex's progress along the source line, a float.
+            int progressOffset;
             float coordScale;
             float texCoordScale;
             float binormalScale;
             float heightScale;
 
-            VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), baseOffset(-1), chordOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
+            VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), baseOffset(-1), chordOffset(-1), progressOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
         };
 
         explicit TileGeometry(Type type, float geomScale, const StyleParameters& styleParameters, const VertexGeometryLayoutParameters& vertexGeometryLayoutParameters, VertexArray<std::uint8_t> vertexGeometry, VertexArray<std::uint16_t> indices, std::vector<std::pair<std::size_t, long long>> ids, std::vector<std::pair<std::size_t, std::uint16_t>> geoPosIndexes) : _type(type), _geomScale(geomScale), _styleParameters(styleParameters), _vertexGeometryLayoutParameters(vertexGeometryLayoutParameters), _indicesCount(static_cast<unsigned int>(indices.size())), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)), _ids(std::move(ids)), _geoPosIndexes(std::move(geoPosIndexes)), _geoPosIndexesCount(static_cast<unsigned int>(indices.size())) { }

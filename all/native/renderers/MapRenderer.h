@@ -356,8 +356,6 @@ namespace massif {
         // Written by the draw pass, read by the next frame's switch. Render thread.
         bool _drapeBakesPending = false;
         int _drapeBakesDone = 0;
-        int _drapeUnpaintedRetries = 0;
-        static constexpr int MAX_DRAPE_UNPAINTED_RETRIES = 30;
         // Set by every camera event; auto-flatten stays quiet while false.
         std::atomic<bool> _cameraPlaced { false };
 

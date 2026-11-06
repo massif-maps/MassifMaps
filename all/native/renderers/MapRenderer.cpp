@@ -3931,7 +3931,6 @@ namespace massif {
                     for (std::size_t i = 0; i < drapeLayers.size(); i++) {
                         drapeLayers[i]->collectSpanDrapeTiles(spanDrapeTiles);
                     }
-                    bool drapeUnpainted = false;
                     auto bakeTile = [&](const BakeRequest& request) {
                         bool needsBake = false, hasContent = false;
                         unsigned int texture = _terrainDrapeCache->acquire(request.tileId, 0, request.fingerprint, resolutionOf(request.tileId), nullptr, needsBake, hasContent);
@@ -3957,7 +3956,6 @@ namespace massif {
                                 auto leafElevationIt = leafElevation.find(request.tileId);
                                 if (leafElevationIt != leafElevation.end() && leafElevationIt->second) {
                                     bakedFingerprint = ~request.fingerprint;
-                                    drapeUnpainted = true;
                                 }
                                 break;
                             }
@@ -4121,11 +4119,6 @@ namespace massif {
 
                     // Nothing else asks for the frames rationed baking needs.
                     if (drapeBakesLeft) {
-                        requestRedraw();
-                    }
-                    // A tile with decoded DEM whose texture is not up yet paints on a later frame; the cap keeps an unpaintable tile from spinning.
-                    _drapeUnpaintedRetries = drapeUnpainted ? _drapeUnpaintedRetries + 1 : 0;
-                    if (drapeUnpainted && _drapeUnpaintedRetries <= MAX_DRAPE_UNPAINTED_RETRIES) {
                         requestRedraw();
                     }
                     // What the 2D/3D switch's settle report reads, one frame later.

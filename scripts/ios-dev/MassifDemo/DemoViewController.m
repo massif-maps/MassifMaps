@@ -134,6 +134,15 @@
           layer);
 }
 
+- (void)dealloc {
+    [DemoLive detach:self.demo];
+    // What was registered by id outlives the view: the map's BaseMapView stays alive while its
+    // facade ids do.
+    [self.sugarMap detach];
+    [MSFMassif destroy:@"layer" objectId:@"demoBase"];
+    [MSFMassif destroy:@"options" objectId:@"demo"];
+}
+
 /** The camera readout, bottom centre - the counterpart of the Android layout's zoomText. */
 - (void)addStatusLabel {
     UILabel *label = [[UILabel alloc] init];

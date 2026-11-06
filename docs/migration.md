@@ -209,7 +209,8 @@ the methods that returned or took an object-API type are **removed**: `getOption
 `setMapRotation`, `pan`, `rotate`, `zoom`, `tilt`, `moveToFitBounds`, `screenToMap`, `mapToScreen`).
 `MapViewInterface` shrinks to the handles, `cancelAllTasks`, `clearPreloadingCaches`,
 `clearAllCaches` and `delete`. `MassifMap.attach(mapView, id)` is `MassifMap.attach(mapView)`: the id is the
-view's, set with `new MapView(context, "id")` or generated.
+view's, set with `new MapView(context, "id")` or generated. The view no longer frees its native map when it
+is collected: call `mapView.delete()` from `onDestroy` (after `map.close()`), or every open stays in memory.
 
 An app built on the object API keeps its code and reads the same objects from the view's handles:
 

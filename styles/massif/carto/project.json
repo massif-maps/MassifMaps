@@ -258,6 +258,7 @@
     "water::water_outline",
     "water::water_pattern",
     "water::water",
+    "waterway::waterway_tunnel",
     "waterway::waterway_intermittent",
     "waterway::waterway",
     "waterway::waterway_intermittent_mono",

@@ -101,8 +101,6 @@ static massif::ClassRegistry::Entry $TYPE$RegistryEntry(typeid(const $CLASSNAME$
 %typemap(csdirectorin) std::shared_ptr<$CLASSNAME$>, const std::shared_ptr<$CLASSNAME$>&, std::shared_ptr<$CLASSNAME$>& %{
   $NAMESPACE$.$TYPE$.SwigCreatePolymorphicInstance$TYPE$($iminput, true)
 %}
-
-%typemap(csclassmodifiers) $CLASSNAME$ "#if __IOS__\n[Foundation.Preserve(AllMembers=true)]\n#endif\npublic class"
 """
 
 POLYMORPHIC_SHARED_PTR_CODE_TEMPLATE = """
@@ -473,7 +471,7 @@ def transformSwigPackage(args, sourceDir, outDir, packageName):
   for fileName in os.listdir(sourceDir):
     if fileName == 'NutiSwig.i' or not fileName.endswith(".i"):
       continue
-    if fileName in ['AndroidUtils.i'] and args.target != 'android':
+    if fileName == 'AndroidUtils.i':
       continue
     sourcePath = os.path.join(sourceDir, fileName)
     if not os.path.isfile(sourcePath):
@@ -503,10 +501,7 @@ def buildSwigPackage(args, sourceDir, packageName):
       continue
     fileNameWithoutExt = fileName.split(".")[0]
     sourcePath = os.path.join(sourceDir, fileName)
-    outExt = ".cpp"
-    if args.target == "ios" and fileName in ("AssetUtils.i", "BitmapUtils.i"):
-      outExt = ".mm"
-    outPath = os.path.join(args.wrapperDir, fileNameWithoutExt) + "_wrap" + outExt
+    outPath = os.path.join(args.wrapperDir, fileNameWithoutExt) + "_wrap.cpp"
     if not os.path.isfile(sourcePath):
       continue
     if not os.path.isdir(args.proxyDir):
@@ -540,18 +535,16 @@ def buildSwigPackages(args, sourceDir, basePackageName):
 parser = argparse.ArgumentParser()
 parser.add_argument('--profile', dest='profile', default=getDefaultProfileId(), type=validProfile, help='Build profile')
 parser.add_argument('--swig', dest='swig', default='swig', help='path to Swig executable')
-parser.add_argument('--dll', dest='dllName', default='massif', help='name of the DLL (Android only)')
+parser.add_argument('--dll', dest='dllName', default='massif', help='name of the DLL')
 parser.add_argument('--defines', dest='defines', default='', help='Defines for Swig')
 parser.add_argument('--cppdir', dest='cppDir', default='../all/native;../{target}/native', help='directories containing C++ headers')
 parser.add_argument('--proxydir', dest='proxyDir', default='../generated/{target}-csharp/proxies', help='output directory for C# proxies')
 parser.add_argument('--wrapperdir', dest='wrapperDir', default='../generated/{target}-csharp/wrappers', help='output directory for C++ wrappers')
 parser.add_argument('--moduledir', dest='moduleDir', default='../generated/{target}-csharp/modules', help='output directory containing preprocessed Swig modules')
 parser.add_argument('--sourcedir', dest='sourceDir', default='../all/modules;../{target}/modules', help='input directories containing subdirectories of Swig wrappers')
-parser.add_argument(dest='target', choices=['android', 'ios', 'winphone'], help='target platform')
+parser.add_argument(dest='target', choices=['winphone'], help='target platform')
 
 args = parser.parse_args()
-if args.target == "ios":
-  args.dllName = "__Internal"
 if args.target == 'winphone':
   args.defines += ';WINDOWS_PHONE'
 args.cppDir = args.cppDir.replace("{target}", args.target)

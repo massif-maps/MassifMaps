@@ -17,7 +17,7 @@ and the NativeScript plugin have their own.
 | iOS | `massif-maps/MassifMaps-ios-swift` — products `MassifMaps` (full), `MassifMapsCore`, `MassifMapsLite` | Swift Package Manager, or the xcframework zip on the release — [install](installation.md#ios) |
 | Web | `@massif-maps/web` | npm, or `MassifMaps-web-<version>.zip` on the release — [web guide](web.md) |
 | NativeScript | `@nativescript-community/ui-massifmaps` | npm — [install](installation.md#javascript-through-an-integration) |
-| Xamarin, UWP | — | build from source ([BUILDING.md](https://github.com/massif-maps/MassifMaps/blob/master/BUILDING.md)) |
+| UWP | — | build from source ([BUILDING.md](https://github.com/massif-maps/MassifMaps/blob/master/BUILDING.md)) |
 
 `core` is the `standard` build profile; `lite` drops SQLite and everything built on it and is about 40% smaller;
 `objectapi` is `core` plus the object API, which the other Android variants no longer carry. What each

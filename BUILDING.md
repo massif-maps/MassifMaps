@@ -16,7 +16,7 @@ an hour or more.
 | Generated API bindings | `all/modules`, `all/native/api` | [`gen-api-bindings.sh`](#generated-api-bindings) | committed files |
 | `css2xml` (native) | `libs-massif/cartocss/util` | [cmake](#css2xml) | `css2xml` |
 | NativeScript plugin | `integrations/nativescript` (own repo) | [lerna](#nativescript-plugin) | `@nativescript-community/ui-massifmaps` |
-| Xamarin, UWP | `dotnet/`, `winphone/` | [source only](#xamarin-and-uwp) | not released |
+| UWP | `dotnet/`, `winphone/` | [source only](#uwp) | not released |
 | Documentation site | `docs/`, `website/` | [Docusaurus](#documentation-site) | GitHub Pages |
 
 ## Toolchain
@@ -26,7 +26,7 @@ The versions are the ones CI uses (`.github/workflows/build.yml`). Linux or macO
 | Tool | Needed for | Version |
 |---|---|---|
 | git, unzip, curl, Python 3, CMake ≥ 3.14 | everything | Python 3.12 in CI |
-| the SWIG fork ([below](#swig)) | Android, iOS, Xamarin, UWP | `massif-maps/mobile-swig` |
+| the SWIG fork ([below](#swig)) | Android, iOS, UWP | `massif-maps/mobile-swig` |
 | JDK, Android SDK, NDK, Gradle | Android | JDK 17, NDK r27, Gradle 8.14.3 |
 | Xcode | iOS | latest stable |
 | Emscripten (`emsdk`) | web SDK, style tools wasm | 6.0.9 |
@@ -84,7 +84,7 @@ geocoding services exist only with `packagemanager` too, and `valhalla` adds not
 cd scripts
 ```
 
-The Android-family scripts (`build-android.py`, `build-routing-android.py`, `build-xamarin.py`) pick
+The Android-family scripts (`build-android.py`, `build-routing-android.py`) pick
 **ninja** over make and prefix the compiler with **ccache**, both auto-detected and both opt-out
 (`--ninja none`, `--ccache none`). Raise the cache first — `ccache --max-size 30G` — since one ABI
 writes ~1 GB of objects. Measured on one arm64 Release build with a warm cache: **13.8 s** against
@@ -119,13 +119,11 @@ python build-routing-android.py --configuration=Release --build-version 6.1.0
 python build-routing-ios.py --configuration=Release --build-xcframework --build-version 6.1.0
 ```
 
-### Xamarin and UWP
+### UWP
 
 Built from source only, not covered by CI:
 
 ```
-python swigpp-csharp.py --profile standard android --swig ../mobile-swig/swig
-python build-xamarin.py --profile standard android        # ios: same two lines with `ios`
 python swigpp-csharp.py --profile standard winphone --swig ../mobile-swig/swig
 python build-winphone.py --profile standard               # Visual Studio 2022 + Windows SDK
 ```

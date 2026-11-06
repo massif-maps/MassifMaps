@@ -22,10 +22,10 @@ There are several rules you should follow when a new pull request is created:
 
 * all/native - C++ sources for all platforms, main part of the SDK
 * all/modules - Swig configuration files for all platforms
-* android - Android-specific (C++, Java, C#) code, Swig wrapper config and helpers
-* ios - iOS-specific (C++, Objective-C, C#) code, Swig wrapper config and helpers
+* android - Android-specific (C++, Java) code, Swig wrapper config and helpers
+* ios - iOS-specific (C++, Objective-C) code, Swig wrapper config and helpers
 * winphone - Windows Phone-specific (C++, C#) code, Swig wrapper config and helpers
-* dotnet - generic C# code shared by Xamarin and Windows Phone builds
+* dotnet - generic C# code used by the Windows Phone build
 * assets - images and style files sources used for map rendering. Converted to C++ headers
 * docs - documentation; the published site is built from `website/`
 * scripts - scripts for building SDK (using Python, CMake, Swig and other tools)

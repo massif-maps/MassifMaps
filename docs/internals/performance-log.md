@@ -2724,3 +2724,57 @@ Not measured: the globe (it keeps the area rule), free roam imagery (no cap, unc
 a gentle terrain tilt (the eye-height cap is up to a level over the camera's zoom at tilt 30, more tiles than
 the old cap there), `lodFactor` other than 0.5, a Release lib. fps in the table above is not used: the
 parent and the cull commit builds carry the sky regression of #447.
+
+## A closed map must give its memory back (2026-11-06)
+
+Reported: opening a demo screen (`.BenchActivity`, or a gallery example) makes memory climb and it does not
+come back after the screen closes. Measured on an arm64 emulator (`Small_Phone`, host GPU, headless), debug
+build, `dumpsys meminfo com.massifmaps.MassifDemo` after each open (25 s) and each BACK (4 s, then
+`am send-trim-memory RUNNING_CRITICAL`); `Native Heap` Heap Alloc in MB, the process's `malloc` live bytes.
+The recipe is `scripts/android-dev/mem-cycle.sh`, written up in the demo app page.
+The process's `TOTAL PSS` after BACK went from 173 to 600 MB (master) to 77 to 118 MB.
+
+| `.BenchActivity --es ui false`, after BACK | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| master | 115 | 224 | 335 | 436 | 545 |
+| + the SDK fix (this entry) and `mapView.delete()` | 106 | 110 | 122 | 127 | 132 |
+| + the demo releasing what it registered | 18.0 | 22.4 | 26.4 | 30.7 | 34.9 |
+
+`.ExampleActivity --es example terrain-3d`: master 132 / 247 / 397 / 348 / 451, fixed 28 / 42 / 46 / 50 / 54.
+A map open sits at 120-130; the Activity count (`Objects`) went from 1..5 retained
+instances to the last closed one only.
+
+Four causes, in the order they were found:
+
+1. **Nothing called `MapView.delete()`.** The facade registry owns the view since #469 and the view has no
+   finalizer, so the `BaseMapView` (renderer, caches, thread pools) and the Activity its event handlers
+   captured lived for the life of the process: +100 MB and +1 Activity per open. The two demo screens now call it.
+2. **A reference cycle through the GL resource queue.** Releasing a `GLResource` off the GL thread queues it in
+   the manager (`GLResourceManager::_deleteQueue`) until `processResources()` runs on the GL thread. A queued
+   `VTRenderer` holds the `vt::GLTileRenderer`, whose terrain-texture lambdas hold the `ElevationTextureCache`,
+   which holds the manager: manager -> queue -> renderer -> cache -> manager. While the map runs the queue is
+   drained every frame; once the GL thread is gone (a deleted view, a lost context; `onSurfaceDestroyed` "may
+   never be called" on Android, and where it is, its comment says an invalidated thread id makes the manager
+   ignore releases, but it queued them) nothing drains it, and the cycle pinned ~70 MB per map (DEM bitmaps,
+   encoded textures, compiled geometry).
+   `setGLThreadId(thread::id())` now frees the queue and later releases are dropped on the spot; `MapRenderer::deinit`
+   ends the manager's thread. Found with heapprofd (`perfetto`, `android.heapprofd`, symbolised against the
+   unstripped `libmassif.so`) and `use_count` probes in the destructors; `ElevationTextureCache`'s count was 17 at
+   `~MapRenderer` and the cache never died. `tests/api/GLResourceManagerTest.cpp` fails on the old code.
+3. **Elements pin the terrain they were draped on.** A `Massif.object("element", ...)` registered by id keeps a
+   `TerrainProjectionSurface`, hence the `ElevationManager` and its decoded DEM tiles (~40 MB), until it is
+   destroyed. The demo's elements layer now destroys its markers, line and styles with the rest of what it registered.
+4. **Sources, styles and options registered with `Massif.*` outlive the map** (ids are process wide, replaced on
+   the next open): the DEM source and the terrain `options` object kept one generation of caches. The demo tracks
+   what it registers and destroys it with the map.
+
+What is left, **not explained**: ~4 MB of malloc per open/close cycle (linear over 10 cycles). The heapprofd
+snapshot after the last close attributes it to `GLTileRenderer::buildCompiledTileGeometry` -> `glBufferData` ->
+`gfxstream::guest::GLSharedGroup::updateBufferData`, the emulator driver's guest-side shadow of buffer
+contents. Buffers of a dropped renderer are never `glDelete`d (their context is gone), and here the shadow outlives
+the context; why is not established. Not checked on a real device, where the driver owns that memory: a
+device check is still required before calling this closed. Draining the queue on the GL thread before the view is deleted
+(`requestRender` and a 400 ms wait in `onDestroyView`) did not change it, so it is not simply the missing `glDelete`.
+
+Not measured: iOS, `TextureMapView` (same `delete()` contract, not run), a real device, Release builds, the
+`Graphics` line of `meminfo` (0 on this emulator).

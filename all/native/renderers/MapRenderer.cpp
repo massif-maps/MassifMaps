@@ -752,6 +752,10 @@ namespace massif {
         
         _billboardPlacementWorker->stop();
         _billboardPlacementThread.detach();
+
+        if (_glResourceManager) {
+            _glResourceManager->setGLThreadId(std::thread::id());
+        }
     }
         
     std::shared_ptr<RedrawRequestListener> MapRenderer::getRedrawRequestListener() const {

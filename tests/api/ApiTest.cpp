@@ -87,6 +87,7 @@ void testDrapeStackCuts();
 void testDrapeStandIn();
 void testDrapeCoverLeaves();
 void testDrapeEviction();
+void testGLResourceManager();
 void testStyleConfigZoom();
 void testDrapeTuning();
 void testNearPlaneCover();
@@ -503,6 +504,7 @@ int main() {
     testDrapeStandIn();
     testDrapeCoverLeaves();
     testDrapeEviction();
+    testGLResourceManager();
     testStyleConfigZoom();
     testDrapeTuning();
     testNearPlaneCover();

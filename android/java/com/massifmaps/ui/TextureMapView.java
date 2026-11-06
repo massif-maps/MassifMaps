@@ -127,9 +127,8 @@ public class TextureMapView extends GLTextureView implements GLSurfaceView.Rende
     }
 
     /**
-     * Deletes the resources associated with the view.
-     * The method can be used to dispose native objects immediately,
-     * without waiting for next GC cycle.
+     * Deletes the native map behind the view. Nothing else does: the garbage collector never frees
+     * it, so a screen that does not call this from its onDestroy keeps the whole map in memory.
      */
     @Override
     public synchronized void delete() {

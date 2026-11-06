@@ -1426,6 +1426,17 @@ Everything else is a facade call on a handle. An app still built on the object A
 `getLayerListByHandle` and `getViewByHandle`: that is the migration path, and the only reason the
 object-API wrappers are still linked for a view.
 
+**`MapView.delete()` is the only thing that frees the native map.** The facade registry holds the
+view, so neither the garbage collector nor the view leaving its window releases it: a screen that
+does not call `delete()` from `onDestroy` (after `MassifMap.close()`, which drops the layers the map
+built) keeps the whole map, its tile and terrain caches and the Activity its handlers capture, for
+the life of the process. `delete()` also ends the GL resource manager's queue
+(`GLResourceManager::setGLThreadId` with no thread): a renderer queued for the GL thread holds the
+elevation cache, which holds the manager, so a queue nobody drains again would pin them all. What a
+screen registered under its own ids with `Massif.source`, `Massif.style` or `Massif.object` is its
+own to `Massif.destroy`; an element keeps the terrain it was draped on alive until then. The
+measurement is in [the performance log](performance-log.md#a-closed-map-must-give-its-memory-back-2026-11-06).
+
 ### Reaching a real map event
 
 `MapEventBridge` turns the map's listener callbacks into facade events. `BaseMapView` has a

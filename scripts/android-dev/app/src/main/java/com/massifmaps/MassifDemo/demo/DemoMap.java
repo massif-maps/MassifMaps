@@ -142,6 +142,8 @@ public class DemoMap {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean paramOn = true;
+    private final List<String[]> registered = new java.util.ArrayList<String[]>();
+    private volatile boolean released;
 
     public DemoMap(Context context, MapView mapView, String dataPath) {
         this.context = context;
@@ -149,6 +151,23 @@ public class DemoMap {
         this.map = MassifMap.attach(mapView).eventProjection("EPSG:4326");
         this.dataPath = dataPath;
         DemoStyles.init(context);
+    }
+
+    public boolean isReleased() {
+        return released;
+    }
+
+    /** Drops what this demo registered in the process-wide facade: nothing else frees its layers, sources and styles. */
+    public void release() {
+        released = true;
+        handler.removeCallbacksAndMessages(null);
+        map.close();
+        for (String[] object : registered) {
+            Massif.destroy(object[0], object[1]);
+        }
+        registered.clear();
+        Massif.destroy("layer", "demo-celestial");
+        Massif.destroy("layer", "demo-stars");
     }
 
     // =============================================================================================
@@ -318,12 +337,14 @@ public class DemoMap {
     /** Registers a source under an id, replacing what an earlier build left there. */
     private MassifSource source(String id, Spec spec) {
         Massif.destroy("source", id);
+        registered.add(new String[] { "source", id });
         return Massif.source(id, spec);
     }
 
     /** Registers a style (decoder) under an id, replacing what an earlier build left there. */
     private MassifObject style(String id, Spec spec) {
         Massif.destroy("style", id);
+        registered.add(new String[] { "style", id });
         return Massif.style(id, spec);
     }
 
@@ -1446,6 +1467,7 @@ public class DemoMap {
     public MassifObject maneuverBuilder() {
         if (maneuverBuilder == null) {
             Massif.destroy("geometry", "demo-maneuver-arrows");
+            registered.add(new String[] { "geometry", "demo-maneuver-arrows" });
             maneuverBuilder = Massif.object("geometry", "demo-maneuver-arrows", Spec.of("maneuver-arrow"));
         }
         return maneuverBuilder;
@@ -1576,6 +1598,9 @@ public class DemoMap {
         MassifSource source = source("demo-elements-source", Spec.of("local").set("projection", Spec.of("EPSG:4326")));
         Massif.destroy("elementstyle", "demo-marker-style");
         Massif.destroy("elementstyle", "demo-line-style");
+        registered.add(new String[] { "elementstyle", "demo-marker-style" });
+        registered.add(new String[] { "elementstyle", "demo-line-style" });
+        registered.add(new String[] { "element", "demo-valley-line" });
         MassifObject markerStyle = Massif.object("elementstyle", "demo-marker-style", Spec.of("marker").set("size", 24).set("color", 0xFFFF0000));
         double[][] peaks = {
                 { 5.7869, 45.2876 }, // Chamechaude
@@ -1587,6 +1612,7 @@ public class DemoMap {
         for (double[] p : peaks) {
             String id = "demo-peak-marker-" + (n++);
             Massif.destroy("element", id);
+            registered.add(new String[] { "element", id });
             MassifObject marker = Massif.object("element", id, Spec.of("marker").set("position", p).set("style", markerStyle.id()));
             source.call("add", marker.handle()).close();
         }
@@ -1787,6 +1813,7 @@ public class DemoMap {
         applyTileLODConfig();
         if (terrainOptions == null) {
             Massif.destroy("options", "demo-terrain");
+            registered.add(new String[] { "options", "demo-terrain" });
             terrainObject = Massif.object("options", "demo-terrain", Spec.of("terrain").set("source", demSource().id()));
             map.set("terrainOptions", terrainObject);
             terrainOptions = map.terrain();
@@ -2278,6 +2305,7 @@ public class DemoMap {
             // named parameters - and the app provides the look, as a fragment shader string. There
             // is no relief effect in the SDK.
             Massif.destroy("effect", "demo-relief-outline");
+            registered.add(new String[] { "effect", "demo-relief-outline" });
             reliefEffect = Massif.object("effect", "demo-relief-outline",
                     Spec.of("postprocess").set("name", "relief_outline").set("fragmentShader", DemoStyles.reliefOutlineShader()));
             reliefEffect.set("terrainDepthRequired", true);

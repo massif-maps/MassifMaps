@@ -126,13 +126,24 @@ public class SecondFragment extends Fragment {
         // (measured 6.5 s for the bundled assets style on a mid-range device). On the UI thread
         // that is a frozen app and an "isn't responding" dialog before the map ever appears.
         final View demoView = view;
+        final DemoMap building = demo;
         new Thread(new Runnable() {
             @Override
             public void run() {
-                demo.build();
+                try {
+                    building.build();
+                } catch (RuntimeException e) {
+                    if (building.isReleased()) {
+                        return; // left while it was building
+                    }
+                    throw e;
+                }
                 demoView.post(new Runnable() {
                     @Override
                     public void run() {
+                        if (building.isReleased()) {
+                            return;
+                        }
                         DemoPanel.build(getContext(), demoView.findViewById(R.id.main), demo);
                         installMapListener();
                         installLiveConfigReceiver();
@@ -171,6 +182,14 @@ public class SecondFragment extends Fragment {
         if (liveConfigReceiver != null && getContext() != null) {
             getContext().unregisterReceiver(liveConfigReceiver);
             liveConfigReceiver = null;
+        }
+        if (demo != null) {
+            demo.release();
+            demo = null;
+        }
+        DemoPanel.release();
+        if (mapView != null) {
+            mapView.delete(); // nothing else frees the native map: ~100 MB per open
         }
         super.onDestroyView();
     }

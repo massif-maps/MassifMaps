@@ -44,6 +44,31 @@ label placement). For anything involving 3D extrusions — shadows above all —
 buildings arrive asynchronously, and **before they cast there are no shadows to be wrong**. A frame
 taken too early shows a clean scene that looks exactly like a fix.
 
+## Measuring memory
+
+A screen that leaks shows as a closed-state number that climbs with every open. `mem-cycle.sh` opens a
+screen, waits, presses BACK and prints `dumpsys meminfo` after each step:
+
+```sh
+cd scripts/android-dev
+./mem-cycle.sh 5 25 .BenchActivity --es ui false
+./mem-cycle.sh 5 25 .ExampleActivity --es example terrain-3d
+```
+
+`nativeAlloc` (live malloc bytes) after `close` must stay flat, and `activities` must not count one per open.
+Anything that climbs is native: profile it with heapprofd rather than guessing, on a debuggable build
+(`perfetto --txt -c heap.cfg` with an `android.heapprofd` source on `process_cmdline`, a config under
+`/data/misc/perfetto-configs`, `pkill -INT perfetto` to end it right after a close; symbolise the frames
+against the unstripped `libmassif.so` under `massif/build/intermediates/cxx/RelWithDebInfo/`). The case
+that found the leaks is in [the performance log](../internals/performance-log.md#a-closed-map-must-give-its-memory-back-2026-11-06).
+Use a second emulator (`emulator -avd <name> -port 5556 -no-window -gpu host`, `ANDROID_SERIAL=emulator-5556`)
+when the first is in use. The emulator reports `Graphics` as 0 and keeps a guest-side copy of GL buffer data,
+so a few MB per cycle are its own; a device check settles the rest.
+
+A screen owns its teardown: `SecondFragment` and `ExampleActivity` call `MapView.delete()` (nothing else
+frees the native map), and `DemoMap.release()` destroys the layers, sources, styles, options and elements
+the demo registered under ids, which are process wide.
+
 ## The iOS demo as a Mac app
 
 `scripts/ios-dev` also builds as a native Mac Catalyst app that takes the same knobs as launch arguments and

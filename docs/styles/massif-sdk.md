@@ -58,7 +58,8 @@ The ones an app usually sets:
 | `highlight_drinking_water` | 0 | water points larger and placed first |
 | `sac_scale_labels` | 0 (1 on e-ink) | the T1..T6 grade along each trail |
 | `road_osm_low` | 0 | major roads drawn as OSM Carto draws them at low zoom |
-| `fast_context` | 0 | 1 draws a red casing on roads tagged 70 km/h or more, motorways apart (z12+, where the tiles carry `maxspeed`) |
+| `fast_context` | 0 | 1 draws a red casing on roads tagged `fast_speed` km/h or more, motorways apart (z12+, where the tiles carry `maxspeed`) |
+| `fast_speed` | 70 | the km/h `fast_context` starts at: 50, 60, 70, 80, 90 or 100 |
 | `oneway_emphasis` | 0 | 0 arrows from z16; 1 from z15, closer and opaque; 2 the same, 1.3 times as large |
 | `route_focus` | 0 | 1 fades the hiking and cycling route network (outdoor, topo) to 0.35 of its opacity, live |
 | `cycle_focus` | 0 | 1 draws separated cycleways teal and 1.5 times as wide |

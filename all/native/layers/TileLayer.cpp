@@ -1010,10 +1010,12 @@ namespace massif {
             }
         }
         // A flat view styles every tile at the camera's zoom: the eye is farther from the edge tiles than the centre ones.
+        // Terrain that is attached but flattened draws flat, so only 3D terrain keeps the per-tile zoom.
         _flatStyleDistance = 0;
-        if (_distanceLod && !_freeRoamImagery && !_lodElevationManager && DistanceTileLOD::isFlat(cullState->getViewState().getTilt())) {
+        if (_distanceLod && !_freeRoamImagery) {
             const ViewState& viewState = cullState->getViewState();
-            _flatStyleDistance = cglib::length(viewState.getCameraPos() - viewState.getFocusPos());
+            std::shared_ptr<TerrainOptions> terrainOptions = getOptions() ? getOptions()->getTerrainOptions() : nullptr;
+            _flatStyleDistance = DistanceTileLOD::flatStyleDistance(viewState.getTilt(), terrainOptions && terrainOptions->isActive(), cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
         }
         _distanceNodes.clear();
         _distanceTiles.clear();

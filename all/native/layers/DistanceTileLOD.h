@@ -91,6 +91,11 @@ namespace massif {
             return tilt >= 90.0 - FLAT_TILT_TOLERANCE;
         }
 
+        /** The camera distance every tile of a flat view is styled at, 0 where the per-tile one stands: tilted, or ground that is drawn in 3D. */
+        static double flatStyleDistance(double tilt, bool terrainRendered, double cameraDistance) {
+            return (!terrainRendered && isFlat(tilt)) ? cameraDistance : 0.0;
+        }
+
         /** The distance a tile's style zoom reads: the camera's own when `flatDistance` is set, so a flat view styles every tile alike. */
         static double styleDistance(double tileDistance, double flatDistance) {
             return flatDistance > 0 ? flatDistance : tileDistance;

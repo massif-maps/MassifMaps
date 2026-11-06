@@ -164,7 +164,10 @@ a texture. `ElevationTextureCache` (all/native/renderers/utils/) turns a grid in
   bit-exactly and the surface does not crack;
 - encoding **and** the `Bitmap` construction run on a worker thread; the render thread only uploads,
   under a per-frame budget (`MAX_UPLOADS_PER_FRAME`, `MAX_UPLOAD_MS_PER_FRAME`). A tile with no
-  texture yet renders flat, which is the visible cost of a budget set too tight;
+  texture yet renders flat, which is the visible cost of a budget set too tight. A frame that
+  leaves encoded textures queued requests the next one: the encode worker only asks once per
+  arrival, so a cold start with more than a budget's worth would idle with the hillshade unpainted
+  until a pan;
 - a neighbour landing patches only the **2-texel ring** (`encodeTextureBorders` →
   `applyBorderPatches`, `glTexSubImage2D` into the live texture *and* into the bitmap behind it,
   which is what survives a context loss). Measured over a cold load: full re-encodes 353 → 24. It

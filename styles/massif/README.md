@@ -95,7 +95,7 @@ palette plus the modules it adds.
 - **Tracks and paths are named**, in italic and their own ink, from z14 and z15: the name, else the
   ref (a greenway's `V 64`).
 - **Oneway arrows** are a dark arrow in a white edge (`oneway-ink`, e-ink's black `oneway-dark`): a
-  white one vanished on a white street. From z16, as Standard; the SDK spaces them along the whole way
+  white one vanished on a white street. From z16, as Standard (`oneway_emphasis` brings them in earlier); the SDK spaces them along the whole way
   and puts none on a stub too short for two.
 - **A cycleway's ribbon is a path's**, the green dash laid over it as Standard's: drawn green, it was
   a solid band wherever no road covered it and a dash where one did.
@@ -361,6 +361,19 @@ Switches (0/1):
 - `road_shields` (1), `show_boundaries` (1), `sub_boundaries` (1, states and communes).
 - `show_tram` (1), `show_underground` (1, rail and metro in tunnels), `emphasis_rails` (0: main
   lines, no `service`: a dark solid line from their first zoom, fading out over z15-16.5 as dark sleepers take over).
+- `fast_context` (0) — a red outer casing, 1 dp, under the casing of every road tagged `maxspeed` >= 70
+  (motorways bar), `road-fast-casing` before `road`. The tiles carry `maxspeed` from z12 only, so
+  nothing shows at z11. E-ink uses a near-black casing. A change is a re-decode.
+- `oneway_emphasis` (0, 1, 2) — 0: the arrows from z16, spaced 200, opacity 0.8. 1: from z15, spaced 120
+  from z17, opacity 1. 2: as 1, 1.3 times as large, spaced 90 from z17. One layer pair per level
+  (`oneway`, `oneway-e1`, `oneway-e2`), gated on the parameter. A hollow contraflow arrow for bikes
+  waits for an `oneway_bicycle` attribute in the tiles (not there yet).
+- `route_focus` (0) — the waymarked-route network (`route-bicycle`, `route-hiking`: outdoor, topo) at 0.35
+  of its opacity, for an app colouring a route over it. SDK only, read by `line-opacity` alone, so a
+  toggle redraws without a re-decode. The network has no label or shield layer here, so nothing else to hide.
+- `cycle_focus` (0) — separated cycleways (`cycleway`, `tunnel-cycleway`, `bridge-cycleway`) teal
+  `#65AAA2` (Alpimaps' `surfaceColors.cycleway`; e-ink keeps its grey) and 1.5 times as wide. A
+  change is a re-decode (`line-width` is baked). They start at z13 as ever, not z12.
 - `highlight_drinking_water` (0) — water points larger, placed over any other label, and from z12
   whatever `water_min_zoom` says.
 - `models_3d` (0) — 3D trees and wind turbines (SDK only, above) in place of the tree icons and dots.

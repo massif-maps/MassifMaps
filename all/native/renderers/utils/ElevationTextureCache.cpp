@@ -423,7 +423,7 @@ namespace massif {
         auto uploadStart = std::chrono::steady_clock::now();
         for (int i = 0; i < MAX_UPLOADS_PER_FRAME; i++) {
             if (i > 0 && std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - uploadStart).count() > MAX_UPLOAD_MS_PER_FRAME) {
-                return; // the rest waits for the next frame; those tiles keep their old texture
+                break; // the rest waits for the next frame; those tiles keep their old texture
             }
             EncodedTexture encoded;
             {
@@ -468,6 +468,15 @@ namespace massif {
             }
             _drawnVersion++;
             if (encoded.grid) { _contentChanges.push_back(encoded.grid->getTile()); }
+        }
+        // The encode listener fired once per arrival, before this frame: a still map would leave the rest queued until a gesture.
+        bool queued;
+        {
+            std::lock_guard<std::mutex> lock(_encodeMutex);
+            queued = !_encodedQueue.empty();
+        }
+        if (queued && _textureReadyListener) {
+            _textureReadyListener();
         }
     }
 

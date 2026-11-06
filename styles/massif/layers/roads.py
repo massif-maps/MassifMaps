@@ -1,5 +1,6 @@
 from lib import from_zoom, gate, get, halo, in_class, layer, padded, scaled, zoom_ramp
 from layers import outdoor
+from params import FAST_SPEEDS
 
 CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']
 
@@ -222,19 +223,18 @@ def low_casing(v, filter, id='road-casing-low', maxzoom=14):
                        metadata=draw_once(c, id), emissive=0), v, 'road_osm_low')]
 
 
-FAST_SPEED = 70
-
-
 def fast_casing(v, *tests):
     """`fast_context`: a red band 1 dp outside the road's own casing, under it, on every road tagged
-    FAST_SPEED km/h or more bar a motorway"""
+    `fast_speed` km/h or more bar a motorway. A feature property against a parameter cannot bracket, so
+    one layer per FAST_SPEEDS value, the decoder pruning all but the one set."""
     c = v.palette
-    return [gate(layer('road-fast-casing', 'line', 'transportation', minzoom=11,
-                       filter=['all', in_class(CLASSES), ['!=', get('class'), 'motorway'], *tests, ['>=', get('maxspeed'), FAST_SPEED]],
+    return [gate(layer('road-fast-casing' if s == v.params['fast_speed'] else f'road-fast-casing-{s}', 'line', 'transportation', minzoom=11,
+                       filter=['all', in_class(CLASSES), ['!=', get('class'), 'motorway'], *tests, ['>=', get('maxspeed'), s]],
                        layout={'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY},
                        paint={'line-color': c['fast-case'], 'line-gap-width': WIDTH,
                               'line-width': padded(road_casing(c, CASING_WIDTH), 1)},
-                       metadata=draw_once(c, 'road-fast-casing'), emissive=0), v, 'fast_context')]
+                       metadata=draw_once(c, 'road-fast-casing', {'massif:filter': ['==', ['config', 'fast_speed'], s]}),
+                       emissive=0), v, 'fast_context') for s in FAST_SPEEDS]
 
 
 def paths(v, brunnel_test, prefix='', minzoom=12, trails=False):

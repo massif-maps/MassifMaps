@@ -40,7 +40,7 @@ See [`website/README.md`](website/README.md) for what works in the dev server vs
 ## Features
 
 * Supports all widespread mobile platforms, including Android and iOS, plus macOS through Mac Catalyst and UWP.
-* Supports multiple programming languages, including Objective C, Swift and C# on iOS, Java, Kotlin and C# on Android and C# on UWP.
+* Supports multiple programming languages, including Objective C and Swift on iOS, Java and Kotlin on Android and C# on UWP.
 * Supports common open GIS formats and protocols, including GeoJSON, Mapbox Vector Tiles, MBTiles, TMS.
 * High-level vector tile styling language support via [CartoCSS](https://carto.com/developers/styling/cartocss/) for visualizing maps
 * Globe and planar map view modes, plus 2.5D tilted map view support
@@ -81,7 +81,7 @@ See [`website/README.md`](website/README.md) for what works in the dev server vs
 | Routing library | `com.github.massif-maps:MassifMaps-android-aar` variant `routing`; `ValhallaRouting` | JitPack; Swift Package Manager |
 | Style tools (`massif-style`) | [`@massif-maps/style-tools`](https://www.npmjs.com/package/@massif-maps/style-tools) | npm; `css2xml` binaries on the release |
 | Massif styles | [`@massif-maps/styles`](https://www.npmjs.com/package/@massif-maps/styles) | npm, or the `massif-styles-v*` release |
-| Xamarin, UWP | — | build from source |
+| UWP | — | build from source |
 
 Versions, variants and release assets: [Packages](https://massif-maps.github.io/MassifMaps/docs/getting-started/packages).
 How each one is built and released: [BUILDING.md](BUILDING.md).

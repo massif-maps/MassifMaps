@@ -8,11 +8,7 @@
 namespace massif {
 
     PlatformType::PlatformType PlatformUtils::GetPlatformType() {
-#ifdef TARGET_XAMARIN
-        return PlatformType::PLATFORM_TYPE_XAMARIN_IOS;
-#else
         return PlatformType::PLATFORM_TYPE_IOS;
-#endif
     }
     
     std::string PlatformUtils::GetDeviceId() {

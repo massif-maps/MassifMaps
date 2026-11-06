@@ -11,10 +11,6 @@ namespace massif {
             return "android";
         case PlatformType::PLATFORM_TYPE_IOS:
             return "ios";
-        case PlatformType::PLATFORM_TYPE_XAMARIN_ANDROID:
-            return "xamarin-android";
-        case PlatformType::PLATFORM_TYPE_XAMARIN_IOS:
-            return "xamarin-ios";
         case PlatformType::PLATFORM_TYPE_WINDOWS_PHONE:
             return "windows-phone";
         case PlatformType::PLATFORM_TYPE_WEB:

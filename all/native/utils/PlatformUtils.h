@@ -19,9 +19,6 @@ namespace massif {
             PLATFORM_TYPE_MAC_OS,
             PLATFORM_TYPE_WINDOWS,
             PLATFORM_TYPE_WINDOWS_PHONE,
-            PLATFORM_TYPE_XAMARIN_IOS,
-            PLATFORM_TYPE_XAMARIN_ANDROID,
-            // Appended, never inserted: the values are the ABI every binding compiled against.
             PLATFORM_TYPE_WEB
         };
     }

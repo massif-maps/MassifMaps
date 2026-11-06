@@ -305,8 +305,8 @@ Three measurements, no production code. Results are in [Phase 0 — results](#ph
   `MGLContext.h` (see [`angle.md`](../../maintenance/angle.md)).
 - MGLKit survives this phase — that is what choosing the fork bought. The EGL + `CAMetalLayer`
   bootstrap moves to Phase 5, where Win32 and AppKit force it anyway.
-- Delete: the EAGL path, `--use-metalangle` (unconditional now), the `ios/glwrapper` OpenGLES
-  fallbacks, and Xamarin (unmaintained; it is also the only binding that blocks an ANGLE-only iOS).
+- Delete: the EAGL path, `--use-metalangle` (unconditional now) and the `ios/glwrapper` OpenGLES
+  fallbacks.
 
 **Done when**: `scripts/ios-dev` runs on device and simulator, Catalyst builds, and a screenshot at
 a fixed camera matches the EAGL build.
@@ -319,7 +319,7 @@ compiles `#version 100` shaders, so the shaders move separately in Phase 3.
 Contexts, no probes and no fallbacks left: Android manifests to `0x00030000` and
 `setEGLContextClientVersion(3)` in both `MapView` and `TextureMapView` (each carried its own copy of
 the `reqGlEsVersion` probe), `ConfigChooser` down to one ES3-renderable table, iOS `MapView.mm` with
-no ES2 retry, UWP `EGL_CONTEXT_CLIENT_VERSION` 3, and the Xamarin binding raised to match — leaving
+no ES2 retry, and UWP `EGL_CONTEXT_CLIENT_VERSION` 3 — leaving
 it at 2 would have handed the native side a context it now assumes it will never see.
 
 What the capability flags became:
@@ -671,7 +671,6 @@ bench has not been run, so this is deferred, not decided.
   and the fork's own README grades its ES 3.0 at 90%.
 - The linked (as opposed to static-slice) binary-size delta is still unmeasured. The stripped
   arm64-simulator slice is 14.2 MB at master, 15.2 MB at the vendored 2021 build.
-- Xamarin is assumed droppable. If it is not, it blocks an ANGLE-only iOS on its own.
 - Whether MetalANGLE's two unimplemented ES 3.0 features (primitive restart, last-provoking-vertex
   flat shading) matter to this renderer has not been checked against the draw calls it makes.
 - The Windows backend (D3D11 over Vulkan) is argued from ANGLE's feature-level table

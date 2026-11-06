@@ -107,16 +107,6 @@ export const Platforms = [
     minVersion: 'Windows 10 UWP',
     note: 'Inherited from the original CARTO SDK. The sources and `build-winphone.py` are still in the tree but nothing builds them in CI — treat as unverified.',
   },
-  {
-    id: 'xamarin',
-    name: '.NET / Xamarin',
-    icon: '🔷',
-    status: 'legacy',
-    languages: ['C#'],
-    distribution: 'Build from source only',
-    minVersion: 'Xamarin.Android / Xamarin.iOS',
-    note: 'Inherited from the original CARTO SDK. `build-xamarin.py` and the SWIG C# generator are still there, but untested against the fork.',
-  },
 ];
 
 export const StatusLabels = {
@@ -130,61 +120,61 @@ export const StatusLabels = {
  * ('unverified' = the shared C++ core has it, but no one has built or run that
  * binding against this fork). Planned platforms have nothing to compare yet.
  */
-export const CapabilityColumns = ['android', 'ios', 'macos', 'web', 'uwp', 'xamarin'];
+export const CapabilityColumns = ['android', 'ios', 'macos', 'web', 'uwp'];
 
 export const Capabilities = [
   {
     name: 'Vector tiles (MVT, MLT) + CartoCSS',
     to: '/docs/features/maplibre-tiles',
-    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified'},
   },
   {
     name: 'Raster tiles, MBTiles, PMTiles',
     to: '/docs/features/pmtiles',
-    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified'},
   },
   {
     name: '3D terrain + draping',
     to: '/docs/features/3d-terrain',
-    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified'},
   },
   {
     name: 'Hillshade & on-the-fly contours',
     to: '/docs/features/hillshade',
-    values: {android: true, ios: true, macos: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: 'unverified', uwp: 'unverified'},
   },
   {
     name: 'Sky, sun lighting & shadows',
     to: '/docs/features/sky-sun-shadows',
-    values: {android: true, ios: true, macos: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: 'unverified', uwp: 'unverified'},
   },
   {
     name: 'Post-processing shaders',
     to: '/docs/features/post-processing',
-    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified'},
   },
   {
     name: 'Valhalla street routing',
     to: '/docs/guides/routing',
-    values: {android: true, ios: true, macos: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: false, uwp: 'unverified'},
   },
   {
     name: 'Offline geocoding',
     to: '/docs/guides/geocoding',
-    values: {android: true, ios: true, macos: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: false, uwp: 'unverified'},
   },
   {
     name: 'Offline tiles (MBTiles, PMTiles, cache)',
     to: '/docs/guides/offline-maps',
-    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, macos: true, web: true, uwp: 'unverified'},
   },
   {
     name: 'Prebuilt artifacts published',
     to: '/docs/getting-started/installation',
-    values: {android: true, ios: true, macos: true, web: false, uwp: false, xamarin: false},
+    values: {android: true, ios: true, macos: true, web: false, uwp: false},
   },
   {
     name: 'Covered by CI',
-    values: {android: true, ios: true, macos: true, web: true, uwp: false, xamarin: false},
+    values: {android: true, ios: true, macos: true, web: true, uwp: false},
   },
 ];

@@ -26,7 +26,7 @@ A child is a `<name>.json` beside `project.json`, loaded like a variant (`name: 
 }
 ```
 
-Three things it can do:
+Four things it can do:
 
 - **Colours and fonts** — a stylesheet listed **before** `variables.mss` redeclares a variable:
   `@motorway`, `@water`, `@wood`, `@font_medium`... The compiler keeps the first declaration of a
@@ -34,6 +34,21 @@ Three things it can do:
 - **Rules** — a stylesheet listed **after** `style.mss` adds rules. A new attachment
   (`#landcover[class = 'wood']::mine_pattern { … }`) draws with its layer, over the base, without
   touching it.
+- **Road widths** — `variables.mss` also declares each road class's fill width, ramped over zoom
+  as the road rules have it (the `road_osm_low` look included): `@road_width_motorway`, `_trunk`,
+  `_primary`, `_secondary`, `_tertiary`, `_minor`, `_service`. A rule of yours takes one to draw
+  around the road without copying its numbers; this one is a band right outside a primary road's
+  fill, over its casing:
+
+  ```css
+  #transportation[zoom >= 12][class = 'primary']::mine_band {
+    line-color: #d33; line-width: 3; line-gap-width: @road_width_primary;
+  }
+  ```
+
+  The casing width is not a variable: it depends on the variant (e-ink outlines the major roads
+  from z8, the others from z14). The base's own rules inline their widths: redeclaring a `@road_width_*` moves your
+  rules, not Massif's roads.
 - **Defaults** — `styleparameters` merge key by key: set a parameter's default, or declare a new one
   for your own rules. `table.key` sets one entry of a table (`poi-fill.cafe`) and keeps the rest. `styles` does not merge; it is restated whole.
 

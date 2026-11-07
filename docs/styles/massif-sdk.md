@@ -66,6 +66,9 @@ The ones an app usually sets:
 | `lighting` | 1 (0 on e-ink) | 0 draws every colour flat, lit by no hour |
 | `models_3d` | 0 | 1 draws 3D trees and spinning wind turbines in place of the tree icons, on tilesets that carry the points; the `.glb` files are not packaged, add [them](https://github.com/massif-maps/MassifMaps/tree/master/styles/massif/models) under `models/` |
 
+A child project draws its own casing round a road with the `@road_width_<class>` variables, see
+[Extending Massif](massif-extending.md).
+
 A colour-only change repaints without decoding a tile again:
 [live style parameters](../features/style-parameters.md).
 

@@ -78,6 +78,22 @@ def _width():
 
 WIDTH = _width()
 
+def width_variables():
+    """`@road_width_<class>` for the SDK's variables.mss: WIDTH's ramp of one class, as the road rules
+    inline it, so a child project's rule can take a road's width (line-gap-width) without copying it"""
+    def at(match, cls):
+        return '%g' % class_value(match, 'other' if cls == 'service' else cls)
+
+    lines = []
+    for cls in CLASSES:
+        frames = []
+        for z, expr in zip(WIDTH[3::2], WIDTH[4::2]):
+            low, high = (at(expr[3], cls), at(expr[4], cls)) if expr[1] == ['config', 'road_osm_low'] else (at(expr, cls),) * 2
+            frames.append('(%g, %s)' % (z, low if low == high else '(([param::road_osm_low] = 1) ? %s : %s)' % (low, high)))
+        lines.append('@road_width_%s: exponential(1.5, [view::zoom], %s);' % (cls, ', '.join(frames)))
+    return lines
+
+
 # Liberty's, kept zoomed out for e-ink, whose roads are white on white. Every other variant cases
 # a road from z14 only, as Standard does (road_pair): below that the fill alone says the class.
 CASING_WIDTH = zoom_ramp(

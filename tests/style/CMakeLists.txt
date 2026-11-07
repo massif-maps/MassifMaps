@@ -60,6 +60,7 @@ add_executable(style_tests
   ZoomShiftTest.cpp
   DrawOnceTest.cpp
   CartoCSSTemplateTest.cpp
+  RoadWidthVariablesTest.cpp
   MultiPointPartIndexTest.cpp
   FieldValuePrefilterTest.cpp
   NullishCoalescingTest.cpp
@@ -91,6 +92,8 @@ target_include_directories(style_tests PRIVATE
   # rapidjson, for the JSON a table style parameter is carried as (Value.cpp).
   "${SDK_BASE_DIR}/libs-external/rapidjson/include"
   "${SDK_BASE_DIR}/libs-external/tinyformat")
+
+target_compile_definitions(style_tests PRIVATE MASSIF_STYLE_DIR="${SDK_BASE_DIR}/styles/massif")
 
 find_package(ZLIB REQUIRED)
 target_link_libraries(style_tests PRIVATE ZLIB::ZLIB)

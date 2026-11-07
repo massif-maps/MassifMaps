@@ -249,3 +249,13 @@
 @text_wrap_width: 88;
 @trail_spacing: 300;
 @tunnel_stroke_opacity: 0.5;
+
+/* A road class's fill width, ramped over zoom as the road rules have it: a child project's
+   rule takes it as `line-gap-width: @road_width_primary` to draw its own casing. */
+@road_width_motorway: exponential(1.5, [view::zoom], (3, 0.8), (5, (([param::road_osm_low] = 1) ? 0.85 : 0.91)), (6, (([param::road_osm_low] = 1) ? 0.97 : 1)), (7, (([param::road_osm_low] = 1) ? 1.14 : 1.12)), (8, (([param::road_osm_low] = 1) ? 1.4 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.82 : 1.6)), (10, (([param::road_osm_low] = 1) ? 2.34 : 1.94)), (11, 2.44), (12, 3.2), (18, 30), (22, 300));
+@road_width_trunk: exponential(1.5, [view::zoom], (3, 0.8), (5, (([param::road_osm_low] = 1) ? 0.85 : 0.91)), (6, (([param::road_osm_low] = 1) ? 0.97 : 1)), (7, (([param::road_osm_low] = 1) ? 1.14 : 1.12)), (8, (([param::road_osm_low] = 1) ? 1.4 : 1.3)), (9, (([param::road_osm_low] = 1) ? 1.82 : 1.6)), (10, (([param::road_osm_low] = 1) ? 2.34 : 1.94)), (11, 2.44), (12, 3.2), (18, 30), (22, 300));
+@road_width_primary: exponential(1.5, [view::zoom], (3, 0), (5, (([param::road_osm_low] = 1) ? 0 : 0.21)), (6, 0.4), (7, (([param::road_osm_low] = 1) ? 1 : 0.68)), (8, (([param::road_osm_low] = 1) ? 1.5 : 1.1)), (9, (([param::road_osm_low] = 1) ? 2 : 1.4)), (10, (([param::road_osm_low] = 1) ? 2.33 : 1.74)), (11, 2.24), (12, 3), (18, 28), (22, 280));
+@road_width_secondary: exponential(1.5, [view::zoom], (3, 0), (5, 0), (6, 0), (7, 0), (8, (([param::road_osm_low] = 1) ? 1 : 0)), (9, (([param::road_osm_low] = 1) ? 2 : 0.6)), (10, (([param::road_osm_low] = 1) ? 2.07 : 0.94)), (11, 1.44), (12, 2.2), (18, 26), (22, 260));
+@road_width_tertiary: exponential(1.5, [view::zoom], (3, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, (([param::road_osm_low] = 1) ? 0.35 : 0)), (10, (([param::road_osm_low] = 1) ? 0.95 : 0.46)), (11, 1.16), (12, 2.2), (18, 26), (22, 260));
+@road_width_minor: exponential(1.5, [view::zoom], (3, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, (([param::road_osm_low] = 1) ? 0 : 0.11)), (11, 0.26), (12, 0.5), (18, 20), (22, 200));
+@road_width_service: exponential(1.5, [view::zoom], (3, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0), (11, 0), (12, 0), (18, 10), (22, 100));

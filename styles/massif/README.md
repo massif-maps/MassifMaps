@@ -748,6 +748,13 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
   A colour the palette does not name keeps the layer-derived name the converter gives it.
 - **Rules**: a stylesheet listed AFTER `style.mss` adds its own; a new attachment (`::custom_...`)
   draws with its source layer's topmost entry, over the base, without touching it.
+- **Road widths**: `variables.mss` ends with `@road_width_<class>` for every road class (`motorway`,
+  `trunk`, `primary`, `secondary`, `tertiary`, `minor`, `service`): the fill width ramped over zoom as
+  `roads.WIDTH` has it, `road_osm_low` included, written by `build.py` from the same table the rules
+  use. A rule after `style.mss` draws around a road with `line-gap-width: @road_width_primary`, so
+  an app-specific casing (a fast-road band) needs no copy of Massif's widths. There is no casing
+  variable: the casing differs by variant. The base's rules inline their widths, so redeclaring one
+  moves the child's rules only.
 - **Parameters**: `styleparameters` merge key by key, so the child sets defaults
   (`poiStyle: plain`, `building_opacity: 1`, `track_min_zoom: 13`, `water_min_zoom: 12`) and declares its own for its rules
   (`['param::highlight_cycleways' = 1]`). `styles` does not merge: it is restated whole.

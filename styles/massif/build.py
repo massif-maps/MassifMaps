@@ -275,6 +275,9 @@ def convert(out='carto', extra=()):
     # the sprite URL resolves against the working directory, so the converter runs from here
     report = subprocess.run(['node', CLI, 'mapbox2css', 'family.json', out, *CONVERT, *extra], cwd=HERE,
                             capture_output=True, text=True, check=True).stdout
+    with open(os.path.join(HERE, out, 'variables.mss'), 'a') as f:
+        f.write('\n/* A road class\'s fill width, ramped over zoom as the road rules have it: a child project\'s\n   rule takes it as `line-gap-width: @road_width_primary` to draw its own casing. */\n'
+                + '\n'.join(roads.width_variables()) + '\n')
     # a when() is evaluated per feature and blocks rule pruning: the family is written to need none
     mss = open(os.path.join(HERE, out, 'style.mss')).read().splitlines()
     whens = [line.split(' {')[0] for line in mss if 'when(' in line]

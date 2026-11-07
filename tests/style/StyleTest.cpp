@@ -27,6 +27,7 @@ void testMBVTGeometryBounds();
 void testZoomShift();
 void testDrawOnce();
 void testCartoCSSTemplate();
+void testRoadWidthVariables();
 void testMultiPointPartIndex();
 void testFieldValuePrefilter();
 void testNullishCoalescing();
@@ -57,6 +58,7 @@ int main() {
     testZoomShift();
     testDrawOnce();
     testCartoCSSTemplate();
+    testRoadWidthVariables();
     testMultiPointPartIndex();
     testFieldValuePrefilter();
     testNullishCoalescing();

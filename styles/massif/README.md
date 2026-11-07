@@ -361,12 +361,6 @@ Switches (0/1):
 - `road_shields` (1), `show_boundaries` (1), `sub_boundaries` (1, states and communes).
 - `show_tram` (1), `show_underground` (1, rail and metro in tunnels), `emphasis_rails` (0: main
   lines, no `service`: a dark solid line from their first zoom, fading out over z15-16.5 as dark sleepers take over).
-- `fast_context` (0), `fast_speed` (70 km/h; 50, 60, 70, 80, 90 or 100) — a red outer casing, 1 dp,
-  under the casing of every road tagged `maxspeed` >= `fast_speed` (motorways bar), `road-fast-casing`
-  before `road`. The tiles carry `maxspeed` from z12 only, so nothing shows at z11. E-ink uses a
-  near-black casing. A change of either is a re-decode. The decoder cannot compare a feature
-  property with a parameter and still prune, so there is one layer per `fast_speed` value
-  (`road-fast-casing`, the default's, and `road-fast-casing-50` ...) and any other value draws nothing.
 - `oneway_emphasis` (0, 1, 2) — 0: the arrows from z16, spaced 200, opacity 0.8. 1: from z15, spaced 120
   from z17, opacity 1. 2: as 1, 1.3 times as large, spaced 90 from z17. One layer pair per level
   (`oneway`, `oneway-e1`, `oneway-e2`), gated on the parameter. A hollow contraflow arrow for bikes

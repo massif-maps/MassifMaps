@@ -3,8 +3,6 @@ state its own default (build.py's `Variant(params=...)`); a layer reads one thro
 `massif:minzoom-param` or `lib.gate`. The names follow Alpimaps' OSM style where it had one."""
 
 SWITCH = [0, 1]
-# km/h: `fast_speed` is one of these, a rule per value so the decoder prunes all but the one set (roads.fast_casing)
-FAST_SPEEDS = [50, 60, 70, 80, 90, 100]
 
 PARAMS = {
     # the label language chain: lang, fallback_lang, name_int, name:en, name (the app sets `lang`)
@@ -32,9 +30,6 @@ PARAMS = {
     # SDK only: 3D trees and wind turbines (models.mss) in place of the tree icons. Off: they cost GPU
     # time and shadows, and only some tilesets carry the tree points
     'models_3d': {'default': 0, 'values': SWITCH},
-    # a red outer casing on roads tagged `fast_speed` km/h or more (not motorways), from z12 where the tiles carry maxspeed
-    'fast_context': {'default': 0, 'values': SWITCH},
-    'fast_speed': {'default': 70, 'values': FAST_SPEEDS},
     # one-way arrows: 0 from z16 as ever; 1 from z15, closer, opaque; 2 as 1 and 1.3 times as large
     'oneway_emphasis': {'default': 0, 'values': [0, 1, 2]},
     # the waymarked-route network (outdoor, topo) at 0.35 of its opacity; SDK only, opacity alone so a toggle redraws

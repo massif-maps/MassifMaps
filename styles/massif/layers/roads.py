@@ -1,6 +1,5 @@
-from lib import from_zoom, gate, get, halo, in_class, layer, padded, scaled, zoom_ramp
+from lib import from_zoom, gate, get, halo, in_class, layer, scaled, zoom_ramp
 from layers import outdoor
-from params import FAST_SPEEDS
 
 CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']
 
@@ -239,20 +238,6 @@ def low_casing(v, filter, id='road-casing-low', maxzoom=14):
                        metadata=draw_once(c, id), emissive=0), v, 'road_osm_low')]
 
 
-def fast_casing(v, *tests):
-    """`fast_context`: a red band 1 dp outside the road's own casing, under it, on every road tagged
-    `fast_speed` km/h or more bar a motorway. A feature property against a parameter cannot bracket, so
-    one layer per FAST_SPEEDS value, the decoder pruning all but the one set."""
-    c = v.palette
-    return [gate(layer('road-fast-casing' if s == v.params['fast_speed'] else f'road-fast-casing-{s}', 'line', 'transportation', minzoom=11,
-                       filter=['all', in_class(CLASSES), ['!=', get('class'), 'motorway'], *tests, ['>=', get('maxspeed'), s]],
-                       layout={'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY},
-                       paint={'line-color': c['fast-case'], 'line-gap-width': WIDTH,
-                              'line-width': padded(road_casing(c, CASING_WIDTH), 1)},
-                       metadata=draw_once(c, 'road-fast-casing', {'massif:filter': ['==', ['config', 'fast_speed'], s]}),
-                       emissive=0), v, 'fast_context') for s in FAST_SPEEDS]
-
-
 def paths(v, brunnel_test, prefix='', minzoom=12, trails=False):
     """footways, cycleways, bridleways and steps, Standard's white ribbon with a hairline case. With
     `trails` the paths and bridleways are left to outdoor.trails, which draws them by difficulty."""
@@ -401,7 +386,6 @@ def ground(v):
       + low_casing(v, ['all', in_class(CLASSES), not_tunnel, no_ramp])
       + low_casing(v, ['all', in_class(CLASSES), ['==', get('brunnel'), 'tunnel'], no_ramp], 'road-tunnel-casing-low', 13)
       + plain_brunnels(v, no_ramp)
-      + fast_casing(v, surface, no_ramp)
       + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH)
       + unpaved(c, surface) + cycleway(c, surface) + [
         # private and no-access ways: the casing's red dashes, the OSM convention MapTiler also draws

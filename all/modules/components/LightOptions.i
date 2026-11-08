@@ -45,6 +45,7 @@
 %attribute(massif::LightOptions, float, ShadowBias, getShadowBias, setShadowBias)
 %attribute(massif::LightOptions, float, ShadowNormalOffset, getShadowNormalOffset, setShadowNormalOffset)
 %attribute(massif::LightOptions, float, ShadowSoftness, getShadowSoftness, setShadowSoftness)
+%attribute(massif::LightOptions, float, ShadowMinSunAltitude, getShadowMinSunAltitude, setShadowMinSunAltitude)
 %attribute(massif::LightOptions, float, ShadowDistance, getShadowDistance, setShadowDistance)
 %attribute(massif::LightOptions, int, ShadowCasterMargin, getShadowCasterMargin, setShadowCasterMargin)
 

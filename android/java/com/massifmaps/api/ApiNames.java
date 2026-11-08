@@ -834,6 +834,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> SHADOW_FOLLOWS_BUILDING_HEIGHT = MassifObject.key("shadowFollowsBuildingHeight");
     /** Returns the shadow map resolution. */
     public static final MassifObject.Key<Long> SHADOW_MAP_SIZE = MassifObject.key("shadowMapSize");
+    /** Returns the lowest sun altitude the shadows are drawn at. */
+    public static final MassifObject.Key<Double> SHADOW_MIN_SUN_ALTITUDE = MassifObject.key("shadowMinSunAltitude");
     /** Returns the shadow normal offset. */
     public static final MassifObject.Key<Double> SHADOW_NORMAL_OFFSET = MassifObject.key("shadowNormalOffset");
     /** Returns the shadow softness. */

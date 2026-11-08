@@ -3336,6 +3336,8 @@ export interface PropertyTypes {
     "shadowFollowsBuildingHeight": boolean;
     /** Returns the shadow map resolution. */
     "shadowMapSize": number;
+    /** Returns the lowest sun altitude the shadows are drawn at. */
+    "shadowMinSunAltitude": number;
     /** Returns the shadow normal offset. */
     "shadowNormalOffset": number;
     /** Returns the shadow softness. */
@@ -4406,6 +4408,8 @@ export interface PropertyTypes {
     "light.shadowFollowsBuildingHeight": boolean;
     /** Returns the shadow map resolution. */
     "light.shadowMapSize": number;
+    /** Returns the lowest sun altitude the shadows are drawn at. */
+    "light.shadowMinSunAltitude": number;
     /** Returns the shadow normal offset. */
     "light.shadowNormalOffset": number;
     /** Returns the shadow softness. */
@@ -4450,6 +4454,8 @@ export interface PropertyTypes {
     "lightOptions.shadowFollowsBuildingHeight": boolean;
     /** Returns the shadow map resolution. */
     "lightOptions.shadowMapSize": number;
+    /** Returns the lowest sun altitude the shadows are drawn at. */
+    "lightOptions.shadowMinSunAltitude": number;
     /** Returns the shadow normal offset. */
     "lightOptions.shadowNormalOffset": number;
     /** Returns the shadow softness. */
@@ -8158,6 +8164,8 @@ export interface OptionsSpec_light {
   shadowFollowsBuildingHeight?: boolean;
   /** Returns the shadow map resolution. */
   shadowMapSize?: number;
+  /** Returns the lowest sun altitude the shadows are drawn at. */
+  shadowMinSunAltitude?: number;
   /** Returns the shadow normal offset. */
   shadowNormalOffset?: number;
   /** Returns the shadow softness. */

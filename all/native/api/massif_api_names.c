@@ -423,6 +423,7 @@ static const char* const kNames[] = {
     "shadowDistance",
     "shadowFollowsBuildingHeight",
     "shadowMapSize",
+    "shadowMinSunAltitude",
     "shadowNormalOffset",
     "shadowSoftness",
     "shadowStrength",

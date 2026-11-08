@@ -356,6 +356,9 @@ add_executable(api_tests
   "${SDK_BASE_DIR}/all/native/terrain/ElevationTileGrid.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/components/TileBitmap.cpp"
   "${SDK_BASE_DIR}/all/native/utils/TileUtils.cpp"
+  # The shadow floor's default and clamp; LightOptions links on its own over the colour and stop value classes.
+  ShadowMinSunAltitudeTest.cpp
+  "${SDK_BASE_DIR}/all/native/components/LightOptions.cpp"
   ManeuverArrowTest.cpp
   # The GL resource queue only; GLContext is stubbed in the test, the GL headers are all it needs.
   GLResourceManagerTest.cpp

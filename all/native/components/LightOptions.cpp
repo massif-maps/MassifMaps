@@ -36,6 +36,7 @@ namespace massif {
         _shadowBias(1.0f),
         _shadowNormalOffset(3.0f),
         _shadowSoftness(0.5f),
+        _shadowMinSunAltitude(15.0f),
         _shadowDistance(0.0f), // 0 = the built-in 4.5, which is mapbox's
         _shadowCasterMargin(3),
         _onChangeListeners(),
@@ -268,6 +269,17 @@ namespace massif {
         float value = std::min(8.0f, std::max(0.0f, softness));
         if (_shadowSoftness.exchange(value) != value) {
             notifyOptionChanged("ShadowSoftness");
+        }
+    }
+
+    float LightOptions::getShadowMinSunAltitude() const {
+        return _shadowMinSunAltitude.load();
+    }
+
+    void LightOptions::setShadowMinSunAltitude(float altitude) {
+        float value = std::min(30.0f, std::max(2.0f, altitude));
+        if (_shadowMinSunAltitude.exchange(value) != value) {
+            notifyOptionChanged("ShadowMinSunAltitude");
         }
     }
 

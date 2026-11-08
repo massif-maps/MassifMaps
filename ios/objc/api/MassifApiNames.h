@@ -834,6 +834,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowDistance;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowFollowsBuildingHeight;
 /** Returns the shadow map resolution. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowMapSize;
+/** Returns the lowest sun altitude the shadows are drawn at. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowMinSunAltitude;
 /** Returns the shadow normal offset. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowNormalOffset;
 /** Returns the shadow softness. */

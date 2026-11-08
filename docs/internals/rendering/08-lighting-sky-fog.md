@@ -298,7 +298,7 @@ Design points, each measured:
   the same factor, so the cascade ladder goes coarse (31/53/62 m texels at z12.3 t60, against 11 m
   bounded) and the shadows need casters far outside the drawn cover — what reaches the screen is a
   grey wash that appears and disappears with the cover. The **shadow pass alone** floors the sun
-  altitude at 15°, keeping the azimuth, which caps shadow length at ~3.7× the relief. N·L lighting
+  altitude at `ShadowMinSunAltitude` (15° by default, 2 to 30), keeping the azimuth, which caps shadow length at ~3.7× the relief. N·L lighting
   keeps the true sun, so a low sun still reads as a low sun.
 - **`shadowStrength` is not the depth drawn.** A shadow hides the DIRECT light and nothing else, so
   `resolveLighting` multiplies the strength by that light's share of the scene —

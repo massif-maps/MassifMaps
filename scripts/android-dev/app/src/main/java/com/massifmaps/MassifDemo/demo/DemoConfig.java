@@ -467,6 +467,8 @@ public final class DemoConfig {
     /** 1 = mapbox's own shadow depth; the SDK scales it by the sun's share of the light. */
     public static float SHADOW_STRENGTH = 1.0f;
     public static float SHADOW_SOFTNESS = 0.5f;
+    /** The lowest sun altitude the shadow pass draws at, degrees (2..30). */
+    public static float SHADOW_MIN_SUN_ALTITUDE = 15f;
     public static int SHADOW_MAP_SIZE = 2048;
     public static int SHADOW_CASCADES = 2;
     public static float SHADOW_BIAS = 1.0f;
@@ -1458,6 +1460,7 @@ public final class DemoConfig {
         SUN_COLOR_ARGB = DemoCfg.cfgColorInt("sunColor", SUN_COLOR_ARGB);
         SHADOW_STRENGTH = DemoCfg.cfgFloat("shadow", SHADOW_STRENGTH);
         SHADOW_SOFTNESS = DemoCfg.cfgFloat("shadowSoftness", SHADOW_SOFTNESS);
+        SHADOW_MIN_SUN_ALTITUDE = DemoCfg.cfgFloat("shadowMinSunAltitude", SHADOW_MIN_SUN_ALTITUDE);
         SHADOW_MAP_SIZE = DemoCfg.cfgInt("shadowMapSize", SHADOW_MAP_SIZE);
         SHADOW_CASCADES = DemoCfg.cfgInt("shadowCascades", SHADOW_CASCADES);
         SHADOW_BIAS = DemoCfg.cfgFloat("shadowBias", SHADOW_BIAS);

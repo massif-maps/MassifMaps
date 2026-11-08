@@ -4433,6 +4433,15 @@
           "doc": "Returns the shadow map resolution."
         },
         {
+          "name": "shadowMinSunAltitude",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the lowest sun altitude the shadows are drawn at."
+        },
+        {
           "name": "shadowNormalOffset",
           "type": "FLOAT",
           "readOnly": false,

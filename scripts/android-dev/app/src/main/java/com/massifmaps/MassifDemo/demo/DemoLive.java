@@ -44,7 +44,7 @@ public final class DemoLive extends BroadcastReceiver {
         "clearance", "fovY"
     };
     private static final String[] LIGHT_KEYS = {
-        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness",
+        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness", "shadowMinSunAltitude",
         "shadowDistance", "shadowCascades", "shadowNormalOffset", "terrainLight", "terrainShadows", "shadowFollowsHeight", "ambient",
         "ambientColor", "sunColor", "sunIntensity", "dayCycleLights"
     };

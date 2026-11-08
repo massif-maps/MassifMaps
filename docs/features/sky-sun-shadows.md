@@ -50,6 +50,7 @@ light.setSunPositionFromTime(2026, 8, 14, 7, 30, 45.188, 5.719)   // UTC + lat/l
 | `ShadowMapSize` / `ShadowCascades` | `2048` / `2` | Cascaded shadow map, up to 4 cascades. Two is MapBox's own count and the slices are theirs. A third page is a nearer, sharper one, but it also makes each box smaller and the screen-space derivatives larger, which is what serrated a building's vertical edges. |
 | `ShadowBias` / `ShadowSoftness` / `ShadowDistance` | `1.0` / `0.5` / `0` | `ShadowBias` is a UNITLESS scale on MapBox's bias (a constant plus a capped slope term, in normalised light depth), so 1 is theirs unchanged. `ShadowSoftness` is the shadow edge's blur radius in shadow-map texels, the same for the ground, buildings and 3D models; 0 is a hard edge and the cheapest lookup. `ShadowDistance` 0 = derived from the view. |
 | `ShadowFollowsBuildingHeight` | `false` | Building shadows keep the full height the buildings have, even while a style lays them down between tilt 80 and 90 (`building-height-view-scale`), which reads true from straight above. On, they shrink with the drawn buildings. The zoom ramp (`building-height-scale`) always moves them. |
+| `ShadowMinSunAltitude` | `15` | The lowest sun altitude, in degrees (2 to 30), the shadow pass draws at: a lower sun is raised to it for the shadows alone, azimuth kept. Lower draws the long shadows of a low sun at the cost of a bigger light box and coarser cascades (not measured on a device). |
 | `ShadowCasterMargin` | `3` | Ring of off-screen tiles that may still cast into the view. |
 | `TerrainShadowCastingEnabled` | `true` | Whether the relief casts shadows. Off, buildings and models still cast onto the ground, and the terrain's caster draws and the mountain-sized caster ring are skipped: for a flat or straight-down 3D view, where the relief has nothing to throw. A terrain with exaggeration 0 never casts. |
 
@@ -84,8 +85,8 @@ Every property of all four options classes:
 [the options reference](/docs/api/reference/options). Runnable:
 [the atmosphere example](/examples#atmosphere).
 
-Two details worth knowing about the shadow model: the shadow pass floors the sun altitude at 15°
-(a 9° sun throws a 4.4 km shadow off a 700 m hill and the cascade ladder goes useless), while N·L
+Two details worth knowing about the shadow model: the shadow pass floors the sun altitude at 15° by default
+(a 9° sun throws a 4.4 km shadow off a 700 m hill and the cascade ladder goes useless; `ShadowMinSunAltitude` lowers it, 2 to 30), while N·L
 lighting keeps the true sun; and the shadow map is snapped and cached, so a still camera re-renders
 nothing.
 

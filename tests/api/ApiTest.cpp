@@ -129,6 +129,7 @@ void testSkyDirection();
 void testTerrainOcclusion();
 void testSunExposure();
 void testSunExposureJob();
+void testShadowMinSunAltitude();
 
 namespace {
 
@@ -548,6 +549,7 @@ int main() {
     testTerrainOcclusion();
     testSunExposure();
     testSunExposureJob();
+    testShadowMinSunAltitude();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

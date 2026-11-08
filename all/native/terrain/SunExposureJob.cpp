@@ -333,7 +333,9 @@ namespace massif {
 
         Grids grids;
         LoadReport report;
-        Clock::time_point deadline = Clock::now() + std::chrono::milliseconds(options.getLoadTimeoutMs());
+        Clock::time_point started = Clock::now();
+        auto elapsedMs = [&]() { return static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count()); };
+        Clock::time_point deadline = started + std::chrono::milliseconds(options.getLoadTimeoutMs());
         bool hasDeadline = options.getLoadTimeoutMs() > 0;
         std::size_t budgetBytes = static_cast<std::size_t>(options.getCacheMB()) * 1024 * 1024;
         bool load = options.isLoadMissingTiles();
@@ -346,6 +348,7 @@ namespace massif {
             requested.insert(tile.getTileId());
         }
         loadTiles(manager, coarse, load, deadline, hasDeadline, budgetBytes, grids, report);
+        Log::Infof("SunExposureJob: %d points, coarse cover z%d: %d tiles asked, %d MB held, %d ms", static_cast<int>(count), coarseZoom, static_cast<int>(coarse.size()), static_cast<int>(grids.bytes >> 20), elapsedMs());
         double regionMax = std::numeric_limits<double>::lowest(), regionMin = std::numeric_limits<double>::max();
         for (const auto& entry : grids.byTile) {
             if (entry.second) {
@@ -384,6 +387,7 @@ namespace massif {
             });
         }
         loadTiles(manager, planned, load, deadline, hasDeadline, budgetBytes, grids, report);
+        Log::Infof("SunExposureJob: %d marched tiles planned, %d MB held, deadline hit %d, %d ms", static_cast<int>(planned.size()), static_cast<int>(grids.bytes >> 20), report.deadlineHit ? 1 : 0, elapsedMs());
 
         // Round three: the marches, on the grids held here whatever the manager's cache evicts.
         RayGround ground(grids, geometry);
@@ -415,6 +419,7 @@ namespace massif {
             (entry.second ? loaded : missing)++;
         }
         writeHeader(loaded, missing);
+        Log::Infof("SunExposureJob: done in %d ms, %d tiles loaded, %d missing, zoom %d..%d, flags %d", elapsedMs(), loaded, missing, maxZoomUsed < 0 ? -1 : minZoomUsed, maxZoomUsed, flags);
 
         if (options.isReleaseCache()) {
             manager.clearGridCache();

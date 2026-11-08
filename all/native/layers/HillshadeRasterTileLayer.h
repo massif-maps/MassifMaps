@@ -16,6 +16,7 @@
 
 namespace massif {
     class ElevationManager;
+    class SunExposureOptions;
 
     namespace HillshadeMethod {
         /**
@@ -286,6 +287,23 @@ namespace massif {
 
         double getElevation(const MapPos& pos) const;
         std::vector<double> getElevations(const std::vector<MapPos> poses) const;
+
+        /**
+         * Computes whether the terrain hides the sun along a route, by marching from each position toward the
+         * sun over this layer's elevation data. Loads the elevation tiles it needs (so call it off the UI thread,
+         * in chunks of a few hundred positions), never throws on missing data and flags what it lacked.
+         * Terrain only: no buildings, trees or tunnels. Details and the measured cost: docs/features/sun-exposure.md.
+         * @param poses The positions to query (WGS84), in route order.
+         * @param sunDirections The sun at each position, two numbers per position: azimuth in degrees clockwise
+         *        from north and apparent altitude in degrees (astronomy is the caller's).
+         * @param options The march and loading options, null for the defaults.
+         * @return 8 header numbers (version 1, count, stride 4, tilesLoaded, tilesMissing, minZoomUsed,
+         *         maxZoomUsed, flags: 1 load deadline hit, 2 a point truncated at the maximum distance), then four
+         *         numbers per position: sun fraction (0 hidden to 1 lit, -1 unknown), horizon angle in degrees
+         *         (a lower bound where hidden), distance in meters to the first ground that hid the sun's centre
+         *         (-1 none), and status bits (1 coarse DEM, 2 no DEM, 4 dark, 8 low sun, 16 truncated).
+         */
+        std::vector<double> computeSunExposure(const std::vector<MapPos>& poses, const std::vector<double>& sunDirections, const std::shared_ptr<SunExposureOptions>& options) const;
 
     protected:
         virtual bool onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState);

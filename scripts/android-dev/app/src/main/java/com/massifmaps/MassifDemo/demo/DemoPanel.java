@@ -867,6 +867,9 @@ public final class DemoPanel {
         slider(context, "softness (texels)", 0, 4, DemoConfig.SHADOW_SOFTNESS, false, new FloatSetting() {
             public void set(float value) { DemoConfig.SHADOW_SOFTNESS = value; demo.lightOptions.set("shadowSoftness", value); }
         });
+        slider(context, "min sun altitude (deg)", 2, 30, DemoConfig.SHADOW_MIN_SUN_ALTITUDE, false, new FloatSetting() {
+            public void set(float value) { DemoConfig.SHADOW_MIN_SUN_ALTITUDE = value; demo.lightOptions.set("shadowMinSunAltitude", value); }
+        });
         // Reallocates the shadow map atlas, so apply on release only.
         slider(context, "map size", 512, 4096, DemoConfig.SHADOW_MAP_SIZE, true, new FloatSetting() {
             public void set(float value) {

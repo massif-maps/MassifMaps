@@ -295,6 +295,19 @@ namespace massif {
         void setShadowSoftness(float softness);
 
         /**
+         * Returns the lowest sun altitude the shadows are drawn at.
+         * @return The altitude in degrees. The default is 15.
+         */
+        float getShadowMinSunAltitude() const;
+        /**
+         * Sets the lowest sun altitude the shadow pass uses: a lower sun is raised to it for the shadows alone
+         * (azimuth kept), while the lighting keeps the true sun. A lower floor draws the long shadows of a low
+         * sun, but the light box and the caster ring grow with relief / tan(altitude) and the cascades go coarse.
+         * @param altitude The new floor in degrees (clamped to 2..30).
+         */
+        void setShadowMinSunAltitude(float altitude);
+
+        /**
          * Returns the shadow depth bias scale.
          * @return The scale on MapBox's shadow bias. The default is 1 (theirs unchanged).
          */
@@ -360,6 +373,7 @@ namespace massif {
         std::atomic<float> _shadowBias;
         std::atomic<float> _shadowNormalOffset;
         std::atomic<float> _shadowSoftness;
+        std::atomic<float> _shadowMinSunAltitude;
         std::atomic<float> _shadowDistance;
         std::atomic<int> _shadowCasterMargin;
 

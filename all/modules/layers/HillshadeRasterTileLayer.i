@@ -3,7 +3,7 @@
 
 %module HillshadeRasterTileLayer
 
-!proxy_imports(massif::HillshadeRasterTileLayer, core.MapPos, core.MapVec, core.MapPosVector, core.DoubleVector, datasources.TileDataSource, rastertiles.ElevationDecoder, graphics.Color, layers.CustomRasterTileLayer)
+!proxy_imports(massif::HillshadeRasterTileLayer, core.MapPos, core.MapVec, core.MapPosVector, core.DoubleVector, datasources.TileDataSource, rastertiles.ElevationDecoder, graphics.Color, layers.CustomRasterTileLayer, components.SunExposureOptions)
 
 %{
 #include "layers/HillshadeRasterTileLayer.h"
@@ -19,6 +19,7 @@
 %import "graphics/Color.i"
 %import "layers/CustomRasterTileLayer.i"
 %import "core/DoubleVector.i"
+%import "components/SunExposureOptions.i"
 
 !enum(massif::HillshadeMethod::HillshadeMethod)
 !polymorphic_shared_ptr(massif::HillshadeRasterTileLayer, layers.HillshadeRasterTileLayer)
@@ -27,6 +28,8 @@
 !method(massif::HillshadeRasterTileLayer, getElevation, arg(pos, pos), returns(float))
 // A profile is thousands of numbers, so the result is a bulk array rather than JSON.
 !method(massif::HillshadeRasterTileLayer, getElevations, arg(positions, positions), returns(doubles))
+// Terrain shade along a route: 8 header numbers, then four per position. Blocks on tile loading, so call it with callAsync, in chunks.
+!method(massif::HillshadeRasterTileLayer, computeSunExposure, arg(positions, positions), arg(sunDirections, json), arg(options, json), returns(doubles))
 !spec(massif::HillshadeRasterTileLayer, layer, hillshade, alias(source, dataSource))
 %attribute(massif::HillshadeRasterTileLayer, float, Contrast, getContrast, setContrast)
 %attribute(massif::HillshadeRasterTileLayer, float, HeightScale, getHeightScale, setHeightScale)

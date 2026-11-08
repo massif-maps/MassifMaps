@@ -4,6 +4,7 @@
 #include "datasources/TileDataSource.h"
 #include "terrain/CameraClearance.h"
 #include "terrain/ElevationManager.h"
+#include "terrain/SunExposureJob.h"
 #include "utils/Log.h"
 
 #include <algorithm>
@@ -760,6 +761,10 @@ namespace massif {
 
     std::vector<double> TerrainOptions::getElevations(const std::vector<MapPos>& poses) const {
         return _elevationManager->getElevations(poses);
+    }
+
+    std::vector<double> TerrainOptions::computeSunExposure(const std::vector<MapPos>& poses, const std::vector<double>& sunDirections, const std::shared_ptr<SunExposureOptions>& options) const {
+        return SunExposureJob::compute(*_elevationManager, poses, sunDirections, options);
     }
 
     std::shared_ptr<ElevationManager> TerrainOptions::getElevationManager() const {

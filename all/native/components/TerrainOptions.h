@@ -21,6 +21,7 @@ namespace massif {
     class TileDataSource;
     class ElevationDecoder;
     class ElevationManager;
+    class SunExposureOptions;
 
     namespace TerrainFlattenMode {
         /**
@@ -739,6 +740,17 @@ namespace massif {
          * @return The elevations in meters (-1000000 where no data is available).
          */
         std::vector<double> getElevations(const std::vector<MapPos>& poses) const;
+
+        /**
+         * Computes whether the terrain hides the sun along a route, over the terrain's own elevation data. The
+         * same call, options and result as HillshadeRasterTileLayer::computeSunExposure, which a route feature
+         * should prefer: this one loads into the cache the 3D view draws from.
+         * @param poses The positions to query (WGS84), in route order.
+         * @param sunDirections Azimuth and apparent altitude in degrees for each position.
+         * @param options The march and loading options, null for the defaults.
+         * @return The header and four numbers per position, see HillshadeRasterTileLayer::computeSunExposure.
+         */
+        std::vector<double> computeSunExposure(const std::vector<MapPos>& poses, const std::vector<double>& sunDirections, const std::shared_ptr<SunExposureOptions>& options) const;
 
         /**
          * Returns whether 3D terrain is being rendered right now: enabled by the app AND not

@@ -3957,6 +3957,26 @@
       "methods": [
         {
           "cppClass": "massif::HillshadeRasterTileLayer",
+          "name": "computeSunExposure",
+          "args": [
+            {
+              "name": "positions",
+              "type": "positions"
+            },
+            {
+              "name": "sunDirections",
+              "type": "json"
+            },
+            {
+              "name": "options",
+              "type": "json"
+            }
+          ],
+          "returns": "doubles",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::HillshadeRasterTileLayer",
           "name": "getElevation",
           "args": [
             {
@@ -4411,6 +4431,15 @@
           "position": false,
           "cppType": "int",
           "doc": "Returns the shadow map resolution."
+        },
+        {
+          "name": "shadowMinSunAltitude",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the lowest sun altitude the shadows are drawn at."
         },
         {
           "name": "shadowNormalOffset",
@@ -8655,6 +8684,140 @@
       "methods": [],
       "events": []
     },
+    "massif::SunExposureOptions": {
+      "base": null,
+      "properties": [
+        {
+          "name": "cacheMB",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the memory one call may hold in decoded elevation grids."
+        },
+        {
+          "name": "darkBelow",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the apparent altitude under which a point is DARK and not marched."
+        },
+        {
+          "name": "discRadius",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the sun disc's angular radius, the half-width of the penumbra."
+        },
+        {
+          "name": "eyeHeight",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the height of the eye above the ground at each point."
+        },
+        {
+          "name": "firstStep",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the first march step, also the smallest."
+        },
+        {
+          "name": "loadMissingTiles",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the call loads the elevation tiles it needs."
+        },
+        {
+          "name": "loadTimeoutMs",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the deadline for loading tiles in one call."
+        },
+        {
+          "name": "lodRatio",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the wanted elevation texel size per meter of distance."
+        },
+        {
+          "name": "lowSunBelow",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the apparent altitude under which a point is flagged LOW_SUN."
+        },
+        {
+          "name": "maxDistance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns how far toward the sun the march goes."
+        },
+        {
+          "name": "minTexel",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the finest texel size the march asks for."
+        },
+        {
+          "name": "refraction",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns the atmospheric refraction coefficient."
+        },
+        {
+          "name": "releaseCache",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the call empties the elevation cache once it is done."
+        },
+        {
+          "name": "stepGrowth",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "double",
+          "doc": "Returns how fast the march step grows with distance."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
     "massif::TerrainOptions": {
       "base": null,
       "properties": [
@@ -9124,6 +9287,26 @@
             {
               "name": "maxDistance",
               "type": "float"
+            }
+          ],
+          "returns": "doubles",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "computeSunExposure",
+          "args": [
+            {
+              "name": "positions",
+              "type": "positions"
+            },
+            {
+              "name": "sunDirections",
+              "type": "json"
+            },
+            {
+              "name": "options",
+              "type": "json"
             }
           ],
           "returns": "doubles",

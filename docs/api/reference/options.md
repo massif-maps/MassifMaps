@@ -61,6 +61,7 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | `shadowCasterMargin` | integer | read/write | Returns the shadow caster margin in tiles. |
 | `shadowDistance` | number | read/write | Returns the shadow distance. |
 | `shadowMapSize` | integer | read/write | Returns the shadow map resolution. |
+| `shadowMinSunAltitude` | number | read/write | Returns the lowest sun altitude the shadows are drawn at. |
 | `shadowNormalOffset` | number | read/write | Returns the shadow normal offset. |
 | `shadowSoftness` | number | read/write | Returns the shadow softness. |
 | `shadowStrength` | number | read/write | Returns the shadow strength. |
@@ -161,3 +162,4 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | Method | Arguments | Returns |
 |---|---|---|
 | `calculateHorizon` | pos: pos, eyeHeight: float, azimuths: json, maxDistance: float | doubles |
+| `computeSunExposure` | positions: positions, sunDirections: json, options: json | doubles |

@@ -107,6 +107,7 @@ namespace {
             lighting.shadowBias = lightOptions->getShadowBias();
         lighting.shadowNormalOffset = lightOptions->getShadowNormalOffset();
             lighting.shadowSoftness = lightOptions->getShadowSoftness();
+            lighting.shadowMinSunAltitude = lightOptions->getShadowMinSunAltitude();
             lighting.shadowDistance = lightOptions->getShadowDistance();
             lighting.shadowMapSize = lightOptions->getShadowMapSize();
             lighting.shadowCascades = lightOptions->getShadowCascades();

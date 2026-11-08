@@ -3,7 +3,7 @@
 
 %module TerrainOptions
 
-!proxy_imports(massif::TerrainOptions, core.MapPos, core.MapPosVector, core.DoubleVector, datasources.TileDataSource, graphics.Color, rastertiles.ElevationDecoder)
+!proxy_imports(massif::TerrainOptions, core.MapPos, core.MapPosVector, core.DoubleVector, datasources.TileDataSource, graphics.Color, rastertiles.ElevationDecoder, components.SunExposureOptions)
 
 %{
 #include "components/TerrainOptions.h"
@@ -20,6 +20,7 @@
 %import "graphics/Color.i"
 %import "datasources/TileDataSource.i"
 %import "rastertiles/ElevationDecoder.i"
+%import "components/SunExposureOptions.i"
 
 !shared_ptr(massif::TerrainOptions, components.TerrainOptions)
 
@@ -32,6 +33,8 @@
 // The ground height under a WGS84 position, in metres; -1000000 when there is no data. Blocks on tile loading.
 !method(massif::TerrainOptions, getElevation, arg(pos, pos), returns(float))
 !method(massif::TerrainOptions, getElevations, arg(positions, positions), returns(doubles))
+// The same call as on the hillshade layer, over the terrain's own elevation cache.
+!method(massif::TerrainOptions, computeSunExposure, arg(positions, positions), arg(sunDirections, json), arg(options, json), returns(doubles))
 !method(massif::TerrainOptions, calculateHorizon, arg(pos, pos), arg(eyeHeight, float), arg(azimuths, json), arg(maxDistance, float), returns(doubles))
 
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)

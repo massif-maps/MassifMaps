@@ -44,7 +44,7 @@ public final class DemoLive extends BroadcastReceiver {
         "clearance", "fovY"
     };
     private static final String[] LIGHT_KEYS = {
-        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness",
+        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness", "shadowMinSunAltitude",
         "shadowDistance", "shadowCascades", "shadowNormalOffset", "terrainLight", "terrainShadows", "shadowFollowsHeight", "ambient",
         "ambientColor", "sunColor", "sunIntensity", "dayCycleLights"
     };
@@ -163,10 +163,61 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("legend")) {
             applyLegend(extras.getString("legend"));
         }
+        if (extras.containsKey("sunExposure")) {
+            applySunExposure(extras.getString("sunExposure"));
+        }
         if (extras.containsKey("apiCancel")) {
             Log.i(TAG, "apiCancel " + apiCall + " -> " + MassifApi.cancelCall(apiCall));
         }
         demo.mapView.requestRender();
+    }
+
+    /**
+     * Terrain shade along an east-going line from the camera, one sun for all of it (computeSunExposure):
+     *
+     *   --es sunExposure '135,10'           azimuth,altitude (apparent, degrees)
+     *   --es sunExposure '135,10,400,50'    ... 400 points every 50 m, and add ",true" to ask for no waiting
+     *
+     * Logs the time, the tiles, the share of points under 0.3 / over 0.7 and the status bits seen.
+     */
+    private void applySunExposure(String request) {
+        if (demo.hillshadeLayer == null) {
+            Log.w(TAG, "sunExposure: needs the hillshade layer (LAYERS > hillshade)");
+            return;
+        }
+        String[] parts = request != null && !request.isEmpty() ? request.split(",") : new String[] { "135", "10" };
+        double azimuth = Double.parseDouble(parts[0]), altitude = parts.length > 1 ? Double.parseDouble(parts[1]) : 10;
+        int count = parts.length > 2 ? Integer.parseInt(parts[2]) : 200;
+        double step = parts.length > 3 ? Double.parseDouble(parts[3]) : 100;
+        boolean cached = parts.length > 4 && "true".equals(parts[4]);
+        com.massifmaps.api.Position focus = demo.map.camera().position();
+        double dLon = step / (111320.0 * Math.cos(Math.toRadians(focus.lat)));
+        StringBuilder positions = new StringBuilder("["), sun = new StringBuilder("[");
+        for (int i = 0; i < count; i++) {
+            positions.append(i > 0 ? "," : "").append("[").append(focus.lng + i * dLon).append(",").append(focus.lat).append("]");
+            sun.append(i > 0 ? "," : "").append(azimuth).append(",").append(altitude);
+        }
+        String args = "[" + positions + "]," + sun + "],{\"eyeHeight\":1.5,\"load\":\"" + (cached ? "cached" : "allow") + "\"}]";
+        try {
+            long start = System.currentTimeMillis();
+            int result = MassifApi.call(demo.hillshadeLayer.handle(), "computeSunExposure", args);
+            double[] doubles = MassifApi.getDoubles(result);
+            MassifApi.destroy(result);
+            int shaded = 0, lit = 0;
+            int status = 0;
+            for (int i = 0; i < count && doubles.length >= 8 + 4 * (i + 1); i++) {
+                double fraction = doubles[8 + 4 * i];
+                shaded += fraction >= 0 && fraction < 0.3 ? 1 : 0;
+                lit += fraction >= 0.7 ? 1 : 0;
+                status |= (int) doubles[8 + 4 * i + 3];
+            }
+            Log.i(TAG, "sunExposure " + count + " points in " + (System.currentTimeMillis() - start) + " ms: tiles loaded="
+                    + (doubles.length > 4 ? doubles[3] : -1) + " missing=" + (doubles.length > 4 ? doubles[4] : -1)
+                    + " zoom " + (doubles.length > 6 ? doubles[5] + ".." + doubles[6] : "?") + " flags=" + (doubles.length > 7 ? doubles[7] : -1)
+                    + " shade=" + shaded + " lit=" + lit + " statusBits=" + status);
+        } catch (Exception e) {
+            Log.w(TAG, "sunExposure failed: " + e.getMessage());
+        }
     }
 
     /**

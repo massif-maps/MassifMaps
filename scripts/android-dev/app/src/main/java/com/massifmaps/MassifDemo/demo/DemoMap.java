@@ -1920,6 +1920,7 @@ public class DemoMap {
                 .set("shadowFollowsBuildingHeight", DemoConfig.SHADOW_FOLLOWS_HEIGHT)
                 .set("shadowStrength", DemoConfig.SHADOW_STRENGTH)
                 .set("shadowSoftness", DemoConfig.SHADOW_SOFTNESS)
+                .set("shadowMinSunAltitude", DemoConfig.SHADOW_MIN_SUN_ALTITUDE)
                 .set("shadowMapSize", DemoConfig.SHADOW_MAP_SIZE)
                 .set("shadowCascades", DemoConfig.SHADOW_CASCADES)
                 .set("shadowBias", DemoConfig.SHADOW_BIAS)

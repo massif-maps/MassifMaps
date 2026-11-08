@@ -252,6 +252,7 @@ Inherited from `Layer`:
 | Method | Arguments | Returns |
 |---|---|---|
 | `clearTileCaches` | all: bool | void |
+| `computeSunExposure` | positions: positions, sunDirections: json, options: json | doubles |
 | `getElevation` | pos: pos | float |
 | `getElevations` | positions: positions | doubles |
 | `refresh` | — | void |

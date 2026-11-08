@@ -151,6 +151,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> BUTTON_WIDTH = MassifObject.key("buttonWidth");
     /** Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
     public static final MassifObject.Key<Long> BYTES_PER_PIXEL = MassifObject.key("bytesPerPixel");
+    /** Returns the memory one call may hold in decoded elevation grids. */
+    public static final MassifObject.Key<Long> CACHE_MB = MassifObject.key("cacheMB");
     /** Returns the state of cache only mode. */
     public static final MassifObject.Key<Boolean> CACHE_ONLY_MODE = MassifObject.key("cacheOnlyMode");
     /** Returns the state of the camera changed flag. */
@@ -237,6 +239,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> CURRENT_ACTION = MassifObject.key("currentAction");
     /** Returns the custom backend service URL. */
     public static final MassifObject.Key<String> CUSTOM_SERVICE_URL = MassifObject.key("customServiceURL");
+    /** Returns the apparent altitude under which a point is DARK and not marched. */
+    public static final MassifObject.Key<Double> DARK_BELOW = MassifObject.key("darkBelow");
     /** Returns tile data as binary data. */
     public static final MassifObject.Key<MassifObject> DATA = MassifObject.key("data");
     /** Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -277,6 +281,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> DIR_PATH = MassifObject.key("dirPath");
     /** Returns true if the object is anchored by direction, false if by geographic position. */
     public static final MassifObject.Key<Boolean> DIRECTION_ANCHORED = MassifObject.key("directionAnchored");
+    /** Returns the sun disc's angular radius, the half-width of the penumbra. */
+    public static final MassifObject.Key<Double> DISC_RADIUS = MassifObject.key("discRadius");
     /** Returns the distance of a direction-anchored object. */
     public static final MassifObject.Key<Double> DISTANCE = MassifObject.key("distance");
     /** Returns the floating point value of this variant. */
@@ -321,6 +327,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> EXAGERATE_HEIGHT_SCALE_ENABLED = MassifObject.key("exagerateHeightScaleEnabled");
     /** Returns the per-frame relief exaggeration factor, i.e. the vertical exaggeration of the slope. Unlike height scale this is a shader uniform applied at render time (no tile re-decode), so it can be animated smoothly. */
     public static final MassifObject.Key<Double> EXAGGERATION = MassifObject.key("exaggeration");
+    /** Returns the height of the eye above the ground at each point. */
+    public static final MassifObject.Key<Double> EYE_HEIGHT = MassifObject.key("eyeHeight");
     /** Returns the fade animation type. */
     public static final MassifObject.Key<String> FADE_ANIMATION_TYPE = MassifObject.key("fadeAnimationType");
     /** Returns the far plane distance. */
@@ -347,6 +355,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> FIELD_OF_VIEW_Y = MassifObject.key("fieldOfViewY");
     /** Returns the string based search expression. If empty, then search expression is not used. */
     public static final MassifObject.Key<String> FILTER_EXPRESSION = MassifObject.key("filterExpression");
+    /** Returns the first march step, also the smallest. */
+    public static final MassifObject.Key<Double> FIRST_STEP = MassifObject.key("firstStep");
     /** Returns how far a flattened terrain goes back towards a plain 2D map. */
     public static final MassifObject.Key<String> FLATTEN_MODE = MassifObject.key("flattenMode");
     /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
@@ -501,6 +511,10 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> LINE_METRICS = MassifObject.key("lineMetrics");
     /** Returns the line style. */
     public static final MassifObject.Key<MassifObject> LINE_STYLE = MassifObject.key("lineStyle");
+    /** Returns whether the call loads the elevation tiles it needs. */
+    public static final MassifObject.Key<Boolean> LOAD_MISSING_TILES = MassifObject.key("loadMissingTiles");
+    /** Returns the deadline for loading tiles in one call. */
+    public static final MassifObject.Key<Long> LOAD_TIMEOUT_MS = MassifObject.key("loadTimeoutMs");
     /** Returns the list of assets found in the bundle, ignoring the base asset package. */
     public static final MassifObject.Key<String> LOCAL_ASSET_NAMES = MassifObject.key("localAssetNames");
     public static final MassifObject.Key<String> LOCAL_PACKAGES = MassifObject.key("localPackages");
@@ -510,12 +524,16 @@ public final class ApiNames {
     public static final MassifObject.Key<String> LOCATION = MassifObject.key("location");
     /** Returns the location radius attribute of the request (in meters). */
     public static final MassifObject.Key<Double> LOCATION_RADIUS = MassifObject.key("locationRadius");
+    /** Returns the wanted elevation texel size per meter of distance. */
+    public static final MassifObject.Key<Double> LOD_RATIO = MassifObject.key("lodRatio");
     /** Returns the current log listener. */
     public static final MassifObject.Key<MassifObject> LOG_EVENT_LISTENER = MassifObject.key("logEventListener");
     /** Returns the integer value of this variant. */
     public static final MassifObject.Key<Long> LONG = MassifObject.key("long");
     /** Returns the long click duration in seconds. */
     public static final MassifObject.Key<Double> LONG_CLICK_DURATION = MassifObject.key("longClickDuration");
+    /** Returns the apparent altitude under which a point is flagged LOW_SUN. */
+    public static final MassifObject.Key<Double> LOW_SUN_BELOW = MassifObject.key("lowSunBelow");
     /** Returns whether the bitmap's brightness is read as its opacity. */
     public static final MassifObject.Key<Boolean> LUMINANCE_ALPHA = MassifObject.key("luminanceAlpha");
     /** Returns the color of the main light. */
@@ -542,6 +560,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> MAX_AGE_HEADER_CHECK = MassifObject.key("maxAgeHeaderCheck");
     /** Returns how many zoom levels below the requested tile this will reach. */
     public static final MassifObject.Key<Long> MAX_DETAIL_LEVELS = MassifObject.key("maxDetailLevels");
+    /** Returns how far toward the sun the march goes. */
+    public static final MassifObject.Key<Double> MAX_DISTANCE = MassifObject.key("maxDistance");
     /** Returns how many features a rebuilt tile may carry. */
     public static final MassifObject.Key<Long> MAX_FEATURES = MassifObject.key("maxFeatures");
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -574,6 +594,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> MIDRANGE = MassifObject.key("midrange");
     /** Returns the minimum (south west) map position of this map envelope object. */
     public static final MassifObject.Key<String> MIN = MassifObject.key("min");
+    /** Returns the finest texel size the march asks for. */
+    public static final MassifObject.Key<Double> MIN_TEXEL = MassifObject.key("minTexel");
     /** Returns the minimum zoom at which contour geometry is generated. */
     public static final MassifObject.Key<Long> MIN_VISIBLE_ZOOM = MassifObject.key("minVisibleZoom");
     /** Returns the minimum tile zoom level with 3D terrain. */
@@ -718,12 +740,16 @@ public final class ApiNames {
     public static final MassifObject.Key<String> RAW_RESULT = MassifObject.key("rawResult");
     /** Returns what caused the movement. */
     public static final MassifObject.Key<String> REASON = MassifObject.key("reason");
+    /** Returns the atmospheric refraction coefficient. */
+    public static final MassifObject.Key<Double> REFRACTION = MassifObject.key("refraction");
     /** Returns the regular expression used to search all the fields. If empty, then the regular expression is not used. */
     public static final MassifObject.Key<String> REGEX_FILTER = MassifObject.key("regexFilter");
     /** Returns the region name included in the address. */
     public static final MassifObject.Key<String> REGION = MassifObject.key("region");
     /** Returns the relative speed of the animation. */
     public static final MassifObject.Key<Double> RELATIVE_SPEED = MassifObject.key("relativeSpeed");
+    /** Returns whether the call empties the elevation cache once it is done. */
+    public static final MassifObject.Key<Boolean> RELEASE_CACHE = MassifObject.key("releaseCache");
     /** Returns the render projection mode. */
     public static final MassifObject.Key<String> RENDER_PROJECTION_MODE = MassifObject.key("renderProjectionMode");
     /** Returns the relative rendering scale of the label. */
@@ -808,6 +834,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> SHADOW_FOLLOWS_BUILDING_HEIGHT = MassifObject.key("shadowFollowsBuildingHeight");
     /** Returns the shadow map resolution. */
     public static final MassifObject.Key<Long> SHADOW_MAP_SIZE = MassifObject.key("shadowMapSize");
+    /** Returns the lowest sun altitude the shadows are drawn at. */
+    public static final MassifObject.Key<Double> SHADOW_MIN_SUN_ALTITUDE = MassifObject.key("shadowMinSunAltitude");
     /** Returns the shadow normal offset. */
     public static final MassifObject.Key<Double> SHADOW_NORMAL_OFFSET = MassifObject.key("shadowNormalOffset");
     /** Returns the shadow softness. */
@@ -846,6 +874,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Integer> SPACE_COLOR = MassifObject.key("spaceColor");
     /** Returns how brightly stars are drawn beyond the atmosphere. */
     public static final MassifObject.Key<Double> STAR_INTENSITY = MassifObject.key("starIntensity");
+    /** Returns how fast the march step grows with distance. */
+    public static final MassifObject.Key<Double> STEP_GROWTH = MassifObject.key("stepGrowth");
     /** Returns the street name included in the address. */
     public static final MassifObject.Key<String> STREET = MassifObject.key("street");
     /** Returns the name of street. */
@@ -1097,6 +1127,7 @@ public final class ApiNames {
     public static final String METHOD_CLEAR_PRELOADING_CACHES = "clearPreloadingCaches";
     public static final String METHOD_CLEAR_RESOLUTIONS_FOR_ZOOM = "clearResolutionsForZoom";
     public static final String METHOD_CLEAR_TILE_CACHES = "clearTileCaches";
+    public static final String METHOD_COMPUTE_SUN_EXPOSURE = "computeSunExposure";
     public static final String METHOD_CREATE_LAYER = "createLayer";
     public static final String METHOD_DELETE_LAYER = "deleteLayer";
     public static final String METHOD_FIND_FEATURES = "findFeatures";

@@ -15,6 +15,7 @@
 #include "projections/EPSG3857.h"
 #include "projections/Projection.h"
 #include "terrain/ElevationManager.h"
+#include "terrain/SunExposureJob.h"
 
 #include <array>
 #include <algorithm>
@@ -561,5 +562,10 @@ namespace massif
     std::vector<double> HillshadeRasterTileLayer::getElevations(const std::vector<MapPos> poses) const
     {
         return getElevationManager()->getElevations(poses);
+    }
+
+    std::vector<double> HillshadeRasterTileLayer::computeSunExposure(const std::vector<MapPos>& poses, const std::vector<double>& sunDirections, const std::shared_ptr<SunExposureOptions>& options) const
+    {
+        return SunExposureJob::compute(*getElevationManager(), poses, sunDirections, options);
     }
 } // namespace massif

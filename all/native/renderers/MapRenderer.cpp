@@ -2513,16 +2513,16 @@ namespace massif {
         // past the drawn cover and the cascades go coarse (docs/internals/rendering/08-lighting-sky-fog.md).
         cglib::vec3<float> shadowSunDir = lighting.sunDir;
         {
-            static const float MIN_SHADOW_SUN_SIN = 0.2588f; // sin(15 degrees)
-            if (shadowSunDir(2) < MIN_SHADOW_SUN_SIN) {
+            const float minSunSin = std::sin(lighting.shadowMinSunAltitude * static_cast<float>(Const::DEG_TO_RAD));
+            if (shadowSunDir(2) < minSunSin) {
                 float horizontal = std::sqrt(shadowSunDir(0) * shadowSunDir(0) + shadowSunDir(1) * shadowSunDir(1));
-                float scale = std::sqrt(std::max(0.0f, 1.0f - MIN_SHADOW_SUN_SIN * MIN_SHADOW_SUN_SIN));
+                float scale = std::sqrt(std::max(0.0f, 1.0f - minSunSin * minSunSin));
                 if (horizontal > 1.0e-6f) {
                     // Keep the azimuth; only the altitude is raised.
                     shadowSunDir(0) *= scale / horizontal;
                     shadowSunDir(1) *= scale / horizontal;
                 }
-                shadowSunDir(2) = MIN_SHADOW_SUN_SIN;
+                shadowSunDir(2) = minSunSin;
             }
         }
         // mapbox's constants verbatim; the pair depends on the normal offset.

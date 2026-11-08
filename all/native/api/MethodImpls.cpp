@@ -14,6 +14,7 @@
 #include "core/Variant.h"
 #include "components/Layers.h"
 #include "components/LightOptions.h"
+#include "components/SunExposureOptions.h"
 #include "components/TerrainOptions.h"
 #include "celestial/CelestialArc.h"
 #include "celestial/CelestialImage.h"
@@ -387,6 +388,73 @@ namespace massif { namespace api {
             return true;
         }
 
+        /** The arguments of computeSunExposure; options keys are SunExposureOptions' properties, `load` is "allow" | "cached". */
+        bool readSunExposureArgs(const CallArgs& args, std::vector<MapPos>& positions, std::vector<double>& directions, std::shared_ptr<SunExposureOptions>& options) {
+            if (!args.getPositionsWgs84(0, positions) || !getNumbers(args, 1, directions) || directions.size() != positions.size() * 2) {
+                return false;
+            }
+            Variant raw = args.get(2);
+            if (raw.getType() == VariantType::VARIANT_TYPE_NULL) {
+                return true;
+            }
+            if (raw.getType() != VariantType::VARIANT_TYPE_OBJECT) {
+                return false;
+            }
+            options = std::make_shared<SunExposureOptions>();
+            for (const std::string& key : raw.getObjectKeys()) {
+                Variant value = raw.getObjectElement(key);
+                bool integer = value.getType() == VariantType::VARIANT_TYPE_INTEGER;
+                bool number = integer || value.getType() == VariantType::VARIANT_TYPE_DOUBLE;
+                double n = integer ? static_cast<double>(value.getLong()) : (number ? value.getDouble() : 0.0);
+                bool boolean = value.getType() == VariantType::VARIANT_TYPE_BOOL;
+                if (number && key == "eyeHeight") {
+                    options->setEyeHeight(n);
+                } else if (number && key == "maxDistance") {
+                    options->setMaxDistance(n);
+                } else if (number && key == "discRadius") {
+                    options->setDiscRadius(n);
+                } else if (number && key == "darkBelow") {
+                    options->setDarkBelow(n);
+                } else if (number && key == "lowSunBelow") {
+                    options->setLowSunBelow(n);
+                } else if (number && key == "firstStep") {
+                    options->setFirstStep(n);
+                } else if (number && key == "stepGrowth") {
+                    options->setStepGrowth(n);
+                } else if (number && key == "lodRatio") {
+                    options->setLodRatio(n);
+                } else if (number && key == "minTexel") {
+                    options->setMinTexel(n);
+                } else if (number && key == "refraction") {
+                    options->setRefraction(n);
+                } else if (number && key == "loadTimeoutMs") {
+                    options->setLoadTimeoutMs(static_cast<int>(n));
+                } else if (number && key == "cacheMB") {
+                    options->setCacheMB(static_cast<int>(n));
+                } else if (boolean && key == "releaseCache") {
+                    options->setReleaseCache(value.getBool());
+                } else if (value.getType() == VariantType::VARIANT_TYPE_STRING && key == "load" && (value.getString() == "allow" || value.getString() == "cached")) {
+                    options->setLoadMissingTiles(value.getString() == "allow");
+                } else {
+                    Log::Warnf("api computeSunExposure: bad option '%s'", key.c_str());
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        Result computeSunExposure(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::vector<MapPos> positions;
+            std::vector<double> directions;
+            std::shared_ptr<SunExposureOptions> options;
+            if (!readSunExposureArgs(args, positions, directions, options)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto exposure = std::make_shared<std::vector<double> >(
+                static_cast<HillshadeRasterTileLayer*>(obj)->computeSunExposure(positions, directions, options));
+            return objectResult(context, exposure, Context::DOUBLE_VECTOR_CLASS, result);
+        }
+
         /** add(objectHandle) / remove(objectHandle) / clear() on a sky layer. */
         Result addCelestialObject(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             Handle handle = NULL_HANDLE;
@@ -572,6 +640,19 @@ namespace massif { namespace api {
             auto elevations = std::make_shared<std::vector<double> >(
                 static_cast<TerrainOptions*>(obj)->getElevations(positions));
             return objectResult(context, elevations, Context::DOUBLE_VECTOR_CLASS, result);
+        }
+
+        /** computeSunExposure on the terrain: the same call over the 3D view's own elevation cache. */
+        Result computeTerrainSunExposure(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::vector<MapPos> positions;
+            std::vector<double> directions;
+            std::shared_ptr<SunExposureOptions> options;
+            if (!readSunExposureArgs(args, positions, directions, options)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto exposure = std::make_shared<std::vector<double> >(
+                static_cast<TerrainOptions*>(obj)->computeSunExposure(positions, directions, options));
+            return objectResult(context, exposure, Context::DOUBLE_VECTOR_CLASS, result);
         }
 
         class CaptureWaiter : public RendererCaptureListener {
@@ -915,6 +996,7 @@ namespace massif { namespace api {
         registerMethod("massif::TileData", "getMetaDataElement", &getTileMetaDataElement);
         registerMethod("massif::HillshadeRasterTileLayer", "getElevation", &getElevation);
         registerMethod("massif::HillshadeRasterTileLayer", "getElevations", &getElevations);
+        registerMethod("massif::HillshadeRasterTileLayer", "computeSunExposure", &computeSunExposure);
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameter", &setStyleParameter);
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameters", &setStyleParameters);
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
@@ -956,6 +1038,7 @@ namespace massif { namespace api {
         registerMethod("massif::ContourTileDataSource", "clearResolutionsForZoom", &clearContourResolutionsForZoom);
         registerMethod("massif::TerrainOptions", "getElevation", &getTerrainElevation);
         registerMethod("massif::TerrainOptions", "getElevations", &getTerrainElevations);
+        registerMethod("massif::TerrainOptions", "computeSunExposure", &computeTerrainSunExposure);
         registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);

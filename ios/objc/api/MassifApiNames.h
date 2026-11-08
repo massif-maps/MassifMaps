@@ -151,6 +151,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyButtonMargins;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyButtonWidth;
 /** Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBytesPerPixel;
+/** Returns the memory one call may hold in decoded elevation grids. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyCacheMB;
 /** Returns the state of cache only mode. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCacheOnlyMode;
 /** Returns the state of the camera changed flag. */
@@ -237,6 +239,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyCullDelay;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCurrentAction;
 /** Returns the custom backend service URL. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCustomServiceURL;
+/** Returns the apparent altitude under which a point is DARK and not marched. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDarkBelow;
 /** Returns tile data as binary data. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyData;
 /** Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -277,6 +281,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyDetailZoom;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDirPath;
 /** Returns true if the object is anchored by direction, false if by geographic position. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDirectionAnchored;
+/** Returns the sun disc's angular radius, the half-width of the penumbra. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDiscRadius;
 /** Returns the distance of a direction-anchored object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDistance;
 /** Returns the floating point value of this variant. */
@@ -321,6 +327,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyEnvelopeThreadPoolSize;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyExagerateHeightScaleEnabled;
 /** Returns the per-frame relief exaggeration factor, i.e. the vertical exaggeration of the slope. Unlike height scale this is a shader uniform applied at render time (no tile re-decode), so it can be animated smoothly. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyExaggeration;
+/** Returns the height of the eye above the ground at each point. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyEyeHeight;
 /** Returns the fade animation type. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFadeAnimationType;
 /** Returns the far plane distance. */
@@ -347,6 +355,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFeaturePosIndex;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFieldOfViewY;
 /** Returns the string based search expression. If empty, then search expression is not used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFilterExpression;
+/** Returns the first march step, also the smallest. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFirstStep;
 /** Returns how far a flattened terrain goes back towards a plain 2D map. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlattenMode;
 /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
@@ -501,6 +511,10 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyLineJoinType;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLineMetrics;
 /** Returns the line style. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLineStyle;
+/** Returns whether the call loads the elevation tiles it needs. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLoadMissingTiles;
+/** Returns the deadline for loading tiles in one call. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLoadTimeoutMs;
 /** Returns the list of assets found in the bundle, ignoring the base asset package. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLocalAssetNames;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLocalPackages;
@@ -510,12 +524,16 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyLocality;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLocation;
 /** Returns the location radius attribute of the request (in meters). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLocationRadius;
+/** Returns the wanted elevation texel size per meter of distance. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLodRatio;
 /** Returns the current log listener. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLogEventListener;
 /** Returns the integer value of this variant. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLong;
 /** Returns the long click duration in seconds. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLongClickDuration;
+/** Returns the apparent altitude under which a point is flagged LOW_SUN. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLowSunBelow;
 /** Returns whether the bitmap's brightness is read as its opacity. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLuminanceAlpha;
 /** Returns the color of the main light. */
@@ -542,6 +560,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxAge;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxAgeHeaderCheck;
 /** Returns how many zoom levels below the requested tile this will reach. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxDetailLevels;
+/** Returns how far toward the sun the march goes. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxDistance;
 /** Returns how many features a rebuilt tile may carry. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxFeatures;
 /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -574,6 +594,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMetaInfo;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMidrange;
 /** Returns the minimum (south west) map position of this map envelope object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMin;
+/** Returns the finest texel size the march asks for. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMinTexel;
 /** Returns the minimum zoom at which contour geometry is generated. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMinVisibleZoom;
 /** Returns the minimum tile zoom level with 3D terrain. */
@@ -718,12 +740,16 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyRawPixels;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRawResult;
 /** Returns what caused the movement. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyReason;
+/** Returns the atmospheric refraction coefficient. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyRefraction;
 /** Returns the regular expression used to search all the fields. If empty, then the regular expression is not used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRegexFilter;
 /** Returns the region name included in the address. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRegion;
 /** Returns the relative speed of the animation. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRelativeSpeed;
+/** Returns whether the call empties the elevation cache once it is done. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyReleaseCache;
 /** Returns the render projection mode. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRenderProjectionMode;
 /** Returns the relative rendering scale of the label. */
@@ -846,6 +872,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertySourceProjection;
 FOUNDATION_EXPORT MassifProperty const MassifPropertySpaceColor;
 /** Returns how brightly stars are drawn beyond the atmosphere. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyStarIntensity;
+/** Returns how fast the march step grows with distance. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyStepGrowth;
 /** Returns the street name included in the address. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyStreet;
 /** Returns the name of street. */
@@ -1098,6 +1126,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodClearModelHighlight;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearPreloadingCaches;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearResolutionsForZoom;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearTileCaches;
+FOUNDATION_EXPORT MassifMethod const MassifMethodComputeSunExposure;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCreateLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodDeleteLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodFindFeatures;

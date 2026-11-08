@@ -161,3 +161,4 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | Method | Arguments | Returns |
 |---|---|---|
 | `calculateHorizon` | pos: pos, eyeHeight: float, azimuths: json, maxDistance: float | doubles |
+| `computeSunExposure` | positions: positions, sunDirections: json, options: json | doubles |

@@ -200,6 +200,12 @@ namespace massif {
         _gridCache.resize(capacityInBytes);
     }
 
+    void ElevationManager::clearGridCache() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _gridCache.clear();
+        _gridHold.clear();
+    }
+
     double ElevationManager::getElevation(const MapPos& pos) const {
         MapPos dataSourcePos = _projection->fromWgs84(pos);
         // TileUtils returns TMS-convention tiles (y=0 south); getTileGrid expects XYZ (y=0 north)

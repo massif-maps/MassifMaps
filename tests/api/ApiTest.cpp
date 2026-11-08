@@ -127,6 +127,8 @@ void testFogPitchFade();
 void testCelestialImageGrid();
 void testSkyDirection();
 void testTerrainOcclusion();
+void testSunExposure();
+void testSunExposureJob();
 
 namespace {
 
@@ -544,6 +546,8 @@ int main() {
     testCelestialImageGrid();
     testSkyDirection();
     testTerrainOcclusion();
+    testSunExposure();
+    testSunExposureJob();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

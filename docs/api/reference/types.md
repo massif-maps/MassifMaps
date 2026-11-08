@@ -944,6 +944,25 @@ Inherited from `StyleBuilder`:
 | `x` | number | read-only | Returns the x coordinate of this position. |
 | `y` | number | read-only | Returns the y coordinate of this position. |
 
+## `SunExposureOptions`
+
+| Property | Type | Access | Description |
+|---|---|---|---|
+| `cacheMB` | integer | read/write | Returns the memory one call may hold in decoded elevation grids. |
+| `darkBelow` | number | read/write | Returns the apparent altitude under which a point is DARK and not marched. |
+| `discRadius` | number | read/write | Returns the sun disc's angular radius, the half-width of the penumbra. |
+| `eyeHeight` | number | read/write | Returns the height of the eye above the ground at each point. |
+| `firstStep` | number | read/write | Returns the first march step, also the smallest. |
+| `loadMissingTiles` | boolean | read/write | Returns whether the call loads the elevation tiles it needs. |
+| `loadTimeoutMs` | integer | read/write | Returns the deadline for loading tiles in one call. |
+| `lodRatio` | number | read/write | Returns the wanted elevation texel size per meter of distance. |
+| `lowSunBelow` | number | read/write | Returns the apparent altitude under which a point is flagged LOW_SUN. |
+| `maxDistance` | number | read/write | Returns how far toward the sun the march goes. |
+| `minTexel` | number | read/write | Returns the finest texel size the march asks for. |
+| `refraction` | number | read/write | Returns the atmospheric refraction coefficient. |
+| `releaseCache` | boolean | read/write | Returns whether the call empties the elevation cache once it is done. |
+| `stepGrowth` | number | read/write | Returns how fast the march step grows with distance. |
+
 ## `TextMargins`
 
 | Property | Type | Access | Description |

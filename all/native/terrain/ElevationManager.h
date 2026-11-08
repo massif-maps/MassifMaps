@@ -105,6 +105,8 @@ namespace massif {
 
         std::size_t getCacheCapacity() const;
         void setCacheCapacity(std::size_t capacityInBytes);
+        /** Drops every decoded grid, without bumping the version: nothing already read goes stale, it reloads on demand. */
+        void clearGridCache();
 
         /**
          * Returns the elevation in meters at the given WGS84 position, loading the elevation tile if needed.

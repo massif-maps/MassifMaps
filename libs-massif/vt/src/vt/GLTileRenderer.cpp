@@ -1230,6 +1230,7 @@ namespace massif::vt {
     void GLTileRenderer::setRendererLayerFilter(const std::optional<std::regex>& filter) {
         std::lock_guard<std::mutex> lock(_mutex);
 
+        // TODO: rebuild the render tiles here; the filter only reaches those built after it, so callers must push it first.
         _rendererLayerFilter = filter;
         // The skip guard's set signature says nothing about the filter, which also decides the maps.
         _labelTilesSignature.reset();

@@ -1852,6 +1852,12 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
             // Not only the shadow fit's: unset, the label occlusion margin was 0 and a roof hid its own label.
             tileRenderer->setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE);
+            // The filter is read when the render tiles are built: pushed later, tiles already here keep the style background.
+            tileRenderer->setRendererLayerFilter(_rendererLayerFilter);
+            _rendererLayerFilterTarget = tileRenderer;
+#ifdef MASSIF_TILE_PROBE
+            Log::Infof("[probe] TileRenderer@%p init: filter %d tiles %d", static_cast<void*>(this), _rendererLayerFilter ? 1 : 0, static_cast<int>(_tiles.size()));
+#endif
             tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles, {}, _shadowCasterTiles);
             // These tiles' placement pass found no GL renderer; see consumeLabelPlacementOwed.
             _labelPlacementOwed = !_tiles.empty();

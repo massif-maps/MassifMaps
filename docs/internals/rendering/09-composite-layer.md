@@ -98,6 +98,12 @@ An app's own content can take a slot the same way, not just terrain-derived sour
 source added with `addVectorDataSource` draws over the roads and under the labels, see
 [15-maneuver-arrows.md](15-maneuver-arrows.md).
 
+The filter is also applied when the GL renderer builds its render tiles (`GLTileRenderer::buildRenderTiles`),
+which is where a non-bottom group drops the empty-named background layer. `TileRenderer::initializeRenderer`
+therefore pushes `rendererLayerFilter` before the first `setVisibleTiles`; pushed after it, tiles that
+arrived before the first frame kept the background and painted it over the landuse and the hillshade until
+the tile set changed.
+
 ## What could be better
 
 - **One protobuf parse per style-layer group.** Each group builds only the styles its filter

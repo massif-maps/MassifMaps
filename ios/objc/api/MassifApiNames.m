@@ -167,6 +167,7 @@ MassifProperty const MassifPropertyExaggeration = @"exaggeration";
 MassifProperty const MassifPropertyEyeHeight = @"eyeHeight";
 MassifProperty const MassifPropertyFadeAnimationType = @"fadeAnimationType";
 MassifProperty const MassifPropertyFar = @"far";
+MassifProperty const MassifPropertyFarTileLOD = @"farTileLOD";
 MassifProperty const MassifPropertyFeature = @"feature";
 MassifProperty const MassifPropertyFeatureClickPos = @"featureClickPos";
 MassifProperty const MassifPropertyFeatureCollection = @"featureCollection";

@@ -260,6 +260,11 @@ public final class DemoConfig {
     public static float TILE_LOD_COUNT_RATIO = 3f;
     /** Options.FieldOfViewY; 0 = the SDK default (36.87, maplibre's). '--es fovY 70' was the old one. */
     public static float FIELD_OF_VIEW_Y = 0f;
+    /** How far tiles of a tilted map lose zoom, per layer kind: coarse (the SDK's own, fewer tiles) |
+     *  distance (the level follows the distance, sharper far ground, more tiles at a steep tilt).
+     *  '--es farLodVector distance', '--es farLodRaster coarse'. */
+    public static String FAR_TILE_LOD_VECTOR = "coarse";
+    public static String FAR_TILE_LOD_RASTER = "coarse";
     /** reference | mobile | desktop - one call for TileLODFactor + the two above + the style zoom
      *  lift. Empty leaves the individual knobs alone. '--es lodProfile mobile'. */
     public static String TILE_LOD_PROFILE = "";
@@ -1351,6 +1356,8 @@ public final class DemoConfig {
         FIELD_OF_VIEW_Y = DemoCfg.cfgFloat("fovY", FIELD_OF_VIEW_Y);
         TILE_LOD_COUNT_RATIO = DemoCfg.cfgFloat("lodRatio", TILE_LOD_COUNT_RATIO);
         TILE_LOD_PROFILE = DemoCfg.cfgStr("lodProfile", TILE_LOD_PROFILE);
+        FAR_TILE_LOD_VECTOR = DemoCfg.cfgStr("farLodVector", FAR_TILE_LOD_VECTOR);
+        FAR_TILE_LOD_RASTER = DemoCfg.cfgStr("farLodRaster", FAR_TILE_LOD_RASTER);
         TILE_STYLE_ZOOM_LIFT = DemoCfg.cfgInt("styleZoomLift", TILE_STYLE_ZOOM_LIFT);
         LABEL_MAX_DISTANCE = DemoCfg.cfgFloat("labelMaxDistance", LABEL_MAX_DISTANCE);
         TERRAIN_ENABLED = DemoCfg.cfgBool("terrain", TERRAIN_ENABLED);

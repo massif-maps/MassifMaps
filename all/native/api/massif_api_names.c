@@ -168,6 +168,7 @@ static const char* const kNames[] = {
     "eyeHeight",
     "fadeAnimationType",
     "far",
+    "farTileLOD",
     "feature",
     "featureClickPos",
     "featureCollection",

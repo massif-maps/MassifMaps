@@ -47,6 +47,7 @@ namespace {
         Rule rule = Rule::Distance;
         DistanceTileLOD::Limits limits { 0, CAP, DistanceTileLOD::NO_VIEW_CAP }; // free roam imagery: only the data caps
         double farCoarsening = 0.0;
+        DistanceTileLOD::FarRule farRule = DistanceTileLOD::FarRule::Slant;
         int areaCap = CAP; // the camera's zoom, which the area rule is capped by
         double viewDistance = VIEW_DISTANCE;
         double lodFactor = 1.0; // on the 0.5 default's pixels
@@ -178,6 +179,7 @@ namespace {
         cut.view = makeView(camera);
         cut.view.maxEdgePixels *= scene.lodFactor;
         cut.view.farCoarsening = scene.farCoarsening;
+        cut.view.farRule = scene.farRule;
         visit(camera, basis, 0, 0, 0, std::numeric_limits<double>::infinity(), cut);
         scale = DistanceTileLOD::fitScale(cut.nodes, budget);
         // Neighbours stay within a level while a tile spans at least this many tiles' worth of distance (see the test).
@@ -490,6 +492,107 @@ namespace {
         TEST_CHECK(unfitted > 1.5, "where the cut without the cap and the fit held more than half as many again: the check can fail");
     }
 
+    struct Kept {
+        int compared = 0, dropped = 0, finer = 0, mostDropped = 0;
+    };
+
+    Scene sceneOfRule(const Camera& camera, double zoom, DistanceTileLOD::FarRule rule) {
+        Scene scene = classicScene(camera, zoom, Rule::Distance);
+        scene.farRule = rule;
+        return scene;
+    }
+
+    // The tiles a straight-down view holds, against the level the same ground has when the camera tilts.
+    Kept topDownTilesAtATilt(double tilt, DistanceTileLOD::FarRule rule) {
+        Kept kept;
+        for (double zoom : { 15.8, 16.3, 17.3 }) {
+            for (const double* size : SIZES) {
+                for (double dpi : { 1.0, 1.8 }) {
+                    double scale = 1, relaxedFactor = 0;
+                    Camera down = orbitCamera(zoom, 20.0, 0.0, 36.87, size[0], size[1], dpi);
+                    Camera tilted = orbitCamera(zoom, 20.0, tilt, 36.87, size[0], size[1], dpi);
+                    std::vector<Leaf> before = cull(down, sceneOfRule(down, zoom, rule), std::numeric_limits<std::size_t>::max(), scale, relaxedFactor);
+                    std::vector<Leaf> after = cull(tilted, sceneOfRule(tilted, zoom, rule), std::numeric_limits<std::size_t>::max(), scale, relaxedFactor);
+                    for (const Leaf& leaf : before) {
+                        double edge = ROOT / static_cast<double>(1LL << leaf.tile.zoom);
+                        double x = (leaf.tile.x - (1LL << leaf.tile.zoom) / 2.0 + 0.5) * edge, y = (leaf.tile.y - (1LL << leaf.tile.zoom) / 2.0 + 0.5) * edge;
+                        int level = levelAt(after, x, y);
+                        if (level >= 0) {
+                            kept.compared++;
+                            kept.dropped += level < leaf.tile.zoom ? 1 : 0;
+                            kept.finer += level > leaf.tile.zoom ? 1 : 0;
+                            kept.mostDropped = std::max(kept.mostDropped, leaf.tile.zoom - level);
+                        }
+                    }
+                }
+            }
+        }
+        return kept;
+    }
+
+    // The mean tiles a classic map holds at a tilt, within the budget.
+    double meanTiles(double tilt, DistanceTileLOD::FarRule rule) {
+        double sum = 0;
+        int cases = 0;
+        for (double zoom : { 15.8, 16.3, 17.3 }) {
+            for (const double* size : SIZES) {
+                Camera camera = orbitCamera(zoom, 20.0, tilt, 36.87, size[0], size[1], 1.8);
+                double scale = 1, relaxedFactor = 0;
+                sum += cull(camera, sceneOfRule(camera, zoom, rule), DistanceTileLOD::DEFAULT_BUDGET, scale, relaxedFactor).size();
+                cases++;
+            }
+        }
+        return sum / cases;
+    }
+
+    void testTheFarRule() {
+        // Tilt in these two tests is from straight down, so 20 is a tilt of 70 as the SDK has it, and 60 one of 30.
+        std::printf("      top-down tiles a tilt coarsens, of those it still holds, and the most levels one lost (coarse | distance)\n");
+        for (double tilt : { 20.0, 40.0, 60.0, 70.0 }) {
+            Kept coarse = topDownTilesAtATilt(tilt, DistanceTileLOD::FarRule::Slant);
+            Kept distance = topDownTilesAtATilt(tilt, DistanceTileLOD::FarRule::Distance);
+            std::printf("      tilt %2.0f: %d/%d, %d | %d/%d, %d\n", tilt, coarse.dropped, coarse.compared, coarse.mostDropped, distance.dropped, distance.compared, distance.mostDropped);
+            TEST_CHECK(distance.finer == 0 && coarse.finer == 0, "a tilt never makes a tile of the top-down view finer: the camera's level caps it");
+            TEST_CHECK(distance.dropped <= coarse.dropped, "the distance rule coarsens no more of the top-down tiles than the coarse one");
+            TEST_CHECK(distance.dropped * 20 <= distance.compared && distance.mostDropped <= 1, "and under 5 % of them, none by more than a level: the far edge of the view, not its centre");
+        }
+        // The far field is where the rules differ: the coarse rule loses levels from the first degree, the distance rule does not.
+        std::printf("      tiles held within the budget, mean (coarse | distance)\n");
+        double coarseAt[4] = { 0, 0, 0, 0 }, distanceAt[4] = { 0, 0, 0, 0 };
+        int index = 0;
+        for (double tilt : { 20.0, 40.0, 60.0, 70.0 }) {
+            coarseAt[index] = meanTiles(tilt, DistanceTileLOD::FarRule::Slant);
+            distanceAt[index] = meanTiles(tilt, DistanceTileLOD::FarRule::Distance);
+            std::printf("      tilt %2.0f: %.1f | %.1f\n", tilt, coarseAt[index], distanceAt[index]);
+            index++;
+        }
+        // The distance rule's allowance (mapbox-gl-js distToSplitScale): none within 45 degrees of vertical, a stretch past it.
+        using Allowance = DistanceTileLOD;
+        TEST_CHECK(Allowance::distanceAllowance(1000.0, 1000.0) == 1.0, "straight below the eye the distance allowance is 1");
+        TEST_CHECK(Allowance::distanceAllowance(1000.0, 500.0) < 1.03, "60 degrees off vertical it is 1.02: a moderate tilt does not move a tile's level");
+        TEST_CHECK(std::abs(Allowance::distanceAllowance(1000.0, 1000.0 * Allowance::GRAZING_SIN) - 1.0) < 1e-3, "and continuous at 45 degrees, where the stretch starts");
+        double at70 = Allowance::distanceAllowance(3000.0, 1000.0), at84 = Allowance::distanceAllowance(10000.0, 1000.0);
+        TEST_CHECK(at70 > 1.0 && at70 < 1.2 && at84 > 1.4 && at84 < 1.7, "mapbox's scale of 0.94 at 70 degrees and 0.65 at 84, inverted");
+        TEST_CHECK(Allowance::distanceAllowance(1000.0, 0.0) == Allowance::MAX_GRAZING_ALLOWANCE, "level with the eye it is bounded");
+        DistanceTileLOD::View view;
+        view.focalPixels = 1000.0;
+        view.zoom0Distance = 1e7;
+        view.maxEdgePixels = 512;
+        view.farRule = DistanceTileLOD::FarRule::Distance;
+        view.farCoarsening = DistanceTileLOD::FAR_COARSENING;
+        DistanceTileLOD::Limits free;
+        free.maxZoom = 24;
+        free.capOffset = DistanceTileLOD::NO_VIEW_CAP;
+        double headOn = DistanceTileLOD::nodeCritical(view, free, 10, 1000.0, 2000.0, 2000.0);
+        double at60 = DistanceTileLOD::nodeCritical(view, free, 10, 1000.0, 2000.0, 1000.0);
+        TEST_CHECK(std::abs(at60 / headOn - 1.0) < 0.03, "a tile 60 degrees off vertical is cut as one head on at its distance: the level follows the distance, not the tilt");
+        view.farRule = DistanceTileLOD::FarRule::Slant;
+        double slant60 = DistanceTileLOD::nodeCritical(view, free, 10, 1000.0, 2000.0, 1000.0);
+        TEST_CHECK(slant60 / headOn < 0.7, "and by the coarse rule it is cut well coarser: from the first degree of tilt");
+        TEST_CHECK(distanceAt[3] > coarseAt[3] * 1.2, "at a steep tilt the distance rule asks for more tiles: the far field stays sharp");
+        TEST_CHECK(distanceAt[1] <= coarseAt[1] * 1.1 && distanceAt[1] >= coarseAt[1] * 0.9, "and as many as the coarse one at a gentle tilt, where the two cut alike");
+    }
+
     void testNodeRule() {
         DistanceTileLOD::View view;
         view.focalPixels = 2700;
@@ -704,4 +807,5 @@ void testDistanceTileLOD() {
     testTopDownIsTheOldCut();
     testTheTileCountOfATiltedMap();
     testTheTileCountIsTheOldRules();
+    testTheFarRule();
 }

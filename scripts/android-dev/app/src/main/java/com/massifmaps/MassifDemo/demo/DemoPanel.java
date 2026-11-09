@@ -1185,6 +1185,15 @@ public final class DemoPanel {
         slider(context, "tile LOD zoom levels on screen", 4, 16, DemoConfig.TILE_LOD_LEVELS_ON_SCREEN, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TILE_LOD_LEVELS_ON_SCREEN = value; demo.map.set("tileLODMaxZoomLevelsOnScreen", value); }
         });
+        // How far tiles of a tilted map lose zoom, per layer kind. Vector can stay coarse (fewer tiles);
+        // imagery wants the level to follow the distance.
+        final String[] farLods = { "coarse", "distance" };
+        choice(context, "far tile LOD, vector", farLods, indexOf(farLods, DemoConfig.FAR_TILE_LOD_VECTOR), new IntSetting() {
+            public void set(int index) { DemoConfig.FAR_TILE_LOD_VECTOR = farLods[index]; demo.applyFarTileLOD(); }
+        });
+        choice(context, "far tile LOD, raster", farLods, indexOf(farLods, DemoConfig.FAR_TILE_LOD_RASTER), new IntSetting() {
+            public void set(int index) { DemoConfig.FAR_TILE_LOD_RASTER = farLods[index]; demo.applyFarTileLOD(); }
+        });
         // Which zoom the vector tiles are FETCHED at, against the view's. -1 is what a style
         // written for MapBox's 512 px tiles wants; it also shifts every `[zoom >= N]` rule a level
         // away from the `view::zoom` ramps beside it, which is what hides a height ramp.

@@ -8,6 +8,7 @@
 #include "projections/ProjectionSurface.h"
 #include "projections/PlanarProjectionSurface.h"
 #include "projections/SphericalProjectionSurface.h"
+#include "ui/RenderScalePolicy.h"
 
 #include <vt/LabelDistance.h>
 #include <vt/TileTransformer.h>
@@ -56,6 +57,9 @@ namespace massif {
         _tileLODTileCountRatio(3.0f),
         _tileStyleZoomLift(2),
         _dpi(160.0f),
+        _renderScale(1.0f),
+        _renderScale3D(DEFAULT_RENDER_SCALE_3D),
+        _appliedRenderScale(1.0f),
         _drawDistance(16),
         _labelViewDistance(static_cast<float>(vt::LabelDistance::DEFAULT_VIEW_DISTANCE)),
         _modelAnimationsEnabled(true),
@@ -450,6 +454,64 @@ namespace massif {
         notifyOptionChanged("DPI");
     }
     
+    float Options::getRenderScale() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _renderScale;
+    }
+
+    void Options::setRenderScale(float scale) {
+        scale = RenderScalePolicy::clamp(scale);
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_renderScale == scale) {
+                return;
+            }
+            _renderScale = scale;
+        }
+        notifyOptionChanged("RenderScale");
+    }
+
+    float Options::getRenderScale3D() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _renderScale3D;
+    }
+
+    void Options::setRenderScale3D(float scale) {
+        scale = RenderScalePolicy::clamp(scale);
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_renderScale3D == scale) {
+                return;
+            }
+            _renderScale3D = scale;
+        }
+        notifyOptionChanged("RenderScale3D");
+    }
+
+    float Options::getAppliedRenderScale() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _appliedRenderScale;
+    }
+
+    void Options::setAppliedRenderScale(float scale) {
+        scale = RenderScalePolicy::clamp(scale);
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_appliedRenderScale == scale) {
+                return;
+            }
+            _appliedRenderScale = scale;
+        }
+        // Everything that reads the DPI re-derives its pixel sizes.
+        notifyOptionChanged("DPI");
+        notifyOptionChanged("AppliedRenderScale");
+    }
+
+    float Options::getRenderDPI() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _dpi * _appliedRenderScale;
+    }
+
     float Options::getDrawDistance() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _drawDistance;
@@ -1259,6 +1321,7 @@ namespace massif {
     const Color Options::DEFAULT_MAIN_LIGHT_COLOR = Color(143, 143, 143, 255);
     const MapVec Options::DEFAULT_MAIN_LIGHT_DIR = MapVec(0.35, 0.35, -0.87);
     const float Options::DEFAULT_CLICK_MOVING_TOLERANCE = 32.0f;
+    const float Options::DEFAULT_RENDER_SCALE_3D = 0.75f;
 
     std::shared_ptr<Bitmap> Options::_DefaultBackgroundBitmap;
     

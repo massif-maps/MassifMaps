@@ -6,12 +6,6 @@ name: Style tools CLI
 # a compiler change need not wait for a release. docs/contributing/style-tools.md: why TypeScript + wasm.
 
 on:
-  pull_request:
-    paths:
-      - 'tools/style-cli/**'
-      - 'scripts/gen-cartocss-properties.py'
-      - 'libs-massif/**'
-      - '.github/workflows/release-style-tools.yml'
   push:
     branches: [master]
     paths:

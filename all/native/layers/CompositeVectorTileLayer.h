@@ -105,6 +105,12 @@ namespace massif {
          */
         virtual void setZoomLevelBias(float bias);
         /**
+         * Sets the far tile LOD rule for this layer and for every child layer it owns: the style groups render
+         * the same source and must cut the same tiles.
+         * @param rule The new rule.
+         */
+        virtual void setFarTileLOD(FarTileLOD::FarTileLOD rule);
+        /**
          * Sets the preloading state for this layer and for every child layer it owns.
          * @param preloading The new preloading state of the layer.
          */

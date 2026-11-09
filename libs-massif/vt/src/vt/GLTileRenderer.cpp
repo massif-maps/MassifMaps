@@ -1577,6 +1577,8 @@ namespace massif::vt {
         _drapeCoverageLayerMasks.clear();
         _drapeMaskTexture = 0;
         _drapeFBO = 0;
+        _paintShades.forget();
+        _paintShadeFBO = 0;
     }
         
     void GLTileRenderer::setTransformer(std::shared_ptr<const TileTransformer> transformer) {
@@ -6554,6 +6556,15 @@ namespace massif::vt {
             glDeleteFramebuffers(1, &_drapeFBO);
             _drapeFBO = 0;
         }
+        std::vector<unsigned int> shadedTextures;
+        _paintShades.clear(shadedTextures);
+        for (unsigned int texture : shadedTextures) {
+            glDeleteTextures(1, &texture);
+        }
+        if (_paintShadeFBO != 0) {
+            glDeleteFramebuffers(1, &_paintShadeFBO);
+            _paintShadeFBO = 0;
+        }
         if (_drapeStencilRB != 0) {
             glDeleteRenderbuffers(1, &_drapeStencilRB);
             _drapeStencilRB = 0;
@@ -6582,23 +6593,35 @@ namespace massif::vt {
         glEnable(GL_BLEND);
         setCompOp(CompOp::SRC_OVER);
 
+        // Shaded once per elevation texture and paint look, then a textured quad per drape tile: the
+        // lighting is the whole cost of this bake, and one DEM tile spans many drape tiles.
+        GLuint shaded = resolvePaintShade(targetTileId, terrainTexture);
+
         int primitives = 0;
         cglib::mat4x4<double> surfaceFrame = calculateTileMatrix(targetTileId, 1.0f);
         for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledFlatSurfaces()) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("terrainpaint", terrainPaintVsh, terrainPaintFsh, LightingMode::TERRAINPAINT, RasterFilterMode::NONE, TERRAIN_VTF_FLAG);
+            const ShaderProgram& shaderProgram = shaded != 0
+                ? buildShaderProgram("terrainpaintblit", terrainPaintVsh, terrainPaintBlitFsh, LightingMode::NONE, RasterFilterMode::NONE, TERRAIN_VTF_FLAG)
+                : buildShaderProgram("terrainpaint", terrainPaintVsh, terrainPaintFsh, LightingMode::TERRAINPAINT, RasterFilterMode::NONE, TERRAIN_VTF_FLAG);
             useProgram(shaderProgram);
             // The vertex frame is the tile matrix, so the quad's [0,1] xy maps straight onto it.
             setupTerrainUniforms(shaderProgram, targetTileId, surfaceFrame, false);
 
-            // The DEM gradient is metres per texel; hillshade wants the dimensionless slope. The
-            // 1/cos(latitude) stretch comes per fragment (vElevCosh).
-            float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(terrainTexture.metersPerTexel) / terrainTexture.metersPerTexel;
-            glUniform2f(shaderProgram.uniforms[U_PAINTSLOPESCALE], slopeScale, slopeScale);
+            if (shaded != 0) {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, shaded);
+                glUniform1i(shaderProgram.uniforms[U_BITMAP], 0);
+            } else {
+                // The DEM gradient is metres per texel; hillshade wants the dimensionless slope. The
+                // 1/cos(latitude) stretch comes per fragment (vElevCosh).
+                float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(terrainTexture.metersPerTexel) / terrainTexture.metersPerTexel;
+                glUniform2f(shaderProgram.uniforms[U_PAINTSLOPESCALE], slopeScale, slopeScale);
+                _lightingShaderNormalMap->setupFunc(shaderProgram.program, _viewState);
+            }
             glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, _terrainPaint.opacity, 0.0f, 0.0f);
-            _lightingShaderNormalMap->setupFunc(shaderProgram.program, _viewState);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
             enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
@@ -6613,12 +6636,113 @@ namespace massif::vt {
             VT_STAT_ADD(surfaceIndices, tileSurface->getIndicesCount());
             primitives++;
 
+            if (shaded != 0) {
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
             disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
         }
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         checkGLError();
         return primitives;
+    }
+
+    GLuint GLTileRenderer::resolvePaintShade(const TileId& targetTileId, const TerrainTexture& terrainTexture) {
+        if (!_terrainPaint.shadeCache || terrainTexture.contentVersion == 0 || terrainTexture.textureSize(0) <= 0 || terrainTexture.textureSize(1) <= 0 || (_transformer && _transformer->isSpherical())) {
+            return 0;
+        }
+        std::vector<unsigned int> released;
+        bool current = false;
+        PaintShadeCache::Entry& entry = _paintShades.acquire(terrainTexture.textureId, terrainTexture.contentVersion, _terrainPaint.fingerprint, released, current);
+        for (unsigned int texture : released) {
+            glDeleteTextures(1, &texture);
+        }
+        if (!current) {
+            if (!shadePaint(targetTileId, terrainTexture, entry)) {
+                return 0;
+            }
+            PaintShadeCache::markShaded(entry, terrainTexture.contentVersion, _terrainPaint.fingerprint);
+        }
+        return entry.texture;
+    }
+
+    bool GLTileRenderer::shadePaint(const TileId& targetTileId, const TerrainTexture& terrainTexture, PaintShadeCache::Entry& entry) {
+        int width = terrainTexture.textureSize(0);
+        int height = terrainTexture.textureSize(1);
+        if (entry.texture == 0 || entry.width != width || entry.height != height) {
+            if (entry.texture == 0) {
+                glGenTextures(1, &entry.texture);
+            }
+            glBindTexture(GL_TEXTURE_2D, entry.texture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            entry.width = width;
+            entry.height = height;
+        }
+        if (_paintShadeFBO == 0) {
+            glGenFramebuffers(1, &_paintShadeFBO);
+        }
+        GLint previousFBO = 0;
+        GLint previousViewport[4] = { 0, 0, 0, 0 };
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFBO);
+        glGetIntegerv(GL_VIEWPORT, previousViewport);
+        glBindFramebuffer(GL_FRAMEBUFFER, _paintShadeFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, entry.texture, 0);
+        bool complete = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+        if (complete) {
+            glViewport(0, 0, width, height);
+            glDisable(GL_BLEND); // every texel is written, over nothing
+
+            // The frame is the whole texture, border included: the quad's [0,1] xy is its uv.
+            cglib::mat4x4<double> frame = cglib::mat4x4<double>::identity();
+            frame(0, 0) = terrainTexture.internalSize(0);
+            frame(1, 1) = terrainTexture.internalSize(1);
+            frame(0, 3) = terrainTexture.internalOrigin(0);
+            frame(1, 3) = terrainTexture.internalOrigin(1);
+            cglib::mat4x4<float> toClip = cglib::mat4x4<float>::identity();
+            toClip(0, 0) = 2.0f;
+            toClip(1, 1) = 2.0f;
+            toClip(0, 3) = -1.0f;
+            toClip(1, 3) = -1.0f;
+
+            for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledFlatSurfaces()) {
+                const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
+                const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
+
+                const ShaderProgram& shaderProgram = buildShaderProgram("terrainpaint", terrainPaintVsh, terrainPaintFsh, LightingMode::TERRAINPAINT, RasterFilterMode::NONE, TERRAIN_VTF_FLAG);
+                useProgram(shaderProgram);
+                setupTerrainUniforms(shaderProgram, targetTileId, frame, false);
+
+                float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(terrainTexture.metersPerTexel) / terrainTexture.metersPerTexel;
+                glUniform2f(shaderProgram.uniforms[U_PAINTSLOPESCALE], slopeScale, slopeScale);
+                // Opacity is the bake's: the picture stays valid across a fade.
+                glUniform4f(shaderProgram.uniforms[U_PAINTPARAMS], _terrainPaint.contrast, 1.0f, 0.0f, 0.0f);
+                _lightingShaderNormalMap->setupFunc(shaderProgram.program, _viewState);
+
+                glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
+                enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
+                bindSurfaceSkirtAttrib(shaderProgram, vertexGeomLayoutParams);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
+                glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, toClip.data());
+
+                glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+                VT_STAT_INC(surfaceDraws);
+                VT_STAT_ADD(surfaceIndices, tileSurface->getIndicesCount());
+
+                disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
+            }
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glEnable(GL_BLEND);
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, previousFBO);
+        glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        checkGLError();
+        return complete;
     }
 
     int GLTileRenderer::renderTerrainPaintSurfaces(bool asGround) {

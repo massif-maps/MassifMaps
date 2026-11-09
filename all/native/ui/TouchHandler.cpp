@@ -572,7 +572,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
 
-            float dpi = _options->getDPI();
+            float dpi = _options->getRenderDPI();
             float dx = screenPos.getX() - _prevScreenPos1.getX();
             float dy = screenPos.getY() - _prevScreenPos1.getY();
 
@@ -615,7 +615,7 @@ namespace massif {
             
             // Zooms about the double tap under PIVOT_MODE_TOUCHPOINT (a pin that stays put), else about the
             // focus, which needs no ground hit and so also works where the fingers' rays miss the ground.
-            float dpi = _options->getDPI();
+            float dpi = _options->getRenderDPI();
             cglib::vec2<float> tempSwipe1(screenPos.getX() - _prevScreenPos1.getX(), screenPos.getY() - _prevScreenPos1.getY());
             _swipe1 += tempSwipe1 * (1.0f / dpi);
 
@@ -656,7 +656,7 @@ namespace massif {
     
     void TouchHandler::dualPointerGuess(const ScreenPos& screenPos1, const ScreenPos& screenPos2, const ViewState& viewState) {
         // If the pointers' y coordinates differ too much it's the general case or rotation
-        float dpi = _options->getDPI();
+        float dpi = _options->getRenderDPI();
         float deltaY = std::abs(screenPos1.getY() - screenPos2.getY()) / dpi;
         if (deltaY > GUESS_MAX_DELTA_Y_INCHES) {
             _gestureMode = DUAL_POINTER_FREE;
@@ -725,7 +725,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
             
-            float scale = INCHES_TO_TILT_DELTA / _options->getDPI();
+            float scale = INCHES_TO_TILT_DELTA / _options->getRenderDPI();
             if (_options->isTiltGestureReversed()) {
                 scale = -scale;
             }

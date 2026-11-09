@@ -27,6 +27,7 @@ void testFillTileClip();
 void testShadowBox();
 void testShaderFlags();
 void testRasterGroups();
+void testPaintShadeCache();
 void testExtrusionAnchor();
 void testExtrusionEmissive();
 void testLineOcclusionOpacity();
@@ -98,6 +99,7 @@ int main() {
     testShadowBox();
     testShaderFlags();
     testRasterGroups();
+    testPaintShadeCache();
     testExtrusionAnchor();
     testExtrusionEmissive();
     testLineOcclusionOpacity();

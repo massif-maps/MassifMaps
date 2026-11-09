@@ -414,6 +414,50 @@ namespace massif {
          * @param dpi The new dots per inch value.
          */
         void setDPI(float dpi);
+
+        /**
+         * Returns the render scale used while the map is flat, the fraction of the view's pixels the map is drawn at.
+         * @return The 2D render scale, in (0, 1]. The default is 1.
+         */
+        float getRenderScale() const;
+        /**
+         * Sets the render scale used while the map is flat. Below 1 the map draws to a smaller surface that the
+         * system scales up to the view, and the DPI is lowered by the same factor, so the view keeps its ground,
+         * zoom and label sizes and only loses sharpness. Takes effect on a platform whose view supports it (Android MapView).
+         * @param scale The new scale, in (0, 1]; anything else means 1, and it is not taken below 0.25.
+         */
+        void setRenderScale(float scale);
+
+        /**
+         * Returns the render scale used while the map is in 3D: terrain that is not flattened, or a tilted view.
+         * @return The 3D render scale, in (0, 1]. The default is 0.75.
+         */
+        float getRenderScale3D() const;
+        /**
+         * Sets the render scale used while the map is in 3D, where the cost of the frame is mostly the pixels it fills.
+         * The view switches between the two scales with a gap in the tilt and a hold between switches, never mid-gesture.
+         * @param scale The new scale, in (0, 1]; anything else means 1, and it is not taken below 0.25.
+         */
+        void setRenderScale3D(float scale);
+
+        /**
+         * Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the
+         * scale asked for by the resize the platform has to do. Read only.
+         * @return The applied render scale, in (0, 1].
+         */
+        float getAppliedRenderScale() const;
+        /**
+         * Sets the scale the surface was resized to. Called by the platform view when its surface changes. Internal method.
+         * @param scale The surface's size over the view's, in (0, 1].
+         */
+        void setAppliedRenderScale(float scale);
+
+        /**
+         * Returns the DPI the renderers see: the DPI over the pixels of the surface, which is the device DPI
+         * times the applied render scale. Internal method.
+         * @return The DPI of the surface.
+         */
+        float getRenderDPI() const;
     
         /**
          * Returns the draw distance value.
@@ -930,6 +974,7 @@ namespace massif {
         static const MapVec DEFAULT_MAIN_LIGHT_DIR;
         // 0.2 inch at 160 dpi: a finger-sized threshold.
         static const float DEFAULT_CLICK_MOVING_TOLERANCE;
+        static const float DEFAULT_RENDER_SCALE_3D;
         
         void notifyOptionChanged(const std::string& optionName);
         
@@ -956,6 +1001,9 @@ namespace massif {
         static const int MAX_TILE_STYLE_ZOOM_LIFT;
     
         float _dpi;
+        float _renderScale;
+        float _renderScale3D;
+        float _appliedRenderScale;
     
         float _drawDistance;
         float _labelViewDistance;

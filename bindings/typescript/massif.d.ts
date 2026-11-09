@@ -4288,6 +4288,8 @@ export interface PropertyTypes {
     [key: `terrainOptions.surfaceParams.${string}`]: number;
     /** Returns the color of the ambient light. */
     "ambientLightColor": number;
+    /** (read-only) Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only. */
+    readonly "appliedRenderScale": number;
     /** Returns the background bitmap. May be null. */
     "background": Handle<"massif::Bitmap">;
     /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
@@ -4518,6 +4520,10 @@ export interface PropertyTypes {
     readonly "projection.name": string;
     /** Returns the render projection mode. */
     "renderProjectionMode": "RENDER_PROJECTION_MODE_PLANAR" | "RENDER_PROJECTION_MODE_SPHERICAL";
+    /** Returns the render scale used while the map is flat, the fraction of the view's pixels the map is drawn at. */
+    "renderScale": number;
+    /** Returns the render scale used while the map is in 3D: terrain that is not flattened, or a tilted view. */
+    "renderScale3D": number;
     /** Returns the state of the restricted panning flag. */
     "restrictedPanning": boolean;
     /** Returns the state of the map rotatability flag. */

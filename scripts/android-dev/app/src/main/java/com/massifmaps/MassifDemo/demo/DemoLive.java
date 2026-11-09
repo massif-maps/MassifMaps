@@ -62,6 +62,7 @@ public final class DemoLive extends BroadcastReceiver {
     };
     // Style PARAMETERS: live, no re-decode - so they are not in STYLE_KEYS.
     private static final String[] PARAM_KEYS = { "bldTiltDrop", "bldAo", "bldOpacity", "bldEdgeRadius", "bldRoundedRoof" };
+    private static final String[] RENDER_SCALE_KEYS = { "renderScale", "renderScale3D" };
     private static final String[] CAMERA_KEYS = { "lon", "lat", "zoom", "tilt", "rotation" };
     private static final String[] GESTURE_KEYS = { "orbitPivot" };
 
@@ -94,6 +95,9 @@ public final class DemoLive extends BroadcastReceiver {
         }
         if (has(extras, TERRAIN_KEYS)) {
             demo.applyTerrainOptions();
+        }
+        if (has(extras, RENDER_SCALE_KEYS)) {
+            demo.applyRenderScale();
         }
         if (has(extras, LIGHT_KEYS)) {
             demo.applyLightOptions();

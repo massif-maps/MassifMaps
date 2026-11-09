@@ -1,6 +1,7 @@
 #include "BaseMapView.h"
 #include "components/CancelableThreadPool.h"
 #include "components/Layers.h"
+#include "components/TerrainOptions.h"
 #include "core/MapPos.h"
 #include "core/MapBounds.h"
 #include "core/ScreenPos.h"
@@ -19,6 +20,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Log.h"
 
+#include <chrono>
 #include <list>
 #include <string>
 #include <unordered_map>
@@ -26,6 +28,11 @@
 #include <sstream>
 
 namespace {
+    // The platform's "no coordinate" is -1; it is not a position to scale.
+    float toSurface(float coordinate, float scale) {
+        return coordinate == -1.0f ? coordinate : coordinate * scale;
+    }
+
     // Van Wijk & Nuij's rho, the aggressiveness of the pull-back over a long move; 1.42 is the
     // value they derive as optimal, and neither they nor any port of it exposes another.
     const float FLIGHT_RHO = 1.42f;
@@ -79,11 +86,36 @@ namespace massif {
     }
     
     void BaseMapView::onSurfaceChanged(int width, int height) {
-        Log::Infof("BaseMapView::onSurfaceChanged(): width: %d, height: %d", width, height);
+        Log::Infof("BaseMapView::onSurfaceChanged(): width: %d, height: %d, render dpi: %.1f", width, height, _options->getRenderDPI());
         _mapRenderer->onSurfaceChanged(width, height);
     }
     
+    void BaseMapView::onSurfaceChanged(int width, int height, float renderScale) {
+        _options->setAppliedRenderScale(renderScale);
+        onSurfaceChanged(width, height);
+    }
+
+    float BaseMapView::getWantedRenderScale() const {
+        return _wantedRenderScale.load();
+    }
+
     void BaseMapView::onDrawFrame() {
+        RenderScalePolicy::Config config;
+        config.scale2D = _options->getRenderScale();
+        config.scale3D = _options->getRenderScale3D();
+        RenderScalePolicy::Input input;
+        input.tilt = getTilt();
+        std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
+        input.terrain3D = terrainOptions && terrainOptions->isActive() && !terrainOptions->isFlattened();
+        input.gestureActive = _mapRenderer->isTouchGestureActive();
+        input.nowSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        RenderScalePolicy::Result result = RenderScalePolicy::step(_renderScaleState, config, input);
+        _renderScaleState = result.state;
+        _wantedRenderScale = result.scale;
+        if (result.pending && !input.gestureActive) {
+            // Held for the hold time only, and nothing else wakes the loop once it is over.
+            _mapRenderer->requestRedraw();
+        }
         _mapRenderer->onDrawFrame();
     }
     
@@ -97,19 +129,23 @@ namespace massif {
     }
     
     void BaseMapView::onInputEvent(int event, float x1, float y1, float x2, float y2) {
-        _touchHandler->onTouchEvent(event, ScreenPos(x1, y1), ScreenPos(x2, y2));
+        float scale = _options->getAppliedRenderScale();
+        _touchHandler->onTouchEvent(event, ScreenPos(toSurface(x1, scale), toSurface(y1, scale)), ScreenPos(toSurface(x2, scale), toSurface(y2, scale)));
     }
     
     void BaseMapView::onWheelEvent(int delta, float x, float y) {
-        _touchHandler->onWheelEvent(delta, ScreenPos(x, y));
+        float scale = _options->getAppliedRenderScale();
+        _touchHandler->onWheelEvent(delta, ScreenPos(x * scale, y * scale));
     }
 
     void BaseMapView::onWheelZoom(float zoomDelta, float x, float y) {
-        _touchHandler->onWheelZoom(zoomDelta, ScreenPos(x, y));
+        float scale = _options->getAppliedRenderScale();
+        _touchHandler->onWheelZoom(zoomDelta, ScreenPos(x * scale, y * scale));
     }
 
     MapPos BaseMapView::calculateOrbitPivot(float x, float y) {
-        ScreenPos screenPos(x, y);
+        float scale = _options->getAppliedRenderScale();
+        ScreenPos screenPos(x * scale, y * scale);
         ViewState viewState = _mapRenderer->getViewState();
         _touchHandler->updateGestureAnchorHeight(screenPos, viewState);
         return _touchHandler->calculatePivotPos(screenPos, viewState);
@@ -419,7 +455,10 @@ namespace massif {
         _mapRenderer->getKineticEventHandler().stopZoom();
         
         MapBounds mapBoundsInternal(_options->getBaseProjection()->toInternal(mapBounds.getMin()), _options->getBaseProjection()->toInternal(mapBounds.getMax()));
-        _mapRenderer->moveToFitBounds(mapBoundsInternal, screenBounds, integerZoom, resetTilt, resetRotation, durationSeconds);
+        float scale = _options->getAppliedRenderScale();
+        ScreenBounds surfaceBounds(ScreenPos(screenBounds.getMin().getX() * scale, screenBounds.getMin().getY() * scale),
+                                   ScreenPos(screenBounds.getMax().getX() * scale, screenBounds.getMax().getY() * scale));
+        _mapRenderer->moveToFitBounds(mapBoundsInternal, surfaceBounds, integerZoom, resetTilt, resetRotation, durationSeconds);
     }
     
     std::shared_ptr<MapEventListener> BaseMapView::getMapEventListener() const {
@@ -440,7 +479,8 @@ namespace massif {
         
     MapPos BaseMapView::screenToMap(const ScreenPos& screenPos) {
         ViewState viewState = _mapRenderer->getViewState();
-        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(viewState.screenToWorld(cglib::vec2<float>(screenPos.getX(), screenPos.getY()), 0, _options));
+        float scale = _options->getAppliedRenderScale();
+        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(viewState.screenToWorld(cglib::vec2<float>(screenPos.getX() * scale, screenPos.getY() * scale), 0, _options));
         return _options->getBaseProjection()->fromInternal(mapPosInternal);
     }
     
@@ -448,7 +488,8 @@ namespace massif {
         ViewState viewState = _mapRenderer->getViewState();
         MapPos mapPosInternal = _options->getBaseProjection()->toInternal(mapPos);
         cglib::vec2<float> screenPos = viewState.worldToScreen(_options->getProjectionSurface()->calculatePosition(mapPosInternal), _options);
-        return ScreenPos(screenPos(0), screenPos(1));
+        float scale = _options->getAppliedRenderScale();
+        return ScreenPos(screenPos(0) / scale, screenPos(1) / scale);
     }
     
     void BaseMapView::cancelAllTasks() {

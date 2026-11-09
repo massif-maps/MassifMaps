@@ -6190,6 +6190,15 @@
           "doc": "Returns the color of the ambient light."
         },
         {
+          "name": "appliedRenderScale",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only."
+        },
+        {
           "name": "backgroundBitmap",
           "type": "OBJECT",
           "readOnly": false,
@@ -6503,6 +6512,24 @@
           "cppType": "massif::RenderProjectionMode::RenderProjectionMode",
           "enum": "massif::RenderProjectionMode::RenderProjectionMode",
           "doc": "Returns the render projection mode."
+        },
+        {
+          "name": "renderScale",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the render scale used while the map is flat, the fraction of the view's pixels the map is drawn at."
+        },
+        {
+          "name": "renderScale3D",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the render scale used while the map is in 3D: terrain that is not flattened, or a tilted view."
         },
         {
           "name": "restrictedPanning",

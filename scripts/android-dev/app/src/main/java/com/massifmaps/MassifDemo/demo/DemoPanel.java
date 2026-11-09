@@ -1169,6 +1169,13 @@ public final class DemoPanel {
         slider(context, "fog stars (0..1)", 0, 1, DemoConfig.FOG_STAR_INTENSITY, false, new FloatSetting() {
             public void set(float value) { DemoConfig.FOG_STAR_INTENSITY = value; demo.fogOptions.set("starIntensity", value); }
         });
+        // The surface size changes, so apply on release only; the DPI follows inside the SDK.
+        slider(context, "render scale 2D (1 = native)", 0.25f, 1, (float) demo.map.getDouble("renderScale", 1.0), true, new FloatSetting() {
+            public void set(float value) { DemoConfig.RENDER_SCALE = value; demo.applyRenderScale(); }
+        });
+        slider(context, "render scale 3D (terrain / tilted)", 0.25f, 1, (float) demo.map.getDouble("renderScale3D", 1.0), true, new FloatSetting() {
+            public void set(float value) { DemoConfig.RENDER_SCALE_3D = value; demo.applyRenderScale(); }
+        });
         // Changes the visible tile set, so apply on release only.
         slider(context, "tile LOD (x tangram, 0=finest)", 0, 4, DemoConfig.TILE_LOD_FACTOR, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TILE_LOD_FACTOR = value; demo.map.set("tileLODFactor", value); }

@@ -2779,6 +2779,49 @@ device check is still required before calling this closed. Draining the queue on
 Not measured: iOS, `TextureMapView` (same `delete()` contract, not run), a real device, Release builds, the
 `Graphics` line of `meminfo` (0 on this emulator).
 
+## Render scale, with the DPI lowered too (2026-11-09)
+
+Redoes a first measurement that **was confounded**: it shrank the surface (`setFixedSize`) without lowering the DPI,
+so the smaller surface showed less ground, fewer tiles, at the same zoom. The scale below is the real option
+([Render scale](rendering/21-render-scale.md)): surface and DPI together, touches mapped, same ground.
+
+Crosscall, Adreno 610, 824x1648 at density 288 (**not** the 1080x2400 of the earlier rounds, and the fps is lower than
+theirs: do not compare across the two). Massif style, composite base, hillshade + contour + terrain + drape,
+buildings, tilt 30, zoom 15.8, programmatic north pan (`--es anim pan`, 0.04 deg in 25 s), `-PprofileRender` build, `renderScale3D` as
+an extra, 3 rounds interleaved (1, 0.85, 0.75, 0.6 each round), median of the 1 s `PROF` windows per run, then the mean of the 3 runs:
+
+| scale | fps (3 runs) | mean fps | frame avg | GPU total | drape GPU |
+|---|---|---|---|---|---|
+| 1.00 | 16.6 17.9 16.5 | 17.0 | 51.0 ms | 36.4 ms | 24.0 ms |
+| 0.85 | 19.0 18.0 17.9 | 18.3 | 46.4 ms | 28.6 ms | 20.0 ms |
+| 0.75 | 18.8 18.8 20.6 | 19.4 | 44.5 ms | 25.8 ms | 19.7 ms |
+| 0.60 | 20.6 18.4 20.0 | 19.7 | 45.5 ms | 23.9 ms | 18.5 ms |
+
+- **The GPU time falls a third (36 -> 24 ms at 0.6); the frame time falls ~11%.** In this pan the frame is not GPU-bound:
+  the GPU is at 26 ms against a 44 ms frame at 0.75, and the drape bakes (13-17 a second, ~40-55 ms of bake time per
+  second) are CPU. So the fps gain is +2.4 at 0.75 and +2.7 at 0.6, about twice the noise (+-1) and nowhere near the
+  earlier 36 fps. That number is not reproduced; its run had no DPI compensation, so it drew fewer tiles.
+- 0.6 is not meaningfully faster than 0.75 here: past 0.75 the GPU is no longer what the frame waits for.
+- Same camera, native against 0.75 and 0.6 (screenshots, `devtap diff`): 0.75 changes 5-7% of the pixels (mean 2-3 of 255),
+  0.6 9-12% (mean 3-4); native against native 0.1%. Ground, label and icon positions and sizes are the same; the
+  difference is softness, visible on small labels at 0.6 and barely at 0.75. A marker sized in raw pixels is `1/scale` larger.
+- The surface really is the asked size (`RenderScale: surface 618x1236 of view 824x1648` at 0.75).
+- **Why the gain was small, A/B.** The same pan on a build that also carries the uncommitted layer-name-filter work of
+  `perf/layer-filter-memo` (patch applied for the runs, reverted after), 3 interleaved rounds each, mean of 3 runs:
+
+  | build | scale | fps | frame avg | GPU total |
+  |---|---|---|---|---|
+  | this branch | 1.00 | 16.8 | 48.2 ms | 37.9 ms |
+  | this branch | 0.75 | 18.3 | 46.6 ms | 27.5 ms |
+  | + layer-filter work | 1.00 | 26.4 | 33.6 ms | 21.4 ms |
+  | + layer-filter work | 0.75 | 29.6 | 29.6 ms | 13.8 ms |
+
+  The other build holds ~26 fps native, the figure of the earlier rounds, and draws ~0.5 drape bakes a second against
+  13-17 here. The bake storm was the CPU floor that hid the saving; with it gone the scale buys +3.2 fps (+12%) and the
+  GPU time falls 7.6 ms (-36%). Same direction at both floors. The earlier 25 to 36 fps does not reproduce on either.
+  The cause of the bakes is that work, not this feature, and it is not established here which of its edits removes them.
+- Not measured: a static 3D view (no bakes), a touch-driven pan, battery, thermal state over minutes, a release build.
+
 ## Tilt: the far field follows the distance, per layer (2026-11-09)
 
 The far tiles of a gently tilted 3D map (Grenoble, Bastille, tilt 30-50 in the SDK's convention) came out two or

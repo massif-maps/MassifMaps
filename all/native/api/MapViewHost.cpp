@@ -86,10 +86,15 @@ namespace massif { namespace api {
         }
     }
 
-    void MapViewHost::onSurfaceChanged(int handle, int width, int height) {
+    void MapViewHost::onSurfaceChanged(int handle, int width, int height, float renderScale) {
         if (auto view = viewOf(handle)) {
-            view->onSurfaceChanged(width, height);
+            view->onSurfaceChanged(width, height, renderScale);
         }
+    }
+
+    float MapViewHost::wantedRenderScale(int handle) {
+        auto view = viewOf(handle);
+        return view ? view->getWantedRenderScale() : 1.0f;
     }
 
     void MapViewHost::onSurfaceDestroyed(int handle) {

@@ -64,6 +64,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationPosition;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationStarted;
 /** Returns the animation style of the billboard. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationStyle;
+/** Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAppliedRenderScale;
 /** Returns the number of elements in the array. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyArraySize;
 /** Returns the aspect ratio of the map screen. Equal to width / height. */
@@ -756,6 +758,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyReleaseCache;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRenderProjectionMode;
 /** Returns the relative rendering scale of the label. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRenderScale;
+/** Returns the render scale used while the map is in 3D: terrain that is not flattened, or a tilted view. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyRenderScale3D;
 /** Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRendererLayerFilter;
 /** Returns true if the tile should be replaced with parent tile. */

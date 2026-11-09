@@ -196,6 +196,7 @@ namespace massif {
         KineticEventHandler& getKineticEventHandler();
         // A finger is on the map: the terrain focus holds its height until it lifts (maplibre's elevationFreeze).
         void setTouchGestureActive(bool active);
+        bool isTouchGestureActive() const { return _touchGestureActive.load(); }
 
         // An animated call reports reason once, here; the frames it produces report ANIMATION.
         void calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);

@@ -29,17 +29,6 @@ namespace massif::mvt {
             return true;
         }
 
-        bool hasElevationMode(const Style& style) {
-            for (const std::shared_ptr<const Rule>& rule : style.getRules()) {
-                for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
-                    if (symbolizer->isPropertyDefined("elevation-mode")) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
         // A value the selecting parameter cannot be equal to, to fold the comparison the other way.
         // '=' calls two values of unrelated types unequal, so a string does for everything that is
         // not one, and a longer string does for a string.
@@ -110,7 +99,7 @@ namespace massif::mvt {
                 }
 
                 // A filtered-out style still builds if it can lift a deck: labels of every style read its span chords.
-                if (_styleFilter && !_styleFilter->matches(styleName) && !hasElevationMode(*style)) {
+                if (_styleFilter && !_styleFilter->matches(styleName) && !style->hasElevationMode()) {
                     styleIdx++;
                     continue;
                 }
@@ -135,7 +124,7 @@ namespace massif::mvt {
                 // their lines and fills pack into a few draw calls; the builder keeps their order.
                 // Unclipped, layer-major order is what keeps one tile's casing under the next one's fill.
                 std::string drawOnceGroup = ValueConverter<std::string>::convert(std::visit(ExpressionEvaluator(exprContext, nullptr), style->getDrawOnce()));
-                bool shareable = layerPresent && clippedPerTile && style->getOpacity() == 1.0f && !style->getCompOp() && drawOnceGroup.empty() && !hasElevationMode(*style) && drawsFlatGeometry(rules);
+                bool shareable = layerPresent && clippedPerTile && style->getOpacity() == 1.0f && !style->getCompOp() && drawOnceGroup.empty() && !style->hasElevationMode() && drawsFlatGeometry(rules);
                 if (sharedBuilder && !(shareable && sharedLayer == layer->getName())) {
                     flushSharedBuilder();
                 }

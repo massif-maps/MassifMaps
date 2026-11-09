@@ -2953,6 +2953,47 @@ remove the churn. Compare the two rules at the same tilt, never across tilts.
 Not measured: SDK tilt 70 with the option propagated to the composite's groups, tilt 10, a raster base under the vector one (the case DISTANCE is for: no far-sharpness
 image comparison was taken, so "sharper" is a host-level claim), a release build, iOS and the web.
 
+## Vector decode: one protobuf parse per tile for the composite's groups (2026-11-09)
+
+Method: Crosscall HLTE556N (Adreno 610), demo `BenchActivity`, Massif style, `--es base composite`, terrain, hillshade and
+contours, tilt 30, zoom 15.8, programmatic pan, three rounds interleaved base/patched with a reinstall before every arm
+(debug build, `-PprofileRender`). Per arm: the pan bench (median of ~21 one-second PROF windows) and one `simpleperf record
+-g` of the bake-heavy 7 s window, symbolised against each arm's own unstripped `libmassif.so`. The base is master 9475e74b1.
+
+Where the decode cycles went (one run on master, 41 % of all cycles in `decodeTile`, bake-heavy window): style evaluation ~20 %
+of `decodeTile`, `TileLayerBuilder` packing 15 %, feature iteration 14 %, geometry decode 9 %, polygon tessellation 8.5 %, line
+tessellation 7.5 %, the protobuf parse and its free 9 %, text shaping 5 %; allocator frames 19.5 % spread over all of them.
+Nothing was above 20 %, so the change takes the redundant parts:
+
+- **A composite parsed every tile once per group.** Each group's `FetchTask` calls `createFeatureDecoder`, which inflated and
+  parsed the same bytes (3 groups on the openmaptiles source in this style). `mvt::MBVTTileCache` keeps the last 8 parsed tiles
+  keyed by a hash of the raw bytes; groups asking at once wait for the first parse.
+- **`TileReader::readTile` walked all ~250 styles per group per tile** and, for every style the layer filter rejects, scanned its
+  symbolizers for `elevation-mode`. `Style::hasElevationMode()` caches that; `Map::_styleMap` is hashed.
+- **`FeatureDataCache`** is an `unordered_map` over the tag vector instead of a `std::map`.
+
+| | base (3 rounds) | patched (3 rounds) |
+|---|---|---|
+| fps, median per round | 27.7, 29.5, 27.7 | 29.5, 29.9, 29.8 |
+| drape bakes per second | 12.0, 9.0, 9.0 | 9.5, 9.5, 10.0 |
+| `decodeTile`, % of all cycles (bake-heavy window) | 42.2, 43.1, 42.1 | 40.2, 38.6, 38.4 |
+| `createFeatureDecoder` / `~MBVTFeatureDecoder` | 2.1 / 1.8 % | 0.6 / 0.3 % |
+| `Map::getStyle` + `isPropertyDefined` | 1.3 % | 0.5 % |
+| `getFeatureData` | 3.8 % | 3.6 % |
+
+The decode work fell by about 10 % in absolute cycles (17.6 G to 15.9 G cycles in the 7 s window), nearly all of it the parse and
+the style walk; the hashed feature-data cache moved `getFeatureData` by about 0.2 points, within noise. The frame rate is 29.7
+against 28.3 on the mean, but one base round (29.5) sits inside the patched range and this phone drifts 10 % run to run: read it as a
+small gain, not as proven. Bakes did not change, so the 20 fps seconds the bake windows cause are not fixed by this.
+
+Host, a real rhone-alpes z14 tile (49 KB), three groups, parse plus the feature-data path only (not a decode): 2.76 to
+1.94 ms best of 60, and 0.88 to 0.63 ms for one group (the hashed cache alone). That is a host number for those two functions, not a
+decode time. `tests/style/TileParseShareTest.cpp` pins the cache (shared, evicting, concurrent, a throwing parse) and that a decoder
+on a shared tile reads the same geometry and fields as one parsing its own.
+
+Not measured: a full `decodeTile` on the host (it links fonts and the renderer), iOS, a release build, the memory the 8 cached
+tiles hold (not sampled), packing (`packGeometry`, 15 % of `decodeTile`) which is left for a separate change.
+
 
 ## Contour DEM decode: once per residency, not once per reader (2026-11-09)
 

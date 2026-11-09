@@ -424,19 +424,25 @@ namespace massif::mvt {
         const std::shared_ptr<const std::vector<cglib::bbox2<float>>> _featureBounds;
     };
 
-    MBVTFeatureDecoder::MBVTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger) :
-        _logger(std::move(logger))
-    {
+    std::shared_ptr<const vector_tile::Tile> MBVTFeatureDecoder::parseTile(const std::vector<unsigned char>& data) {
         std::vector<unsigned char> uncompressedData;
         if (compression::inflate_tile(data.empty() ? nullptr : data.data(), data.size(), uncompressedData)) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
-            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
-        } else {
-            // As a last fallback, try raw protobuf (uncompressed)
-            protobuf::message tileMsg(data.data(), data.size());
-            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+            return std::make_shared<vector_tile::Tile>(tileMsg);
         }
+        // As a last fallback, try raw protobuf (uncompressed)
+        protobuf::message tileMsg(data.data(), data.size());
+        return std::make_shared<vector_tile::Tile>(tileMsg);
+    }
 
+    MBVTFeatureDecoder::MBVTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger) :
+        MBVTFeatureDecoder(parseTile(data), std::move(logger))
+    {
+    }
+
+    MBVTFeatureDecoder::MBVTFeatureDecoder(std::shared_ptr<const vector_tile::Tile> tile, std::shared_ptr<Logger> logger) :
+        _logger(std::move(logger)), _tile(std::move(tile))
+    {
         for (int i = 0; i < _tile->layers_size(); i++) {
             const std::string& name = _tile->layers(i).name();
             if (_layerMap.find(name) != _layerMap.end()) {
@@ -446,6 +452,53 @@ namespace massif::mvt {
                 _layerMap[name] = i;
             }
         }
+    }
+
+    MBVTTileCache::MBVTTileCache(std::size_t capacity) : _capacity(capacity) {
+    }
+
+    std::shared_ptr<const vector_tile::Tile> MBVTTileCache::get(const std::vector<unsigned char>& data, const ParseFunc& parse) {
+        // Keyed by a 64-bit hash plus the size, not by the bytes.
+        std::uint64_t hash = 0x9E3779B97F4A7C15ull ^ data.size();
+        std::size_t i = 0;
+        for (; i + 8 <= data.size(); i += 8) {
+            std::uint64_t word;
+            std::memcpy(&word, data.data() + i, 8);
+            hash = (hash ^ word) * 0xFF51AFD7ED558CCDull;
+            hash ^= hash >> 32;
+        }
+        for (; i < data.size(); i++) {
+            hash = (hash ^ data[i]) * 0xFF51AFD7ED558CCDull;
+            hash ^= hash >> 32;
+        }
+
+        std::shared_ptr<Entry> entry;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            for (auto it = _entries.begin(); it != _entries.end(); it++) {
+                if ((*it)->hash == hash && (*it)->size == data.size()) {
+                    entry = *it;
+                    _entries.splice(_entries.begin(), _entries, it);
+                    break;
+                }
+            }
+            if (!entry) {
+                entry = std::make_shared<Entry>();
+                entry->hash = hash;
+                entry->size = data.size();
+                _entries.push_front(entry);
+                if (_entries.size() > _capacity) {
+                    _entries.pop_back();
+                }
+            }
+        }
+
+        std::lock_guard<std::mutex> lock(entry->mutex);
+        if (!entry->ready) {
+            entry->tile = parse();
+            entry->ready = true;
+        }
+        return entry->tile;
     }
 
     void MBVTFeatureDecoder::invalidateGeometryCache() {

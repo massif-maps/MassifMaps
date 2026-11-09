@@ -11,6 +11,7 @@
 #include "Predicate.h"
 #include "vt/Styles.h"
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -47,6 +48,9 @@ namespace massif::mvt {
         // The symbolizers of the rules the context's feature matches, in draw order, under the filter mode.
         std::vector<std::shared_ptr<const Symbolizer>> findFeatureSymbolizers(const std::vector<std::shared_ptr<const Rule>>& rules, const ExpressionContext& exprContext) const;
 
+        // Whether any symbolizer defines 'elevation-mode'; read per style per tile, so computed once.
+        bool hasElevationMode() const;
+
         void optimizeRules();
 
     private:
@@ -64,6 +68,8 @@ namespace massif::mvt {
         const FilterMode _filterMode;
         std::vector<std::shared_ptr<const Rule>> _rules;
         const Expression _drawOnce;
+
+        mutable std::atomic<signed char> _hasElevationMode { -1 };
 
         mutable std::mutex _zoomRuleMapMutex;
         mutable bool _zoomRuleMapCalculated = false;

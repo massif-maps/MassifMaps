@@ -842,6 +842,12 @@ feature-id override, and declares the four layer operations (`getLayerNames`, `h
 `createLayerFeatureIterator`, `findFeature`). `LayerTileReader` — formerly `MBVTTileReader` — reads
 through it, so it serves both formats unchanged.
 
+A `CompositeVectorTileLayer` decodes every tile once per group, all through the same
+`MBVectorTileDecoder`. `createFeatureDecoder` therefore asks `mvt::MBVTTileCache` (the last 8 parsed
+`vector_tile::Tile`s, keyed by a hash of the raw bytes) before inflating and parsing: the first group
+parses, the others reuse the const tile, and groups asking at the same moment wait for that one parse.
+Each group still gets its own `MBVTFeatureDecoder`, since the transform, clip box and caches are per read.
+
 ### Detecting the format
 
 There is no magic number, but the two are separable by **framing**. An MLT tile is a sequence of

@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 namespace massif::mvt {
     class Map {
@@ -176,7 +177,7 @@ namespace massif::mvt {
         std::optional<SelectionParameter> _selectionParameter;
         std::map<std::string, Parameter> _parameterMap;
         std::vector<std::shared_ptr<Style>> _styles;
-        std::map<std::string, std::shared_ptr<Style>> _styleMap;
+        std::unordered_map<std::string, std::shared_ptr<Style>> _styleMap;
         std::vector<std::shared_ptr<FontSet>> _fontSets;
         std::map<std::string, std::shared_ptr<FontSet>> _fontSetMap;
         std::vector<std::shared_ptr<Layer>> _layers;

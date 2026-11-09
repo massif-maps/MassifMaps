@@ -69,6 +69,22 @@ namespace massif::mvt {
         return symbolizers;
     }
 
+    bool Style::hasElevationMode() const {
+        signed char cached = _hasElevationMode.load(std::memory_order_relaxed);
+        if (cached < 0) {
+            cached = 0;
+            for (const std::shared_ptr<const Rule>& rule : _rules) {
+                for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
+                    if (symbolizer->isPropertyDefined("elevation-mode")) {
+                        cached = 1;
+                    }
+                }
+            }
+            _hasElevationMode.store(cached, std::memory_order_relaxed);
+        }
+        return cached == 1;
+    }
+
     void Style::optimizeRules() {
         if (_filterMode != FilterMode::FIRST) {
             return;

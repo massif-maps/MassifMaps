@@ -42,7 +42,11 @@ final class MapViewNative {
 
     static native void surfaceCreated(int view);
 
-    static native void surfaceChanged(int view, int width, int height);
+    /** @param renderScale The surface's size over the view's: 1 unless the surface was made smaller (render scale). */
+    static native void surfaceChanged(int view, int width, int height, float renderScale);
+
+    /** The render scale the surface should have; read after a frame. */
+    static native float wantedRenderScale(int view);
 
     static native void surfaceDestroyed(int view);
 

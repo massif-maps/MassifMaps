@@ -602,7 +602,7 @@ namespace massif {
         float FOVY = options.getFieldOfViewY();
         int tileDrawSize = options.getTileDrawSize();
         float zoomOffset = options.getZoomOffset();
-        float dpi = options.getDPI();
+        float dpi = options.getRenderDPI();
         MapRange zoomRange = options.getZoomRange();
         bool restrictedPanning = options.isRestrictedPanning();
         if (projectionSurface != _projectionSurface || FOVY != _fovY || tileDrawSize != _tileDrawSize || zoomOffset != _zoomOffset || dpi != _dpi || zoomRange != _zoomRange || restrictedPanning != _restrictedPanning || _screenSizeChanged) {
@@ -1072,8 +1072,8 @@ namespace massif {
         double left = bottom * _aspectRatio;
         double right = top * _aspectRatio;
 
-        double dx =  2 * near * tanHalfFOVY * options.getFocusPointOffset().getX() / _height;
-        double dy = -2 * near * tanHalfFOVY * options.getFocusPointOffset().getY() / _height;
+        double dx =  2 * near * tanHalfFOVY * options.getFocusPointOffset().getX() * options.getAppliedRenderScale() / _height;
+        double dy = -2 * near * tanHalfFOVY * options.getFocusPointOffset().getY() * options.getAppliedRenderScale() / _height;
         
         top += dy;
         bottom += dy;

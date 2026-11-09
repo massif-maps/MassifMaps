@@ -122,6 +122,7 @@ void testGlobeElevationScale();
 void testSkyFrame();
 void testTerrainSurface();
 void testFlattenSwitchTimeline();
+void testRenderScalePolicy();
 void testViewDistance();
 void testFogPitchFade();
 void testCelestialImageGrid();
@@ -542,6 +543,7 @@ int main() {
     testSkyFrame();
     testTerrainSurface();
     testFlattenSwitchTimeline();
+    testRenderScalePolicy();
     testViewDistance();
     testFogPitchFade();
     testCelestialImageGrid();

@@ -179,6 +179,7 @@ public class DemoMap {
         // Options first: layers created afterwards pick up the terrain/light state immediately.
         map.set("tileThreadPoolSize", DemoConfig.TILE_THREAD_POOL_SIZE).set("envelopeThreadPoolSize", DemoConfig.TILE_THREAD_POOL_SIZE);
         applyTileLODConfig();
+        applyRenderScale();
         applyDebugConfig();
         applyGlobeMode();
         applyTerrainOptions();
@@ -1800,6 +1801,16 @@ public class DemoMap {
         map.set("tileLODTileCountRatio", DemoConfig.TILE_LOD_COUNT_RATIO);
         if (DemoConfig.FIELD_OF_VIEW_Y > 0) {
             map.set("fieldOfViewY", DemoConfig.FIELD_OF_VIEW_Y);
+        }
+    }
+
+    /** The render scale of the surface, 2D and 3D; a negative value keeps the SDK default. */
+    public void applyRenderScale() {
+        if (DemoConfig.RENDER_SCALE >= 0f) {
+            map.set("renderScale", DemoConfig.RENDER_SCALE);
+        }
+        if (DemoConfig.RENDER_SCALE_3D >= 0f) {
+            map.set("renderScale3D", DemoConfig.RENDER_SCALE_3D);
         }
     }
 

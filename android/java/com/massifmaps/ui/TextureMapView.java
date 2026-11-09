@@ -142,7 +142,7 @@ public class TextureMapView extends GLTextureView implements GLSurfaceView.Rende
 
     @Override
     public synchronized void onSurfaceChanged(GL10 gl, int width, int height) {
-        host.surfaceChanged(width, height);
+        host.surfaceChanged(width, height, 0);
     }
 
     @Override

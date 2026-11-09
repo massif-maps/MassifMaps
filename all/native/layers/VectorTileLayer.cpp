@@ -228,7 +228,7 @@ namespace massif {
             Log::Errorf("VectorTileLayer::setRendererLayerFilter: Invalid filter: %s", ex.what());
             throw InvalidArgumentException("Invalid filter expression");
         }
-        _rendererLayerFilterRe = filterRe ? std::make_shared<const std::regex>(*filterRe) : std::shared_ptr<const std::regex>();
+        _rendererLayerFilterRe = filterRe ? std::make_shared<const vt::LayerNameFilter>(*filterRe) : nullptr;
         _tileRenderer->setRendererLayerFilter(filterRe);
         MASSIF_PROBE_EVENT(this, "setRendererLayerFilter");
         updateTiles(false);
@@ -903,7 +903,7 @@ namespace massif {
         // Read at decode, not at queue time: after a zoom-out a stale target would style a coarse
         // tile for the near field over 4^lift the ground.
         _styleTileZoom = layer->calculateTileStyleZoom(_tileId, _tile.getZoom());
-        std::shared_ptr<const std::regex> layerFilter;
+        std::shared_ptr<const vt::LayerNameFilter> layerFilter;
         {
             std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
             layerFilter = layer->_rendererLayerFilterRe;

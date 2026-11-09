@@ -2779,6 +2779,42 @@ device check is still required before calling this closed. Draining the queue on
 Not measured: iOS, `TextureMapView` (same `delete()` contract, not run), a real device, Release builds, the
 `Graphics` line of `meminfo` (0 on this emulator).
 
+## Layer-name regexes ran for every tile on the cull and decode threads (2026-11-08)
+
+Method: alpimaps 3.0.8 (debuggable, `CompositeVectorTileLayer`, e-ink style, 3D) on the Crosscall
+(Adreno 610), three 4.5 s drags over fresh ground at pitch ~60, `simpleperf record --app -g` for 10 s,
+symbolised against the unstripped `libmassif.so` of the same build id. Panning ran 15.7 fps with 22.6
+frame gaps over 100 ms per 10 s; the Massif demo in plain mode (`--es base plain`, what `bench/base.sh` passes)
+ran 33 fps with 0.6, in composite mode 26.6 fps with 8.0.
+
+| | alpimaps | demo, composite |
+|---|---|---|
+| `std::regex_search` / `regex_match`, inclusive | 47% of samples | 33% |
+| `CullWorker::run`, inclusive | 26% | 19% |
+| `MBVectorTileDecoder::decodeTile`, inclusive | 37% | 30% |
+| libc `malloc` family, self + callees | 19% | 13% |
+
+Two uncached `std::regex_match` loops:
+
+- **`GLTileRenderer::testLayerFilter`** matched every layer name of every tile against the renderer layer
+  filter in `setVisibleTiles` and the label-map passes, once per layer per tile per cull. A composite map
+  gives each group a pattern the size of its style names (`CompositeVectorTileLayer::buildFilterString`),
+  and `std::regex` allocates per match. `isLayerDraped` had been given a cache for the same reason ([32](#32-the-mesh-128-terrain-frame-is-waiting-on-the-gpu-2026-09-28)); these calls had not.
+- **`mvt::TileReader::readTile`** matched every style name against the same filter for every decoded tile.
+
+A plain `VectorTileLayer` has no filter, so neither runs: the demo's bench default hid both.
+`vt::LayerNameFilter` is the regex plus a name -> bool memo behind a mutex; `GLTileRenderer`,
+`VectorTileLayer`, the decoder interface and `TileReader` hold it instead of a `std::regex`. A filter is
+immutable once set and a new one starts with an empty memo, so a changed filter cannot read old answers.
+`tests/vt/LayerNameFilterTest.cpp` pins the answers to `regex_match`'s, including from four threads.
+
+After the change, Crosscall A/B interleaved with the base build (Massif style, composite, terrain, hillshade and
+contours, tilt 30, zoom 15.8, programmatic pan, ~60 one-second samples per arm): drape bakes fell from 13-17 to
+~0.5 a second and the frame rate rose to 26.4 fps native (29.6 fps at render scale 0.75, GPU 21.4 -> 13.8 ms).
+
+Not measured: gap counts after the change, iOS, the remaining `std::wregex` built per call by the `=~` predicate (`mapnikvt/StringUtils.cpp`), which this profile
+did not show.
+
 ## The hillshade drape bake, shaded once per DEM texture (2026-11-09)
 
 Crosscall HLTE556N (Adreno 610), demo `BenchActivity`, Massif style, `--es base composite --es hs true

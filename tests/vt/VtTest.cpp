@@ -49,6 +49,7 @@ void testLabelFade();
 void testLabelSpot();
 void testLabelSpotNear();
 void testLayerContentFlags();
+void testLayerNameFilter();
 void testDrawOnce();
 void testPointGeoPosIndex();
 void testViewStateMatrix();
@@ -120,6 +121,7 @@ int main() {
     testLabelSpot();
     testLabelSpotNear();
     testLayerContentFlags();
+    testLayerNameFilter();
     testDrawOnce();
     testPointGeoPosIndex();
     testViewStateMatrix();

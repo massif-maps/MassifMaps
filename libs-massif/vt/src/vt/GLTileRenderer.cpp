@@ -1231,7 +1231,7 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         // TODO: rebuild the render tiles here; the filter only reaches those built after it, so callers must push it first.
-        _rendererLayerFilter = filter;
+        _rendererLayerFilter = filter ? std::make_shared<const LayerNameFilter>(*filter) : nullptr;
         // The skip guard's set signature says nothing about the filter, which also decides the maps.
         _labelTilesSignature.reset();
     }
@@ -1252,7 +1252,7 @@ namespace massif::vt {
     void GLTileRenderer::setClickHandlerLayerFilter(const std::optional<std::regex>& filter) {
         std::lock_guard<std::mutex> lock(_mutex);
 
-        _clickHandlerLayerFilter = filter;
+        _clickHandlerLayerFilter = filter ? std::make_shared<const LayerNameFilter>(*filter) : nullptr;
     }
 
     // Device pixels per line-width unit: on a dense screen the one-unit antialias ramp blurs thin
@@ -2784,11 +2784,8 @@ namespace massif::vt {
         return _tileMVPMatrixCache.emplace(key, mvpMatrix).first->second;
     }
 
-    bool GLTileRenderer::testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const {
-        if (!filter) {
-            return true;
-        }
-        return std::regex_match(layerName, *filter);
+    bool GLTileRenderer::testLayerFilter(const std::string& layerName, const std::shared_ptr<const LayerNameFilter>& filter) const {
+        return !filter || filter->matches(layerName);
     }
 
     bool GLTileRenderer::isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const {
@@ -3047,7 +3044,7 @@ namespace massif::vt {
 
     // The two expensive phases, off _mutex against a snapshot: they write no renderer state, and a
     // reused live label only has its build-time signature read. The caller checks the generation.
-    void GLTileRenderer::prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const {
+    void GLTileRenderer::prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::shared_ptr<const LayerNameFilter>& layerFilter, LabelMapBuild& build) const {
         VT_STAT_INC(labelMapRebuilds);
 
         VT_STAT_CLOCK(labelMapClock);

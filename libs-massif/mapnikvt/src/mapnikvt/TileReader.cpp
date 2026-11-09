@@ -110,7 +110,7 @@ namespace massif::mvt {
                 }
 
                 // A filtered-out style still builds if it can lift a deck: labels of every style read its span chords.
-                if (_styleFilter && !std::regex_match(styleName, *_styleFilter) && !hasElevationMode(*style)) {
+                if (_styleFilter && !_styleFilter->matches(styleName) && !hasElevationMode(*style)) {
                     styleIdx++;
                     continue;
                 }

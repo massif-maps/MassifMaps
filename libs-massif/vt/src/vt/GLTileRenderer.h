@@ -13,6 +13,7 @@
 #include "ViewState.h"
 #include "Label.h"
 #include "LabelFade.h"
+#include "LayerNameFilter.h"
 #include "Styles.h"
 #include "Tile.h"
 #include "TileId.h"
@@ -585,7 +586,7 @@ namespace massif::vt {
         cglib::mat3x3<double> calculateTileMatrix2D(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
 
-        bool testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const;
+        bool testLayerFilter(const std::string& layerName, const std::shared_ptr<const LayerNameFilter>& filter) const;
         bool isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const;
         bool hasSpanContent(const RenderTileLayer& renderLayer) const;
         bool resolveSpanDrape(const TileId& targetTileId, GLuint& texture, cglib::vec4<float>& uvTransform) const;
@@ -632,7 +633,7 @@ namespace massif::vt {
             bool unchanged = false;        // the tile set did not move; nothing to do
             unsigned int generation = 0;   // of the maps oldLabelMap was taken from
             std::map<int, GlobalIdLabelMap> oldLabelMap;
-            std::optional<std::regex> layerFilter;
+            std::shared_ptr<const LayerNameFilter> layerFilter;
             std::shared_ptr<const TileTransformer> transformer; // setTransformer may swap it while the prepare runs
             std::map<int, std::unordered_map<long long, std::pair<long long, int>>> signatures;
             std::map<int, GlobalIdLabelMap> labelMap;
@@ -641,7 +642,7 @@ namespace massif::vt {
             std::map<int, std::unordered_set<long long>> standInIds; // labels no other tile contributes to
         };
         static long long calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::unordered_set<const Tile*>& standInTiles);
-        void prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const;
+        void prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::shared_ptr<const LayerNameFilter>& layerFilter, LabelMapBuild& build) const;
         void commitLabelMaps(LabelMapBuild& build);
         bool updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const;
 
@@ -1038,11 +1039,11 @@ namespace massif::vt {
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = DEFAULT_LABEL_BLENDING_SPEED;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
-        std::optional<std::regex> _rendererLayerFilter;
+        std::shared_ptr<const LayerNameFilter> _rendererLayerFilter;
         std::optional<std::regex> _noDrapeLayerFilter;
         mutable std::unordered_map<std::string, bool> _noDrapeLayerCache; // regex_match per call was a frame cost (performance-log.md, 32)
         std::optional<std::pair<int, int>> _rendererLayerIndexRange;
-        std::optional<std::regex> _clickHandlerLayerFilter;
+        std::shared_ptr<const LayerNameFilter> _clickHandlerLayerFilter;
 
         std::shared_ptr<std::vector<RenderTile>> _renderTiles;
         std::shared_ptr<std::vector<RenderTile>> _visibleRenderTiles;

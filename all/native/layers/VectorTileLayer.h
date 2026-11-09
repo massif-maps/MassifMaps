@@ -23,6 +23,7 @@
 
 #include <stdext/timed_lru_cache.h>
 
+#include <vt/LayerNameFilter.h>
 #include <vt/Tile.h>
 #include <mapnikvt/Properties.h>
 
@@ -331,7 +332,7 @@ namespace massif {
         std::atomic<float> _labelBlendingSpeed;
         std::atomic<float> _labelPerspectiveScaling;
         std::string _rendererLayerFilter;
-        std::shared_ptr<const std::regex> _rendererLayerFilterRe;
+        std::shared_ptr<const vt::LayerNameFilter> _rendererLayerFilterRe;
         std::string _clickHandlerLayerFilter;
 
         std::atomic<bool> _tileMapsMode;

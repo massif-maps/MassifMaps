@@ -33,7 +33,10 @@ namespace massif {
             static void setRedrawRequestListener(int view, const std::shared_ptr<RedrawRequestListener>& listener);
 
             static void onSurfaceCreated(int view);
-            static void onSurfaceChanged(int view, int width, int height);
+            /** renderScale is the surface's size over the view's, 1 unless the view made its surface smaller. */
+            static void onSurfaceChanged(int view, int width, int height, float renderScale);
+            /** The render scale the surface should have, see BaseMapView::getWantedRenderScale; 1 for an unknown view. */
+            static float wantedRenderScale(int view);
             static void onSurfaceDestroyed(int view);
             static void onDrawFrame(int view);
 

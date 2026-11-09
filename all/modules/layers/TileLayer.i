@@ -23,6 +23,7 @@
 %import "layers/UTFGridEventListener.i"
 
 !enum(massif::TileSubstitutionPolicy::TileSubstitutionPolicy)
+!enum(massif::FarTileLOD::FarTileLOD)
 !polymorphic_shared_ptr(massif::TileLayer, layers.TileLayer)
 
 // true also drops the persistent cache, not just the in-memory one.
@@ -40,6 +41,7 @@
 %attribute(massif::TileLayer, bool, SynchronizedRefresh, isSynchronizedRefresh, setSynchronizedRefresh)
 %attribute(massif::TileLayer, massif::TileSubstitutionPolicy::TileSubstitutionPolicy, TileSubstitutionPolicy, getTileSubstitutionPolicy, setTileSubstitutionPolicy)
 %attribute(massif::TileLayer, float, ZoomLevelBias, getZoomLevelBias, setZoomLevelBias)
+%attribute(massif::TileLayer, massif::FarTileLOD::FarTileLOD, FarTileLOD, getFarTileLOD, setFarTileLOD)
 %attribute(massif::TileLayer, int, MaxOverzoomLevel, getMaxOverzoomLevel, setMaxOverzoomLevel)
 %attribute(massif::TileLayer, int, MaxUnderzoomLevel, getMaxUnderzoomLevel, setMaxUnderzoomLevel)
 %attribute(massif::TileLayer, int, MaxStandInLevel, getMaxStandInLevel, setMaxStandInLevel)

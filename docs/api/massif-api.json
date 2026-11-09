@@ -6190,6 +6190,15 @@
           "doc": "Returns the color of the ambient light."
         },
         {
+          "name": "appliedRenderScale",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only."
+        },
+        {
           "name": "backgroundBitmap",
           "type": "OBJECT",
           "readOnly": false,
@@ -6503,6 +6512,24 @@
           "cppType": "massif::RenderProjectionMode::RenderProjectionMode",
           "enum": "massif::RenderProjectionMode::RenderProjectionMode",
           "doc": "Returns the render projection mode."
+        },
+        {
+          "name": "renderScale",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the render scale used while the map is flat, the fraction of the view's pixels the map is drawn at."
+        },
+        {
+          "name": "renderScale3D",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the render scale used while the map is in 3D: terrain that is not flattened, or a tilted view."
         },
         {
           "name": "restrictedPanning",
@@ -9899,6 +9926,16 @@
           "cppType": "datasources.TileDataSource",
           "objectClass": "massif::TileDataSource",
           "doc": "Returns the data source assigned to this layer."
+        },
+        {
+          "name": "farTileLOD",
+          "type": "ENUM",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::FarTileLOD::FarTileLOD",
+          "enum": "massif::FarTileLOD::FarTileLOD",
+          "doc": "Gets how this layer's far tiles lose zoom when the map is tilted."
         },
         {
           "name": "frameNr",
@@ -15474,6 +15511,18 @@
         "name": "COMPOSITE_SOURCE_TYPE_VECTOR",
         "value": 2,
         "doc": "Another MBVT/protobuf source (including ContourTileDataSource), drawn at its style slot as its own child VectorTileLayer with the master decoder, so it overzooms independently via its own MaxOverzoomLevel."
+      }
+    ],
+    "massif::FarTileLOD::FarTileLOD": [
+      {
+        "name": "FAR_TILE_LOD_COARSE",
+        "value": 0,
+        "doc": "Far tiles lose zoom from the first degree of tilt: fewer tiles and a lighter frame. For vector styles, where a far tile is mostly lines and labels. The default, and what the SDK always did."
+      },
+      {
+        "name": "FAR_TILE_LOD_DISTANCE",
+        "value": 1,
+        "doc": "A tile's zoom follows its distance from the eye, as in mapbox-gl-js: nothing is lost within 45 degrees of vertical and the horizon stretches by a bounded factor. For raster, hybrid and imagery layers, where far ground has to stay sharp. Asks for more tiles at a steep tilt."
       }
     ],
     "massif::FlightEasing::FlightEasing": [

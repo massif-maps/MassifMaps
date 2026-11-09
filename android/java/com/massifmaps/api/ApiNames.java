@@ -64,6 +64,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> ANIMATION_STARTED = MassifObject.key("animationStarted");
     /** Returns the animation style of the billboard. */
     public static final MassifObject.Key<MassifObject> ANIMATION_STYLE = MassifObject.key("animationStyle");
+    /** Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only. */
+    public static final MassifObject.Key<Double> APPLIED_RENDER_SCALE = MassifObject.key("appliedRenderScale");
     /** Returns the number of elements in the array. */
     public static final MassifObject.Key<Long> ARRAY_SIZE = MassifObject.key("arraySize");
     /** Returns the aspect ratio of the map screen. Equal to width / height. */
@@ -333,6 +335,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> FADE_ANIMATION_TYPE = MassifObject.key("fadeAnimationType");
     /** Returns the far plane distance. */
     public static final MassifObject.Key<Double> FAR = MassifObject.key("far");
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    public static final MassifObject.Key<String> FAR_TILE_LOD = MassifObject.key("farTileLOD");
     /** Returns the clicked feature. */
     public static final MassifObject.Key<MassifObject> FEATURE = MassifObject.key("feature");
     /** Returns the position on the clicked feature that is closest to the click position: the center for points, the closest point for lines, the anchor point for billboards, getClickPos() for polygons. */
@@ -754,6 +758,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> RENDER_PROJECTION_MODE = MassifObject.key("renderProjectionMode");
     /** Returns the relative rendering scale of the label. */
     public static final MassifObject.Key<Double> RENDER_SCALE = MassifObject.key("renderScale");
+    /** Returns the render scale used while the map is in 3D: terrain that is not flattened, or a tilted view. */
+    public static final MassifObject.Key<Double> RENDER_SCALE3_D = MassifObject.key("renderScale3D");
     /** Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
     public static final MassifObject.Key<String> RENDERER_LAYER_FILTER = MassifObject.key("rendererLayerFilter");
     /** Returns true if the tile should be replaced with parent tile. */

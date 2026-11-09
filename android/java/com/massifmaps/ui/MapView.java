@@ -22,6 +22,8 @@ import android.view.MotionEvent;
 public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, MapViewInterface {
 
     private final MapViewHandle host;
+    // The render scale the surface was last asked for; the native side decides it, a frame at a time.
+    private volatile float requestedRenderScale = 1f;
 
     /**
      * Creates a new MapView object from a context object.
@@ -161,12 +163,42 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
 
     @Override
     public synchronized void onSurfaceChanged(GL10 gl, int width, int height) {
-        host.surfaceChanged(width, height);
+        host.surfaceChanged(width, height, getWidth());
+        android.util.Log.i("massif", "RenderScale: surface " + width + "x" + height + " of view " + getWidth() + "x" + getHeight());
     }
 
     @Override
     public synchronized void onDrawFrame(GL10 gl) {
         host.drawFrame();
+        float wanted = host.wantedRenderScale();
+        if (wanted != requestedRenderScale) {
+            requestedRenderScale = wanted;
+            post(this::applyRenderScale);
+        }
+    }
+
+    /**
+     * Sizes the surface to the render scale the map asked for (the map's renderScale and renderScale3D options),
+     * and lets the system scale it up to the view. The native side divides the DPI and maps the touches.
+     */
+    private void applyRenderScale() {
+        float scale = requestedRenderScale;
+        int width = getWidth();
+        int height = getHeight();
+        if (scale >= 1f || width <= 0 || height <= 0) {
+            getHolder().setSizeFromLayout();
+        } else {
+            getHolder().setFixedSize(Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale)));
+        }
+    }
+
+    @Override
+    protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight);
+        // A fixed surface does not follow the layout, so it is sized again from the new view size.
+        if (requestedRenderScale < 1f) {
+            applyRenderScale();
+        }
     }
 
     @Override

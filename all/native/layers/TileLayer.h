@@ -65,6 +65,26 @@ class ProjectionSurface;
         };
     }
         
+    namespace FarTileLOD {
+        /**
+         * How far tiles of a tilted map lose zoom: the ground seen at a grazing angle is read at a coarser level.
+         * Tiles under the camera, and those within 45 degrees of vertical on the distance rule, keep theirs.
+         */
+        enum FarTileLOD {
+            /**
+             * Far tiles lose zoom from the first degree of tilt: fewer tiles and a lighter frame. For vector
+             * styles, where a far tile is mostly lines and labels. The default, and what the SDK always did.
+             */
+            FAR_TILE_LOD_COARSE,
+            /**
+             * A tile's zoom follows its distance from the eye, as in mapbox-gl-js: nothing is lost within 45
+             * degrees of vertical and the horizon stretches by a bounded factor. For raster, hybrid and imagery
+             * layers, where far ground has to stay sharp. Asks for more tiles at a steep tilt.
+             */
+            FAR_TILE_LOD_DISTANCE
+        };
+    }
+
     /**
      * An abstract base class for all tile layers.
      */
@@ -166,6 +186,19 @@ class ProjectionSurface;
          * @param bias The new bias value, both positive and negative fractional values are supported.
          */
         virtual void setZoomLevelBias(float bias);
+
+        /**
+         * Gets how this layer's far tiles lose zoom when the map is tilted.
+         * @return The current far tile LOD rule.
+         */
+        FarTileLOD::FarTileLOD getFarTileLOD() const;
+        /**
+         * Sets how this layer's far tiles lose zoom when the map is tilted. Tiles seen top-down are cut the same
+         * by both rules; they differ in the far field of a tilted view, so set it per layer: a vector layer can
+         * stay on FAR_TILE_LOD_COARSE while the imagery under it asks for FAR_TILE_LOD_DISTANCE.
+         * @param rule The new rule. Default is FAR_TILE_LOD_COARSE.
+         */
+        virtual void setFarTileLOD(FarTileLOD::FarTileLOD rule);
         
         /**
          * Gets the current maximum overzoom level for this layer.
@@ -622,6 +655,7 @@ class ProjectionSurface;
         TileSubstitutionPolicy::TileSubstitutionPolicy _substitutionPolicy;
     
         float _zoomLevelBias;
+        FarTileLOD::FarTileLOD _farTileLOD;
         int _maxOverzoomLevel;
         int _maxStandInLevel;
         int _maxUnderzoomLevel;
@@ -700,6 +734,7 @@ class ProjectionSurface;
         unsigned int _cullElevationVersion = 0; // last DEM data version a distance LOD cull ran with
         bool _terrainActive = false; // last TerrainOptions active state a cull ran with
         float _cullZoomLevelBias = 0.0f; // last zoom level bias a cull ran with
+        FarTileLOD::FarTileLOD _cullFarTileLOD = FarTileLOD::FAR_TILE_LOD_COARSE; // last far tile rule a cull ran with
         // Its own mutex: the render thread reads this every frame while the switch waits, and
         // _mutex is held for a whole cull.
         mutable std::mutex _terrainDecodeMutex;

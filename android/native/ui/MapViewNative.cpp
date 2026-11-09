@@ -102,8 +102,14 @@ JNIEXPORT void JNICALL Java_com_massifmaps_ui_MapViewNative_surfaceCreated(JNIEn
     guarded("surfaceCreated", [&] { MapViewHost::onSurfaceCreated(view); });
 }
 
-JNIEXPORT void JNICALL Java_com_massifmaps_ui_MapViewNative_surfaceChanged(JNIEnv*, jclass, jint view, jint width, jint height) {
-    guarded("surfaceChanged", [&] { MapViewHost::onSurfaceChanged(view, width, height); });
+JNIEXPORT void JNICALL Java_com_massifmaps_ui_MapViewNative_surfaceChanged(JNIEnv*, jclass, jint view, jint width, jint height, jfloat renderScale) {
+    guarded("surfaceChanged", [&] { MapViewHost::onSurfaceChanged(view, width, height, renderScale); });
+}
+
+JNIEXPORT jfloat JNICALL Java_com_massifmaps_ui_MapViewNative_wantedRenderScale(JNIEnv*, jclass, jint view) {
+    jfloat scale = 1.0f;
+    guarded("wantedRenderScale", [&] { scale = MapViewHost::wantedRenderScale(view); });
+    return scale;
 }
 
 JNIEXPORT void JNICALL Java_com_massifmaps_ui_MapViewNative_surfaceDestroyed(JNIEnv*, jclass, jint view) {

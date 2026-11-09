@@ -415,18 +415,40 @@ zoom (plus `MaxOverzoomLevel` with terrain). The edge is in world units, the dis
 to the nearest point of the tile's box - DEM range included, so a summit tile is near - and the focal
 length in pixels is the projection's.
 
-The **allowance** is `(slant / vertical)^0.65`, from the slant distance to the vertical one of that nearest
-point (at least 1, with the vertical floored at 1/32 of the slant: 3.2 levels at most). It is the area
-rule's grazing slope, a pure function of the tile and the eye: a ground seen head on is judged by
-pixels alone, one seen along the surface may span more, so the level falls ~1.65 per doubling of the
-distance over the ground and one per doubling straight below the eye. The exponent and the floor are
-**fitted, not derived** (`FAR_COARSENING`, `MIN_GRAZING`): the foreshortening of a tile's area gives 0.5,
-but the area rule also lost the tile's depth and the screen angle, and had no floor at the horizon, and 0.5
-with a floor of 1/16 asked for 1.7x its tiles at tilt 10. On the Crosscall (z16.3, tilt 10, the 2D bench
-scene) 0.65 and 1/32 give the area rule's cut tile for tile, `z10:1 z12:2 z13:4 z14:1 z15:2 z16:6`; the
-sweep in `DistanceTileLODTest::testTheTileCountIsTheOldRules` finds 0.9-1.1x its count from tilt 90 to 10.
-0.6 held 21 tiles there against 16, 0.7 drops two far tiles of the Bastille scene a level (18 -> 12).
-Free roam imagery has none (`farCoarsening` 0): its panorama is cut by pixels alone, as it always was.
+The **allowance** is how many times more pixels a tile may span where the ground is seen at a grazing angle:
+what a far tile gives up in level. A pure function of the tile and the eye, chosen **per layer** by
+`TileLayer::FarTileLOD` (facade `farTileLOD`):
+
+| | `FAR_TILE_LOD_COARSE` (default) | `FAR_TILE_LOD_DISTANCE` |
+|---|---|---|
+| allowance | `(slant / vertical)^0.65` | mapbox-gl-js `distToSplitScale`, inverted |
+| starts | at the first degree of tilt | past 45 degrees of vertical |
+| bounded by | the vertical floored at 1/32 of the slant: 3.2 levels | the vertical floored at 1/64 of the slant, 32 (five levels) |
+| for | vector styles: far tiles are lines and labels, fewer of them is a lighter frame | raster, hybrid, imagery: far ground has to stay sharp |
+| host tiles, tilt 70 (SDK convention, z16, 1000 px) | 43 | 71 |
+
+**COARSE** is the area rule's grazing slope: a ground seen head on is judged by pixels alone, one seen along
+the surface may span more, so the level falls ~1.65 per doubling of the distance over the ground and one per
+doubling straight below the eye. The exponent and the floor are **fitted, not derived** (`FAR_COARSENING`,
+`MIN_GRAZING`): the foreshortening of a tile's area gives 0.5, but the area rule also lost the tile's depth and
+the screen angle, and had no floor at the horizon, and 0.5 with a floor of 1/16 asked for 1.7x its tiles at tilt
+10. On the Crosscall (z16.3, tilt 10, the 2D bench scene) 0.65 and 1/32 give the area rule's cut tile for tile,
+`z10:1 z12:2 z13:4 z14:1 z15:2 z16:6`; the sweep in `DistanceTileLODTest::testTheTileCountIsTheOldRules` finds
+0.9-1.1x its count from tilt 90 to 10. 0.6 held 21 tiles there against 16, 0.7 drops two far tiles of the
+Bastille scene a level (18 -> 12). The cost is the far field: at pitch 60 the screen centre loses
+`0.65 * |log2 cos(pitch)|` levels and the top of the screen 2.8 against 1.3 for the distance alone.
+
+**DISTANCE** is 1 while the view ray to the tile's nearest point is within 45 degrees of vertical, so a tile
+at a given distance has the **same level at any tilt up to there** and the screen centre is the top-down zoom;
+past it the slant distance one level covers stretches by 1.1 per vertical distance (1.02 at 60 degrees, 1.06 at
+70, 1.5 at 84). mapbox measures the depth along the view axis, we the distance to the nearest point: under
+0.07 of a level apart at a 37 degree field of view. maplibre's rule has the same exponent at 0.5 on the cosine
+and mapbox none, which is the reference. A tile of the top-down view that the camera tilts away from loses a
+level only at the far edge of that view, where the eye has moved off: `testTheFarRule` finds 6 of 172 at
+pitch 70 (16 of 172 under COARSE) and never more than one level, none finer (the camera's level caps it).
+
+Free roam imagery has no allowance on either rule: its panorama is cut by pixels alone, as it always was.
+The rule is per layer so a hybrid map keeps both: imagery on DISTANCE under a vector layer on COARSE.
 
 The flat top-down map keeps its cut: at tilt 90 the nearest point and the projected area measure the same
 thing and the allowance is 1; the sweeps in `DistanceTileLODTest` find the two rules within a level.

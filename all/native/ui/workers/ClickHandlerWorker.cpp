@@ -88,7 +88,7 @@ namespace massif {
         
         if (_clickMode == DOUBLE_CLICK) {
             cglib::vec2<float> delta(screenPos.getX() - _pointer1Down.getX(), screenPos.getY() - _pointer1Down.getY());
-            if (cglib::length(delta) / _options->getDPI() < DOUBLE_CLICK_TOLERANCE_INCHES) {
+            if (cglib::length(delta) / _options->getRenderDPI() < DOUBLE_CLICK_TOLERANCE_INCHES) {
                 _chosen = true;
             }
         }
@@ -108,7 +108,7 @@ namespace massif {
         _pointer1MovedSum += std::abs(screenPos.getY() - _pointer1Moved.getY());
         _pointer1Moved = screenPos;
     
-        float dpi = _options->getDPI();
+        float dpi = _options->getRenderDPI();
         // dp, so the same physical distance whatever the display - and settable, because a mouse
         // needs a far smaller one than a finger.
         const float movingTolerance = _options->getClickMovingTolerance() / Const::UNSCALED_DPI;
@@ -177,7 +177,7 @@ namespace massif {
     
         _pointer2Moved = screenPos;
     
-        float dpi = _options->getDPI();
+        float dpi = _options->getRenderDPI();
         // dp, so the same physical distance whatever the display - and settable, because a mouse
         // needs a far smaller one than a finger.
         const float movingTolerance = _options->getClickMovingTolerance() / Const::UNSCALED_DPI;

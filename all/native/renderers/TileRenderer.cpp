@@ -871,7 +871,7 @@ namespace massif {
         }
     }
 
-    void TileRenderer::setTerrainPaint(bool enabled, bool fullDetail, float heightScale, bool exaggerateHeightScale, bool legacyHeightScale, float contrast, float opacity, std::size_t fingerprint) {
+    void TileRenderer::setTerrainPaint(bool enabled, bool fullDetail, float heightScale, bool exaggerateHeightScale, bool legacyHeightScale, float contrast, float opacity, std::size_t fingerprint, bool shadeCache) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _terrainPaintEnabled = enabled;
@@ -885,6 +885,7 @@ namespace massif {
             paint.contrast = contrast;
             paint.opacity = opacity;
             paint.fingerprint = fingerprint;
+            paint.shadeCache = shadeCache;
             tileRenderer->setTerrainPaint(paint);
             tileRenderer->setTerrainPaintOnGround(isTerrainPaintOnGroundForced());
             tileRenderer->setTerrainDemTaps(terrainDemTaps());

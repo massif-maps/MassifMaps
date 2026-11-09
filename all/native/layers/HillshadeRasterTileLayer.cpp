@@ -57,6 +57,21 @@ namespace massif
     }
 #endif
 
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
+    // A/B of the shaded-DEM cache behind the paint's drape bake: adb shell setprop debug.massif.paintshade 0
+    static bool isPaintShadeCacheDisabledByProperty() {
+        static const bool disabled = [] {
+            char property[PROP_VALUE_MAX] = { 0 };
+            return __system_property_get("debug.massif.paintshade", property) > 0 && property[0] == '0';
+        }();
+        return disabled;
+    }
+#else
+    static bool isPaintShadeCacheDisabledByProperty() {
+        return false;
+    }
+#endif
+
     HillshadeRasterTileLayer::HillshadeRasterTileLayer(const std::shared_ptr<TileDataSource> &dataSource, const std::shared_ptr<ElevationDecoder> &elevationDecoder) : CustomRasterTileLayer(dataSource),
         _elevationDecoder(elevationDecoder),
         _contrast(0.5f),
@@ -444,7 +459,7 @@ namespace massif
         // gradient comes from differs (the terrain DEM instead of a normal map raster).
         // getExaggeration() is applied by the lighting shader itself, so it is not repeated here.
         bool paintActive = isTerrainPaintActive();
-        _tileRenderer->setTerrainPaint(paintActive, isTerrainPaintFullDetailEnabled(), getHeightScale(), getExagerateHeightScaleEnabled(), isLegacyHeightScaleEnabled(), getContrast(), getOpacity(), calculatePaintFingerprint());
+        _tileRenderer->setTerrainPaint(paintActive, isTerrainPaintFullDetailEnabled(), getHeightScale(), getExagerateHeightScaleEnabled(), isLegacyHeightScaleEnabled(), getContrast(), getOpacity(), calculatePaintFingerprint(), getNormalMapLightingShader().empty() && !isPaintShadeCacheDisabledByProperty());
     }
 
     bool HillshadeRasterTileLayer::prepareTerrainDrapeFrame(float deltaSeconds, const ViewState& viewState) {

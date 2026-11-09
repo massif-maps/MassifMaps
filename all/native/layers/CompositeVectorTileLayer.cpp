@@ -218,6 +218,20 @@ namespace massif {
         }
     }
 
+    void CompositeVectorTileLayer::setFarTileLOD(FarTileLOD::FarTileLOD rule) {
+        VectorTileLayer::setFarTileLOD(rule);
+
+        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        for (const ExternalSource& s : _externalSources) {
+            applyChildTileProperties(s);
+        }
+        for (const DrawItem& item : _drawItems) {
+            if (auto groupLayer = std::dynamic_pointer_cast<TileLayer>(item.groupLayer)) {
+                groupLayer->setFarTileLOD(rule);
+            }
+        }
+    }
+
     void CompositeVectorTileLayer::setPreloading(bool preloading) {
         VectorTileLayer::setPreloading(preloading);
 
@@ -334,6 +348,7 @@ namespace massif {
             }
             tileLayer->setPreloading(isPreloading());
             tileLayer->setZoomLevelBias(source.zoomLevelBiasSet ? source.zoomLevelBias : getZoomLevelBias());
+            tileLayer->setFarTileLOD(getFarTileLOD());
             if (source.maxOverzoomLevelSet) {
                 tileLayer->setMaxOverzoomLevel(source.maxOverzoomLevel);
             }
@@ -390,6 +405,7 @@ namespace massif {
         groupLayer->setBuildingRenderOrder(getBuildingRenderOrder());
         // The groups render the same source as this layer, so they must select the same tiles.
         groupLayer->setZoomLevelBias(getZoomLevelBias());
+        groupLayer->setFarTileLOD(getFarTileLOD());
         groupLayer->setPreloading(isPreloading());
         groupLayer->setOpacity(getOpacity());
         // Groups are rebuilt on every style or slot change, long after the app set its click state.

@@ -300,6 +300,22 @@ public class DemoMap {
         rebuildLayers();
     }
 
+    private static String farTileLOD(String name) {
+        return "distance".equals(name) ? "FAR_TILE_LOD_DISTANCE" : "FAR_TILE_LOD_COARSE";
+    }
+
+    /** Pushes the far tile LOD rules to the base layer and the stand-alone raster layer, if built. */
+    public void applyFarTileLOD() {
+        if (baseLayer != null) {
+            baseLayer.set("farTileLOD", farTileLOD(DemoConfig.FAR_TILE_LOD_VECTOR));
+        }
+        MassifLayer raster = layers.get(Feature.SATELLITE);
+        if (raster != null) {
+            raster.set("farTileLOD", farTileLOD(DemoConfig.FAR_TILE_LOD_RASTER));
+        }
+        mapView.requestRender();
+    }
+
     /** Pushes DemoConfig.RASTER_ZOOM_BIAS to the stand-alone raster layer, if built. */
     public void applyRasterZoomBias() {
         MassifLayer raster = layers.get(Feature.SATELLITE);
@@ -400,7 +416,8 @@ public class DemoMap {
             case BASE: return createBaseLayer();
             case SATELLITE:
                 return layer(feature, Spec.of("raster").set("source", rasterSource().id())
-                        .set("zoomLevelBias", DemoConfig.RASTER_ZOOM_BIAS));
+                        .set("zoomLevelBias", DemoConfig.RASTER_ZOOM_BIAS)
+                        .set("farTileLOD", farTileLOD(DemoConfig.FAR_TILE_LOD_RASTER)));
             case HILLSHADE: return createHillshadeLayer();
             case HYPSO: return createHypsoLayer();
             case RADAR: return createRadarLayer();
@@ -462,7 +479,8 @@ public class DemoMap {
                 .set("source", vectorSource().id())
                 .set("style", baseDecoder.id())
                 .set("tileCacheCapacity", DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L)
-                .set("zoomLevelBias", DemoConfig.VECTOR_ZOOM_BIAS);
+                .set("zoomLevelBias", DemoConfig.VECTOR_ZOOM_BIAS)
+                .set("farTileLOD", farTileLOD(DemoConfig.FAR_TILE_LOD_VECTOR));
         if (composite) {
             spec.set("labelRenderOrder", RENDER_ORDER_LAST);
         }

@@ -187,6 +187,19 @@ namespace massif {
         refresh();
     }
     
+    FarTileLOD::FarTileLOD TileLayer::getFarTileLOD() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        return _farTileLOD;
+    }
+
+    void TileLayer::setFarTileLOD(FarTileLOD::FarTileLOD rule) {
+        {
+            std::lock_guard<std::recursive_mutex> lock(_mutex);
+            _farTileLOD = rule;
+        }
+        refresh();
+    }
+
     int TileLayer::getMaxOverzoomLevel() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         return _maxOverzoomLevel;
@@ -327,6 +340,7 @@ namespace massif {
         _preloading(false),
         _substitutionPolicy(TileSubstitutionPolicy::TILE_SUBSTITUTION_POLICY_ALL),
         _zoomLevelBias(0.0f),
+        _farTileLOD(FarTileLOD::FAR_TILE_LOD_COARSE),
         _maxOverzoomLevel(MAX_PARENT_SEARCH_DEPTH),
         _maxStandInLevel(MAX_STAND_IN_DEPTH),
         _maxUnderzoomLevel(MAX_CHILD_SEARCH_DEPTH),
@@ -463,8 +477,10 @@ namespace massif {
                 }
             }
             float zoomLevelBias = getZoomLevelBias();
-            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _cullFreeRoam != freeRoam || _terrainActive != terrainActive || _cullZoomLevelBias != zoomLevelBias) {
+            FarTileLOD::FarTileLOD farTileLOD = getFarTileLOD();
+            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _cullFreeRoam != freeRoam || _terrainActive != terrainActive || _cullZoomLevelBias != zoomLevelBias || _cullFarTileLOD != farTileLOD) {
                 _cullZoomLevelBias = zoomLevelBias;
+                _cullFarTileLOD = farTileLOD;
                 _terrainViewDistanceFactor = viewDistanceFactor;
                 _tileLODFactor = lodFactor;
                 _terrainCoarsening = coarsening;
@@ -995,6 +1011,7 @@ namespace massif {
             _distanceView.zoom0Distance = viewState.getZoom0Distance();
             _distanceView.zoomShift = _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS;
             _distanceView.farCoarsening = _freeRoamImagery ? 0.0 : DistanceTileLOD::FAR_COARSENING;
+            _distanceView.farRule = (getFarTileLOD() == FarTileLOD::FAR_TILE_LOD_DISTANCE && !_freeRoamImagery) ? DistanceTileLOD::FarRule::Distance : DistanceTileLOD::FarRule::Slant;
         }
         if (_distanceLod && !_freeRoamImagery) {
             // The camera's zoom cap from a reference no look moves: the camera distance on a plane, the eye's height

@@ -2778,3 +2778,69 @@ device check is still required before calling this closed. Draining the queue on
 
 Not measured: iOS, `TextureMapView` (same `delete()` contract, not run), a real device, Release builds, the
 `Graphics` line of `meminfo` (0 on this emulator).
+
+## Tilt: the far field follows the distance, per layer (2026-11-09)
+
+The far tiles of a gently tilted 3D map (Grenoble, Bastille, tilt 30-50 in the SDK's convention) came out two or
+three levels coarser than the same ground at tilt 90: hillshade blocks, no contours, sparse labels. The cause was
+the allowance `(slant / vertical)^0.65` of the fit above, which grows from the first degree of tilt. That is the
+right trade for vector styles (fewer tiles on a slow GPU) and the wrong one for imagery.
+
+`TileLayer::FarTileLOD` now chooses per layer (see [02-tiles](rendering/02-tiles.md)): `COARSE` is that fit and the
+default, `DISTANCE` is mapbox-gl-js's `distToSplitScale`. Computed from the formula (a ground point at the top of
+the screen, FOV 36.87, levels against the top-down zoom; not measured on a device):
+
+| pitch | COARSE | DISTANCE |
+|---|---|---|
+| 40 | -1.2 | -0.55 |
+| 60 | -2.8 | -1.5 |
+| 80 | -5.7 | -2.5 plus the stretch, bounded at five levels |
+
+Host sweep (`DistanceTileLODTest::testTheFarRule`, classic zoom 15.8-17.3, two screens, DPI 1.8, within the
+budget of 112), mean tiles held. Tilt below is from straight down; the SDK's tilt is 90 minus it, so 20 is tilt 70:
+
+| tilt from down | COARSE | DISTANCE |
+|---|---|---|
+| 20 (SDK 70) | 10.8 | 10.8 |
+| 40 (SDK 50) | 12.5 | 12.5 |
+| 60 (SDK 30) | 19.0 | 18.8 |
+| 70 (SDK 20) | 28.2 | 35.7 |
+
+Up to SDK tilt 30 the two rules hold the same tiles; at SDK tilt 20, alpimaps' default 3D tilt, DISTANCE holds
+27 % more. Mean ratio against the area rule at the earlier sweep (z16, 1000 px): COARSE 0.91 at 45 and 1.07 at 80,
+DISTANCE 0.91 at 45, 1.03 at 60 and 1.57 at 80.
+
+Tiles a straight-down view holds, against the level of the same ground when the camera tilts (centre of each
+leaf, those the tilted view still has): a tile never gets finer, and loses a level only at the far edge of the
+top-down view. At tilt from down 70 (SDK 20) COARSE lost 16 of 172, DISTANCE 6 of 172; at 60 both 6 of 176.
+
+Device, Crosscall (Adreno 610), `bench/fartilt.sh` + `fartiltsum.py`: Massif style on the **composite** base
+(`--es base composite`, buildings 2), terrain, hillshade and contours on, Grenoble z15.5, rotating 0 to 180 over 16 s,
+after 40 s of settle; `farLodVector` coarse | distance on the base composite (its style groups follow it); three
+interleaved runs each, median of about 45 one-second windows (30 for distance at tilt 20, where windows were dropped
+for taking over 1.6 s). Tiles are `renderTiles` per frame over **all** tile layers (base groups, hillshade, contours).
+Drape is the PROF line's drape stage, CPU ms per frame. A debug build with the profiler on; run-to-run drift on this
+phone is 10 % or more, so a gap under that is noise.
+
+| SDK tilt | fps coarse | fps distance | drape ms coarse / distance | tiles/frame coarse | tiles/frame distance |
+|---|---|---|---|---|---|
+| 50 | 17.9 | 17.9 | 3.6 / 3.6 | 75.5 | 74.5 |
+| 30 | 8.2 | 8.9 | 14.1 / 17.4 | 121.8 | 134.0 |
+| 20 | 6.3 | 9.6 | 22.4 / 14.7 | 126.8 | 88.8 |
+
+At tilt 50 the two rules draw the same tiles at the same fps, as the host sweep says. At tilt 30 DISTANCE draws 10 %
+more tiles, with 23 % more drape time and a fps gap inside the noise. At tilt 20, where the host sweep predicts 27 %
+more tiles for DISTANCE, the device drew **30 % fewer** (89 against 127) with a third less drape time, and ran 52 %
+faster, in the earlier two-run table too. The host model (a plane, no DEM boxes, one layer, no budget shared with the
+hillshade and contour layers) does not carry over there, and the cause is not established. The fps columns do not
+show DISTANCE costing frames on this scene at any tilt. The hillshade and contour layers keep the default rule: only
+the composite and its groups were set.
+
+Why tilt 50 runs slower than straight down with the same tiles (tilt 90: 25.9 fps, 75 tiles; tilt 50 in that session:
+18.2 fps, 75 tiles; auto-flatten is off in the demo, so both are 3D terrain). The 180 degree rotation exposes new ground
+at tilt 50 (113 drape bakes in 16 s against 24 at tilt 90) and the GPU drape section goes from 4 to 12-14 ms; windows
+without a bake run 24-27 fps at either tilt. The drape cache is full (48 of 48), so a warm-up revolution does not
+remove the churn. Compare the two rules at the same tilt, never across tilts.
+
+Not measured: SDK tilt 70 with the option propagated to the composite's groups, tilt 10, a raster base under the vector one (the case DISTANCE is for: no far-sharpness
+image comparison was taken, so "sharper" is a host-level claim), a release build, iOS and the web.

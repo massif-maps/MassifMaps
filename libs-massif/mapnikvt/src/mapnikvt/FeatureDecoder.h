@@ -89,7 +89,17 @@ namespace massif::mvt {
             }
 
         private:
-            std::map<T, const std::shared_ptr<const FeatureData>> _container;
+            struct KeyHash {
+                std::size_t operator () (const T& key) const {
+                    std::size_t hash = key.size();
+                    for (const auto& element : key) {
+                        hash = hash * 1000003u ^ std::hash<typename T::value_type>()(element);
+                    }
+                    return hash;
+                }
+            };
+
+            std::unordered_map<T, const std::shared_ptr<const FeatureData>, KeyHash> _container;
             mutable std::mutex _mutex;
         };
     };

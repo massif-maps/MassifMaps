@@ -35,6 +35,7 @@ void testRandomExpression();
 void testRenderModeAlignment();
 void testLineProgress();
 void testLineGradient();
+void testTileParseShare();
 
 int main() {
     testLayerConfig();
@@ -66,6 +67,7 @@ int main() {
     testRenderModeAlignment();
     testLineProgress();
     testLineGradient();
+    testTileParseShare();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

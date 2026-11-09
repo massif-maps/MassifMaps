@@ -787,14 +787,33 @@ namespace massif {
 
     std::shared_ptr<mvt::LayerFeatureDecoder> MBVectorTileDecoder::createFeatureDecoder(const std::shared_ptr<BinaryData>& tileData) const {
         TileFormat::TileFormat tileFormat;
+        std::shared_ptr<mvt::MBVTTileCache> tileCache;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             tileFormat = _tileFormat;
+            if (!_tileCache) {
+                _tileCache = std::make_shared<mvt::MBVTTileCache>();
+            }
+            tileCache = _tileCache;
+        }
+
+        const std::vector<unsigned char>& rawData = *tileData->getDataPtr();
+        if (tileFormat != TileFormat::TILE_FORMAT_MLT) {
+            std::shared_ptr<const vector_tile::Tile> tile = tileCache->get(rawData, [&]() -> std::shared_ptr<const vector_tile::Tile> {
+                std::vector<unsigned char> plainData;
+                const std::vector<unsigned char>& data = mvt::compression::inflate_tile(rawData.empty() ? nullptr : rawData.data(), rawData.size(), plainData) ? plainData : rawData;
+                if (tileFormat == TileFormat::TILE_FORMAT_AUTO && mvt::MLTFeatureDecoder::isTileData(data.data(), data.size())) {
+                    return nullptr;
+                }
+                return mvt::MBVTFeatureDecoder::parseTile(data);
+            });
+            if (tile) {
+                return std::make_shared<mvt::MBVTFeatureDecoder>(std::move(tile), _logger);
+            }
         }
 
         // Inflate here rather than in the decoders: detection needs the plain bytes, and the
         // decoder's own header check then costs nothing.
-        const std::vector<unsigned char>& rawData = *tileData->getDataPtr();
         std::vector<unsigned char> inflatedData;
         const std::vector<unsigned char>& data = mvt::compression::inflate_tile(rawData.empty() ? nullptr : rawData.data(), rawData.size(), inflatedData) ? inflatedData : rawData;
 

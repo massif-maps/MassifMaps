@@ -26,6 +26,7 @@ namespace massif {
     namespace mvt {
         class Map;
         class LayerFeatureDecoder;
+        class MBVTTileCache;
         class SymbolizerContext;
         class Logger;
     }
@@ -303,6 +304,9 @@ namespace massif {
 
         mutable std::pair<std::shared_ptr<BinaryData>, std::shared_ptr<mvt::LayerFeatureDecoder> > _cachedFeatureDecoder;
     
+        // Built on first use; the composite's layers share this decoder, so they share its parsed tiles.
+        mutable std::shared_ptr<mvt::MBVTTileCache> _tileCache;
+
         mutable std::mutex _mutex;
     };
         

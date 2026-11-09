@@ -2779,6 +2779,35 @@ device check is still required before calling this closed. Draining the queue on
 Not measured: iOS, `TextureMapView` (same `delete()` contract, not run), a real device, Release builds, the
 `Graphics` line of `meminfo` (0 on this emulator).
 
+## The hillshade drape bake, shaded once per DEM texture (2026-11-09)
+
+Crosscall HLTE556N (Adreno 610), demo `BenchActivity`, Massif style, `--es base composite --es hs true
+--es contour false`, static camera tilt 30 zoom 15.8, three 4.5 s vertical drags, per-layer GPU timers
+around each drape layer's `bakeDrapeTile` (not committed). In that scene the hillshade is the **terrain paint**
+(the DEM is the terrain's own), so its bake runs `terrainPaintFsh`: 16 highp DEM fetches, normal rebuild and
+`applyLighting` for every pixel of every drape tile, at every bake. Before: 40-51 ms of GPU per baking frame,
+against 4-6 ms for the vector layers together.
+
+The paint is now shaded once per elevation texture and each drape tile bakes as a textured quad
+([07-hillshade-contours.md](rendering/07-hillshade-contours.md#the-bake-shaded-once-per-dem-texture)).
+Interleaved `debug.massif.paintshade 0` (before) / `1` (after), same APK, 3 rounds, app restarted each run:
+
+| round | fps off / on | hillshade bake ms per baking frame, off / on | GPU frame ms, off / on | drape GPU ms, off / on |
+|---|---|---|---|---|
+| 1 | 21.0 / 22.3 | 45.4 / 5.2 | 47.9 / 25.0 | 5.35 / 4.29 |
+| 2 | 21.5 / 23.0 | 40.1 / 4.7 | 47.6 / 26.4 | 5.74 / 4.39 |
+| 3 | 20.5 / 23.1 | 51.2 / 4.1 | 65.1 / 22.0 | 6.02 / 4.37 |
+
+The bake falls ten-fold and the GPU frame halves, but the pan gains only **+1.8 fps (21.0 -> 22.8, about 8%)**,
+a little above the plus or minus 1 noise: the frame is not GPU-bound there, so the 30 fps goal needs the CPU
+side too (decode saturation, see the pan hitch entry). The cached picture is bilinear between DEM texel
+centres where the per-pixel shader interpolated the gradient first: same-camera screenshots at 90 s differ by
+a mean 0.3/255 on terrain (p99 3/255, 0.01% of pixels above 16); the only visible differences are label and
+POI placement. Not measured: contours on, other tilts, a cold start (the first bake of each DEM texture pays
+the shading, about a quarter of one old bake), a second device, iOS, the web, the globe and custom shaders
+(both keep the per-pixel bake), a shaded texture at twice the DEM resolution.
+
+
 ## Render scale, with the DPI lowered too (2026-11-09)
 
 Redoes a first measurement that **was confounded**: it shrank the surface (`setFixedSize`) without lowering the DPI,

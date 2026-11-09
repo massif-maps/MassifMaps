@@ -133,6 +133,7 @@ namespace massif {
         struct CacheEntry {
             std::shared_ptr<ElevationTileGrid> grid;
             GridKey gridKeyValue = -1;
+            std::uint64_t contentVersion = 0; // see TerrainTexture::contentVersion
             BorderQuality borderQuality = NO_BORDERS;
             int border = 1; // texels of neighbour data around the raster (getTextureBorderTexels)
             // Held so a later patch reuses them and border quality stays monotone despite LRU churn.
@@ -206,6 +207,7 @@ namespace massif {
         mutable std::mutex _cacheMutex;
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         unsigned int _drawnVersion = 0;
+        std::uint64_t _contentVersionCounter = 0;
         bool _held = false;
         std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
 

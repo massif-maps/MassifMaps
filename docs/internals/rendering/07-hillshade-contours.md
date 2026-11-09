@@ -79,6 +79,36 @@ Two things the port had to get right:
   it reports no tiles at all. Reporting the previous frame's cover instead made every tile that had
   just entered it look incomplete (surface draws up 12%).
 
+### The bake: shaded once per DEM texture
+
+The drape bake used to run the whole lighting shader (16 DEM fetches, normal rebuild, `applyLighting`)
+for every pixel of every drape tile, at every bake: fill-bound, and the largest single item of a baking
+frame on a slow GPU. One elevation texture (a 514² RGBA grid) spans many drape tiles, so the work is the
+same picture shaded again and again.
+
+`GLTileRenderer::resolvePaintShade` now shades the paint once over a whole elevation texture, at the
+texture's own resolution (border included), into an RGBA8 texture; `renderTerrainPaint` then bakes each
+drape tile with `terrainPaintBlitFsh`, a textured quad sampling it through the same elevation uv the
+paint used. The shading program is the paint's own (`terrainpaint`), only the frame and the target
+differ, so what is shaded is what was shaded per pixel: the gradient is already bilinear between
+texel centres, and the picture is bilinear between the same centres. What differs is that the
+lighting function is applied before the interpolation, not after.
+
+- **Key**: elevation texture id, `TerrainTexture::contentVersion` and the paint fingerprint
+  (`HillshadeRasterTileLayer::calculatePaintFingerprint`: light, contrast, exaggeration, colours, method,
+  height scale, map rotation step). `contentVersion` is unique per upload or border patch of the
+  texture (`ElevationTextureCache`), so a recycled GL texture id cannot pass for its predecessor. A neighbour
+  arriving patches the ring and re-shades the texture once, when a bake next asks. Opacity is applied at
+  the blit; it is in the fingerprint anyway, so a change re-shades.
+- **Bookkeeping** is `vt/PaintShadeCache.h` (GL-free, `tests/vt/PaintShadeCacheTest.cpp`): 64 slots,
+  least recently used out, ~1 MB each.
+- **Off for** a custom normal-map lighting shader (it may read `getMapZoom()` or the raw texel, which the
+  picture cannot carry), a globe, and a texture without a version: those bake per pixel as before.
+  `adb shell setprop debug.massif.paintshade 0` (demo builds) switches it off for an interleaved A/B.
+- **No facade surface**: a pure optimisation, same options, same defaults.
+- The shading pass binds its own framebuffer inside the bake and restores the drape one, so a frame that
+  shades pays a tile-memory resolve on a tiling GPU; at rest nothing shades.
+
 ### The DEM level
 
 The terrain caps the elevation grid at what the **mesh** can express, which drops two zoom levels.

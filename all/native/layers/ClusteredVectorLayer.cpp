@@ -163,7 +163,7 @@ namespace massif {
         std::shared_ptr<ClusteredVectorLayer> layer = std::static_pointer_cast<ClusteredVectorLayer>(vectorLayer);
         if (auto options = layer->getOptions()) {
             std::lock_guard<std::mutex> lock(layer->_clusterMutex);
-            layer->_dpiScale = options->getDPI() / Const::UNSCALED_DPI;
+            layer->_dpiScale = options->getRenderDPI() / Const::UNSCALED_DPI;
         }
 
         std::vector<std::shared_ptr<VectorElement> > vectorElements = std::static_pointer_cast<LocalVectorDataSource>(layer->_dataSource.get())->getAll();

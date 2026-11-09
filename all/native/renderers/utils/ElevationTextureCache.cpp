@@ -442,6 +442,7 @@ namespace massif {
             CacheEntry entry;
             entry.grid = encoded.grid;
             entry.gridKeyValue = encoded.gridKeyValue;
+            entry.contentVersion = ++_contentVersionCounter;
             entry.borderQuality = encoded.borderQuality;
             entry.border = encoded.border;
             entry.neighbours = encoded.neighbours;
@@ -541,6 +542,7 @@ namespace massif {
             VT_STAT_INC(demPatchUploads);
             it->second.borderQuality = patch.borderQuality;
             it->second.neighbours = patch.neighbours;
+            it->second.contentVersion = ++_contentVersionCounter;
             _drawnVersion++;
         }
     }
@@ -577,6 +579,7 @@ namespace massif {
         double texelY = (bounds.getMax().getY() - bounds.getMin().getY()) / entry.grid->getHeight();
         int border = entry.border;
         terrainTexture.textureId = entry.texture->getTexId();
+        terrainTexture.contentVersion = entry.contentVersion;
         terrainTexture.gradientTextureId = (entry.gradientTexture ? entry.gradientTexture->getTexId() : 0);
         terrainTexture.minHeight = entry.grid->getMinHeight();
         terrainTexture.maxHeight = entry.grid->getMaxHeight();

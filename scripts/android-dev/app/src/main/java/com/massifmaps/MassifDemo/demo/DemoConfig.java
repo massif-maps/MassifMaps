@@ -246,6 +246,11 @@ public final class DemoConfig {
      *  (fewer tiles, fewer far labels); 0 refines everything to the camera zoom.
      *  '--es lodFactor 2'. */
     public static float TILE_LOD_FACTOR = 0.5f;
+    /** Render scale while the map is flat / in 3D: the fraction of the view's pixels the surface is
+     *  drawn at, DPI lowered by the same factor. Negative leaves the SDK default.
+     *  '--es renderScale 1 --es renderScale3D 0.75'. */
+    public static float RENDER_SCALE = -1f;
+    public static float RENDER_SCALE_3D = -1f;
     /** How many distinct zoom levels a tilted frame may spread over - maplibre's
      *  maxZoomLevelsOnScreen. Higher decays faster toward the horizon (fewer tiles), lower keeps
      *  far ground finer. 9.314 is maplibre's, and our area rule exactly. '--es lodLevels 12'. */
@@ -255,6 +260,11 @@ public final class DemoConfig {
     public static float TILE_LOD_COUNT_RATIO = 3f;
     /** Options.FieldOfViewY; 0 = the SDK default (36.87, maplibre's). '--es fovY 70' was the old one. */
     public static float FIELD_OF_VIEW_Y = 0f;
+    /** How far tiles of a tilted map lose zoom, per layer kind: coarse (the SDK's own, fewer tiles) |
+     *  distance (the level follows the distance, sharper far ground, more tiles at a steep tilt).
+     *  '--es farLodVector distance', '--es farLodRaster coarse'. */
+    public static String FAR_TILE_LOD_VECTOR = "coarse";
+    public static String FAR_TILE_LOD_RASTER = "coarse";
     /** reference | mobile | desktop - one call for TileLODFactor + the two above + the style zoom
      *  lift. Empty leaves the individual knobs alone. '--es lodProfile mobile'. */
     public static String TILE_LOD_PROFILE = "";
@@ -1340,10 +1350,14 @@ public final class DemoConfig {
         // terrain
         TILE_THREAD_POOL_SIZE = DemoCfg.cfgInt("tilePool", TILE_THREAD_POOL_SIZE);
         TILE_LOD_FACTOR = DemoCfg.cfgFloat("lodFactor", TILE_LOD_FACTOR);
+        RENDER_SCALE = DemoCfg.cfgFloat("renderScale", RENDER_SCALE);
+        RENDER_SCALE_3D = DemoCfg.cfgFloat("renderScale3D", RENDER_SCALE_3D);
         TILE_LOD_LEVELS_ON_SCREEN = DemoCfg.cfgFloat("lodLevels", TILE_LOD_LEVELS_ON_SCREEN);
         FIELD_OF_VIEW_Y = DemoCfg.cfgFloat("fovY", FIELD_OF_VIEW_Y);
         TILE_LOD_COUNT_RATIO = DemoCfg.cfgFloat("lodRatio", TILE_LOD_COUNT_RATIO);
         TILE_LOD_PROFILE = DemoCfg.cfgStr("lodProfile", TILE_LOD_PROFILE);
+        FAR_TILE_LOD_VECTOR = DemoCfg.cfgStr("farLodVector", FAR_TILE_LOD_VECTOR);
+        FAR_TILE_LOD_RASTER = DemoCfg.cfgStr("farLodRaster", FAR_TILE_LOD_RASTER);
         TILE_STYLE_ZOOM_LIFT = DemoCfg.cfgInt("styleZoomLift", TILE_STYLE_ZOOM_LIFT);
         LABEL_MAX_DISTANCE = DemoCfg.cfgFloat("labelMaxDistance", LABEL_MAX_DISTANCE);
         TERRAIN_ENABLED = DemoCfg.cfgBool("terrain", TERRAIN_ENABLED);

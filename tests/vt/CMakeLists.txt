@@ -34,6 +34,7 @@ add_executable(vt_tests
   ShadowBoxTest.cpp
   ShaderFlagTest.cpp
   RasterGroupsTest.cpp
+  PaintShadeCacheTest.cpp
   ExtrusionAnchorTest.cpp
   ExtrusionEmissiveTest.cpp
   LineOcclusionOpacityTest.cpp
@@ -55,6 +56,7 @@ add_executable(vt_tests
   LabelSliceTest.cpp
   LabelFadeTest.cpp
   LayerContentFlagsTest.cpp
+  LayerNameFilterTest.cpp
   DrawOnceTest.cpp
   PointGeoPosIndexTest.cpp
   ViewStateMatrixTest.cpp

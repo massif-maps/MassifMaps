@@ -2778,3 +2778,205 @@ device check is still required before calling this closed. Draining the queue on
 
 Not measured: iOS, `TextureMapView` (same `delete()` contract, not run), a real device, Release builds, the
 `Graphics` line of `meminfo` (0 on this emulator).
+
+## Layer-name regexes ran for every tile on the cull and decode threads (2026-11-08)
+
+Method: alpimaps 3.0.8 (debuggable, `CompositeVectorTileLayer`, e-ink style, 3D) on the Crosscall
+(Adreno 610), three 4.5 s drags over fresh ground at pitch ~60, `simpleperf record --app -g` for 10 s,
+symbolised against the unstripped `libmassif.so` of the same build id. Panning ran 15.7 fps with 22.6
+frame gaps over 100 ms per 10 s; the Massif demo in plain mode (`--es base plain`, what `bench/base.sh` passes)
+ran 33 fps with 0.6, in composite mode 26.6 fps with 8.0.
+
+| | alpimaps | demo, composite |
+|---|---|---|
+| `std::regex_search` / `regex_match`, inclusive | 47% of samples | 33% |
+| `CullWorker::run`, inclusive | 26% | 19% |
+| `MBVectorTileDecoder::decodeTile`, inclusive | 37% | 30% |
+| libc `malloc` family, self + callees | 19% | 13% |
+
+Two uncached `std::regex_match` loops:
+
+- **`GLTileRenderer::testLayerFilter`** matched every layer name of every tile against the renderer layer
+  filter in `setVisibleTiles` and the label-map passes, once per layer per tile per cull. A composite map
+  gives each group a pattern the size of its style names (`CompositeVectorTileLayer::buildFilterString`),
+  and `std::regex` allocates per match. `isLayerDraped` had been given a cache for the same reason ([32](#32-the-mesh-128-terrain-frame-is-waiting-on-the-gpu-2026-09-28)); these calls had not.
+- **`mvt::TileReader::readTile`** matched every style name against the same filter for every decoded tile.
+
+A plain `VectorTileLayer` has no filter, so neither runs: the demo's bench default hid both.
+`vt::LayerNameFilter` is the regex plus a name -> bool memo behind a mutex; `GLTileRenderer`,
+`VectorTileLayer`, the decoder interface and `TileReader` hold it instead of a `std::regex`. A filter is
+immutable once set and a new one starts with an empty memo, so a changed filter cannot read old answers.
+`tests/vt/LayerNameFilterTest.cpp` pins the answers to `regex_match`'s, including from four threads.
+
+After the change, Crosscall A/B interleaved with the base build (Massif style, composite, terrain, hillshade and
+contours, tilt 30, zoom 15.8, programmatic pan, ~60 one-second samples per arm): drape bakes fell from 13-17 to
+~0.5 a second and the frame rate rose to 26.4 fps native (29.6 fps at render scale 0.75, GPU 21.4 -> 13.8 ms).
+
+Not measured: gap counts after the change, iOS, the remaining `std::wregex` built per call by the `=~` predicate (`mapnikvt/StringUtils.cpp`), which this profile
+did not show.
+
+## The hillshade drape bake, shaded once per DEM texture (2026-11-09)
+
+Crosscall HLTE556N (Adreno 610), demo `BenchActivity`, Massif style, `--es base composite --es hs true
+--es contour false`, static camera tilt 30 zoom 15.8, three 4.5 s vertical drags, per-layer GPU timers
+around each drape layer's `bakeDrapeTile` (not committed). In that scene the hillshade is the **terrain paint**
+(the DEM is the terrain's own), so its bake runs `terrainPaintFsh`: 16 highp DEM fetches, normal rebuild and
+`applyLighting` for every pixel of every drape tile, at every bake. Before: 40-51 ms of GPU per baking frame,
+against 4-6 ms for the vector layers together.
+
+The paint is now shaded once per elevation texture and each drape tile bakes as a textured quad
+([07-hillshade-contours.md](rendering/07-hillshade-contours.md#the-bake-shaded-once-per-dem-texture)).
+Interleaved `debug.massif.paintshade 0` (before) / `1` (after), same APK, 3 rounds, app restarted each run:
+
+| round | fps off / on | hillshade bake ms per baking frame, off / on | GPU frame ms, off / on | drape GPU ms, off / on |
+|---|---|---|---|---|
+| 1 | 21.0 / 22.3 | 45.4 / 5.2 | 47.9 / 25.0 | 5.35 / 4.29 |
+| 2 | 21.5 / 23.0 | 40.1 / 4.7 | 47.6 / 26.4 | 5.74 / 4.39 |
+| 3 | 20.5 / 23.1 | 51.2 / 4.1 | 65.1 / 22.0 | 6.02 / 4.37 |
+
+The bake falls ten-fold and the GPU frame halves, but the pan gains only **+1.8 fps (21.0 -> 22.8, about 8%)**,
+a little above the plus or minus 1 noise: the frame is not GPU-bound there, so the 30 fps goal needs the CPU
+side too (decode saturation, see the pan hitch entry). The cached picture is bilinear between DEM texel
+centres where the per-pixel shader interpolated the gradient first: same-camera screenshots at 90 s differ by
+a mean 0.3/255 on terrain (p99 3/255, 0.01% of pixels above 16); the only visible differences are label and
+POI placement. Not measured: contours on, other tilts, a cold start (the first bake of each DEM texture pays
+the shading, about a quarter of one old bake), a second device, iOS, the web, the globe and custom shaders
+(both keep the per-pixel bake), a shaded texture at twice the DEM resolution.
+
+
+## Render scale, with the DPI lowered too (2026-11-09)
+
+Redoes a first measurement that **was confounded**: it shrank the surface (`setFixedSize`) without lowering the DPI,
+so the smaller surface showed less ground, fewer tiles, at the same zoom. The scale below is the real option
+([Render scale](rendering/21-render-scale.md)): surface and DPI together, touches mapped, same ground.
+
+Crosscall, Adreno 610, 824x1648 at density 288 (**not** the 1080x2400 of the earlier rounds, and the fps is lower than
+theirs: do not compare across the two). Massif style, composite base, hillshade + contour + terrain + drape,
+buildings, tilt 30, zoom 15.8, programmatic north pan (`--es anim pan`, 0.04 deg in 25 s), `-PprofileRender` build, `renderScale3D` as
+an extra, 3 rounds interleaved (1, 0.85, 0.75, 0.6 each round), median of the 1 s `PROF` windows per run, then the mean of the 3 runs:
+
+| scale | fps (3 runs) | mean fps | frame avg | GPU total | drape GPU |
+|---|---|---|---|---|---|
+| 1.00 | 16.6 17.9 16.5 | 17.0 | 51.0 ms | 36.4 ms | 24.0 ms |
+| 0.85 | 19.0 18.0 17.9 | 18.3 | 46.4 ms | 28.6 ms | 20.0 ms |
+| 0.75 | 18.8 18.8 20.6 | 19.4 | 44.5 ms | 25.8 ms | 19.7 ms |
+| 0.60 | 20.6 18.4 20.0 | 19.7 | 45.5 ms | 23.9 ms | 18.5 ms |
+
+- **The GPU time falls a third (36 -> 24 ms at 0.6); the frame time falls ~11%.** In this pan the frame is not GPU-bound:
+  the GPU is at 26 ms against a 44 ms frame at 0.75, and the drape bakes (13-17 a second, ~40-55 ms of bake time per
+  second) are CPU. So the fps gain is +2.4 at 0.75 and +2.7 at 0.6, about twice the noise (+-1) and nowhere near the
+  earlier 36 fps. That number is not reproduced; its run had no DPI compensation, so it drew fewer tiles.
+- 0.6 is not meaningfully faster than 0.75 here: past 0.75 the GPU is no longer what the frame waits for.
+- Same camera, native against 0.75 and 0.6 (screenshots, `devtap diff`): 0.75 changes 5-7% of the pixels (mean 2-3 of 255),
+  0.6 9-12% (mean 3-4); native against native 0.1%. Ground, label and icon positions and sizes are the same; the
+  difference is softness, visible on small labels at 0.6 and barely at 0.75. A marker sized in raw pixels is `1/scale` larger.
+- The surface really is the asked size (`RenderScale: surface 618x1236 of view 824x1648` at 0.75).
+- **Why the gain was small, A/B.** The same pan on a build that also carries the uncommitted layer-name-filter work of
+  `perf/layer-filter-memo` (patch applied for the runs, reverted after), 3 interleaved rounds each, mean of 3 runs:
+
+  | build | scale | fps | frame avg | GPU total |
+  |---|---|---|---|---|
+  | this branch | 1.00 | 16.8 | 48.2 ms | 37.9 ms |
+  | this branch | 0.75 | 18.3 | 46.6 ms | 27.5 ms |
+  | + layer-filter work | 1.00 | 26.4 | 33.6 ms | 21.4 ms |
+  | + layer-filter work | 0.75 | 29.6 | 29.6 ms | 13.8 ms |
+
+  The other build holds ~26 fps native, the figure of the earlier rounds, and draws ~0.5 drape bakes a second against
+  13-17 here. The bake storm was the CPU floor that hid the saving; with it gone the scale buys +3.2 fps (+12%) and the
+  GPU time falls 7.6 ms (-36%). Same direction at both floors. The earlier 25 to 36 fps does not reproduce on either.
+  The cause of the bakes is that work, not this feature, and it is not established here which of its edits removes them.
+- Not measured: a static 3D view (no bakes), a touch-driven pan, battery, thermal state over minutes, a release build.
+
+## Tilt: the far field follows the distance, per layer (2026-11-09)
+
+The far tiles of a gently tilted 3D map (Grenoble, Bastille, tilt 30-50 in the SDK's convention) came out two or
+three levels coarser than the same ground at tilt 90: hillshade blocks, no contours, sparse labels. The cause was
+the allowance `(slant / vertical)^0.65` of the fit above, which grows from the first degree of tilt. That is the
+right trade for vector styles (fewer tiles on a slow GPU) and the wrong one for imagery.
+
+`TileLayer::FarTileLOD` now chooses per layer (see [02-tiles](rendering/02-tiles.md)): `COARSE` is that fit and the
+default, `DISTANCE` is mapbox-gl-js's `distToSplitScale`. Computed from the formula (a ground point at the top of
+the screen, FOV 36.87, levels against the top-down zoom; not measured on a device):
+
+| pitch | COARSE | DISTANCE |
+|---|---|---|
+| 40 | -1.2 | -0.55 |
+| 60 | -2.8 | -1.5 |
+| 80 | -5.7 | -2.5 plus the stretch, bounded at five levels |
+
+Host sweep (`DistanceTileLODTest::testTheFarRule`, classic zoom 15.8-17.3, two screens, DPI 1.8, within the
+budget of 112), mean tiles held. Tilt below is from straight down; the SDK's tilt is 90 minus it, so 20 is tilt 70:
+
+| tilt from down | COARSE | DISTANCE |
+|---|---|---|
+| 20 (SDK 70) | 10.8 | 10.8 |
+| 40 (SDK 50) | 12.5 | 12.5 |
+| 60 (SDK 30) | 19.0 | 18.8 |
+| 70 (SDK 20) | 28.2 | 35.7 |
+
+Up to SDK tilt 30 the two rules hold the same tiles; at SDK tilt 20, alpimaps' default 3D tilt, DISTANCE holds
+27 % more. Mean ratio against the area rule at the earlier sweep (z16, 1000 px): COARSE 0.91 at 45 and 1.07 at 80,
+DISTANCE 0.91 at 45, 1.03 at 60 and 1.57 at 80.
+
+Tiles a straight-down view holds, against the level of the same ground when the camera tilts (centre of each
+leaf, those the tilted view still has): a tile never gets finer, and loses a level only at the far edge of the
+top-down view. At tilt from down 70 (SDK 20) COARSE lost 16 of 172, DISTANCE 6 of 172; at 60 both 6 of 176.
+
+Device, Crosscall (Adreno 610), `bench/fartilt.sh` + `fartiltsum.py`: Massif style on the **composite** base
+(`--es base composite`, buildings 2), terrain, hillshade and contours on, Grenoble z15.5, rotating 0 to 180 over 16 s,
+after 40 s of settle; `farLodVector` coarse | distance on the base composite (its style groups follow it); three
+interleaved runs each, median of about 45 one-second windows (30 for distance at tilt 20, where windows were dropped
+for taking over 1.6 s). Tiles are `renderTiles` per frame over **all** tile layers (base groups, hillshade, contours).
+Drape is the PROF line's drape stage, CPU ms per frame. A debug build with the profiler on; run-to-run drift on this
+phone is 10 % or more, so a gap under that is noise.
+
+| SDK tilt | fps coarse | fps distance | drape ms coarse / distance | tiles/frame coarse | tiles/frame distance |
+|---|---|---|---|---|---|
+| 50 | 17.9 | 17.9 | 3.6 / 3.6 | 75.5 | 74.5 |
+| 30 | 8.2 | 8.9 | 14.1 / 17.4 | 121.8 | 134.0 |
+| 20 | 6.3 | 9.6 | 22.4 / 14.7 | 126.8 | 88.8 |
+
+At tilt 50 the two rules draw the same tiles at the same fps, as the host sweep says. At tilt 30 DISTANCE draws 10 %
+more tiles, with 23 % more drape time and a fps gap inside the noise. At tilt 20, where the host sweep predicts 27 %
+more tiles for DISTANCE, the device drew **30 % fewer** (89 against 127) with a third less drape time, and ran 52 %
+faster, in the earlier two-run table too. The host model (a plane, no DEM boxes, one layer, no budget shared with the
+hillshade and contour layers) does not carry over there, and the cause is not established. The fps columns do not
+show DISTANCE costing frames on this scene at any tilt. The hillshade and contour layers keep the default rule: only
+the composite and its groups were set.
+
+Why tilt 50 runs slower than straight down with the same tiles (tilt 90: 25.9 fps, 75 tiles; tilt 50 in that session:
+18.2 fps, 75 tiles; auto-flatten is off in the demo, so both are 3D terrain). The 180 degree rotation exposes new ground
+at tilt 50 (113 drape bakes in 16 s against 24 at tilt 90) and the GPU drape section goes from 4 to 12-14 ms; windows
+without a bake run 24-27 fps at either tilt. The drape cache is full (48 of 48), so a warm-up revolution does not
+remove the churn. Compare the two rules at the same tilt, never across tilts.
+
+Not measured: SDK tilt 70 with the option propagated to the composite's groups, tilt 10, a raster base under the vector one (the case DISTANCE is for: no far-sharpness
+image comparison was taken, so "sharper" is a host-level claim), a release build, iOS and the web.
+
+
+## Contour DEM decode: once per residency, not once per reader (2026-11-09)
+
+Crosscall HLTE556N (Adreno 610), demo `BenchActivity`, Massif style, `--es base composite`, hillshade + contours +
+terrain + drape, tilt 30 zoom 15.8, programmatic pan. With seamless edges every contour tile reads its own DEM and the
+east, north and north-east ones, so each DEM tile is read by up to four tiles, from several workers in cull order. The
+16-entry LRU in `ContourTileDataSource` (12.6 MB of 512x512 RGB) held a fraction of the ~50 DEM tiles of a view: a pan
+decoded **400** WebPs for **183** distinct tiles (2.2 each, up to 6).
+
+The cache is now bounded by bytes (48 MB, about 61 tiles of this size) and a decode two workers ask for at once runs
+once (`datasources/components/ByteBudgetCache.h`, tests in `tests/api/ByteBudgetCacheTest.cpp` and
+`ContourTileDataSourceTest.cpp`; contour bytes for a fixture DEM are identical before and after). It is also emptied
+when the wrapped source reports a change, which the old cache never was. A temporary counter in the decode path
+(not committed), interleaved A (master) / B (fix) x 3, app restarted each run:
+
+| | A (before) | B (after) |
+|---|---|---|
+| WebP decodes per pan, distinct tiles | 400, 183-194 | 200, 167-177 |
+| `loadWEBP` inclusive, share of all CPU cycles, t 40-47 s (3 rounds) | 6.58 / 6.27 / 6.14 % | 4.07 / 3.87 / 4.12 % |
+| pan fps (3 rounds) | 27.9 / 31.2 / 27.6 | 29.0 / 31.7 / 29.7 |
+
+Decodes halve and the WebP share of CPU drops by about a third (2.3 points of total cycles; `loadWEBP` also covers the
+terrain and hillshade decodes, which are untouched). Mean fps is 28.9 -> 30.1, **inside the round-to-round spread
+(about 2 fps)**: three rounds do not prove a pan gain. About 15% of the remaining decodes are re-decodes after eviction
+at 48 MB; a bigger cap was not tried. `ElevationManager` (`ElevationManager.cpp`) and `HillshadeRasterTileLayer` decode
+the same DEM WebP into their own structures; sharing the bitmap with them is not a small change and is not done. Not
+measured: iOS, a 256 px DEM, memory use on the device, the quiet seconds.

@@ -163,6 +163,8 @@ is already straight once it leaves the bake and would show a fix that is not the
 - composite overlays: `hs sat satZoom contour`; buildings: `bld3d`
 - stand-alone raster layer (`satLayer`): `rasterUrl rasterCacheDb rasterMaxZoom rasterBias`; `rasterBias` is live (CONFIG
   broadcast, or the "satellite zoom bias" panel slider). The tile cache is not keyed by URL: change `rasterCacheDb` with it
+- how far tiles of a tilted map lose zoom, per layer (`TileLayer.farTileLOD`): `farLodVector` (base map) and `farLodRaster` (`satLayer`),
+  each `coarse` (default) or `distance`; live through the CONFIG broadcast or the "far tile LOD" panel rows. Judge at `tilt 30|50|70`
 - light/shadow: `daycycle sunHour sunAzimuth sunAltitude shadow terrainShadows` (shadows need `terrainLight true`)
 - labels: `textOcclusion`, `roadLabelOcclusion` (a re-decode)
 - `ui false` (hide the panel), `anim zoom|pan|rotate|zoomseq|approach`

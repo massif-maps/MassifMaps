@@ -1169,6 +1169,13 @@ public final class DemoPanel {
         slider(context, "fog stars (0..1)", 0, 1, DemoConfig.FOG_STAR_INTENSITY, false, new FloatSetting() {
             public void set(float value) { DemoConfig.FOG_STAR_INTENSITY = value; demo.fogOptions.set("starIntensity", value); }
         });
+        // The surface size changes, so apply on release only; the DPI follows inside the SDK.
+        slider(context, "render scale 2D (1 = native)", 0.25f, 1, (float) demo.map.getDouble("renderScale", 1.0), true, new FloatSetting() {
+            public void set(float value) { DemoConfig.RENDER_SCALE = value; demo.applyRenderScale(); }
+        });
+        slider(context, "render scale 3D (terrain / tilted)", 0.25f, 1, (float) demo.map.getDouble("renderScale3D", 1.0), true, new FloatSetting() {
+            public void set(float value) { DemoConfig.RENDER_SCALE_3D = value; demo.applyRenderScale(); }
+        });
         // Changes the visible tile set, so apply on release only.
         slider(context, "tile LOD (x tangram, 0=finest)", 0, 4, DemoConfig.TILE_LOD_FACTOR, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TILE_LOD_FACTOR = value; demo.map.set("tileLODFactor", value); }
@@ -1177,6 +1184,15 @@ public final class DemoPanel {
         // one side of the horizon keeps its detail and the other loses a level; 0 = no limit.
         slider(context, "tile LOD zoom levels on screen", 4, 16, DemoConfig.TILE_LOD_LEVELS_ON_SCREEN, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TILE_LOD_LEVELS_ON_SCREEN = value; demo.map.set("tileLODMaxZoomLevelsOnScreen", value); }
+        });
+        // How far tiles of a tilted map lose zoom, per layer kind. Vector can stay coarse (fewer tiles);
+        // imagery wants the level to follow the distance.
+        final String[] farLods = { "coarse", "distance" };
+        choice(context, "far tile LOD, vector", farLods, indexOf(farLods, DemoConfig.FAR_TILE_LOD_VECTOR), new IntSetting() {
+            public void set(int index) { DemoConfig.FAR_TILE_LOD_VECTOR = farLods[index]; demo.applyFarTileLOD(); }
+        });
+        choice(context, "far tile LOD, raster", farLods, indexOf(farLods, DemoConfig.FAR_TILE_LOD_RASTER), new IntSetting() {
+            public void set(int index) { DemoConfig.FAR_TILE_LOD_RASTER = farLods[index]; demo.applyFarTileLOD(); }
         });
         // Which zoom the vector tiles are FETCHED at, against the view's. -1 is what a style
         // written for MapBox's 512 px tiles wants; it also shifts every `[zoom >= N]` rule a level

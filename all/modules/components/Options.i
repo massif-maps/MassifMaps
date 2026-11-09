@@ -104,6 +104,11 @@
 %attribute(massif::Options, float, TileLODTileCountRatio, getTileLODTileCountRatio, setTileLODTileCountRatio)
 %attribute(massif::Options, int, TileStyleZoomLift, getTileStyleZoomLift, setTileStyleZoomLift)
 %attribute(massif::Options, float, DPI, getDPI, setDPI)
+%attribute(massif::Options, float, RenderScale, getRenderScale, setRenderScale)
+%attribute(massif::Options, float, RenderScale3D, getRenderScale3D, setRenderScale3D)
+%attribute(massif::Options, float, AppliedRenderScale, getAppliedRenderScale)
+%ignore massif::Options::setAppliedRenderScale;
+%ignore massif::Options::getRenderDPI;
 %attribute(massif::Options, float, DrawDistance, getDrawDistance, setDrawDistance)
 %attribute(massif::Options, float, LabelViewDistance, getLabelViewDistance, setLabelViewDistance)
 %attribute(massif::Options, bool, ModelAnimationsEnabled, isModelAnimationsEnabled, setModelAnimationsEnabled)

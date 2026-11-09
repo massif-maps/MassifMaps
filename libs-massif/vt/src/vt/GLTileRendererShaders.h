@@ -1659,6 +1659,18 @@ namespace massif::vt {
         }
     )GLSL";
 
+    // The drape bake of a paint already shaded over its elevation texture: a textured quad, in the vertex
+    // stage's elevation uv.
+    static const std::string terrainPaintBlitFsh = R"GLSL(
+        uniform sampler2D uBitmap;
+        uniform mediump vec4 uPaintParams; // y = opacity
+        varying highp vec2 vElevUV;
+
+        void main(void) {
+            glFragColor = texture2D(uBitmap, vElevUV) * uPaintParams.y;
+        }
+    )GLSL";
+
     static const std::string blendVsh = R"GLSL(
         attribute vec3 aVertexPosition;
         uniform mat4 uMVPMatrix;

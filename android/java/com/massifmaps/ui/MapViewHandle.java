@@ -90,10 +90,16 @@ final class MapViewHandle {
         }
     }
 
-    void surfaceChanged(int width, int height) {
-        if (handle != 0) {
-            MapViewNative.surfaceChanged(handle, width, height);
+    /** @param viewWidth The view's width, to tell how much smaller than it the surface is; 0 when they are the same. */
+    void surfaceChanged(int width, int height, int viewWidth) {
+        if (handle == 0) {
+            return;
         }
+        MapViewNative.surfaceChanged(handle, width, height, viewWidth > width && width > 0 ? width / (float) viewWidth : 1f);
+    }
+
+    float wantedRenderScale() {
+        return handle != 0 ? MapViewNative.wantedRenderScale(handle) : 1f;
     }
 
     void drawFrame() {

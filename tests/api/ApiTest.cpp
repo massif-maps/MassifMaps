@@ -122,6 +122,7 @@ void testGlobeElevationScale();
 void testSkyFrame();
 void testTerrainSurface();
 void testFlattenSwitchTimeline();
+void testRenderScalePolicy();
 void testViewDistance();
 void testFogPitchFade();
 void testCelestialImageGrid();
@@ -130,6 +131,8 @@ void testTerrainOcclusion();
 void testSunExposure();
 void testSunExposureJob();
 void testShadowMinSunAltitude();
+void testByteBudgetCache();
+void testContourTileDataSource();
 
 namespace {
 
@@ -542,6 +545,7 @@ int main() {
     testSkyFrame();
     testTerrainSurface();
     testFlattenSwitchTimeline();
+    testRenderScalePolicy();
     testViewDistance();
     testFogPitchFade();
     testCelestialImageGrid();
@@ -550,6 +554,8 @@ int main() {
     testSunExposure();
     testSunExposureJob();
     testShadowMinSunAltitude();
+    testByteBudgetCache();
+    testContourTileDataSource();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

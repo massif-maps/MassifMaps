@@ -911,7 +911,7 @@ namespace massif {
         return std::make_shared<VectorTileFeatureCollection>(tileFeatures);
     }
 
-    std::shared_ptr<MBVectorTileDecoder::TileMap> MBVectorTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData, const std::regex* layerFilter) const {
+    std::shared_ptr<MBVectorTileDecoder::TileMap> MBVectorTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData, const vt::LayerNameFilter* layerFilter) const {
         if (!tileData) {
             Log::Warn("MBVectorTileDecoder::decodeTile: Null tile data");
             return std::shared_ptr<TileMap>();

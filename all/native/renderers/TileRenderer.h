@@ -162,7 +162,7 @@ namespace massif {
         void setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds);
         // Makes this renderer shade the elevation texture into the drape. The fingerprint must cover every
         // appearance parameter, or a baked drape survives a change.
-        void setTerrainPaint(bool enabled, bool fullDetail, float heightScale, bool exaggerateHeightScale, bool legacyHeightScale, float contrast, float opacity, std::size_t fingerprint);
+        void setTerrainPaint(bool enabled, bool fullDetail, float heightScale, bool exaggerateHeightScale, bool legacyHeightScale, float contrast, float opacity, std::size_t fingerprint, bool shadeCache);
 
         bool onDrawFrame(float deltaSeconds, const ViewState& viewState);
         bool onDrawFrame3D(float deltaSeconds, const ViewState& viewState);

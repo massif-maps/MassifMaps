@@ -13,6 +13,7 @@
 #include "ViewState.h"
 #include "Label.h"
 #include "LabelFade.h"
+#include "LayerNameFilter.h"
 #include "Styles.h"
 #include "Tile.h"
 #include "TileId.h"
@@ -24,6 +25,7 @@
 #include "TileBackground.h"
 #include "TileBitmap.h"
 #include "RasterGroups.h"
+#include "PaintShadeCache.h"
 #include "TileSurface.h"
 #include "TileSurfaceBuilder.h"
 #include "TileModels.h"
@@ -112,6 +114,9 @@ namespace massif::vt {
             float mercatorYScale = 0.0f;   // world y -> mercator angle (for the per-vertex 1/cos(latitude) factor)
             float metersPerTexel = 0.0f;   // ground meters per texel at the equator (the 1/cos(latitude) stretch is per fragment)
             GLuint gradientTextureId = 0;  // RG16F forward differences in meters, same texels (ElevationGradient); 0 = flat light
+            // Unique per upload or border patch of the texture's content, so (textureId, contentVersion) names
+            // one picture. 0 = unversioned: nothing derived from it may be cached.
+            std::uint64_t contentVersion = 0;
             float minHeight = 1.0f;        // meters over the DEM raster, for culling; min > max = unknown
             float maxHeight = 0.0f;
             // The DEM box-filtered to one texel per mesh node, which the vertex stage displaces from.
@@ -151,6 +156,9 @@ namespace massif::vt {
             // Hash of the paint's whole appearance, incl. the injected lighting shader's inputs; the
             // renderer cannot derive it, and without it a change leaves stale drapes in place.
             std::size_t fingerprint = 0;
+            // Shade each elevation texture once and bake the drape from that picture. Only for the
+            // built-in lighting shader: a custom one may read the camera (getMapZoom) or the raw texel.
+            bool shadeCache = false;
         };
 
         explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale);
@@ -578,7 +586,7 @@ namespace massif::vt {
         cglib::mat3x3<double> calculateTileMatrix2D(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
 
-        bool testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const;
+        bool testLayerFilter(const std::string& layerName, const std::shared_ptr<const LayerNameFilter>& filter) const;
         bool isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const;
         bool hasSpanContent(const RenderTileLayer& renderLayer) const;
         bool resolveSpanDrape(const TileId& targetTileId, GLuint& texture, cglib::vec4<float>& uvTransform) const;
@@ -625,7 +633,7 @@ namespace massif::vt {
             bool unchanged = false;        // the tile set did not move; nothing to do
             unsigned int generation = 0;   // of the maps oldLabelMap was taken from
             std::map<int, GlobalIdLabelMap> oldLabelMap;
-            std::optional<std::regex> layerFilter;
+            std::shared_ptr<const LayerNameFilter> layerFilter;
             std::shared_ptr<const TileTransformer> transformer; // setTransformer may swap it while the prepare runs
             std::map<int, std::unordered_map<long long, std::pair<long long, int>>> signatures;
             std::map<int, GlobalIdLabelMap> labelMap;
@@ -634,7 +642,7 @@ namespace massif::vt {
             std::map<int, std::unordered_set<long long>> standInIds; // labels no other tile contributes to
         };
         static long long calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::unordered_set<const Tile*>& standInTiles);
-        void prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const;
+        void prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::shared_ptr<const LayerNameFilter>& layerFilter, LabelMapBuild& build) const;
         void commitLabelMaps(LabelMapBuild& build);
         bool updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const;
 
@@ -712,6 +720,9 @@ namespace massif::vt {
         void renderStencilDebugOverlay();
         // Bakes one tile's DEM paint into the bound drape framebuffer; returns primitives drawn, 0 without elevation.
         int renderTerrainPaint(const TileId& targetTileId);
+        // The paint shaded over a whole elevation texture, from the cache or freshly drawn; 0 when it cannot be cached.
+        GLuint resolvePaintShade(const TileId& targetTileId, const TerrainTexture& terrainTexture);
+        bool shadePaint(const TileId& targetTileId, const TerrainTexture& terrainTexture, PaintShadeCache::Entry& entry);
         // Draws the paint as the surface per covered tile. asGround: it is the ground pass (ground colour
         // base, writes depth, bottom of the stack).
         int renderTerrainPaintSurfaces(bool asGround = false);
@@ -862,6 +873,8 @@ namespace massif::vt {
         SpanResolver _spanResolver;              // 3D bridges: unions, chords, bases (setSpansEnabled)
         int _drapeTextureSize = 512;             // per-tile drape texture resolution
         GLuint _drapeFBO = 0;                    // shared offscreen FBO for baking drape textures
+        PaintShadeCache _paintShades { 64 };     // the paint's shaded DEM per elevation texture (~1 MB each)
+        GLuint _paintShadeFBO = 0;               // renders into those
         GLuint _drapeStencilRB = 0;              // draw-once stencil for a bake, made on the first group
         cglib::vec2<int> _drapeStencilSize = cglib::vec2<int>(0, 0);
         std::map<TileId, GLuint> _drapeTextures; // per-target-tile baked drape textures
@@ -1026,11 +1039,11 @@ namespace massif::vt {
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = DEFAULT_LABEL_BLENDING_SPEED;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
-        std::optional<std::regex> _rendererLayerFilter;
+        std::shared_ptr<const LayerNameFilter> _rendererLayerFilter;
         std::optional<std::regex> _noDrapeLayerFilter;
         mutable std::unordered_map<std::string, bool> _noDrapeLayerCache; // regex_match per call was a frame cost (performance-log.md, 32)
         std::optional<std::pair<int, int>> _rendererLayerIndexRange;
-        std::optional<std::regex> _clickHandlerLayerFilter;
+        std::shared_ptr<const LayerNameFilter> _clickHandlerLayerFilter;
 
         std::shared_ptr<std::vector<RenderTile>> _renderTiles;
         std::shared_ptr<std::vector<RenderTile>> _visibleRenderTiles;

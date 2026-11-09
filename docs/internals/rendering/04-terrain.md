@@ -159,6 +159,9 @@ a texture. `ElevationTextureCache` (all/native/renderers/utils/) turns a grid in
 
 - keyed by the **grid's own tile**, so overzoomed tiles and all layers share one texture per DEM
   tile, and neighbours sampling the same level sample one continuous texture;
+- stamped with a `TerrainTexture::contentVersion`, unique per upload and per border patch: what is derived
+  from a texture (the paint's shaded picture, [07](07-hillshade-contours.md#the-bake-shaded-once-per-dem-texture))
+  is keyed on it, since a GL texture id is recycled;
 - the payload is a **padded (W+2)×(H+2) RGBA re-encode** with a 2-texel border (`ElevationTileGrid::MIN_TEXTURE_BORDER_TEXELS`; the terrain paint reads a 4x4 block) taken from up to 8
   neighbour grids (cross-level backfill and an edge box filter), so shared tile edges agree
   bit-exactly and the surface does not crack;

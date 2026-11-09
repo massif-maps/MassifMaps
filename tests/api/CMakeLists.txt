@@ -269,6 +269,8 @@ add_executable(api_tests
   TerrainTesselationTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
+  # Same: RenderScalePolicy.h is which scale the surface is asked for and when it switches, nothing else.
+  RenderScalePolicyTest.cpp
   # Same: TerrainDecodeWait.h is what one layer makes that switch wait for, nothing else.
   TerrainDecodeWaitTest.cpp
   # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.
@@ -360,6 +362,10 @@ add_executable(api_tests
   ShadowMinSunAltitudeTest.cpp
   "${SDK_BASE_DIR}/all/native/components/LightOptions.cpp"
   ManeuverArrowTest.cpp
+  # The cache under the contour source's decoded DEM tiles, header-only, and the source over a raw-tile DEM.
+  ByteBudgetCacheTest.cpp
+  ContourTileDataSourceTest.cpp
+  "${SDK_BASE_DIR}/all/native/datasources/ContourTileDataSource.cpp"
   # The GL resource queue only; GLContext is stubbed in the test, the GL headers are all it needs.
   GLResourceManagerTest.cpp
   "${SDK_BASE_DIR}/all/native/renderers/utils/GLResourceManager.cpp"

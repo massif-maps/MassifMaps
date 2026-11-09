@@ -362,6 +362,13 @@ export type CompositeSourceType =
     | 'COMPOSITE_SOURCE_TYPE_VECTOR'
     ;
 
+export type FarTileLOD =
+    /** Far tiles lose zoom from the first degree of tilt: fewer tiles and a lighter frame. For vector styles, where a far tile is mostly lines and labels. The default, and what the SDK always did. */
+    | 'FAR_TILE_LOD_COARSE'
+    /** A tile's zoom follows its distance from the eye, as in mapbox-gl-js: nothing is lost within 45 degrees of vertical and the horizon stretches by a bounded factor. For raster, hybrid and imagery layers, where far ground has to stay sharp. Asks for more tiles at a steep tilt. */
+    | 'FAR_TILE_LOD_DISTANCE'
+    ;
+
 export type FlightEasing =
     /** cubic-bezier(0.25, 0.1, 0.25, 1), the CSS "ease". The default, and mapbox-gl's. */
     | 'FLIGHT_EASING_EASE'
@@ -794,6 +801,8 @@ export interface PropertyTypes {
         /** (read-only) Returns the bounds of this projection. */
         readonly 'dataSource.projection.bounds': Bounds;
         readonly 'dataSource.projection.name': string;
+        /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+        'farTileLOD': 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
         /** Returns the current frame number. */
         'frameNr': number;
         /** Returns the timestamps of the time steps. */
@@ -2026,6 +2035,8 @@ export interface PropertyTypes {
         /** (read-only) Returns the bounds of this projection. */
         readonly 'dataSource.projection.bounds': Bounds;
         readonly 'dataSource.projection.name': string;
+        /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+        'farTileLOD': 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
         /** Returns the current frame number. */
         'frameNr': number;
         /** Returns the label blending speed, in full fades per second. */
@@ -2398,6 +2409,8 @@ export interface PropertyTypes {
         /** (read-only) Returns the bounds of this projection. */
         readonly 'dataSource.projection.bounds': Bounds;
         readonly 'dataSource.projection.name': string;
+        /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+        'farTileLOD': 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
         /** Returns the current frame number. */
         'frameNr': number;
         /** Gets the current maximum overzoom level for this layer. */
@@ -3020,6 +3033,8 @@ export interface PropertyTypes {
         'exagerateHeightScaleEnabled': boolean;
         /** Returns the per-frame relief exaggeration factor, i.e. the vertical exaggeration of the slope. Unlike height scale this is a shader uniform applied at render time (no tile re-decode), so it can be animated smoothly. */
         'exaggeration': number;
+        /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+        'farTileLOD': 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
         /** Returns the current frame number. */
         'frameNr': number;
         /** Returns the height scale of the hillshade overlay. */
@@ -4283,6 +4298,8 @@ export interface PropertyTypes {
         'DPI': number;
         /** Returns the color of the ambient light. */
         'ambientLightColor': number;
+        /** (read-only) Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only. */
+        readonly 'appliedRenderScale': number;
         /** Returns the background bitmap. May be null. */
         'background': Handle;
         /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
@@ -4513,6 +4530,10 @@ export interface PropertyTypes {
         readonly 'projection.name': string;
         /** Returns the render projection mode. */
         'renderProjectionMode': 'RENDER_PROJECTION_MODE_PLANAR' | 'RENDER_PROJECTION_MODE_SPHERICAL' | number;
+        /** Returns the render scale used while the map is flat, the fraction of the view's pixels the map is drawn at. */
+        'renderScale': number;
+        /** Returns the render scale used while the map is in 3D: terrain that is not flattened, or a tilted view. */
+        'renderScale3D': number;
         /** Returns the state of the restricted panning flag. */
         'restrictedPanning': boolean;
         /** Returns the state of the map rotatability flag. */
@@ -5714,6 +5735,8 @@ export interface PropertyTypes {
         /** (read-only) Returns the bounds of this projection. */
         readonly 'dataSource.projection.bounds': Bounds;
         readonly 'dataSource.projection.name': string;
+        /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+        'farTileLOD': 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
         /** Returns the current frame number. */
         'frameNr': number;
         /** Gets the current maximum overzoom level for this layer. */
@@ -6499,6 +6522,8 @@ export interface PropertyTypes {
         /** (read-only) Returns the bounds of this projection. */
         readonly 'dataSource.projection.bounds': Bounds;
         readonly 'dataSource.projection.name': string;
+        /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+        'farTileLOD': 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
         /** Returns the current frame number. */
         'frameNr': number;
         /** Gets the current maximum overzoom level for this layer. */
@@ -6965,6 +6990,8 @@ export interface PropertyTypes {
         /** (read-only) Returns the bounds of this projection. */
         readonly 'dataSource.projection.bounds': Bounds;
         readonly 'dataSource.projection.name': string;
+        /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+        'farTileLOD': 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
         /** Returns the current frame number. */
         'frameNr': number;
         /** Returns the label blending speed, in full fades per second. */
@@ -10445,6 +10472,8 @@ export interface LayerSpec_animated_raster {
     billboardsUnderLabels?: boolean;
     /** Returns the culling delay of the layer in milliseconds. */
     cullDelay?: number;
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    farTileLOD?: 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
     /** Returns the current frame number. */
     frameNr?: number;
     /** Returns the timestamps of the time steps. */
@@ -10534,6 +10563,8 @@ export interface LayerSpec_composite_vector {
     clickRadius?: number;
     /** Returns the culling delay of the layer in milliseconds. */
     cullDelay?: number;
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    farTileLOD?: 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
     /** Returns the current frame number. */
     frameNr?: number;
     /** Returns the label blending speed, in full fades per second. */
@@ -10592,6 +10623,8 @@ export interface LayerSpec_custom_raster {
     billboardsUnderLabels?: boolean;
     /** Returns the culling delay of the layer in milliseconds. */
     cullDelay?: number;
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    farTileLOD?: 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
     /** Returns the current frame number. */
     frameNr?: number;
     /** Gets the current maximum overzoom level for this layer. */
@@ -10690,6 +10723,8 @@ export interface LayerSpec_hillshade {
     exagerateHeightScaleEnabled?: boolean;
     /** Returns the per-frame relief exaggeration factor, i.e. the vertical exaggeration of the slope. Unlike height scale this is a shader uniform applied at render time (no tile re-decode), so it can be animated smoothly. */
     exaggeration?: number;
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    farTileLOD?: 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
     /** Returns the current frame number. */
     frameNr?: number;
     /** Returns the height scale of the hillshade overlay. */
@@ -10764,6 +10799,8 @@ export interface LayerSpec_raster {
     billboardsUnderLabels?: boolean;
     /** Returns the culling delay of the layer in milliseconds. */
     cullDelay?: number;
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    farTileLOD?: 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
     /** Returns the current frame number. */
     frameNr?: number;
     /** Gets the current maximum overzoom level for this layer. */
@@ -10847,6 +10884,8 @@ export interface LayerSpec_vector {
     clickRadius?: number;
     /** Returns the culling delay of the layer in milliseconds. */
     cullDelay?: number;
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    farTileLOD?: 'FAR_TILE_LOD_COARSE' | 'FAR_TILE_LOD_DISTANCE' | number;
     /** Returns the current frame number. */
     frameNr?: number;
     /** Returns the label blending speed, in full fades per second. */

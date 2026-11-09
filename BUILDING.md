@@ -12,7 +12,7 @@ an hour or more.
 | iOS SDK (xcframework) | `all/`, `ios/` | [`build-ios.py`](#ios) | `dist/ios_metal/*.zip` |
 | Standalone routing library | `routing-lib/` | [`build-routing-*.py`](#standalone-routing-library) | `dist/routing-android/*.aar`, `dist/routing-ios/*.zip` |
 | Web SDK (wasm) | `all/`, `web/` | [`build-web.py`](#web-sdk) | `dist/web/` |
-| `@massif-maps/api`, `@massif-maps/web`, `@massif-maps/style-tools`, `@massif-maps/styles` | `bindings/js`, `web/package`, `tools/style-cli`, `styles/massif` | [`npm-packages.py`](#npm-packages) | `dist/npm/*.tgz` |
+| `@massif-maps/typings`, `@massif-maps/api`, `@massif-maps/web`, `@massif-maps/style-tools`, `@massif-maps/styles` | `bindings/typings`, `bindings/js`, `web/package`, `tools/style-cli`, `styles/massif` | [`npm-packages.py`](#npm-packages) | `dist/npm/*.tgz` |
 | Generated API bindings | `all/modules`, `all/native/api` | [`gen-api-bindings.sh`](#generated-api-bindings) | committed files |
 | `css2xml` (native) | `libs-massif/cartocss/util` | [cmake](#css2xml) | `css2xml` |
 | NativeScript plugin | `integrations/nativescript` (own repo) | [lerna](#nativescript-plugin) | `@nativescript-community/ui-massifmaps` |
@@ -142,6 +142,7 @@ and `massif-web-full.*`, which `createMap(canvas, { variant: 'full' })` loads.
 ## Generated API bindings
 
 The facade's typings and name tables (`docs/api/massif-api.json`, `bindings/typescript/massif.d.ts`,
+`bindings/typings/src` (the `@massif-maps/typings` package),
 the Objective-C, Java and C name constants) are generated and committed:
 
 ```
@@ -197,19 +198,20 @@ built and released: [docs/contributing/massif-style-release.md](docs/contributin
 One script builds and packs every npm package, locally and in CI:
 
 ```
-python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web] [--tools-version 6.2.2] [--styles-version 1.2.0-rc.1]
+python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only typings,api,web] [--tools-version 6.2.2] [--styles-version 1.2.0-rc.1]
 python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 ```
 
 | Package | Version | `pack` needs first |
 |---|---|---|
-| `@massif-maps/api` | SDK | nothing |
+| `@massif-maps/typings` | SDK | nothing |
+| `@massif-maps/api` | SDK, depends on `@massif-maps/typings` at the same version | nothing (it builds the typings itself) |
 | `@massif-maps/web` | SDK, depends on `@massif-maps/api` at the same version | `dist/web`, both variants ([Web SDK](#web-sdk)) |
 | `@massif-maps/style-tools` | its own, only with `--tools-version` | `tools/style-cli/wasm/massif-style.{mjs,wasm}` ([Style tools](#style-tools)) |
 | `@massif-maps/styles` | its own, only with `--styles-version` | nothing |
 
 `pack` writes `dist/npm/*.tgz` and leaves no diff behind. `publish` publishes those tarballs,
-`@massif-maps/api` before `@massif-maps/web`, under `--tag` — by default `next` for a prerelease
+`@massif-maps/typings`, `@massif-maps/api`, `@massif-maps/web` in that order, under `--tag` — by default `next` for a prerelease
 version and `latest` otherwise; in GitHub Actions it adds `--provenance`. To try the tarballs in an
 app before anything reaches npm:
 
@@ -258,7 +260,7 @@ chooses, and examples: [Cutting a release](docs/contributing/release-workflow.md
 
 | What | Called workflow | Tag | Publishes |
 |---|---|---|---|
-| SDK: Android, iOS, routing, web | `build.yml` | `v<version>` | GitHub release (AARs, xcframeworks, routing, web zip, API bindings); JitPack and Swift Package tags; npm `@massif-maps/api`, `@massif-maps/web` |
+| SDK: Android, iOS, routing, web | `build.yml` | `v<version>` | GitHub release (AARs, xcframeworks, routing, web zip, API bindings); JitPack and Swift Package tags; npm `@massif-maps/typings`, `@massif-maps/api`, `@massif-maps/web` |
 | Style tools | `release-style-tools.yml` | `style-tools-v<version>` | GitHub release (the compiler wasm); npm `@massif-maps/style-tools` |
 | Massif styles | `release-styles.yml`, or `styles/massif/release/release.py --npm TAG --github` | `massif-styles-v<version>` | npm `@massif-maps/styles`, one zip per flavour; redeploys the website |
 | NativeScript plugin | `npm run publish` in `integrations/nativescript` | its own | npm `@nativescript-community/ui-massifmaps` |

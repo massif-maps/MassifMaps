@@ -56,6 +56,12 @@ jobs:
       - name: Check the generated API bindings are up to date
         run: ./scripts/gen-api-bindings.sh --check
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: Build and test @massif-maps/typings
+        run: (cd bindings/typings && npm ci && npm run build && npm test)
+
       - name: Package
         run: |
           mkdir -p dist/api-bindings
@@ -681,8 +687,8 @@ jobs:
           key: xcode-cas-routing-${{ github.run_id }}-${{ github.run_attempt }}
 
   build-web:
-    # The web SDK: the wasm module and its typed API, as a zip on the release and two npm packages
-    # (@massif-maps/api, shared with NativeScript, and @massif-maps/web). docs/getting-started/web.md.
+    # The web SDK: the wasm module and its typed API, as a zip on the release and three npm packages
+    # (@massif-maps/typings and @massif-maps/api, shared with NativeScript, and @massif-maps/web). docs/getting-started/web.md.
     runs-on: ubuntu-latest
     needs: [create-release, release-preflight]
     if: ${{ !cancelled() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped') }}
@@ -716,7 +722,7 @@ jobs:
           node-version: lts/*
       - name: Build the packages
         run: |
-          python3 scripts/npm-packages.py pack "$VERSION" --only api,web
+          python3 scripts/npm-packages.py pack "$VERSION" --only typings,api,web
           (cd dist/web && zip -r "../MassifMaps-web-$VERSION.zip" . -x libmassif.a -x 'examples/*')
       - name: Stop the whole run on failure
         if: failure()

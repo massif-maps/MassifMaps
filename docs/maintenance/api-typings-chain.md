@@ -6,7 +6,7 @@ description: "From a .i declaration to autocompletion in an app: what generates 
 # From a `.i` file to an app's autocompletion
 
 The facade's public surface is **declared** in `all/modules/*.i` and **consumed** as TypeScript in a
-web or NativeScript app, through the typed API package `@massif-maps/api` (`bindings/js`). Between the two there are four generated artefacts, in four different places. If
+web or NativeScript app, through `@massif-maps/typings` (`bindings/typings`), the generated typings and runtime tables, and `@massif-maps/api` (`bindings/js`) on top of it. Between the two there are a few generated artefacts, in different places. If
 an app is reporting types that do not exist, or missing ones that do, the answer is always "one link
 is stale" — and this page says which.
 
@@ -18,18 +18,22 @@ flowchart TD
   cpp["all/native/**/*.h<br/>constructors and getters"] --> gen
   gen --> inc["PropertyTable.inc · PropertyAccessors.inc<br/>SpecConstructors.inc · MethodDecls.inc<br/>(build directory, never committed)"]
   gen --> schema["docs/api/massif-api.json<br/>COMMITTED"]
-  schema --> tsgen["bindings/js/scripts/api-typings"]
-  tsgen --> srcts["bindings/js/src/<br/>massif-api.d.ts · schema.ts<br/>COMMITTED"]
-  srcts --> web["@massif-maps/web<br/>(web/package/build.mjs)"]
-  srcts --> build["ui-massifmaps: npm run build"]
+  schema --> tsgen["bindings/typings/scripts"]
+  tsgen --> srcts["bindings/typings/src/<br/>massif-api.d.ts · schema.ts<br/>COMMITTED"]
+  srcts --> typings["@massif-maps/typings<br/>(npm, SDK version)"]
+  typings --> api["@massif-maps/api"]
+  api --> web["@massif-maps/web<br/>(web/package/build.mjs)"]
+  typings --> build["ui-massifmaps: npm run build"]
   build --> pkg["packages/ui-massifmaps/**<br/>GITIGNORED — local only"]
   pkg --> app["the app's node_modules<br/>(a portal / symlink)"]
 ```
 
 Two of those are **committed generated files** — `docs/api/massif-api.json` and
-`bindings/js/src/massif-api.d.ts` / `schema.ts`. Until the plugin depends on `@massif-maps/api`, it
-keeps its own copy of the same generator and files in `src/ui-massifmaps/api/`. They are regenerated, not hand-edited, and they must be committed
-alongside the `.i` change that caused them. An app never runs the generator.
+`bindings/typings/src/massif-api.d.ts` / `schema.ts`. They are regenerated, not hand-edited, and
+they must be committed alongside the `.i` change that caused them. An app never runs the generator:
+it takes the typings from npm, at the version of the SDK it links, so an SDK release that only adds
+properties reaches an app through a `@massif-maps/typings` bump. Design:
+[`@massif-maps/typings`](../internals/typings-package.md).
 
 The last one is **not** committed: `packages/**` is gitignored (`packages/**/*.d.ts`,
 `packages/**/*js`). It exists only where somebody ran `npm run build`. That is the single most
@@ -50,7 +54,9 @@ python3 scripts/gen-api-tables.py \
 ```
 
 ```bash
-cd integrations/nativescript && npm run typings.api && npm run typings.api.check && npm run build
+scripts/gen-api-bindings.sh
+(cd bindings/typings && npm ci && npm run build)
+(cd bindings/js && npm ci && npm run build && npm run check)
 ```
 
 ```bash
@@ -77,7 +83,7 @@ In order — the first mismatch is the answer.
 |---|---|
 | the schema has the new thing | `grep instructionsJSON docs/api/massif-api.json` |
 | a nested spec resolves to a kind | `grep -A2 '"kindOfClass"' docs/api/massif-api.json` — `set` needs it to build one |
-| the plugin's typings match the schema | `cd integrations/nativescript && npm run typings.api` — a clean run rewrites nothing if it is current |
+| the typings match the schema | `scripts/gen-api-bindings.sh` — a clean run rewrites nothing if it is current |
 | the built package matches `src` | `diff <(md5 -q src/ui-massifmaps/api/massif-api.d.ts) <(md5 -q packages/ui-massifmaps/api/massif-api.d.ts)` |
 | the app resolves the right package | `readlink -f node_modules/@nativescript-community/ui-massifmaps` |
 
@@ -97,7 +103,7 @@ A `.i` change that adds a `!spec`, `!method`, `!event` or `%attribute` is **not 
 2. the C++ that implements it — a `!method` with no `Methods::registerMethod` is reported at
    startup by `checkDeclarations` and completes to a call that fails,
 3. `docs/api/massif-api.json`,
-4. `bindings/js/src/massif-api.d.ts` and `schema.ts` — `scripts/gen-api-bindings.sh` writes both.
+4. `bindings/typings/src/massif-api.d.ts` and `schema.ts` — `scripts/gen-api-bindings.sh` writes both.
 
 Splitting those across commits leaves every intermediate commit describing an API that is not there.
 Two things are deliberately NOT committed: the generated `.inc` files (they live in the build
@@ -106,7 +112,7 @@ directory) and `packages/**` (rebuilt locally, see above).
 ## Known gaps
 
 - **Nothing checks the schema against the built typings in CI.** The mismatch is caught by whoever
-  next runs `npm run typings.api` and sees a diff, which is late.
+  next runs `scripts/gen-api-bindings.sh` and sees a diff, which is late.
 - **The schema is generated with ONE profile.** An app built `lite` gets typings promising classes
   its SDK does not contain; the failure is a runtime `RESULT_UNKNOWN_TYPE`, not a type error.
 - **`packages/` is gitignored, so nothing guarantees it exists.** A contributor who clones the

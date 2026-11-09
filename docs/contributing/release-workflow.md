@@ -37,7 +37,7 @@ tools. Each is its own semver with its own tag, so any of them can ship alone.
 
 | Package | Tag | Published as |
 |---|---|---|
-| SDK (Android, iOS, web) | `v<version>` | GitHub release, JitPack, Swift package, npm `@massif-maps/api` and `web` |
+| SDK (Android, iOS, web) | `v<version>` | GitHub release, JitPack, Swift package, npm `@massif-maps/typings`, `api` and `web` |
 | Massif styles | `massif-styles-v<version>` | GitHub release, npm `@massif-maps/styles`, the website |
 | Style tools | `style-tools-v<version>` | GitHub release (the wasm), npm `@massif-maps/style-tools` |
 
@@ -83,11 +83,11 @@ Testing what a run published, channel by channel: [Testing a release](release-te
   the Swift package has no such variant.
 - `build-web`: the web module twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`
   ([variants](../maintenance/web-build.md#variants)); `MassifMaps-web-<version>.zip` on the GitHub
-  release (`dist/web`, the files an app serves), and the `@massif-maps/api` and `@massif-maps/web`
-  tarballs.
+  release (`dist/web`, the files an app serves), and the `@massif-maps/typings`, `@massif-maps/api` and
+  `@massif-maps/web` tarballs.
 - `update-release`, once every platform has built: writes the notes and makes the release public.
-- `publish-npm`, after that: publishes the two tarballs with `scripts/npm-packages.py publish`,
-  `@massif-maps/api` first, with provenance, skipping a version npm already has.
+- `publish-npm`, after that: publishes the three tarballs with `scripts/npm-packages.py publish`,
+  `@massif-maps/typings` first, then `@massif-maps/api`, with provenance, skipping a version npm already has.
   npm trusts the workflow itself (trusted publishing, set per package on npmjs.com), so there is
   no npm token.
 

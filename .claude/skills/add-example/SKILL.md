@@ -32,7 +32,7 @@ Read [`references/example-anatomy.md`](references/example-anatomy.md) before wri
    cd integrations/nativescript && node ./scripts/examples/check.mjs
    cd website && npm run build 2>&1 | tail -30
    ```
-   `check.mjs` typechecks every NativeScript example against the plugin typings. When it reports a property the SDK has but the typings do not, the typings are stale: `node ./scripts/api-typings/index.mjs`.
+   `check.mjs` typechecks every NativeScript example against the plugin typings. When it reports a property the SDK has but the typings do not, the typings are stale: `scripts/gen-api-bindings.sh` in the SDK, then bump `@massif-maps/typings` in the plugin.
 
 7. **Capture the screenshot**, or say plainly that it is missing.
    ```sh

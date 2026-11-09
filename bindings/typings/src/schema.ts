@@ -1,5 +1,5 @@
 // GENERATED FILE - do not edit by hand.
-// Regenerate with `npm run typings.api` (scripts/api-typings), which reads the SDK's
+// Regenerate with `npm run typings` (bindings/typings/scripts), which reads the SDK's
 // docs/api/massif-api.json - the same schema the C++ property table is built from.
 
 /* eslint-disable */
@@ -118,7 +118,7 @@ export const PROPS: { [cls: string]: string } = {
     'massif::NMLModel': 'rotationAngle,f;rotationAxis,t;scale,f;style,o,massif::NMLModelStyle',
     'massif::NMLModelStyle': 'modelAsset,o,massif::BinaryData;orientationMode,e,BillboardOrientation;scalingMode,e,BillboardScaling',
     'massif::NMLModelStyleBuilder': 'modelAsset,o,massif::BinaryData;orientationMode,e,BillboardOrientation;scalingMode,e,BillboardScaling',
-    'massif::Options': 'DPI,f;ambientLightColor,c;backgroundBitmap,o,massif::Bitmap;baseProjection,o,massif::Projection;clearColor,c;clickMovingTolerance,f;clickTypeDetection,b;debugTileBorders,b;doubleClickDetection,b;doubleClickMaxDuration,f;drawDistance,f;envelopeThreadPoolSize,i;fieldOfViewY,f;focusPointOffset,t;fogOptions,o,massif::FogOptions;freeRoamLookSensitivity,f;freeRoamMode,e,FreeRoamMode;freeRoamMoveSpeed,f;kineticPan,b;kineticRotation,b;kineticZoom,b;labelPadding,f;labelViewDistance,f;layersLabelsProcessedInReverseOrder,b;lightOptions,o,massif::LightOptions;longClickDuration,f;mainLightColor,c;mainLightDirection,t;modelAnimationsEnabled,b;modelShadowsEnabled,b;orbitAroundPivot,b;panBounds,p;panningMode,e,PanningMode;panningSpeedMode,e,PanningSpeedMode;pivotMode,e,PivotMode;renderProjectionMode,e,RenderProjectionMode;restrictedPanning,b;rotatable,b;rotationGestures,b;seamlessPanning,b;skyColor,c;skyOptions,o,massif::SkyOptions;terrainOptions,o,massif::TerrainOptions;tileDrawSize,i;tileLODFactor,f;tileLODMaxZoomLevelsOnScreen,f;tileLODProfile,e,TileLODProfile;tileLODTileCountRatio,f;tileStyleZoomLift,i;tileThreadPoolSize,i;tiltGestureReversed,b;tiltRange,t;userInput,b;zoomGestures,b;zoomOffset,f;zoomRange,t',
+    'massif::Options': 'DPI,f;ambientLightColor,c;appliedRenderScale,f;backgroundBitmap,o,massif::Bitmap;baseProjection,o,massif::Projection;clearColor,c;clickMovingTolerance,f;clickTypeDetection,b;debugTileBorders,b;doubleClickDetection,b;doubleClickMaxDuration,f;drawDistance,f;envelopeThreadPoolSize,i;fieldOfViewY,f;focusPointOffset,t;fogOptions,o,massif::FogOptions;freeRoamLookSensitivity,f;freeRoamMode,e,FreeRoamMode;freeRoamMoveSpeed,f;kineticPan,b;kineticRotation,b;kineticZoom,b;labelPadding,f;labelViewDistance,f;layersLabelsProcessedInReverseOrder,b;lightOptions,o,massif::LightOptions;longClickDuration,f;mainLightColor,c;mainLightDirection,t;modelAnimationsEnabled,b;modelShadowsEnabled,b;orbitAroundPivot,b;panBounds,p;panningMode,e,PanningMode;panningSpeedMode,e,PanningSpeedMode;pivotMode,e,PivotMode;renderProjectionMode,e,RenderProjectionMode;renderScale,f;renderScale3D,f;restrictedPanning,b;rotatable,b;rotationGestures,b;seamlessPanning,b;skyColor,c;skyOptions,o,massif::SkyOptions;terrainOptions,o,massif::TerrainOptions;tileDrawSize,i;tileLODFactor,f;tileLODMaxZoomLevelsOnScreen,f;tileLODProfile,e,TileLODProfile;tileLODTileCountRatio,f;tileStyleZoomLift,i;tileThreadPoolSize,i;tiltGestureReversed,b;tiltRange,t;userInput,b;zoomGestures,b;zoomOffset,f;zoomRange,t',
     'massif::PackageInfo': 'metaInfo,o,massif::PackageMetaInfo;name,s;packageId,s;packageType,e,PackageType;size,i;tileMask,o,massif::PackageTileMask;version,i',
     'massif::PackageManager': 'localPackages,t;packageManagerListener,o,massif::PackageManagerListener;serverPackageListAge,i;serverPackageListMetaInfo,o,massif::PackageMetaInfo;serverPackages,t',
     'massif::PackageManagerTileDataSource': 'packageManager,o,massif::PackageManager',
@@ -172,7 +172,7 @@ export const PROPS: { [cls: string]: string } = {
     'massif::TileData': 'data,o,massif::BinaryData;height,i;maxAge,i;rawPixels,b;replaceWithParent,b;width,i',
     'massif::TileDataSource': 'dataExtent,p;maxOverzoomLevel,i;maxZoom,i;metaData,g,v;minZoom,i;projection,o,massif::Projection',
     'massif::TileDownloadInfo': 'progress,f;tile,t;tileCount,i',
-    'massif::TileLayer': 'UTFGridDataSource,o,massif::TileDataSource;UTFGridEventListener,o,massif::UTFGridEventListener;dataSource,o,massif::TileDataSource;frameNr,i;maxOverzoomLevel,i;maxStandInLevel,i;maxUnderzoomLevel,i;preloading,b;preloadingTileCount,i;projection,o,massif::Projection;synchronizedRefresh,b;tileLoadListener,o,massif::TileLoadListener;tileSubstitutionPolicy,e,TileSubstitutionPolicy;visibleTileCount,i;zoomLevelBias,f',
+    'massif::TileLayer': 'UTFGridDataSource,o,massif::TileDataSource;UTFGridEventListener,o,massif::UTFGridEventListener;dataSource,o,massif::TileDataSource;farTileLOD,e,FarTileLOD;frameNr,i;maxOverzoomLevel,i;maxStandInLevel,i;maxUnderzoomLevel,i;preloading,b;preloadingTileCount,i;projection,o,massif::Projection;synchronizedRefresh,b;tileLoadListener,o,massif::TileLoadListener;tileSubstitutionPolicy,e,TileSubstitutionPolicy;visibleTileCount,i;zoomLevelBias,f',
     'massif::TomTomOnlineGeocodingService': 'customServiceURL,s',
     'massif::TomTomOnlineReverseGeocodingService': 'customServiceURL,s',
     'massif::UTFGridClickInfo': 'clickInfo,t;clickPos,p;clickType,e,ClickType;elementInfo,v;layer,o,massif::Layer',
@@ -332,6 +332,7 @@ export const ENUMS: { [enumName: string]: string } = {
     ClusterBuilderMode: 'CLUSTER_BUILDER_MODE_ELEMENTS=0,CLUSTER_BUILDER_MODE_ELEMENT_COUNT=1',
     ColorFormat: 'COLOR_FORMAT_UNSUPPORTED=0,COLOR_FORMAT_BGRA=1,COLOR_FORMAT_RGBA_4444=2,COLOR_FORMAT_RGB_565=3',
     CompositeSourceType: 'COMPOSITE_SOURCE_TYPE_RASTER=0,COMPOSITE_SOURCE_TYPE_HILLSHADE=1,COMPOSITE_SOURCE_TYPE_VECTOR=2',
+    FarTileLOD: 'FAR_TILE_LOD_COARSE=0,FAR_TILE_LOD_DISTANCE=1',
     FlightEasing: 'FLIGHT_EASING_EASE=0,FLIGHT_EASING_LINEAR=1,FLIGHT_EASING_EASE_IN=2,FLIGHT_EASING_EASE_OUT=3,FLIGHT_EASING_EASE_IN_OUT=4',
     FreeRoamMode: 'FREE_ROAM_MODE_OFF=0,FREE_ROAM_MODE_LOOK=1,FREE_ROAM_MODE_FIRST_PERSON=2',
     GeometryType: 'GEOMETRY_TYPE_POINT=0,GEOMETRY_TYPE_LINE=1,GEOMETRY_TYPE_POLYGON=2,GEOMETRY_TYPE_MULTIPOINT=3,GEOMETRY_TYPE_MULTILINE=4,GEOMETRY_TYPE_MULTIPOLYGON=5,GEOMETRY_TYPE_COLLECTION=6',

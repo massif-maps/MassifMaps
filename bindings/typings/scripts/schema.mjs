@@ -2,21 +2,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const OUT_DIR = path.join(ROOT, 'src');
 
 /**
- * Where `docs/api/massif-api.json` is, in order of preference.
- *
- * The plugin is checked out as `integrations/nativescript` inside the SDK, so the relative
- * path is the normal case; MASSIF_SDK_HOME is what the existing `scripts/typings` uses and
- * covers a standalone checkout.
+ * Where `docs/api/massif-api.json` is: --schema, else the checkout this package sits in, else
+ * $MASSIF_SDK_HOME. The checkout comes before the variable so a worktree never reads the main
+ * checkout's schema.
  */
 export function findSchema(explicit) {
     const candidates = [
         explicit,
-        process.env.MASSIF_SDK_HOME && path.join(process.env.MASSIF_SDK_HOME, 'docs', 'api', 'massif-api.json'),
-        path.resolve(ROOT, '..', '..', 'docs', 'api', 'massif-api.json')
+        path.resolve(ROOT, '..', '..', 'docs', 'api', 'massif-api.json'),
+        process.env.MASSIF_SDK_HOME && path.join(process.env.MASSIF_SDK_HOME, 'docs', 'api', 'massif-api.json')
     ].filter(Boolean);
     const found = candidates.find((c) => existsSync(c));
     if (!found) {
@@ -195,7 +193,7 @@ export function specInterfaceName(kind, type) {
 
 export const BANNER = [
     '// GENERATED FILE - do not edit by hand.',
-    "// Regenerate with `npm run typings.api` (scripts/api-typings), which reads the SDK's",
+    "// Regenerate with `npm run typings` (bindings/typings/scripts), which reads the SDK's",
     '// docs/api/massif-api.json - the same schema the C++ property table is built from.',
     ''
 ].join('\n');

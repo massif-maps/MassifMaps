@@ -139,7 +139,8 @@ between the examples (`web/examples/shared.mjs`).
 
 `@massif-maps/api` is the typed surface API on its own, platform-neutral - the same package the
 NativeScript plugin is built on. Every path, spec key, method and event completes and type-checks,
-because it is generated from the SDK's property table ([the surface API](/docs/api/)).
+because it is generated from the SDK's property table ([the surface API](/docs/api/)); the
+generated part is `@massif-maps/typings`, which `@massif-maps/api` depends on at the same version.
 `@massif-maps/web` re-exports all of it, so an app imports from one place.
 
 ## Building it yourself

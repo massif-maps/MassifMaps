@@ -40,6 +40,7 @@ already routes offline. On Android it installs beside any map variant (its own c
 | Package | What it is |
 |---|---|
 | [`@massif-maps/web`](https://www.npmjs.com/package/@massif-maps/web) | the SDK compiled to WebAssembly, with the typed API |
+| [`@massif-maps/typings`](https://www.npmjs.com/package/@massif-maps/typings) | the generated typings and runtime tables of the surface API, one copy for the web and NativeScript bindings; its version is the SDK's |
 | [`@massif-maps/api`](https://www.npmjs.com/package/@massif-maps/api) | the typed surface API on its own, shared by the web and NativeScript bindings |
 | [`@massif-maps/style-tools`](https://www.npmjs.com/package/@massif-maps/style-tools) | `massif-style`: CartoCSS compilation, MapBox style conversion, legends, own version — [style CLI](/docs/tools/style-cli) |
 | [`@massif-maps/styles`](https://www.npmjs.com/package/@massif-maps/styles) | the Massif styles for MapLibre and the SDK, own version — [Massif styles](/docs/styles/massif) |

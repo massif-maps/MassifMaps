@@ -21,6 +21,7 @@ on:
       - 'libs-massif/**'
       - 'web/**'
       - 'bindings/js/**'
+      - 'bindings/typings/**'
       - 'scripts/build/**'
       - 'scripts/build-web.py'
       - '.github/workflows/web-preview.yml'
@@ -28,6 +29,7 @@ on:
     paths:
       - 'web/**'
       - 'bindings/js/**'
+      - 'bindings/typings/**'
       - 'scripts/build-web.py'
       - '.github/workflows/web-preview.yml'
   workflow_dispatch:
@@ -86,6 +88,7 @@ jobs:
 
       - name: Build the package the examples load
         run: |
+          (cd bindings/typings && npm ci && npm run build)
           (cd bindings/js && npm ci && npm run build && npm run check)
           (cd web/package && npm ci && node build.mjs --website)
 

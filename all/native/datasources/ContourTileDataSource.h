@@ -9,6 +9,7 @@
 
 #include "datasources/TileDataSource.h"
 #include "components/DirectorPtr.h"
+#include "datasources/components/ByteBudgetCache.h"
 
 #include <atomic>
 #include <functional>
@@ -214,9 +215,9 @@ namespace massif {
                                                      const std::function<double(double, double, double&, double&)>& sampler,
                                                      double interval);
 
-        // MRU cache: with seamless edges each neighbour DEM tile is also decoded for itself.
+        // With seamless edges each DEM tile is read by up to four tiles: decoded once per residency, not per reader.
         std::shared_ptr<Bitmap> loadCachedBitmap(const MapTile& tile);
-        void cacheBitmap(const MapTile& tile, const std::shared_ptr<Bitmap>& bitmap);
+        static std::size_t bitmapBytes(const Bitmap& bitmap);
 
         const DirectorPtr<TileDataSource> _dataSource;
         const std::shared_ptr<ElevationDecoder> _elevationDecoder;
@@ -235,9 +236,8 @@ namespace massif {
         std::shared_ptr<TerrainOptions> _terrainOptions;
         mutable std::mutex _mutex;
 
-        static const std::size_t MAX_CACHED_BITMAPS;
-        std::vector<std::pair<long long, std::shared_ptr<Bitmap> > > _bitmapCache; // most recent first
-        std::mutex _bitmapCacheMutex;
+        static const std::size_t MAX_CACHED_BITMAP_BYTES;
+        ByteBudgetCache<Bitmap> _bitmapCache { MAX_CACHED_BITMAP_BYTES, &ContourTileDataSource::bitmapBytes };
 
     private:
         std::shared_ptr<DataSourceListener> _dataSourceListener;

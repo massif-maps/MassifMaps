@@ -18,9 +18,11 @@
   "files": ["dist"],
   "sideEffects": false,
   "scripts": {
-    "typings": "node scripts/api-typings/index.mjs",
-    "build": "tsc -p tsconfig.json && cp src/massif-api.d.ts dist/",
-    "check": "tsc -p scripts/api-typings/typecheck/tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p typecheck/tsconfig.json"
+  },
+  "dependencies": {
+    "@massif-maps/typings": "file:../typings"
   },
   "devDependencies": {
     "typescript": "^5.6.0"

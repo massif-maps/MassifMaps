@@ -507,7 +507,7 @@ loads: it draws nothing until the page asks for a map. `massif-demo` is the benc
 | `massifBridgeLayerClicks(handle)` | the same for a vector or vector tile layer's clicks |
 
 `scripts/build-web.py` writes the module to `dist/web/`; `node web/package/build.mjs` (after
-`npm run build` in `bindings/js`) turns that directory into the `@massif-maps/web` package, and
+`npm run build` in `bindings/typings` then `bindings/js`) turns that directory into the `@massif-maps/web` package, and
 `--website` copies it to `website/static/massif/`. Smoke pages: serve the repo root with
 `web/demo/serve.py --dir .` and open `/web/module/` (the low-level binding) or
 `/dist/web/examples/run.html?id=display-a-map` (the typed API).

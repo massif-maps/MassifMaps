@@ -5,9 +5,9 @@
  * the build. That is what keeps "a wrong path is a compile error" from quietly becoming false
  * when the schema or the generator changes.
  *
- * Run with `npm run typings.api.check`.
+ * Run with `npm run check` in bindings/js.
  */
-import { MapCamera, MassifLayer, MassifMap, MassifObject, attach, create, createLayer, createSource, find } from '../../../../src/index.js';
+import { MapCamera, MassifLayer, MassifMap, MassifObject, attach, create, createLayer, createSource, find } from '../../src/index.js';
 
 declare const view: any;
 
@@ -323,7 +323,7 @@ create('elementstyle', 'wrongchild', { type: 'polygon', lineStyle: { type: 'http
 // --- the hand-written factories ---------------------------------------------------------------
 //
 // Shapes SpecFactories.cpp accepts that no constructor signature describes, so the schema alone
-// cannot produce them - see scripts/api-typings/factories.mjs.
+// cannot produce them - see bindings/typings/scripts/factories.mjs.
 
 // buildSearch: the layer already on the map, instead of the source/decoder pair.
 map.object('search', 'from-layer', { type: 'vectortile', layer: base.handle, minZoom: 14, maxZoom: 14, preventDuplicates: true });

@@ -1,0 +1,28 @@
+{
+  "name": "@massif-maps/typings",
+  "version": "0.0.0",
+  "description": "The Massif Maps surface API typings and runtime tables, generated from the SDK's API schema",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/massif-maps/MassifMaps.git",
+    "directory": "bindings/typings"
+  },
+  "homepage": "https://massif-maps.github.io/MassifMaps/docs/getting-started/packages",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "typings": "node scripts/index.mjs",
+    "build": "tsc -p tsconfig.json && cp src/massif-api.d.ts dist/",
+    "test": "node test/smoke.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

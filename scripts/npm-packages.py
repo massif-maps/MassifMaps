@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Build, pack and publish every Massif Maps npm package.
 
-    python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web] [--tools-version 6.2.2] [--styles-version 1.2.0]
+    python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only typings,api,web] [--tools-version 6.2.2] [--styles-version 1.2.0]
     python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 
 `pack` writes one tarball per package into dist/npm; `publish` publishes the tarballs found there,
-dependencies first. api and web take the SDK version (the positional one), style-tools and styles
+dependencies first. typings, api and web take the SDK version (the positional one), style-tools and styles
 each their own, and a package is only packed when its version is given. Prerequisites per package:
 BUILDING.md, "npm packages".
 """
@@ -22,8 +22,10 @@ import tempfile
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUT = os.path.join(ROOT, 'dist', 'npm')
 
-# Publish order: @massif-maps/web depends on @massif-maps/api at the same version.
+# Publish order: @massif-maps/api depends on @massif-maps/typings, and @massif-maps/web on
+# @massif-maps/api, each at the same version.
 PACKAGES = {
+    'typings': '@massif-maps/typings',
     'api': '@massif-maps/api',
     'web': '@massif-maps/web',
     'style-tools': '@massif-maps/style-tools',
@@ -62,9 +64,17 @@ def pack_versioned(cwd, version, out, steps):
             open(os.path.join(cwd, f), 'w').write(text)
 
 
+def pack_typings(version, out):
+    pack_versioned(os.path.join(ROOT, 'bindings', 'typings'), version, out, [['npm', 'run', 'build']])
+
+
 def pack_api(version, out):
+    typings = os.path.join(ROOT, 'bindings', 'typings')
+    run(['npm', 'ci'], typings)
+    run(['npm', 'run', 'build'], typings)
     pack_versioned(os.path.join(ROOT, 'bindings', 'js'), version, out,
-                   [['npm', 'run', 'build'], ['npm', 'run', 'check']])
+                   [['npm', 'pkg', 'set', 'dependencies.@massif-maps/typings=' + version],
+                    ['npm', 'run', 'build'], ['npm', 'run', 'check']])
 
 
 def pack_web(version, out):
@@ -97,7 +107,7 @@ def pack_styles(version, out):
         npm_pack(os.path.join(dist, 'npm'), out)
 
 
-PACKERS = {'api': pack_api, 'web': pack_web, 'style-tools': pack_style_tools, 'styles': pack_styles}
+PACKERS = {'typings': pack_typings, 'api': pack_api, 'web': pack_web, 'style-tools': pack_style_tools, 'styles': pack_styles}
 
 
 def tarballs(out):
@@ -115,8 +125,8 @@ def tarballs(out):
 
 
 def pack(args):
-    versions = {'api': args.version, 'web': args.version, 'style-tools': args.tools_version, 'styles': args.styles_version}
-    flags = {'api': 'the SDK version', 'web': 'the SDK version', 'style-tools': '--tools-version', 'styles': '--styles-version'}
+    versions = {'typings': args.version, 'api': args.version, 'web': args.version, 'style-tools': args.tools_version, 'styles': args.styles_version}
+    flags = {'typings': 'the SDK version', 'api': 'the SDK version', 'web': 'the SDK version', 'style-tools': '--tools-version', 'styles': '--styles-version'}
     only = args.only.split(',') if args.only else [key for key in PACKAGES if versions[key]]
     unknown = set(only) - set(PACKAGES)
     if unknown:
@@ -143,9 +153,9 @@ def publish(args):
     if not found:
         sys.exit('no tarball in %s - run pack first' % args.out)
     versions = {k: re.search(r'-(\d[^/]*)\.tgz$', t).group(1) for k, t in found.items()}
-    sdk = {versions[k] for k in ('api', 'web') if k in found}
+    sdk = {versions[k] for k in ('typings', 'api', 'web') if k in found}
     if len(sdk) > 1:
-        sys.exit('api and web must share one version, found %s' % ', '.join(sorted(sdk)))
+        sys.exit('typings, api and web must share one version, found %s' % ', '.join(sorted(sdk)))
     if 'web' in found and 'api' not in found:
         print('warning: publishing @massif-maps/web without @massif-maps/api - its dependency must already be on npm')
     for key, tgz in found.items():
@@ -167,7 +177,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('pack', help='build every package and npm pack it')
-    p.add_argument('version', nargs='?', help='SDK version for api and web, no leading v (6.1.0, 6.1.0-rc.1)')
+    p.add_argument('version', nargs='?', help='SDK version for typings, api and web, no leading v (6.1.0, 6.1.0-rc.1)')
     p.add_argument('--only', help='comma-separated subset of: ' + ', '.join(PACKAGES))
     p.add_argument('--tools-version', help='also pack @massif-maps/style-tools at this version')
     p.add_argument('--styles-version', help='also pack @massif-maps/styles at this version')

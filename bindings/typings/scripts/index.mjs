@@ -8,14 +8,14 @@ import { emitRuntime } from './runtime.mjs';
 const USAGE = `
 Regenerate the surface API typings from the SDK's own API schema.
 
-  node scripts/api-typings/index.mjs [--schema <massif-api.json>] [--out <dir>]
+  node scripts/index.mjs [--schema <massif-api.json>] [--out <dir>]
 
 The schema is looked up in this order:
   --schema
+  ../../docs/api/massif-api.json     (the checkout this package is in)
   $MASSIF_SDK_HOME/docs/api/massif-api.json
-  ../../docs/api/massif-api.json     (this plugin checked out inside the SDK)
 
-Writes, into src/ui-massifmaps/api:
+Writes, into src:
   massif-api.d.ts   types only - class names, property paths, specs, methods, events
   schema.ts         the runtime tables marshalling needs
 `;

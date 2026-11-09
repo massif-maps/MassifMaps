@@ -35,8 +35,19 @@ namespace massif {
         static constexpr std::size_t MIN_BUDGET = 24;
 
         static constexpr int NO_VIEW_CAP = 1000; // Limits::capOffset of a cut no zoom of the view caps
+
+        /** How the pixels a tile may span grow where the ground is seen at a grazing angle: what a far tile gives up in level. */
+        enum class FarRule {
+            Slant, // from the first degree of tilt, to View::farCoarsening of the slant distance per vertical one (the area rule's fit)
+            Distance // mapbox-gl-js: none within 45 degrees of vertical, then a bounded stretch; the level follows the distance
+        };
+
         static constexpr double FAR_COARSENING = 0.65; // fitted with MIN_GRAZING to the area rule's tile count (02-tiles.md), not derived
         static constexpr double MIN_GRAZING = 1.0 / 32.0; // vertical over slant distance, under which a tile reads as edge on
+        static constexpr double GRAZING_SIN = 0.707; // mapbox-gl-js distToSplitScale: no stretch while the view ray is within 45 degrees of vertical
+        static constexpr double GRAZING_STRETCH = 1.1; // and past it, every further vertical distance of slant may be this much longer
+        static constexpr double MAX_GRAZING_SLANT = 64.0; // slant over vertical distance, bounded for a tile whose box holds the eye's height
+        static constexpr double MAX_GRAZING_ALLOWANCE = 32.0; // five levels coarser at the horizon
         static constexpr double FLAT_TILT_TOLERANCE = 1.0; // degrees off straight down that still count as a 2D view
 
         /** What one cull measures a tile with. */
@@ -45,7 +56,8 @@ namespace massif {
             double maxEdgePixels = 0; // what a tile may span; 0 splits to the cap
             double zoom0Distance = 0; // the eye-to-focus distance at zoom 0 (ViewState::getZoom0Distance)
             double zoomShift = 0; // from the camera's zoom to a tile level: Options::ZoomOffset + the layer's bias
-            double farCoarsening = 0; // exponent of the extra pixels a tile may span, over its slant distance per vertical one
+            FarRule farRule = FarRule::Slant; // how a tile seen at a grazing angle may span more pixels (farAllowance)
+            double farCoarsening = 0; // FarRule::Slant: the exponent of the extra pixels a tile may span, 0 for none
         };
 
         /**
@@ -107,17 +119,36 @@ namespace massif {
             return std::isnan(zoom) ? 0 : static_cast<int>(std::max(-NO_VIEW_CAP * 1.0, std::min(NO_VIEW_CAP * 1.0, std::floor(zoom))));
         }
 
+        /** The allowance of FarRule::Slant: the slant distance per vertical one, to the exponent. 1 straight below the eye. */
+        static double slantAllowance(double exponent, double distance, double verticalDistance) {
+            double slant = distance / std::max(verticalDistance, distance * MIN_GRAZING);
+            return std::pow(std::max(1.0, slant), exponent);
+        }
+
         /**
-         * The pixels a tile may span grow with the slant distance per vertical one, to the exponent: a ground seen
-         * at a grazing angle is read at a coarser level, as the area it projects falls with the angle. A function of
-         * the tile and the eye alone, and one at a top-down view (slant = vertical), where it is 1.
+         * The allowance of FarRule::Distance, mapbox-gl-js's `distToSplitScale` inverted. 1 while the ray is within
+         * 45 degrees of vertical, so a tile at a given distance has the same level at any tilt up to there; past it
+         * the slant distance a level covers stretches geometrically, which bounds the tiles a horizon asks for.
          */
-        static double farAllowance(const View& view, double distance, double verticalDistance) {
-            if (!(view.farCoarsening > 0) || !(distance > 0)) {
+        static double distanceAllowance(double distance, double verticalDistance) {
+            const double acute = 1.0 / GRAZING_SIN;
+            double slant = distance / std::max(verticalDistance, distance / MAX_GRAZING_SLANT);
+            if (slant <= acute) {
                 return 1.0;
             }
-            double slant = distance / std::max(verticalDistance, distance * MIN_GRAZING);
-            return std::pow(std::max(1.0, slant), view.farCoarsening);
+            double reach = acute + (std::pow(GRAZING_STRETCH, slant - acute + 1.0) - 1.0) / (GRAZING_STRETCH - 1.0) - 1.0;
+            return std::min(reach / slant, MAX_GRAZING_ALLOWANCE);
+        }
+
+        /** The factor on the pixels a tile may span, a function of the tile and the eye alone. */
+        static double farAllowance(const View& view, double distance, double verticalDistance) {
+            if (!(distance > 0)) {
+                return 1.0;
+            }
+            if (view.farRule == FarRule::Distance) {
+                return distanceAllowance(distance, verticalDistance);
+            }
+            return view.farCoarsening > 0 ? slantAllowance(view.farCoarsening, distance, verticalDistance) : 1.0;
         }
 
         /**

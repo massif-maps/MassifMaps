@@ -98,6 +98,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (has(extras, LIGHT_KEYS)) {
             demo.applyLightOptions();
         }
+        if (extras.containsKey("farLodVector") || extras.containsKey("farLodRaster")) {
+            demo.applyFarTileLOD();
+        }
         if (extras.containsKey("rasterBias")) {
             demo.applyRasterZoomBias();
         }

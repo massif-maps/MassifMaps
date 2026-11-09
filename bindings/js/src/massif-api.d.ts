@@ -236,6 +236,7 @@ export type ClassName =
     | 'massif::SolidLayer'
     | 'massif::Style'
     | 'massif::StyleBuilder'
+    | 'massif::SunExposureOptions'
     | 'massif::TerrainOptions'
     | 'massif::TerrariumElevationDataDecoder'
     | 'massif::Text'
@@ -3353,6 +3354,8 @@ export interface PropertyTypes {
         'shadowFollowsBuildingHeight': boolean;
         /** Returns the shadow map resolution. */
         'shadowMapSize': number;
+        /** Returns the lowest sun altitude the shadows are drawn at. */
+        'shadowMinSunAltitude': number;
         /** Returns the shadow normal offset. */
         'shadowNormalOffset': number;
         /** Returns the shadow softness. */
@@ -4415,6 +4418,8 @@ export interface PropertyTypes {
         'light.shadowFollowsBuildingHeight': boolean;
         /** Returns the shadow map resolution. */
         'light.shadowMapSize': number;
+        /** Returns the lowest sun altitude the shadows are drawn at. */
+        'light.shadowMinSunAltitude': number;
         /** Returns the shadow normal offset. */
         'light.shadowNormalOffset': number;
         /** Returns the shadow softness. */
@@ -4459,6 +4464,8 @@ export interface PropertyTypes {
         'lightOptions.shadowFollowsBuildingHeight': boolean;
         /** Returns the shadow map resolution. */
         'lightOptions.shadowMapSize': number;
+        /** Returns the lowest sun altitude the shadows are drawn at. */
+        'lightOptions.shadowMinSunAltitude': number;
         /** Returns the shadow normal offset. */
         'lightOptions.shadowNormalOffset': number;
         /** Returns the shadow softness. */
@@ -5995,6 +6002,36 @@ export interface PropertyTypes {
     'massif::StyleBuilder': {
         /** Returns the color of the vector element. */
         'color': number;
+    };
+    'massif::SunExposureOptions': {
+        /** Returns the memory one call may hold in decoded elevation grids. */
+        'cacheMB': number;
+        /** Returns the apparent altitude under which a point is DARK and not marched. */
+        'darkBelow': number;
+        /** Returns the sun disc's angular radius, the half-width of the penumbra. */
+        'discRadius': number;
+        /** Returns the height of the eye above the ground at each point. */
+        'eyeHeight': number;
+        /** Returns the first march step, also the smallest. */
+        'firstStep': number;
+        /** Returns whether the call loads the elevation tiles it needs. */
+        'loadMissingTiles': boolean;
+        /** Returns the deadline for loading tiles in one call. */
+        'loadTimeoutMs': number;
+        /** Returns the wanted elevation texel size per meter of distance. */
+        'lodRatio': number;
+        /** Returns the apparent altitude under which a point is flagged LOW_SUN. */
+        'lowSunBelow': number;
+        /** Returns how far toward the sun the march goes. */
+        'maxDistance': number;
+        /** Returns the finest texel size the march asks for. */
+        'minTexel': number;
+        /** Returns the atmospheric refraction coefficient. */
+        'refraction': number;
+        /** Returns whether the call empties the elevation cache once it is done. */
+        'releaseCache': boolean;
+        /** Returns how fast the march step grows with distance. */
+        'stepGrowth': number;
     };
     'massif::TerrainOptions': {
         /** Returns whether tiles are decoded for terrain even while the terrain is disabled. */
@@ -7736,6 +7773,8 @@ export interface PositionPaths {
     };
     'massif::StyleBuilder': {
     };
+    'massif::SunExposureOptions': {
+    };
     'massif::TerrainOptions': {
     };
     'massif::TerrariumElevationDataDecoder': {
@@ -8565,6 +8604,8 @@ export interface ObjectPaths {
     'massif::Style': {
     };
     'massif::StyleBuilder': {
+    };
+    'massif::SunExposureOptions': {
     };
     'massif::TerrainOptions': {
     };
@@ -9533,6 +9574,8 @@ export interface VariantPaths {
     'massif::Style': {
     };
     'massif::StyleBuilder': {
+    };
+    'massif::SunExposureOptions': {
     };
     'massif::TerrainOptions': {
     };
@@ -10904,6 +10947,8 @@ export interface OptionsSpec_light {
     shadowFollowsBuildingHeight?: boolean;
     /** Returns the shadow map resolution. */
     shadowMapSize?: number;
+    /** Returns the lowest sun altitude the shadows are drawn at. */
+    shadowMinSunAltitude?: number;
     /** Returns the shadow normal offset. */
     shadowNormalOffset?: number;
     /** Returns the shadow softness. */
@@ -11750,6 +11795,7 @@ export interface MethodTypes {
     'massif::HillshadeRasterTileLayer': {
         addDataSource: { args: [dataSource: Handle]; result: void };
         clearTileCaches: { args: [all: boolean]; result: void };
+        computeSunExposure: { args: [positions: Position[], sunDirections: Json, options: Json]; result: number[] };
         getElevation: { args: [pos: Position]; result: number };
         getElevations: { args: [positions: Position[]]; result: number[] };
         refresh: { args: []; result: void };
@@ -12088,8 +12134,11 @@ export interface MethodTypes {
     };
     'massif::StyleBuilder': {
     };
+    'massif::SunExposureOptions': {
+    };
     'massif::TerrainOptions': {
         calculateHorizon: { args: [pos: Position, eyeHeight: number, azimuths: Json, maxDistance: number]; result: number[] };
+        computeSunExposure: { args: [positions: Position[], sunDirections: Json, options: Json]; result: number[] };
         getElevation: { args: [pos: Position]; result: number };
         getElevations: { args: [positions: Position[]]; result: number[] };
     };
@@ -12629,6 +12678,8 @@ export interface EventTypes {
     'massif::Style': {
     };
     'massif::StyleBuilder': {
+    };
+    'massif::SunExposureOptions': {
     };
     'massif::TerrainOptions': {
     };

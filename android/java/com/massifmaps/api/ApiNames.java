@@ -333,6 +333,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> FADE_ANIMATION_TYPE = MassifObject.key("fadeAnimationType");
     /** Returns the far plane distance. */
     public static final MassifObject.Key<Double> FAR = MassifObject.key("far");
+    /** Gets how this layer's far tiles lose zoom when the map is tilted. */
+    public static final MassifObject.Key<String> FAR_TILE_LOD = MassifObject.key("farTileLOD");
     /** Returns the clicked feature. */
     public static final MassifObject.Key<MassifObject> FEATURE = MassifObject.key("feature");
     /** Returns the position on the clicked feature that is closest to the click position: the center for points, the closest point for lines, the anchor point for billboards, getClickPos() for polygons. */

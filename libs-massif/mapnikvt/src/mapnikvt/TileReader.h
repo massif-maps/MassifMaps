@@ -13,6 +13,7 @@
 #include "Symbolizer.h"
 #include "SymbolizerContext.h"
 #include "Logger.h"
+#include "vt/LayerNameFilter.h"
 #include "vt/Tile.h"
 #include "vt/TileTransformer.h"
 #include "vt/TileLayerBuilder.h"
@@ -42,7 +43,7 @@ namespace massif::mvt {
         virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId, int styleZoom) const;
 
         // Styles whose name the filter rejects are not built. The filter must outlive the reader.
-        void setStyleFilter(const std::regex* styleFilter) { _styleFilter = styleFilter; }
+        void setStyleFilter(const vt::LayerNameFilter* styleFilter) { _styleFilter = styleFilter; }
 
     protected:
         explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger);
@@ -79,7 +80,7 @@ namespace massif::mvt {
         const std::shared_ptr<const vt::TileTransformer> _transformer;
         const SymbolizerContext& _symbolizerContext;
         const std::shared_ptr<Logger> _logger;
-        const std::regex* _styleFilter = nullptr;
+        const vt::LayerNameFilter* _styleFilter = nullptr;
         // Per LAYER for the life of this reader, which is one tile: the anchor pass reads the whole
         // layer, and a layer two extruding styles draw would otherwise read it twice.
         mutable std::map<const Layer*, std::shared_ptr<const std::unordered_map<long long, std::vector<vt::ExtrusionAnchor>>>> _extrusionAnchors;

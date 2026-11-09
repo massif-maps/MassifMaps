@@ -25,6 +25,7 @@
 namespace massif {
     namespace vt {
         struct TileId;
+        class LayerNameFilter;
         class Tile;
         class TileTransformer;
     }
@@ -135,7 +136,7 @@ namespace massif {
          * @param layerFilter If not null, style layers whose name it rejects are not built.
          * @return The vector tile data, for each frame. If the tile is not available, null is returned.
          */
-        virtual std::shared_ptr<TileMap> decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData, const std::regex* layerFilter) const = 0;
+        virtual std::shared_ptr<TileMap> decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData, const vt::LayerNameFilter* layerFilter) const = 0;
     
         /**
          * Notifies listeners that the decoder parameters have changed. Action taken depends on the implementation of the

@@ -512,44 +512,21 @@ namespace massif {
         return ElevationDecoder::Resolve(tileData, _dataSource.get(), _elevationDecoder);
     }
 
-    const std::size_t ContourTileDataSource::MAX_CACHED_BITMAPS = 16;
+    const std::size_t ContourTileDataSource::MAX_CACHED_BITMAP_BYTES = 48u * 1024 * 1024;
+
+    std::size_t ContourTileDataSource::bitmapBytes(const Bitmap& bitmap) {
+        return bitmap.getPixelData().size();
+    }
 
     std::shared_ptr<Bitmap> ContourTileDataSource::loadCachedBitmap(const MapTile& tile) {
         long long key = (static_cast<long long>(tile.getZoom()) << 58) | (static_cast<long long>(tile.getX()) << 29) | static_cast<long long>(tile.getY());
-        {
-            std::lock_guard<std::mutex> lock(_bitmapCacheMutex);
-            for (std::size_t i = 0; i < _bitmapCache.size(); i++) {
-                if (_bitmapCache[i].first == key) {
-                    std::shared_ptr<Bitmap> bitmap = _bitmapCache[i].second;
-                    std::rotate(_bitmapCache.begin(), _bitmapCache.begin() + i, _bitmapCache.begin() + i + 1);
-                    return bitmap;
-                }
+        return _bitmapCache.get(key, [&]() {
+            std::shared_ptr<TileData> tileData = _dataSource->loadTile(tile);
+            if (!tileData || !tileData->getData() || tileData->isReplaceWithParent()) {
+                return std::shared_ptr<Bitmap>();
             }
-        }
-
-        std::shared_ptr<TileData> tileData = _dataSource->loadTile(tile);
-        if (!tileData || !tileData->getData() || tileData->isReplaceWithParent()) {
-            return std::shared_ptr<Bitmap>();
-        }
-        std::shared_ptr<Bitmap> bitmap = DecodeTileBitmap(tileData);
-        if (bitmap) {
-            cacheBitmap(tile, bitmap);
-        }
-        return bitmap;
-    }
-
-    void ContourTileDataSource::cacheBitmap(const MapTile& tile, const std::shared_ptr<Bitmap>& bitmap) {
-        long long key = (static_cast<long long>(tile.getZoom()) << 58) | (static_cast<long long>(tile.getX()) << 29) | static_cast<long long>(tile.getY());
-        std::lock_guard<std::mutex> lock(_bitmapCacheMutex);
-        for (const std::pair<long long, std::shared_ptr<Bitmap> >& entry : _bitmapCache) {
-            if (entry.first == key) {
-                return;
-            }
-        }
-        _bitmapCache.insert(_bitmapCache.begin(), std::make_pair(key, bitmap));
-        if (_bitmapCache.size() > MAX_CACHED_BITMAPS) {
-            _bitmapCache.resize(MAX_CACHED_BITMAPS);
-        }
+            return DecodeTileBitmap(tileData);
+        });
     }
 
     std::shared_ptr<TileData> ContourTileDataSource::buildLabelStubTile(const MapTile& mapTile, const HeightSampler& sampler, double interval) {
@@ -1015,6 +992,7 @@ namespace massif {
     }
 
     void ContourTileDataSource::DataSourceListener::onTilesChanged(bool removeTiles) {
+        _dataSource._bitmapCache.clear();
         _dataSource.notifyTilesChanged(removeTiles);
     }
 

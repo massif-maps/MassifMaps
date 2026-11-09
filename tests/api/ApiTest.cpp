@@ -131,6 +131,8 @@ void testTerrainOcclusion();
 void testSunExposure();
 void testSunExposureJob();
 void testShadowMinSunAltitude();
+void testByteBudgetCache();
+void testContourTileDataSource();
 
 namespace {
 
@@ -552,6 +554,8 @@ int main() {
     testSunExposure();
     testSunExposureJob();
     testShadowMinSunAltitude();
+    testByteBudgetCache();
+    testContourTileDataSource();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

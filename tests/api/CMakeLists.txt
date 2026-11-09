@@ -362,6 +362,10 @@ add_executable(api_tests
   ShadowMinSunAltitudeTest.cpp
   "${SDK_BASE_DIR}/all/native/components/LightOptions.cpp"
   ManeuverArrowTest.cpp
+  # The cache under the contour source's decoded DEM tiles, header-only, and the source over a raw-tile DEM.
+  ByteBudgetCacheTest.cpp
+  ContourTileDataSourceTest.cpp
+  "${SDK_BASE_DIR}/all/native/datasources/ContourTileDataSource.cpp"
   # The GL resource queue only; GLContext is stubbed in the test, the GL headers are all it needs.
   GLResourceManagerTest.cpp
   "${SDK_BASE_DIR}/all/native/renderers/utils/GLResourceManager.cpp"

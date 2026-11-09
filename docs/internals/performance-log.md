@@ -2993,3 +2993,31 @@ on a shared tile reads the same geometry and fields as one parsing its own.
 
 Not measured: a full `decodeTile` on the host (it links fonts and the renderer), iOS, a release build, the memory the 8 cached
 tiles hold (not sampled), packing (`packGeometry`, 15 % of `decodeTile`) which is left for a separate change.
+
+
+## Contour DEM decode: once per residency, not once per reader (2026-11-09)
+
+Crosscall HLTE556N (Adreno 610), demo `BenchActivity`, Massif style, `--es base composite`, hillshade + contours +
+terrain + drape, tilt 30 zoom 15.8, programmatic pan. With seamless edges every contour tile reads its own DEM and the
+east, north and north-east ones, so each DEM tile is read by up to four tiles, from several workers in cull order. The
+16-entry LRU in `ContourTileDataSource` (12.6 MB of 512x512 RGB) held a fraction of the ~50 DEM tiles of a view: a pan
+decoded **400** WebPs for **183** distinct tiles (2.2 each, up to 6).
+
+The cache is now bounded by bytes (48 MB, about 61 tiles of this size) and a decode two workers ask for at once runs
+once (`datasources/components/ByteBudgetCache.h`, tests in `tests/api/ByteBudgetCacheTest.cpp` and
+`ContourTileDataSourceTest.cpp`; contour bytes for a fixture DEM are identical before and after). It is also emptied
+when the wrapped source reports a change, which the old cache never was. A temporary counter in the decode path
+(not committed), interleaved A (master) / B (fix) x 3, app restarted each run:
+
+| | A (before) | B (after) |
+|---|---|---|
+| WebP decodes per pan, distinct tiles | 400, 183-194 | 200, 167-177 |
+| `loadWEBP` inclusive, share of all CPU cycles, t 40-47 s (3 rounds) | 6.58 / 6.27 / 6.14 % | 4.07 / 3.87 / 4.12 % |
+| pan fps (3 rounds) | 27.9 / 31.2 / 27.6 | 29.0 / 31.7 / 29.7 |
+
+Decodes halve and the WebP share of CPU drops by about a third (2.3 points of total cycles; `loadWEBP` also covers the
+terrain and hillshade decodes, which are untouched). Mean fps is 28.9 -> 30.1, **inside the round-to-round spread
+(about 2 fps)**: three rounds do not prove a pan gain. About 15% of the remaining decodes are re-decodes after eviction
+at 48 MB; a bigger cap was not tried. `ElevationManager` (`ElevationManager.cpp`) and `HillshadeRasterTileLayer` decode
+the same DEM WebP into their own structures; sharing the bitmap with them is not a small change and is not done. Not
+measured: iOS, a 256 px DEM, memory use on the device, the quiet seconds.

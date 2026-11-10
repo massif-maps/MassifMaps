@@ -1,0 +1,59 @@
+name: Tests
+
+# The host-native ctest suite and the generated-binding drift check, on demand: a PR runs them
+# while it carries the `run-tests` label, or run the workflow by hand. Before this, only a release did.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-tests')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Prepare Boost
+        uses: ./.github/actions/prepare-boost
+
+      - name: Install system libraries
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends zlib1g-dev libsqlite3-dev
+
+      # The boost.spirit parsers need GBs per translation unit; unbounded jobs got cc1plus OOM-killed.
+      - name: Run the host tests
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 2
+        run: tests/run.sh
+
+  scripts-and-bindings:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-tests')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Test the release scripts
+        run: python3 -W ignore -m unittest discover -s scripts/tests
+
+      - name: Check the generated API bindings are up to date
+        run: ./scripts/gen-api-bindings.sh --check

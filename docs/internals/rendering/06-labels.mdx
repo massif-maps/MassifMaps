@@ -1475,13 +1475,20 @@ name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`,
   render size 40 against ~200 glyphs per family, and `GlyphMap::loadBitmapGlyph` returns 0 when full
   — glyphs vanish silently. Not worth a silent-text-loss failure mode for an unmeasurable gain. If it
   is retried, widen the atlas first and measure the fill.
-- **The glyph atlas can be replaced under the batch loop.** `GlyphMap::getBitmapPattern()` returns
-  the pattern **by value**, and a tile thread loading a new glyph resets `_bitmapPattern` — so the
-  render thread's temporary can be the last owner. `renderLabelPass` bound its `labelBitmap`
-  reference through that temporary's `->`, which extends nothing: the pattern died at the end of the
-  line and the batch then compared and copied a freed `shared_ptr`. Crashed about half of the
-  startups at a label-dense city camera, as either a null `bitmap` in `renderLabelBatch` or a
-  `Scudo ERROR: invalid chunk state`. Hold the pattern in a named `shared_ptr` for the iteration.
+- **The glyph atlas is a texture the GL thread grows, not a bitmap it fetches.** A tile thread
+  loading a glyph used to reset `GlyphMap::_bitmapPattern`, so the next `getBitmapPattern()` re-copied
+  the whole atlas (4-16 MB) and `buildCompiledBitmap` uploaded it as a new texture - 3-10 times a
+  second while tiles arrive. `renderLabelBatch` now asks `GlyphMap::getAtlasUpdate` for what a texture
+  at version V lacks (the rows loaded since, per-row versions) and sends it with `glTexSubImage2D`;
+  only a change of the atlas's power-of-two size re-sends it whole. The loop holds the `GlyphMap`
+  by `shared_ptr`, so there is no pattern temporary to outlive (the earlier crash: a reference
+  through a temporary's `->` to a pattern a tile thread had just replaced).
+- **Batch buffers are rewritten in place, one set per batch.** The six buffers of batch N are kept
+  across frames (a ring of 3 sets, so a frame never writes what the GPU may still read) and
+  `glBufferSubData`'d; `glBufferData` runs only when a buffer must grow. Tried and rejected:
+  appending every batch of a frame into ONE buffer per attribute - the write lands in a buffer an
+  earlier draw of the same frame already reads, and Adreno 610 stalled on it (batch time 1.3 → 5 ms
+  a frame, fps 32 → 27).
 - **Vertex data.** The glyph layout is already cached per label (`_cachedVertices`, `_cachedValid`)
   and the shader already expands the billboard from `offsets` + `uLabelAxisX/Y`. What runs every
   frame is re-emitting the **batch**: the anchor is camera-relative

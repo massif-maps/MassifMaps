@@ -1558,13 +1558,16 @@ namespace massif::vt {
         _shaderProgramMap.clear();
         _shaderProgramCache.clear();
         _compiledBitmapMap.clear();
+        _compiledGlyphAtlasMap.clear();
         _gradientAtlas = GradientAtlas();
         _compiledTileBitmapMap.clear();
         _compiledTileSurfaceMap.clear();
         _compiledTileGeometryMap.clear();
         _compiledModelMap.clear();
         _compiledModelInstancesMap.clear();
-        _compiledLabelBatches.clear();
+        for (std::vector<LabelBufferSet>& sets : _labelBuffers) {
+            sets.clear();
+        }
         _overlayBuffer2D = FrameBuffer();
         _overlayBuffer3D = FrameBuffer();
         _screenQuad = CompiledQuad();
@@ -1641,6 +1644,10 @@ namespace massif::vt {
             deleteCompiledBitmap(it->second);
         }
         _compiledBitmapMap.clear();
+        for (auto it = _compiledGlyphAtlasMap.begin(); it != _compiledGlyphAtlasMap.end(); it++) {
+            deleteCompiledBitmap(it->second.bitmap);
+        }
+        _compiledGlyphAtlasMap.clear();
         if (_gradientAtlas.texture != 0) {
             glDeleteTextures(1, &_gradientAtlas.texture);
         }
@@ -1671,10 +1678,7 @@ namespace massif::vt {
         }
         _compiledModelMap.clear();
 
-        for (auto it = _compiledLabelBatches.begin(); it != _compiledLabelBatches.end(); it++) {
-            deleteCompiledLabelBatch(it->second);
-        }
-        _compiledLabelBatches.clear();
+        deleteLabelBuffers();
         
         deleteFrameBuffer(_overlayBuffer2D);
         deleteFrameBuffer(_overlayBuffer3D);
@@ -1829,7 +1833,8 @@ namespace massif::vt {
         }
         VT_STAT_SPLIT(prepLabelBlendNs, prepClock);
         
-        _labelBatchCounter = 0;
+        _labelBufferRing = (_labelBufferRing + 1) % LABEL_BUFFER_RING;
+        _labelBatchIndex = 0;
 
         if (_modelAnimationsEnabled) {
             _modelTime += dt;
@@ -2135,6 +2140,15 @@ namespace massif::vt {
             }
         }
         
+        for (auto it = _compiledGlyphAtlasMap.begin(); it != _compiledGlyphAtlasMap.end();) {
+            if (it->first.expired()) {
+                deleteCompiledBitmap(it->second.bitmap);
+                it = _compiledGlyphAtlasMap.erase(it);
+            } else {
+                it++;
+            }
+        }
+
         for (auto it = _compiledTileBitmapMap.begin(); it != _compiledTileBitmapMap.end();) {
             if (it->first.expired()) {
                 deleteCompiledBitmap(it->second);
@@ -4515,11 +4529,14 @@ namespace massif::vt {
 
     void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass) {
         // Group only labels needing a GPU height by tile (a batch binds one tile's elevation); anchored
-        // ones share a batch to keep the draw count down. Stable, so the culler's order survives.
+        // ones share a batch to keep the draw count down. Stable, so the culler's order survives;
+        // the invisible are dropped first, since the loop below skips them and most labels are.
         VT_STAT_CLOCK(sortClock);
         std::vector<std::shared_ptr<Label>> grouped;
         if (_terrainMode) {
-            grouped = labels;
+            std::copy_if(labels.begin(), labels.end(), std::back_inserter(grouped), [](const std::shared_ptr<Label>& label) {
+                return label->isValid() && label->getOpacity() > 0.0f;
+            });
             std::stable_sort(grouped.begin(), grouped.end(), [this](const std::shared_ptr<Label>& a, const std::shared_ptr<Label>& b) {
                 return labelBatchTileId(a) < labelBatchTileId(b);
             });
@@ -4528,8 +4545,8 @@ namespace massif::vt {
         const std::vector<std::shared_ptr<Label>>& drawOrder = _terrainMode ? grouped : labels;
 
         LabelBatchParameters labelBatchParams;
-        // The batch's atlas: a batch samples ONE texture, so another atlas ends it and draw order holds.
-        std::shared_ptr<const Bitmap> bitmap;
+        // The batch's glyph map: a batch samples ONE atlas texture, so another map ends it and draw order holds.
+        std::shared_ptr<const GlyphMap> glyphMap;
         std::shared_ptr<const TileLabel::Style> lastLabelStyle;
         int styleIndex = -1;
         int haloStyleIndex = -1;
@@ -4549,12 +4566,7 @@ namespace massif::vt {
                 continue;
             }
 
-            // Held by value for the whole iteration: getBitmapPattern returns a temporary, a tile
-            // thread can reset the map's pattern, and a reference through its -> is not extended.
-            VT_STAT_CLOCK(patternClock);
-            std::shared_ptr<const BitmapPattern> labelPattern = labelStyle->glyphMap->getBitmapPattern();
-            VT_STAT_SPLIT(labelPassPatternNs, patternClock);
-            const std::shared_ptr<const Bitmap>& labelBitmap = labelPattern->bitmap;
+            const std::shared_ptr<const GlyphMap>& labelGlyphMap = labelStyle->glyphMap;
             VT_STAT_CLOCK(styleClock);
             if (lastLabelStyle != labelStyle) {
                 // Scene light, as far as the emissive lets it through. mapbox defaults label emissive
@@ -4617,12 +4629,12 @@ namespace massif::vt {
                 bool hasIconRun = hasIconColor || iconSize != size;
                 // The anchor tile ends a batch only for a label that needs the GPU's height.
                 TileId labelTileId = labelBatchTileId(label);
-                if (bitmap != labelBitmap || labelBatchParams.tileId != labelTileId || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                if (glyphMap != labelGlyphMap || labelBatchParams.tileId != labelTileId || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     // The flush is an upload and a draw: bank the style time so far, not count the flush as style.
                     VT_STAT_SPLIT(labelPassStyleNs, styleClock);
-                    renderLabelBatch(labelBatchParams, bitmap);
+                    renderLabelBatch(labelBatchParams, glyphMap);
                     VT_STAT_SPLIT(labelBatchNs, styleClock);
-                    bitmap = labelBitmap;
+                    glyphMap = labelGlyphMap;
                     labelBatchParams.labelCount = 0;
                     labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
@@ -4775,13 +4787,13 @@ namespace massif::vt {
             labelBatchParams.labelCount++;
 
             if (_labelVertices.size() >= 32768) { // flush the batch if largest vertex index is getting 'close' to 64k limit
-                renderLabelBatch(labelBatchParams, bitmap);
+                renderLabelBatch(labelBatchParams, glyphMap);
                 VT_STAT_SPLIT(labelBatchNs, statClock);
             }
         }
 
         VT_STAT_CLOCK(batchClock);
-        renderLabelBatch(labelBatchParams, bitmap);
+        renderLabelBatch(labelBatchParams, glyphMap);
         VT_STAT_SPLIT(labelBatchNs, batchClock);
     }
     
@@ -8408,25 +8420,17 @@ namespace massif::vt {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
-    void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap) {
+    void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const GlyphMap>& glyphMap) {
         if (_labelIndices.empty()) {
             return;
         }
 
-        CompiledLabelBatch compiledLabelBatch;
-        auto itBatch = _compiledLabelBatches.find(_labelBatchCounter);
-        if (itBatch == _compiledLabelBatches.end()) {
-            createCompiledLabelBatch(compiledLabelBatch);
-            _compiledLabelBatches[_labelBatchCounter] = compiledLabelBatch;
-        } else {
-            compiledLabelBatch = itBatch->second;
-        }
-        _labelBatchCounter++;
-
         // fwidth() is core in ESSL 3.00; the 1.00 fallback enables GL_OES_standard_derivatives (commonFsh).
         bool useDerivatives = true;
 
-        const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
+        VT_STAT_CLOCK(atlasClock);
+        const CompiledGlyphAtlas& atlas = buildCompiledGlyphAtlas(glyphMap);
+        VT_STAT_SPLIT(labelPassPatternNs, atlasClock);
         // Anchors elevated on the GPU by the surface's applyTerrain (mapbox symbol.vertex.glsl); without
         // a texture provider the CPU height is used.
         unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider && labelBatchParams.tileId.zoom >= 0 ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0);
@@ -8452,40 +8456,35 @@ namespace massif::vt {
         glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.widthTable.data());
         glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.strokeWidthTable.data());
         
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.verticesVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelVertices.size() * 3 * sizeof(float), _labelVertices.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, 0, 0);
+        uploadLabelBuffer(0, GL_ARRAY_BUFFER, _labelVertices.data(), _labelVertices.size() * 3 * sizeof(float));
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.offsetsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelOffsets.size() * 3 * sizeof(float), _labelOffsets.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXOFFSET], 3, GL_FLOAT, GL_FALSE, 0, 0);
+        uploadLabelBuffer(1, GL_ARRAY_BUFFER, _labelOffsets.data(), _labelOffsets.size() * 3 * sizeof(float));
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXOFFSET], 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
         if (_lightingShader2D) {
-            glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.normalsVBO);
-            glBufferData(GL_ARRAY_BUFFER, _labelNormals.size() * 3 * sizeof(float), _labelNormals.data(), GL_DYNAMIC_DRAW);
-            enableVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_FLOAT, GL_FALSE, 0, 0);
+            uploadLabelBuffer(2, GL_ARRAY_BUFFER, _labelNormals.data(), _labelNormals.size() * 3 * sizeof(float));
+            enableVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
             _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
         }
-        
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.texCoordsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelTexCoords.size() * 2 * sizeof(std::int16_t), _labelTexCoords.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_FALSE, 0, 0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.attribsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelAttribs.size() * 4 * sizeof(std::int8_t), _labelAttribs.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXATTRIBS], 4, GL_BYTE, GL_FALSE, 0, 0);
+        uploadLabelBuffer(3, GL_ARRAY_BUFFER, _labelTexCoords.data(), _labelTexCoords.size() * 2 * sizeof(std::int16_t));
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_FALSE, 0, nullptr);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledLabelBatch.indicesVBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _labelIndices.size() * sizeof(std::uint16_t), _labelIndices.data(), GL_DYNAMIC_DRAW);
+        uploadLabelBuffer(4, GL_ARRAY_BUFFER, _labelAttribs.data(), _labelAttribs.size() * 4 * sizeof(std::int8_t));
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXATTRIBS], 4, GL_BYTE, GL_FALSE, 0, nullptr);
+
+        uploadLabelBuffer(5, GL_ELEMENT_ARRAY_BUFFER, _labelIndices.data(), _labelIndices.size() * sizeof(std::uint16_t));
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
+        glBindTexture(GL_TEXTURE_2D, atlas.bitmap.texture);
         glUniform1i(shaderProgram.uniforms[U_BITMAP], 0);
-        glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / bitmap->width, 1.0f / bitmap->height);
+        glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / atlas.width, 1.0f / atlas.height);
 
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(_labelIndices.size()), GL_UNSIGNED_SHORT, 0);
         VT_STAT_INC(labelDraws);
+        _labelBatchIndex++;
 
         glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -8536,6 +8535,34 @@ namespace massif::vt {
             it = _compiledBitmapMap.emplace(bitmap, compiledBitmap).first;
         }
         return it->second;
+    }
+
+    const GLTileRenderer::CompiledGlyphAtlas& GLTileRenderer::buildCompiledGlyphAtlas(const std::shared_ptr<const GlyphMap>& glyphMap) {
+        auto it = _compiledGlyphAtlasMap.find(glyphMap);
+        if (it == _compiledGlyphAtlasMap.end()) {
+            CompiledGlyphAtlas atlas;
+            createCompiledBitmap(atlas.bitmap);
+            glBindTexture(GL_TEXTURE_2D, atlas.bitmap.texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            it = _compiledGlyphAtlasMap.emplace(glyphMap, atlas).first;
+        }
+        CompiledGlyphAtlas& atlas = it->second;
+        GlyphMap::AtlasUpdate& update = _glyphAtlasUpdate;
+        if (glyphMap->getAtlasUpdate(atlas.version, atlas.width, atlas.height, update)) {
+            glBindTexture(GL_TEXTURE_2D, atlas.bitmap.texture);
+            if (update.full) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, update.width, update.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, update.texels.data());
+            } else if (update.y1 > update.y0) {
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, update.y0, update.width, update.y1 - update.y0, GL_RGBA, GL_UNSIGNED_BYTE, update.texels.data());
+            }
+            atlas.version = update.version;
+            atlas.width = update.width;
+            atlas.height = update.height;
+        }
+        return atlas;
     }
 
     int GLTileRenderer::gradientAtlasRow(const std::shared_ptr<const ColorRamp>& ramp) {
@@ -9186,39 +9213,33 @@ namespace massif::vt {
         }
     }
 
-    void GLTileRenderer::createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch) {
-        glGenBuffers(1, &compiledLabelBatch.verticesVBO);
-        glGenBuffers(1, &compiledLabelBatch.offsetsVBO);
-        glGenBuffers(1, &compiledLabelBatch.normalsVBO);
-        glGenBuffers(1, &compiledLabelBatch.texCoordsVBO);
-        glGenBuffers(1, &compiledLabelBatch.attribsVBO);
-        glGenBuffers(1, &compiledLabelBatch.indicesVBO);
+    void GLTileRenderer::uploadLabelBuffer(int array, GLenum target, const void* data, std::size_t size) {
+        std::vector<LabelBufferSet>& sets = _labelBuffers[_labelBufferRing];
+        if (sets.size() <= static_cast<std::size_t>(_labelBatchIndex)) {
+            sets.resize(_labelBatchIndex + 1);
+        }
+        LabelBufferSet& set = sets[_labelBatchIndex];
+        if (set.vbo[array] == 0) {
+            glGenBuffers(1, &set.vbo[array]);
+        }
+        glBindBuffer(target, set.vbo[array]);
+        if (size > set.capacity[array]) {
+            set.capacity[array] = std::max(size * 3 / 2, static_cast<std::size_t>(4096));
+            glBufferData(target, set.capacity[array], nullptr, GL_DYNAMIC_DRAW);
+        }
+        glBufferSubData(target, 0, size, data);
     }
 
-    void GLTileRenderer::deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch) {
-        if (compiledLabelBatch.verticesVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.verticesVBO);
-            compiledLabelBatch.verticesVBO = 0;
-        }
-        if (compiledLabelBatch.offsetsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.offsetsVBO);
-            compiledLabelBatch.offsetsVBO = 0;
-        }
-        if (compiledLabelBatch.normalsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.normalsVBO);
-            compiledLabelBatch.normalsVBO = 0;
-        }
-        if (compiledLabelBatch.texCoordsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.texCoordsVBO);
-            compiledLabelBatch.texCoordsVBO = 0;
-        }
-        if (compiledLabelBatch.attribsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.attribsVBO);
-            compiledLabelBatch.attribsVBO = 0;
-        }
-        if (compiledLabelBatch.indicesVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.indicesVBO);
-            compiledLabelBatch.indicesVBO = 0;
+    void GLTileRenderer::deleteLabelBuffers() {
+        for (std::vector<LabelBufferSet>& sets : _labelBuffers) {
+            for (LabelBufferSet& set : sets) {
+                for (GLuint& vbo : set.vbo) {
+                    if (vbo != 0) {
+                        glDeleteBuffers(1, &vbo);
+                    }
+                }
+            }
+            sets.clear();
         }
     }
 }

@@ -186,8 +186,8 @@ public class DemoMap {
         applyLightOptions();
         applySkyOptions();
 
-        rebuildLayers();
         applyCamera();
+        rebuildLayers();
 
         if (DemoConfig.CAPTURE_TEST) {
             handler.postDelayed(new Runnable() {

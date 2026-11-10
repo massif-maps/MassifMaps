@@ -3199,3 +3199,38 @@ pictures), 3 rounds interleaved: > 100 ms 4 / 5 / 6 against 4 / 5 / 4, p99 93 / 
 against 92 / 101 / 94, a weak gain inside the noise. Neither half of the draws carries the tail alone, so it is the number of draws and
 the per-draw work (state, uniforms, driver submission) more than the vertices; not isolated. A touch swipe could not be measured:
 `BenchActivity` has no input channel. Not measured: iOS, a release build, a warm cache, other GPUs.
+
+### 2026-11-10 - Cold start: no world map, no flat mesh before the hillshade
+
+Crosscall (Adreno 610), bench cold start at Grenoble z15.8 tilt 30 (Massif style, composite, hs + contour + terrain + drape),
+`screenrecord` of the first 10 s, every encoded frame classified (a frame is a flat fill when the 75th percentile of
+8x8-block std over the lower half is under 0.8). Master, 3 runs: 8 / 7 / 10 flat-fill frames (0.45 / 0.39 / 0.46 s)
+between the grid and the hillshade, and 1-2 frames rendered at the default camera (z1.8, tilt 90) in the log of every run.
+
+Cause, from a per-frame log of the drape cover: the first GL frames render at the demo's default camera, before `applyCamera()`,
+and load a z1 tile. `GLTileRenderer` keeps a render tile until a new one replaces it, so at z15.8 the z1 tile (one land colour
+over-zoomed 14 levels, a world map for the frame at the default camera) stayed in the drape cover for 1.75 s until the z14 tile
+landed. Behind it, with the stand-in gone, the leaves bake as the clear colour until the hillshade paint has its elevation
+texture. Neither is the first-rise hold (`hold=0 risen=1` from the first displaced frame).
+
+Fix: a retained layer more than 7 levels coarser than the zoom asked at its tile is dropped (`retainedLayerTooCoarse`), and the
+cover draws nothing until a leaf is painted (3 s cap). Demo: `applyCamera()` before `rebuildLayers()`. Cold runs, 3 each:
+
+| | flat-fill frames | default-camera frames in the log |
+|---|---|---|
+| master | 8 / 7 / 10 | 1 / 2 / 2 |
+| cap + hold | 2 / 7 / 2 | 1 / 2 / 2 |
+| cap + hold + camera first | 0 / 0 / 0 | 0 / 0 / 0 |
+| final (same, clean build) | 1 / 0 / 0 (see below) | not logged |
+
+In the middle row the 7-frame run is the default-camera frames themselves (land colour at z1.8), which the camera order removes.
+No world-map frame in any run with the camera first. In the final build one run still shows one frame (0.09 s) where a leaf is
+a flat fill while its neighbour already has the hillshade: the hold ends at the first painted leaf, not at the last.
+The time to the first hillshade frame did not move beyond run noise (1.3-2.0 s after the first GL frame). Settled frame, same
+camera: master vs fix `devtap diff` mean 0.11-0.14 against 0.03 master vs master, all of it in the bottom band
+(label placement: a road shield differs between two runs of the fix itself, mean 0.22); the bands between move by 0.02 or less.
+
+Pan fps (`rs_bench.sh`, n = 20-22 s windows): the interleaved pairs above leaned 1-1.5 fps against the fix, so a control was run:
+two installs of the master build (A, B) and the fix (C), six rotated orders, 17 runs. Means A 26.5 (n=5), B 26.9, C 26.7; drape GPU
+5.7 / 6.1 / 6.0 ms, bakes a second 4.7 / 5.8 / 5.2. The fix sits inside the master-vs-master spread (0.4 fps); single runs span
+21.8-30.9 and the phone drifts ~10% over a session. A temporary counter also showed the cap never fires during the pan.

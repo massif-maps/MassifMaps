@@ -468,6 +468,14 @@ pass, both in `MapRenderer`:
 After: 0 leaves skipped in any frame over three cold runs, the scene going from all flat to all
 displaced at once.
 
+**A cold start shows the grid, then the hillshade, never a flat fill.** A leaf no layer has painted
+bakes as the clear colour, so a cover whose layers have nothing yet (the hillshade paint waits for its
+elevation texture, the vector tiles for the network) drew a displaced mesh of one uniform colour for
+~0.4 s. `MapRenderer` draws no leaf of the cover until one has a baked layer mask, for
+`DRAPE_CONTENT_HOLD_MAX` (3 s) after the first drape frame (`DrapeStandIn::coverAwaitsPicture`); the
+leaves still bake meanwhile. After the window an empty view draws its fill as before. The other
+source of that fill was a stale z1 tile, see [Render tiles](03-vt-renderer.md#render-tiles).
+
 ### Normalizing the cover to a quadtree partition
 
 The collected set is a **union across layers**, and layers do not agree on a zoom level — a

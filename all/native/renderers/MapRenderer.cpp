@@ -4174,6 +4174,19 @@ namespace massif {
                     glDepthFunc(GL_LEQUAL);
                     glDepthMask(GL_TRUE);
                     glDisable(GL_CULL_FACE); // displaced surfaces can face away near ridge crests
+                    // Until a layer has painted any leaf, each is a flat fill: the grid shows instead, for a while after the first frame.
+                    bool anyLeafPainted = false;
+                    for (auto it = drapeTiles.begin(); it != drapeTiles.end() && !anyLeafPainted; it++) {
+                        anyLeafPainted = _terrainDrapeCache->bakedLayerMask(it->first, 0) != 0;
+                    }
+                    auto waitNow = std::chrono::steady_clock::now();
+                    if (_drapeContentWaitStart == std::chrono::steady_clock::time_point()) {
+                        _drapeContentWaitStart = waitNow;
+                    }
+                    if (DrapeStandIn::coverAwaitsPicture(anyLeafPainted, std::chrono::duration<float>(waitNow - _drapeContentWaitStart).count(), DRAPE_CONTENT_HOLD_MAX)) {
+                        drapedTiles.clear();
+                        requestRedraw();
+                    }
                     groundAODraped = groundAODraped || !drapedTiles.empty();
                     for (auto it = drapedTiles.begin(); it != drapedTiles.end(); it++) {
                         // Always drawn: the only depth writer, a skipped tile leaves a depth hole.
@@ -4637,6 +4650,7 @@ namespace massif {
     const int MapRenderer::COARSE_DEM_LEVELS_UP = 2;
     const int MapRenderer::COARSE_DEM_PRIORITY = 3;
     const float MapRenderer::TERRAIN_RISE_HOLD_MAX = 1.5f;
+    const float MapRenderer::DRAPE_CONTENT_HOLD_MAX = 3.0f;
 
     const std::string MapRenderer::BLEND_VERTEX_SHADER = R"GLSL(
         #version 100

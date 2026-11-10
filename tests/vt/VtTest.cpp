@@ -44,6 +44,7 @@ void testSurfaceTransformerSwap();
 void testRenderTileBlend();
 void testAnimationProgress();
 void testRetainedLayerDedupe();
+void testRetainedLayerTooCoarse();
 void testGroundCover();
 void testLabelSlice();
 void testGlyphAtlasUpdate();
@@ -118,6 +119,7 @@ int main() {
     testRenderTileBlend();
     testAnimationProgress();
     testRetainedLayerDedupe();
+    testRetainedLayerTooCoarse();
     testGroundCover();
     testLabelSlice();
     testGlyphAtlasUpdate();

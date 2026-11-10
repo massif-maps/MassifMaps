@@ -105,11 +105,19 @@ namespace {
         TEST_CHECK(!DrapeStandIn::isComplete(false, 0, 0), "an unbaked tile is not complete");
     }
 
+    void testColdCoverShowsTheBackgroundUntilPainted() {
+        TEST_CHECK(DrapeStandIn::coverAwaitsPicture(false, 0.0f, 3.0f), "first frame, nothing painted: the grid, not a flat fill");
+        TEST_CHECK(DrapeStandIn::coverAwaitsPicture(false, 2.9f, 3.0f), "still inside the hold");
+        TEST_CHECK(!DrapeStandIn::coverAwaitsPicture(false, 3.0f, 3.0f), "past it a view with nothing to paint draws its fill");
+        TEST_CHECK(!DrapeStandIn::coverAwaitsPicture(true, 0.0f, 3.0f), "one painted leaf and the cover draws");
+    }
+
 }
 
 void testDrapeStandIn() {
     testEmptyBakeIsNotAPicture();
     testEmptyBakeIsNeverComplete();
+    testColdCoverShowsTheBackgroundUntilPainted();
     testFourLevelsDownIsStillFound();
     testCoarsestWinsOverItsOwnChildren();
     testSiblingsAreAllKept();

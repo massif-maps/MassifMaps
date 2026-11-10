@@ -21,8 +21,23 @@ void testRenderTileBlend() {
     // Off screen the caller's blend delta is 1, so it goes in one step.
     TEST_CHECK(retainedLayerFades(false, false, false, false), "a tile that left the view fades");
 
+    TEST_CHECK(retainedLayerFades(false, true, false, false, true), "held ground gives up a layer too coarse to stand in");
+    TEST_CHECK(!retainedLayerFades(true, true, false, false, true), "but not while its replacement is still fading in");
+
     // A current-set tile that decoded without this layer is the answer, not a gap.
     TEST_CHECK(retainedLayerFades(false, true, false, true), "a current tile without the layer is an answer, not a gap");
+}
+
+void testRetainedLayerTooCoarse() {
+    // A cold start renders once at the default camera, so a z1 tile is loaded when the camera lands at z15.8.
+    TEST_CHECK(retainedLayerTooCoarse(1, 15.8f, 100.0, 120.0), "a world tile under a city view is no stand-in");
+    TEST_CHECK(!retainedLayerTooCoarse(9, 15.8f, 100.0, 120.0), "the parent search's own depth still is");
+    TEST_CHECK(retainedLayerTooCoarse(7, 15.8f, 100.0, 120.0), "one level past it is not");
+    // The zoom asked of a tile falls with its distance: a horizon tile is coarse by design.
+    TEST_CHECK(!retainedLayerTooCoarse(6, 15.8f, 120.0 * 16.0, 120.0), "a tile sixteen focus distances away wants about z11.8");
+    TEST_CHECK(retainedLayerTooCoarse(1, 15.8f, 120.0 * 16.0, 120.0), "and a world tile is still too coarse there");
+    // No focus distance known: never drop on a guess.
+    TEST_CHECK(!retainedLayerTooCoarse(1, 15.8f, 100.0, 0.0), "an unset focus distance drops nothing");
 }
 
 // The cull worker rebuilds the render tiles every frame while the camera moves. A retained tile

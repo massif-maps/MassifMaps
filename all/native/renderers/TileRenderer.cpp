@@ -1626,9 +1626,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         }
 #endif
         // Compiling a regex per frame is not free, and this changes about never.
+        static std::mutex cacheMutex;
         static std::string cachedPattern;
         static std::optional<std::regex> cachedFilter;
         static bool cacheValid = false;
+        std::lock_guard<std::mutex> lock(cacheMutex);
         if (cacheValid && cachedPattern == pattern) {
             return cachedFilter;
         }

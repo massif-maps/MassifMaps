@@ -116,7 +116,7 @@ namespace massif {
          */
         static void checkSpike(double frameMs) {
             // Fixed, not a multiple of the average: the average climbs while zooming and a ratio would stop firing.
-            constexpr double SPIKE_MS = 80.0;
+            constexpr double SPIKE_MS = 50.0;
 #if MASSIF_VT_RENDER_STATS
             using vt::RenderStats;
             struct Snapshot {
@@ -174,10 +174,36 @@ namespace massif {
                        preludeMs - preHeadMs - preTerrainMs - preDepthMs - preClearanceMs - prePaintMs - preTailMs);
         }
 
+        // Per frame 'interval:work:sky:bakes:tileSets:labels' in ms / counts (an interval over 1 s is an idle gap), 30 frames a line for offline percentiles.
+        static void recordInterval(double frameMs) {
+            static thread_local char buf[2048];
+            static thread_local size_t len = 0;
+            static thread_local int frames = 0;
+            static thread_local std::chrono::steady_clock::time_point lastEnd;
+            static thread_local long long lastBakes = 0, lastSets = 0, lastLabels = 0;
+            std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
+            double gap = std::chrono::duration<double, std::milli>(t - lastEnd).count();
+            lastEnd = t;
+            long long bakes = 0, sets = 0, labels = 0;
+#if MASSIF_VT_RENDER_STATS
+            bakes = vt::RenderStats::drapeBakes.load();
+            sets = vt::RenderStats::visibleTileSetChanges.load();
+            labels = vt::RenderStats::labelsAllocated.load();
+#endif
+            len += snprintf(buf + len, sizeof(buf) - len, " %.0f:%.0f:%.0f:%lld:%lld:%lld", gap, frameMs, skyMs, bakes - lastBakes, sets - lastSets, labels - lastLabels);
+            lastBakes = bakes; lastSets = sets; lastLabels = labels;
+            if (++frames >= 30) {
+                Log::Infof("PROF RAW:%s", buf);
+                len = 0;
+                frames = 0;
+            }
+        }
+
         // Accumulates one frame and prints the running averages once a second. 'frameMs' is
         // the whole frame; whatever it does not account for is reported as 'other'.
         static void endFrame(double frameMs) {
             checkSpike(frameMs);
+            recordInterval(frameMs);
 
             static thread_local double sumMs = 0, maxMs = 0, sumSky = 0, sumPrelude = 0, sumPrepare = 0;
             static thread_local double sumCover = 0, sumDrape = 0, sumLayer = 0, sumLayer3D = 0, sumBillboard = 0;

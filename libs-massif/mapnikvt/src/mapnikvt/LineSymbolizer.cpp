@@ -46,7 +46,7 @@ namespace massif::mvt {
                     try {
                         strokeDashArray.push_back(std::stof(boost::trim_copy(dash)));
                     }
-                    catch (const boost::bad_lexical_cast& ex) {
+                    catch (const std::exception& ex) {
                         _logger->write(Logger::Severity::ERROR, "Illegal dash value: " + dash + ", ex: " +  ex.what() );
                     }
                 }

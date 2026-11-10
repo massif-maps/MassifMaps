@@ -4,14 +4,11 @@
 #include "terrain/ElevationTileGrid.h"
 #include "terrain/TesselationBounds.h"
 #include "utils/Const.h"
+#include "utils/DebugSwitch.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
-
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
 
 namespace massif {
 
@@ -22,86 +19,32 @@ namespace massif {
     // How far a draped line may chord away from the terrain, in metres; chosen for margin, not speed
     // (see docs/internals/rendering/04-terrain.md).
     static constexpr float DEFAULT_LINE_SAG_METERS = 2.0f;
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     // Relief (m in the tile) under which the lattice split is skipped: the cell fold it guards
     // against is a fraction of the relief, so a valley floor needs none.
     //   adb shell setprop debug.massif.latticerelief 50
     static float latticeReliefThreshold() {
-        static const float relief = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.latticerelief", property) > 0) {
-                float value = static_cast<float>(std::atof(property));
-                if (value >= 0.0f) {
-                    return value;
-                }
-            }
-            return 0.0f;
-        }();
+        static const float relief = static_cast<float>(DebugSwitch::number("latticerelief", 0.0));
         return relief;
     }
 
     // Max chord sag a draped line may keep, in metres like uDepthClearance; 0 goes back to the lattice split.
     //   adb shell setprop debug.massif.linesag 0
     static float lineSagToleranceMeters() {
-        static const float tolerance = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.linesag", property) > 0) {
-                float value = static_cast<float>(std::atof(property));
-                if (value >= 0.0f) {
-                    return value;
-                }
-            }
-            return DEFAULT_LINE_SAG_METERS;
-        }();
+        static const float tolerance = static_cast<float>(DebugSwitch::number("linesag", DEFAULT_LINE_SAG_METERS));
         return tolerance;
     }
 
     // The same for lines, the expensive half, drawn as terrain geometry every frame.
     //   adb shell setprop debug.massif.linethreshold 4
     static float lineThresholdScale() {
-        static const float scale = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.linethreshold", property) > 0) {
-                float value = static_cast<float>(std::atof(property));
-                if (value > 0.0f) {
-                    return value;
-                }
-            }
-            return 1.0f;
-        }();
+        static const float scale = static_cast<float>(DebugSwitch::number("linethreshold", 1.0, 0.0, false));
         return scale;
     }
 
     static float areaThresholdScale() {
-        static const float scale = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.areathreshold", property) > 0) {
-                float value = static_cast<float>(std::atof(property));
-                if (value > 0.0f) {
-                    return value;
-                }
-            }
-            return AREA_THRESHOLD_CELLS;
-        }();
+        static const float scale = static_cast<float>(DebugSwitch::number("areathreshold", AREA_THRESHOLD_CELLS, 0.0, false));
         return scale;
     }
-#else
-    static float lineSagToleranceMeters() {
-        return DEFAULT_LINE_SAG_METERS;
-    }
-
-    static float latticeReliefThreshold() {
-        return 0.0f;
-    }
-
-    static float lineThresholdScale() {
-        return 1.0f;
-    }
-
-    static float areaThresholdScale() {
-        return AREA_THRESHOLD_CELLS;
-    }
-#endif
 
     TerrainTileTransformer::TerrainVertexTransformer::TerrainVertexTransformer(const vt::TileId& tileId, std::shared_ptr<const VertexTransformer> base, std::shared_ptr<ElevationTileGrid> grid, float exaggeration, float divideThreshold, float lineDivideThreshold, float latticeCell, float sagToleranceMeters) :
         _tileId(tileId),

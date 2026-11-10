@@ -11,11 +11,8 @@
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/SkyFrame.h"
 #include "utils/Const.h"
+#include "utils/DebugSwitch.h"
 #include "utils/Log.h"
-
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
 
 #include <algorithm>
 #include <cmath>
@@ -165,20 +162,11 @@ namespace massif {
     }
 
     // Measurement switch: debug.massif.skyclip 0 draws the sky over the whole screen again, which
-    // is what it did before the quad was clipped to the horizon. Read once (Android only).
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
+    // is what it did before the quad was clipped to the horizon.
     bool SkyRenderer::isHorizonClipEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.skyclip", property) > 0 && property[0] == '0');
-        }();
+        static const bool enabled = DebugSwitch::flag("skyclip", true);
         return enabled;
     }
-#else
-    bool SkyRenderer::isHorizonClipEnabled() {
-        return true;
-    }
-#endif
 
     bool SkyRenderer::onDrawFrame(const ViewState& viewState, const ResolvedFog& fog, const ResolvedSky& sky) {
         std::shared_ptr<SkyOptions> skyOptions = _options.getSkyOptions();

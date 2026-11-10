@@ -332,6 +332,7 @@ namespace massif {
         static const int COARSE_DEM_LEVELS_UP; // levels above the coarsest unelevated leaf's grid that the coarse DEM is fetched at
         static const int COARSE_DEM_PRIORITY; // above a tile's own level (2): it ends a dropout the fine grids do not
         static const float TERRAIN_RISE_HOLD_MAX; // seconds the first rise into 3D waits for its coarse grids at most
+        static const float DRAPE_CONTENT_HOLD_MAX; // seconds after the first drape frame that an unpainted cover shows the grid, not a flat fill
 
         static const std::string BLEND_VERTEX_SHADER;
         static const std::string BLEND_FRAGMENT_SHADER;
@@ -427,6 +428,7 @@ namespace massif {
         bool _elevationWarmPending = true; // the rise's ground is not all on the GPU yet; true until a warm pass says otherwise
         bool _terrainRisen = false; // the drape scene has been displaced since nothing was
         std::chrono::steady_clock::time_point _terrainRiseHoldStart;
+        std::chrono::steady_clock::time_point _drapeContentWaitStart; // first drape frame
         double _eyeGroundZ = 0;
         double _eyeGroundOffset = 0;
         double _eyeGroundTarget = 0; // the answer the glide heads for, and where it was asked

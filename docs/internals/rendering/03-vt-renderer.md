@@ -77,6 +77,15 @@ did not reach them (they live in the renderer, not the layer's caches). `VectorT
 layers, which hold their tiles the same way. The held tiles stay, so showing the layer
 again redraws at once. Confirmed on device in alpimaps; the raster gates are syntax-checked only.
 
+**It holds only while it is a stand-in for the ground.** A layer more than `MAX_RETAINED_ZOOM_DELTA`
+(7) levels coarser than the zoom asked at its tile is no stand-in, and `updateRenderTile` drops it in
+one frame (`retainedLayerTooCoarse`, `vt/RenderTileBlend.h`). The asked zoom is the view zoom minus
+`log2(distance to the tile / camera-to-focus distance)`, so a horizon tile may be far coarser than the
+view and still be right. The case: the first frames of a cold start render at the default camera and
+load a z1 tile; the camera then lands at z15.8, the z14 tiles are 1-2 s away, and the z1 tile, held as
+the only thing painting that ground, was drawn over the whole view (a world map for a frame, then one
+land colour). maplibre keeps parents only `maxOverzooming` (10) levels up for the same reason.
+
 **A retained layer is inherited once per target, not once per copy.** `initializeRenderTile` hands
 a new render tile the retained layers of every existing render tile it intersects, and
 `mergeExistingRenderTile` splits a retained tile into four child copies that all carry the same

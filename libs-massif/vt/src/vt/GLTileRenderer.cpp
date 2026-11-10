@@ -2989,6 +2989,8 @@ namespace massif::vt {
         renderTile.visible = isTileVisible(renderTile.targetTileId);
 
         bool refresh = false;
+        bool tileDistanceKnown = false;
+        double tileDistance = 0;
         for (auto it = renderTile.renderLayers.end(); it != renderTile.renderLayers.begin(); ) {
             it--;
             RenderTileLayer& renderLayer = it->second;
@@ -3026,8 +3028,18 @@ namespace massif::vt {
                 for (auto it2 = renderTile.renderLayers.begin(); it2 != renderTile.renderLayers.end(); it2++) {
                     anyActive = anyActive || it2->second.active;
                 }
-                if (retainedLayerFades(replaced, renderTile.visible, anyActive, renderTile.current)) {
-                    renderLayer.blend = std::max(0.0f, renderLayer.blend - delta);
+                if (!tileDistanceKnown) {
+                    tileDistanceKnown = true;
+                    cglib::bbox3<double> bbox = _transformer->calculateTileBBox(renderTile.targetTileId);
+                    cglib::vec3<double> gap(0, 0, 0);
+                    for (int i = 0; i < 3; i++) {
+                        gap(i) = std::max(0.0, std::max(bbox.min(i) - _viewState.origin(i), _viewState.origin(i) - bbox.max(i)));
+                    }
+                    tileDistance = cglib::length(gap);
+                }
+                bool tooCoarse = retainedLayerTooCoarse(renderLayer.sourceTileId.zoom, _viewState.zoom, tileDistance, _viewState.focusDistance);
+                if (retainedLayerFades(replaced, renderTile.visible, anyActive, renderTile.current, tooCoarse)) {
+                    renderLayer.blend = std::max(0.0f, renderLayer.blend - (tooCoarse ? 1.0f : delta));
                     refresh = (renderLayer.blend > 0.0f) || refresh;
 
                     if (renderLayer.blend <= 0.0f) {

@@ -37,6 +37,14 @@ namespace massif {
         }
 
         /**
+         * Whether the cover shows the background, not flat fills: no leaf holds a picture yet and the first
+         * drape frame is under `holdMax` seconds old.
+         */
+        static bool coverAwaitsPicture(bool anyLeafPainted, float secondsSinceFirstFrame, float holdMax) {
+            return !anyLeafPainted && secondsSinceFirstFrame < holdMax;
+        }
+
+        /**
          * Indices of the candidates that cover `tileId` once: those inside it, minus any with an ancestor kept.
          * `candidates` must be coarsest first (the drape cache's (zoom, x, y) order); a tile and its children
          * drawn together are two surfaces at different tesselations, and the finer one sits off the terrain.

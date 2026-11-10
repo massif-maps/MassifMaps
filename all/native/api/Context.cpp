@@ -260,17 +260,18 @@ namespace massif { namespace api {
     }
 
     bool Context::destroy(Handle handle) {
-        std::string kind, id;
+        bool destroyed = false;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             const Slot* slot = resolve(handle);
-            if (!slot) {
-                return false;
+            if (slot) {
+                std::string kind = slot->kind;
+                std::string id = slot->id;
+                destroyed = unregisterLocked(kind, id);
             }
-            kind = slot->kind;
-            id = slot->id;
         }
-        return unregisterObject(kind, id);
+        flushDoomed();
+        return destroyed;
     }
 
     std::string Context::getObjectSpec(Handle handle) const {
@@ -328,7 +329,16 @@ namespace massif { namespace api {
     }
 
     bool Context::unregisterObject(const std::string& kind, const std::string& id) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        bool removed;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            removed = unregisterLocked(kind, id);
+        }
+        flushDoomed();
+        return removed;
+    }
+
+    bool Context::unregisterLocked(const std::string& kind, const std::string& id) {
         auto kindIt = _ids.find(kind);
         if (kindIt == _ids.end()) {
             return false;
@@ -357,7 +367,7 @@ namespace massif { namespace api {
         if (!slot.used || !slot.idDropped || slot.retainCount > 0) {
             return;
         }
-        slot.obj.reset();
+        _doomed.push_back(std::move(slot.obj));
         slot.cppClass = nullptr;
         slot.used = false;
         slot.idDropped = false;
@@ -368,6 +378,14 @@ namespace massif { namespace api {
         // A new generation turns a stale handle into an error; wrapping is the ABA window.
         slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;
         _freeSlots.push_back(index);
+    }
+
+    void Context::flushDoomed() {
+        std::vector<std::shared_ptr<void> > doomed;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            doomed.swap(_doomed);
+        }
     }
 
     void Context::retainLocked(Handle handle) {
@@ -392,8 +410,11 @@ namespace massif { namespace api {
     }
 
     void Context::release(Handle handle) {
-        std::lock_guard<std::mutex> lock(_mutex);
-        releaseLocked(handle);
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            releaseLocked(handle);
+        }
+        flushDoomed();
     }
 
     void Context::setUiDispatcher(Dispatcher dispatcher, void* userData) {
@@ -458,6 +479,10 @@ namespace massif { namespace api {
     }
 
     bool Context::emit(Handle handle, const std::string& event, Handle payload) {
+        struct FlushOnExit {
+            Context* context;
+            ~FlushOnExit() { context->flushDoomed(); }
+        } flushOnExit{this};
         // Two phases: handlers must not run under the lock. Each subscription is resolved again just
         // before its call, so one removed earlier in this pass is skipped.
         std::vector<Subscription> subscriptions;
@@ -811,6 +836,10 @@ namespace massif { namespace api {
     }
 
     bool Context::cancelCall(Call call) {
+        struct FlushOnExit {
+            Context* context;
+            ~FlushOnExit() { context->flushDoomed(); }
+        } flushOnExit{this};
         {
             std::lock_guard<std::mutex> lock(_mutex);
             for (auto it = _calls.begin(); it != _calls.end(); ++it) {
@@ -837,8 +866,13 @@ namespace massif { namespace api {
     }
 
     int Context::cancelCalls(Handle handle) {
-        std::lock_guard<std::mutex> lock(_mutex);
-        return cancelCallsLocked(handle);
+        int cancelled;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            cancelled = cancelCallsLocked(handle);
+        }
+        flushDoomed();
+        return cancelled;
     }
 
     int Context::cancelCallsLocked(Handle handle) {

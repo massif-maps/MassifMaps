@@ -417,6 +417,7 @@ namespace massif {
         mutable std::mutex _mutex;
         std::vector<Slot> _slots;
         std::vector<std::uint32_t> _freeSlots;
+        std::vector<std::shared_ptr<void> > _doomed;
         std::unordered_map<std::string, std::unordered_map<std::string, Handle> > _ids;
         EventBus _events;
 
@@ -427,7 +428,9 @@ namespace massif {
             Handle payload = NULL_HANDLE;
         };
 
+        bool unregisterLocked(const std::string& kind, const std::string& id);
         void freeSlot(std::uint32_t index);
+        void flushDoomed();
         void retainLocked(Handle handle);
         void releaseLocked(Handle handle);
         void postDrain();

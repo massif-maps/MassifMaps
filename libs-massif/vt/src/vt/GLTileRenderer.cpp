@@ -46,10 +46,10 @@ namespace {
 #ifndef NDEBUG
         std::string errorCodes;
         for (GLenum error = glGetError(); error != GL_NONE; error = glGetError()) {
-            errorCodes += (errorCodes.empty() ? "" : ",");
+            errorCodes += (errorCodes.empty() ? "" : ",") + std::to_string(error);
         }
         if (!errorCodes.empty()) {
-            throw std::runtime_error("Rendering failed: error codes" + errorCodes);
+            throw std::runtime_error("Rendering failed: error codes " + errorCodes);
         }
 #endif
     }

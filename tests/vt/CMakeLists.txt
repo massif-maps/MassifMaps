@@ -43,6 +43,7 @@ add_executable(vt_tests
   ExtrusionGroupAnchorTest.cpp
   SpanGeometryTest.cpp
   SpanDrapeLightTest.cpp
+  DrapeLightTermTest.cpp
   SpanResolverTest.cpp
   # The arithmetic the TERRAIN_SPHERICAL shader path rests on, checked against the transformer
   # the geometry is built with. Needs TileTransformer.cpp, added below.

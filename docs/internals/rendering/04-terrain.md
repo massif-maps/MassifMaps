@@ -632,6 +632,12 @@ crosses re-bakes the whole cover, and at 64 a day-cycle drag crossed one every f
 ground repainted continuously, always a few frames behind the buildings. Sixteen steps is still
 finer than a drape tile's own colour resolution and re-bakes a quarter as often.
 
+The map **background** enters the fingerprint as the factor the bake applies to it,
+`emissive + (1 - emissive) * radiance` per channel (`vt/DrapeLightTerm.h`), not as the emissive
+itself. A style's background emissive follows the zoom, and under a neutral radiance, every
+converted style's ground, that factor is exactly 1: the emissive stepping 0.25 -> 0.187 during a
+pan re-baked the whole cover four times for a picture that did not change.
+
 The count ration on that class is gone **at rest**. One stale tile per frame is right while the
 camera moves, but a light step marks the whole cover at once with the camera still, and a count
 repaints it tile by tile in front of the user — the ground visibly trailing the sky. At rest the

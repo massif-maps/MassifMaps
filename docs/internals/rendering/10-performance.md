@@ -41,6 +41,8 @@ adb install -r -t app/build/outputs/apk/debug/app-debug.apk
 | instrument | what it gives | gotchas |
 |---|---|---|
 | `PROF` | CPU ms per frame section: `sky prelude prepare cover drape layers layers3D billboards` | `sky` is mostly the swap wait, not work. Not comparable across apps. |
+| `PROF SPIKE` | one frame over 50 ms: its section split and the `RenderStats` counters that moved during that frame | |
+| `PROF RAW` | per frame `interval:work:sky:bakes:tileSets:labels`, 30 frames a line | the frame-to-frame interval is what the eye sees; the median fps hides hitches. `python3 scripts/frame-hitch-stats.py` reads it: frames over 50 / 100 ms, p95 / p99 / max per 10 s |
 | `PROF GPU` | the same sections on the GPU, plus `background shadowCast shadowMask groundAO labelOcc` (`GL_EXT_disjoint_timer_query`) | Android only; off with `setprop debug.massif.gputimer 0` |
 | `RenderStats` | draws, indices, render tiles, style layers, surfaces, label and prep timings, tile-surface builds | per one-second interval, deltas — **divide by the `PROF` frame count** of that interval, a faster build prints bigger counters |
 | `simpleperf` | an actual CPU profile of the render thread | see below — this is what finds things the timers cannot |

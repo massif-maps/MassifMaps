@@ -3135,3 +3135,67 @@ Not measured: iOS, a style with a source whose layers never cover part of the vi
 drape-clear-colour tile instead of undrawn terrain). The first-frame world-map flash and the flat grey terrain
 before the hillshade are older and unchanged.
 
+
+
+## Panning a dense city on a cold cache: where the hitches are, and two schedulers that did not move them (2026-11-10)
+
+Crosscall HLTE556N (Adreno 610), master `c3f54db81` + the `PROF RAW` metric, `BenchActivity`, Massif style, `--es base composite`,
+hillshade + contours + terrain + drape, tilt 30 zoom 15.8, programmatic pan 0.04 deg (17 s of frames), **app uninstalled and
+reinstalled before every run** (no decoded-tile or disk cache). The median fps hid it, so the metric is the frame-to-frame interval
+(`scripts/frame-hitch-stats.py`, one run each unless stated):
+
+| camera | frames | > 50 ms | > 100 ms | p99 | max | median fps |
+|---|---|---|---|---|---|---|
+| north of the city (45.1995, 5.7255), 3 runs | 480-570 | 45 / 80 / 58 | 3 / 4 / 2 | 71 / 89 / 78 | 153 / 191 / 126 | 32.9 / 27.9 / 32.4 |
+| same, `renderScale3D 1` | 420 | 104 | 1 | 80 | 104 | 27.2 |
+| rural (Chartreuse, 45.30, 5.80), 2 runs | 420 | 50 / 53 | 2 / 1 | 81 / 76 | 114 / 111 | 29.4 / 29.6 |
+| dense centre (45.2095 south over the centre), 7 base runs | 360-510 | 91-128 | 0-4 | 83-92 | 100-153 | 25.4-27.9 |
+
+- **The city hurts most where it is dense** (19-29% of frames over 50 ms against 9-16% north and rural), and a quarter of its
+  frames with no bake at all are over 50 ms: the baseline frame there is already ~39 ms.
+- **Frames that bake are the long ones.** With >= 1 drape bake 27-48% of frames are over 50 ms (mean 42-57 ms); with none, 5-15%
+  (13-15% in the centre). Every frame over 50 ms has >= 30 ms of work, none is a gap outside `onDrawFrame`.
+- **Most 50-100 ms frames are the swap wait, not work.** In 83 spike frames 59 were dominated by the `sky` section (the buffer is
+  not back yet: 25-40 ms with 2-5 ms of CPU), and with no tile arriving at all the intervals alternate 13-18 / 48-63 ms: a
+  GPU-bound pacing beat, so ">50 ms" overstates the hangs. The frames that read as a hang are **>= 100 ms: 2-4 per run, in
+  rural as in the city**, drape-dominated: 3-5 bakes in one frame (159 ms), or one bake of a dense tile with 13-23 geometry
+  uploads (a temporary per-bake log: 29 of ~100 bakes were over 6 ms, mean 12 ms with ~9 first-use VBO uploads each, worst 36 ms).
+- simpleperf `--call-graph dwarf,8192`, frames >= 90 ms (5 frames): ~44% of the GL thread's CPU is `kgsl_sharedmem_alloc`
+  (`drawSurfaceElements` 13%, `TerrainDrapeCache::generateMipmaps` 12%, `buildCompiledTileGeometry` 10%), and the CPU is only 40-60% of
+  those frames; the rest waits on the GPU, which a bake costs ~7-9 ms (`PROF GPU` drape, slope over the seconds' bake counts).
+
+**What did not move it.** Both interleaved with the master APK, 3 rounds, cold, dense centre:
+
+| | master | patched |
+|---|---|---|
+| per-frame budget of 8 ms for the VBO uploads a bake would do mid-draw (the geometry is uploaded in an earlier frame, the tile bakes when it is all there) | > 50 ms: 20.6% of 1350 frames, > 100 ms: 3, p99 87, max 104; median fps 26.4 / 27.9 / 26.0 | 24.0% of 1099, 7, p99 87, max 110; 28.1 / 25.4 / 26.1 |
+| bakes wait up to 2 frames after a frame over 40 ms | > 50 ms: 128 / 110 / 116, > 100 ms: 4 / 2 / 2, p99 84 / 92 / 90; median fps 27.0 / 26.5 / 25.8 | 121 / 94 / 123, 3 / 2 / 3, 89 / 85 / 92; 26.2 / 24.6 / 26.1 |
+
+Inside the ~10% drift and the 2-4 events per run for the tail; neither shipped (the patch is kept in the session notes).
+`debug.massif.drapemip 0` (no mip chain) also left it unchanged (107-117 over 50 ms, 3 over 100 ms, 2 runs). The reasoning that
+fits: a quiet frame is already GPU-bound at 28-39 ms, so any bake (+12 ms of GL-thread time and ~8 ms of GPU) lands on the next
+vsync step, whichever frame carries it.
+
+**Which part of a bake makes the hitch** (temporary `debug.massif.bakeskip`, not committed; lock held, cold, dense centre, interleaved, one APK):
+
+| | normal (3 rounds) | layer draws skipped, the clear + mip chain + framebuffer switch stay (3) | no bake at all, tile marked baked (2) |
+|---|---|---|---|
+| frames over 50 ms | 24 / 21 / 30% | 24 / 22 / 31% | 13 / 20% |
+| frames over 100 ms | 5 / 3 / 4 | 0 / 0 / 1 | 0 / 0 |
+| p99, ms | 99 / 95 / 98 | 74 / 80 / 86 | 71 / 73 |
+| max, ms | 146 / 130 / 120 | 96 / 93 / 116 | 77 / 83 |
+| median fps | 26.3 / 24.8 / 23.4 | 26.6 / 26.0 / 24.0 | 29.4 / 26.6 |
+
+The **>= 100 ms tail is the bake's drawing** (the geometry draws of the covering tiles into the 1024 texture), not the clear, mips or
+target switch: skipping only the draws removes it. The **50 ms judder is mostly the fixed per-bake cost plus the GPU-bound
+baseline**: it stays with the draws gone and falls only when no bake runs. The VBO uploads inside the draws are not the tail (the upload
+budget above changed nothing).
+
+**Culling the draws would not have helped.** `bakeDrapeUnits` draws a coarser covering tile's whole geometry for every finer tile it
+covers, and a temporary count showed 51% of the indices drawn in a pan (18.0 M of 35.1 M; z16 targets 8.7 M coarser against 3.5 M
+same-level) are such draws, so index-range culling looked like the fix. Skipping **all** coarser-source draws (a diagnostic, wrong
+pictures), 3 rounds interleaved: > 100 ms 4 / 5 / 6 against 4 / 5 / 4, p99 93 / 96 / 97 against 97 / 98 / 100, median fps 26.4 / 24.4 /
+26.6 against 25.4 / 26.7 / 24.8: no change. Skipping only the **same-level** draws: > 100 ms 2 / 1 / 4 against 3 / 6 / 4, p99 84 / 87 / 98
+against 92 / 101 / 94, a weak gain inside the noise. Neither half of the draws carries the tail alone, so it is the number of draws and
+the per-draw work (state, uniforms, driver submission) more than the vertices; not isolated. A touch swipe could not be measured:
+`BenchActivity` has no input channel. Not measured: iOS, a release build, a warm cache, other GPUs.

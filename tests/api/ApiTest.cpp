@@ -57,6 +57,7 @@ void testViewRegistration();
 void testCustomSource();
 void testCustomLayer();
 void testGetterLock();
+void testDestroyLock();
 void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
@@ -482,6 +483,7 @@ int main() {
     testCustomSource();
     testCustomLayer();
     testGetterLock();
+    testDestroyLock();
     testBundleAssets();
     testTileMetaData();
     testElevationDecoderResolve();

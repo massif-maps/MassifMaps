@@ -23,6 +23,7 @@
 #include "terrain/FlattenSwitch.h"
 #include "terrain/FlattenSwitchTimeline.h"
 #include "ui/MapMoveReason.h"
+#include "utils/FrameProfiler.h"
 
 #include <cglib/mat.h>
 #include <cglib/ray.h>
@@ -136,7 +137,7 @@ namespace massif {
     
         /**
          * Requests the renderer to refresh the view. Normally not needed, the SDK redraws when needed.
-         * The defaulted arguments record the call site for logRedrawSources; callers pass nothing.
+         * The defaulted arguments record the call site for logRedrawSources (MASSIF_FRAME_PROFILER builds); callers pass nothing.
          */
 #if defined(__clang__) || defined(__GNUC__)
         void requestRedraw(const char* callerFile = __builtin_FILE(), int callerLine = __builtin_LINE()) const;
@@ -275,8 +276,10 @@ namespace massif {
         // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
         double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);
 
+#if MASSIF_FRAME_PROFILER
         // Dumps and resets the per-call-site redraw counts: tells which caller keeps the map rendering.
         static void logRedrawSources();
+#endif
 
         // Every tile layer's Map block merged, first definer wins; once per frame so everything fogs alike.
         StyleEnvironment collectStyleEnvironment(const ViewState& viewState) const;

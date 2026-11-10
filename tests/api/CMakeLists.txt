@@ -254,6 +254,8 @@ add_executable(api_tests
   DrapeCoverLeavesTest.cpp
   # Same: DrapeEviction.h is what the drape cache may drop when over budget, and nothing else.
   DrapeEvictionTest.cpp
+  # Same: DrapeBakeSettle.h is the re-bake hold for a tile whose content is still arriving, and nothing else.
+  DrapeBakeSettleTest.cpp
   # Same: StyleConfigZoom.h is the zoom a style config is resolved at, and nothing else.
   StyleConfigZoomTest.cpp
   # Same: DrapeTuning.h is the bake resolution arithmetic and nothing else.

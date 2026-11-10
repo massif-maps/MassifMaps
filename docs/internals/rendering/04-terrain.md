@@ -643,6 +643,17 @@ camera moves, but a light step marks the whole cover at once with the camera sti
 repaints it tile by tile in front of the user — the ground visibly trailing the sky. At rest the
 60 ms wall-clock ceiling rations it instead, which is what it was written for.
 
+**A tile that already shows a complete picture waits for its content to stop arriving**
+(`terrain/DrapeBakeSettle.h`, moving camera only). The layers of a composite, and the hillshade and
+contours, land a few frames apart and each landing moved the fingerprint: a pan baked 167 re-bakes
+of 241, 74 of them replacing a picture at most 5 frames old, and 43 of 93 tiles were baked four
+times or more. A stale-class tile is now held until its fingerprint has been still for
+`SETTLE_FRAMES` (3), and never more than `MAX_HOLD_FRAMES` (10) from its first change. The first
+bake of a tile, stand-ins, partial and re-stacked tiles are never held, so no hole, no stand-in and
+no hillshade flash changes; what changes is that a late layer reaches an already-drawn tile up to
+~0.3 s later while the camera moves. At rest nothing is held. A held tile asks for the frame its
+wait ends in (`requestRedraw`).
+
 The zoom goes into the fingerprint quantised the same way (`DrapeTuning::bakeZoomTerm`), at the same
 quarter of a level the label re-placement uses: four bakes per zoom level, spread over frames by the
 bake budget above. The term follows the camera **only once it settles** — mapbox does the same, their

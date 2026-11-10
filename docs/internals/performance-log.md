@@ -3021,3 +3021,51 @@ terrain and hillshade decodes, which are untouched). Mean fps is 28.9 -> 30.1, *
 at 48 MB; a bigger cap was not tried. `ElevationManager` (`ElevationManager.cpp`) and `HillshadeRasterTileLayer` decode
 the same DEM WebP into their own structures; sharing the bitmap with them is not a small change and is not done. Not
 measured: iOS, a 256 px DEM, memory use on the device, the quiet seconds.
+
+
+## Drape re-bakes: the background's light term and a settle hold (2026-11-10)
+
+Crosscall HLTE556N (Adreno 610), `BenchActivity`, Massif style, `--es base composite`, hillshade + contours +
+terrain + drape (demo `drapeResolution` 1024), tilt 30 zoom 15.8, programmatic pan. **A bake costs the GPU, not
+the 4-6 ms `msPerBake` says**: the `PROF GPU` drape section is ~1.5 ms a frame in bake-free seconds and 10-14 ms in
+15-29-bake seconds, about 10 ms of GPU per bake. On the GL thread bakes are ~10-13% of samples; the 14.5% on
+`prepareTerrainDrapeFrame` in the earlier profile is `GLTileRenderer::startFrame` (labels), not bakes.
+
+What a pan's bakes were (temporary counters, not committed; 241 bakes, one run):
+
+| | bakes | note |
+|---|---|---|
+| first bake of a tile | 74 (31%) | needed |
+| re-bake of a tile that had a picture | 167 (69%) | 43 of 93 tiles baked 4x or more; 74 re-baked pictures lived <= 5 frames |
+| never drawn | 0 | a bake only runs for the current cover |
+
+Two causes. (1) The style's background emissive follows the zoom (0.25 -> 0.187, four steps per pan); the
+fingerprint took it raw, each 1/16 step re-baked the whole cover, and under radiance (1,1,1) the background's factor
+`emissive + (1 - emissive) * radiance` is exactly 1: ~50 bakes for an identical picture. (2) The composite's three
+vector groups, the hillshade and the contours land a few frames apart; each landing moved the fingerprint.
+Texture allocation is not per bake (pool 29 hits / 23 misses a pan, all cache growth; no resize blits, no stencil
+reallocation, no coverage masks or ground AO in this style), and a 1024 bake is 1.2x the nearest-edge screen need,
+so pooling and a smaller resolution were not tried.
+
+Fixes: the fingerprint folds the applied background factor (`vt/DrapeLightTerm.h`, tests `tests/vt/DrapeLightTermTest.cpp`),
+and a complete tile waits until its fingerprint is still for 3 frames, 10 at most, while the camera moves
+(`terrain/DrapeBakeSettle.h`, `tests/api/DrapeBakeSettleTest.cpp`). Interleaved, app reinstalled each run, 3 rounds
+of master (A), light term only (B), both (C), 22 s of pan:
+
+| | A master | B light | C light + hold |
+|---|---|---|---|
+| bakes per pan (3 rounds) | 148 / 199 / 175 | 169 / 142 / 140 | 107 / 97 / 103 |
+| pan fps, mean per round | 31.1 / 29.5 / 30.7 | 29.6 / 30.2 / 28.7 | 30.9 / 29.4 / 29.5 |
+| drape GPU ms a frame, mean | 6.3 | 6.3 | 5.6 |
+
+With simpleperf `--call-graph dwarf,8192` on the 7 s after the pan starts (A and C, 3 rounds, symbolised on each
+build's own `libmassif.so`): bakes 252 / 243 / 248 -> 145 / 141 / 161; `bakeDrapeTile` 13.6 / 13.0 / 13.4% ->
+10.2 / 10.7 / 11.9% of GL-thread samples; `kgsl_sharedmem_alloc` 8.4 / 9.0 / 10.1% -> 7.7 / 7.4 / 8.8%; drape GPU 9.2 -> 8.3
+ms a frame; fps 23.7 vs 23.4 (the profiler costs ~6 fps).
+
+**Bakes fall by ~40% and the bake share of the GL thread by ~2.4 points, but pan fps does not move beyond this
+phone's ~10% run-to-run drift** (mean 30.4 vs 29.9). The bakes were never the whole of the 20 fps seconds: labels
+(~17-19% of GL samples) and the tile arrival work that triggers the bakes remain. Not measured: iOS, a still
+camera (a hold never applies at rest), a style whose radiance is not neutral (the factor then follows the
+emissive at the same 1/16 steps as before).
+

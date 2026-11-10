@@ -86,6 +86,7 @@ void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
 void testDrapeCoverLeaves();
+void testDrapeCoverSeeds();
 void testDrapeEviction();
 void testDrapeBakeSettle();
 void testGLResourceManager();
@@ -510,6 +511,7 @@ int main() {
     testDrapeStackCuts();
     testDrapeStandIn();
     testDrapeCoverLeaves();
+    testDrapeCoverSeeds();
     testDrapeEviction();
     testDrapeBakeSettle();
     testGLResourceManager();

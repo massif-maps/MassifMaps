@@ -507,9 +507,17 @@ depth is a finer leaf.
 `collectTerrainCover` therefore also takes the terrain's own camera-driven cover as a seed. The
 shared ground takes it whole — it has no texture budget and needs the view covered, which is what
 stops it blinking white on a zoom out. The drape takes it with `extendSeedsOnly`: only the seeds
-that reach *deeper* than any collected tile, and none at all when the layers have nothing yet. Where
-the data already follows the camera the cover is byte-for-byte what it was; the seed pays for the
-extra depth and nothing else.
+that reach *deeper* than any collected tile, plus any seed that overlaps no collected tile at all
+(`terrain/DrapeCoverSeeds.h`), and none when the layers have nothing yet. Where the data already
+follows the camera the cover is byte-for-byte what it was; the seed pays for the extra depth and
+nothing else.
+
+**A seed no collected tile touches is kept whatever its zoom.** On a cold start the first layer
+reports a z1 tile that, split by the seeds, covers the view; when that becomes one z14 tile, or the
+vector groups bring z16 tiles, the deepest collected zoom jumps and every shallower seed used to be
+dropped. The cover collapsed from ~10 leaves to 1-5 and the ground outside them was not drawn at
+all: the hillshade terrain appeared, vanished to the background grid for 0.5-1 s, and came back as
+vector tiles arrived. See [the performance log](../performance-log.md#the-terrain-vanished-for-a-second-at-start-2026-11-10).
 
 Measured, emulator, 44.0804/3.0037 z15.08 t19 rot130, `mapbox-standard` over mapbox streets:
 

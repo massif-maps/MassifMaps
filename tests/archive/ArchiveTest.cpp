@@ -289,6 +289,46 @@ void testMBTilesEncoding() {
     std::filesystem::remove(plainPath);
 }
 
+// The render thread reads the zoom range every frame; it must not wait on a tile query.
+void testMBTilesZoomRange() {
+    std::string path = writeMBTiles("zooms.mbtiles", "");
+    {
+        MBTilesTileDataSource source(path);
+        TEST_CHECK(source.getMinZoom() == 0 && source.getMaxZoom() == 0, "the zoom range is read from the database");
+    }
+    {
+        MBTilesTileDataSource source(2, 14, path);
+        TEST_CHECK(source.getMinZoom() == 2 && source.getMaxZoom() == 14, "a declared zoom range wins");
+    }
+    {
+        MBTilesTileDataSource source(path);
+        std::atomic<bool> stop { false };
+        std::atomic<int> wrong { 0 };
+        std::vector<std::thread> loaders;
+        for (int i = 0; i < 3; i++) {
+            loaders.emplace_back([&] {
+                while (!stop) {
+                    source.loadTile(MapTile(0, 0, 0, 0));
+                    if (source.getMaxZoom() != 0) {
+                        wrong++;
+                    }
+                }
+            });
+        }
+        for (int i = 0; i < 20000; i++) {
+            if (source.getMinZoom() != 0 || source.getMaxZoom() != 0) {
+                wrong++;
+            }
+        }
+        stop = true;
+        for (std::thread& loader : loaders) {
+            loader.join();
+        }
+        TEST_CHECK(wrong == 0, "the zoom range reads the same while tiles load on other threads");
+    }
+    std::filesystem::remove(path);
+}
+
 void testPMTilesEncoding() {
     std::string terrariumPath = writePMTiles("terrarium.pmtiles", R"({"encoding":"terrarium","format":"webp","name":"dem"})", 4);
     {
@@ -431,6 +471,7 @@ void testPersistentCachePurge() {
 int main() {
     Log::SetShowInfo(false); // one line per loadTile
     testMBTilesEncoding();
+    testMBTilesZoomRange();
     testPMTilesEncoding();
     testPMTilesDirectorySearch();
     testPMTilesMultiLeaf();

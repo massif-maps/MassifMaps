@@ -19,8 +19,8 @@ namespace massif {
         TileDataSource(),
         _scheme(MBTilesScheme::MBTILES_SCHEME_TMS),
         _database(OpenDatabase(path)),
-        _cachedMinZoom(),
-        _cachedMaxZoom(),
+        _cachedMinZoom(ZOOM_UNSET),
+        _cachedMaxZoom(ZOOM_UNSET),
         _cachedDataExtent(),
         _mutex()
     {
@@ -32,7 +32,7 @@ namespace massif {
         _scheme(MBTilesScheme::MBTILES_SCHEME_TMS),
         _database(OpenDatabase(path)),
         _cachedMinZoom(minZoom),
-        _cachedMaxZoom(),
+        _cachedMaxZoom(ZOOM_UNSET),
         _cachedDataExtent(),
         _mutex()
     {
@@ -45,7 +45,7 @@ namespace massif {
         _scheme(scheme),
         _database(OpenDatabase(path)),
         _cachedMinZoom(minZoom),
-        _cachedMaxZoom(),
+        _cachedMaxZoom(ZOOM_UNSET),
         _cachedDataExtent(),
         _mutex()
     {
@@ -89,20 +89,24 @@ namespace massif {
     void MBTilesTileDataSource::cacheZoomLevels() const {
         int minZoom = 0, maxZoom = -1;
         loadZoomLevels(minZoom, maxZoom);
-        if (!_cachedMinZoom) {
+        if (_cachedMinZoom == ZOOM_UNSET) {
             _cachedMinZoom = minZoom;
         }
         // Must be the real deepest level: each declared level above it costs every fetch an ancestor probe.
-        if (!_cachedMaxZoom) {
+        if (_cachedMaxZoom == ZOOM_UNSET) {
             _cachedMaxZoom = maxZoom < 0 ? TileDataSource::getMaxZoom() : maxZoom;
         }
     }
 
     int MBTilesTileDataSource::getMinZoom() const {
+        int cached = _cachedMinZoom;
+        if (cached != ZOOM_UNSET) {
+            return cached;
+        }
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
         // If value is not cached, load from database
-        if (!_cachedMinZoom) {
+        if (_cachedMinZoom == ZOOM_UNSET) {
             if (!_database) {
                 Log::Error("MBTilesTileDataSource::getMinZoom: Not connected to the database");
                 return 0;
@@ -110,14 +114,18 @@ namespace massif {
 
             cacheZoomLevels();
         }
-        return *_cachedMinZoom;
+        return _cachedMinZoom;
     }
     
     int MBTilesTileDataSource::getMaxZoom() const {
+        int cached = _cachedMaxZoom;
+        if (cached != ZOOM_UNSET) {
+            return cached;
+        }
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
         // If value is not cached, load from database
-        if (!_cachedMaxZoom) {
+        if (_cachedMaxZoom == ZOOM_UNSET) {
             if (!_database) {
                 Log::Error("MBTilesTileDataSource::getMaxZoom: Not connected to the database");
                 return -1;
@@ -125,7 +133,7 @@ namespace massif {
 
             cacheZoomLevels();
         }
-        return *_cachedMaxZoom;
+        return _cachedMaxZoom;
     }
     
     MapBounds MBTilesTileDataSource::getDataExtent() const {

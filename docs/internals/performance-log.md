@@ -3271,3 +3271,15 @@ bake) includes the previous frame's queued work, so it is not a per-bake GPU cos
 
 Not tried, and where the remaining candidates are: pre-compiling the bake's program variants at start (removes the 0.85 s cold-start
 stalls, not the pan's), spreading a bake over frames (changes what a frame shows), a pan-time VBO upload from another thread.
+
+## MBTiles zoom range waited on tile queries (2026-11-10)
+
+simpleperf on the Crosscall (alpimaps, 2026-11-08) put `MBTilesTileDataSource::getMaxZoom` at 3.8 % of the GL thread
+and `recursive_mutex::lock` at 7 %. `ElevationManager::dataMaxZoom` asks it every frame, and it took the same
+`_mutex` that `loadTile` holds for the whole SQLite query, so the render thread queued behind the decode threads.
+
+Host reproduction (a 4096-tile MBTiles of 60 kB blobs, 4 threads calling `loadTile` back to back, the main thread
+timing `getMaxZoom` for 3 s, Release): before, mean 170-1800 us, p99 4-19 ms, **max 25-33 ms**; after the range is
+read from an atomic, mean 0.02 us, max 0.09-1.4 ms (scheduler noise). Tile loads per second did not move
+(335-418 k before, 343-401 k after). The stall is the lock, so it shows on a host as on a phone; what a phone gains
+in fps is not measured. PMTiles reads its header and never had it.

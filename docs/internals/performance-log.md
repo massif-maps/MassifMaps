@@ -3110,3 +3110,28 @@ phone's ~10% run-to-run drift** (mean 30.4 vs 29.9). The bakes were never the wh
 (~17-19% of GL samples) and the tile arrival work that triggers the bakes remain. Not measured: iOS, a still
 camera (a hold never applies at rest), a style whose radiance is not neutral (the factor then follows the
 emissive at the same 1/16 steps as before).
+
+## The terrain vanished for a second at start (2026-11-10)
+
+Crosscall, demo bench cold start (composite Massif style, hillshade + contour + terrain + drape, z15.8 tilt 30),
+30 s screen recording per run, `adb screenrecord` frames at 5 fps; the band of rows 10-40% is the far terrain.
+Present in the build before #500-#504 (9475e74b1) and in master c3f54db81: hillshade terrain shows, the far field
+falls back to the background grid with a small vector patch near the camera, then fills in.
+
+Per-frame drape log (temporary, not committed): the cover is 8-22 leaves, then 1-5 (`leaves=1 z16-16` in one run),
+then 9. `collected` falls 23 -> 13 -> 4 -> 3 while `dataMaxZoom` goes 1 -> 16: layer 0 reports a z1 root tile that
+split by the camera seeds covers the view; when it becomes one z14 tile, `extendSeedsOnly` drops every seed at
+or below the new deepest zoom, and a cover leaf is the only thing that draws terrain. Nothing was dropped from the
+drape cache: `content`, `baked` and `drawn` stay equal to the leaf count in the collapsed frames.
+
+`DrapeCoverSeeds::select` keeps a seed that is equal to, an ancestor of or a descendant of no collected tile. After
+it, three cold starts: cover never under 8 leaves (before: min 1 and 5 in the two logged runs); frames back on the
+grid after the hillshade first showed, at 5 fps: master 6 / 6 / 3 / 0 in four runs (base 6), fix 0 / 0 / 0. The settled
+frame at the bench camera matches master (`devtap diff`, mean 0.04, changed region the clock only; master vs master
+0.01). Pan fps, same bench, runs with the full window (n >= 20): master 29.8 / 29.5, fix 30.7 / 26.4; runs with a
+short window (n 3-15) ranged 21-22 on both builds: the phone's drift is larger than any difference.
+
+Not measured: iOS, a style with a source whose layers never cover part of the view (the hole is now a blank
+drape-clear-colour tile instead of undrawn terrain). The first-frame world-map flash and the flat grey terrain
+before the hillshade are older and unchanged.
+

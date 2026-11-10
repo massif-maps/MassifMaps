@@ -252,6 +252,8 @@ add_executable(api_tests
   DrapeStandInTest.cpp
   # Same: DrapeCoverLeaves.h is the drape cover's quadtree split and nothing else.
   DrapeCoverLeavesTest.cpp
+  # DrapeCoverSeeds.h is the cover's seed filter and nothing else.
+  DrapeCoverSeedsTest.cpp
   # Same: DrapeEviction.h is what the drape cache may drop when over budget, and nothing else.
   DrapeEvictionTest.cpp
   # Same: DrapeBakeSettle.h is the re-bake hold for a tile whose content is still arriving, and nothing else.

@@ -34,6 +34,7 @@
 #include "renderers/TerrainRenderer.h"
 #include "renderers/utils/TerrainDrapeCache.h"
 #include "terrain/DrapeCoverLeaves.h"
+#include "terrain/DrapeCoverSeeds.h"
 #include "terrain/DrapeStandIn.h"
 #include "renderers/utils/TerrainShadowMap.h"
 #include "renderers/utils/ScreenMaskBuffer.h"
@@ -2950,10 +2951,8 @@ namespace massif {
             dataMaxZoom = std::max(dataMaxZoom, it->first.zoom);
         }
         if (!(extendSeedsOnly && dataMaxZoom < 0)) {
-            for (const vt::TileId& tileId : seedTileIds) {
-                if (extendSeedsOnly && tileId.zoom <= dataMaxZoom) {
-                    continue;
-                }
+            std::vector<vt::TileId> seeds = (extendSeedsOnly ? DrapeCoverSeeds::select(seedTileIds, collectedTiles, dataMaxZoom) : seedTileIds);
+            for (const vt::TileId& tileId : seeds) {
                 collectedTiles.emplace(tileId, static_cast<std::size_t>(0));
             }
         }

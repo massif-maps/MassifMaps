@@ -16,6 +16,7 @@
 #include "layers/VectorTileEventListener.h"
 #include "ui/MapEventListener.h"
 
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -37,7 +38,7 @@ namespace massif { namespace api {
     private:
         std::shared_ptr<Context> _context;
         Handle _target;
-        long long _payloadCounter;
+        std::atomic<long long> _payloadCounter;
     };
 
     /**

@@ -2,17 +2,10 @@ name: Style tools CLI
 
 # Builds massif-style to WebAssembly and packs @massif-maps/style-tools. release.yml calls it with
 # the version it computed and, with `publish`, releases it: npm, and a style-tools-vX.Y.Z GitHub
-# release carrying the wasm. A push to master publishes a dev build (publish-dev), so a style using
+# release carrying the wasm. Run by hand it publishes a dev build (publish-dev), so a style using
 # a compiler change need not wait for a release. docs/contributing/style-tools.md: why TypeScript + wasm.
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'tools/style-cli/**'
-      - 'scripts/gen-cartocss-properties.py'
-      - 'libs-massif/**'
-      - '.github/workflows/release-style-tools.yml'
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -44,7 +37,7 @@ jobs:
 
       - uses: mymindstorm/setup-emsdk@v14
         with:
-          version: latest
+          version: 6.0.9
           actions-cache-folder: emsdk-cache
 
       # The SAME Boost the SDK builds against (BUILDING.md, build.yml). It has to be: the wasm

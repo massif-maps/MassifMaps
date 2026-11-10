@@ -54,6 +54,7 @@ add_executable(vt_tests
   AnimationProgressTest.cpp
   GroundCoverTest.cpp
   LabelSliceTest.cpp
+  GlyphAtlasUpdateTest.cpp
   LabelFadeTest.cpp
   LayerContentFlagsTest.cpp
   LayerNameFilterTest.cpp

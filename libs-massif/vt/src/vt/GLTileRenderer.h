@@ -502,16 +502,22 @@ namespace massif::vt {
             CompiledGeometry() : vertexGeometryVBO(0), indicesVBO(0) { }
         };
 
-        struct CompiledLabelBatch {
-            GLuint verticesVBO;
-            GLuint offsetsVBO;
-            GLuint normalsVBO;
-            GLuint texCoordsVBO;
-            GLuint attribsVBO;
-            GLuint indicesVBO;
-
-            CompiledLabelBatch() : verticesVBO(0), offsetsVBO(0), normalsVBO(0), texCoordsVBO(0), attribsVBO(0), indicesVBO(0) { }
+        // A glyph map's atlas as one texture, grown by the rows loaded since instead of re-uploaded.
+        struct CompiledGlyphAtlas {
+            CompiledBitmap bitmap;
+            std::uint64_t version = 0;
+            int width = 0;
+            int height = 0;
         };
+
+        // The six buffers of one label batch, kept across frames and rewritten in place; a ring, so a
+        // frame never writes buffers the GPU may still be reading.
+        struct LabelBufferSet {
+            static constexpr int ARRAYS = 6; // vertices, offsets, normals, texCoords, attribs, indices
+            GLuint vbo[ARRAYS] = {};
+            std::size_t capacity[ARRAYS] = {};
+        };
+        static constexpr int LABEL_BUFFER_RING = 3;
 
         struct LabelBatchParameters {
             static constexpr int MAX_PARAMETERS = 16;
@@ -784,9 +790,11 @@ namespace massif::vt {
         static GLuint findGeometryVAO(const CompiledGeometry& compiledGeometry, GLuint program);
         void bindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
         void unbindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
-        void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
+        void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const GlyphMap>& glyphMap);
+        void uploadLabelBuffer(int array, GLenum target, const void* data, std::size_t size);
 
         const CompiledBitmap& buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps);
+        const CompiledGlyphAtlas& buildCompiledGlyphAtlas(const std::shared_ptr<const GlyphMap>& glyphMap);
         int gradientAtlasRow(const std::shared_ptr<const ColorRamp>& ramp);
         const CompiledBitmap& buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap);
         const CompiledGeometry* buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry);
@@ -813,8 +821,7 @@ namespace massif::vt {
         void deleteCompiledSurface(CompiledSurface& compiledSurface);
         void createCompiledGeometry(CompiledGeometry& compiledGeometry);
         void deleteCompiledGeometry(CompiledGeometry& compiledGeometry);
-        void createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
-        void deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
+        void deleteLabelBuffers();
 
         std::optional<LightingShader> _lightingShader2D;
         std::optional<LightingShader> _lightingShader3D;
@@ -1138,8 +1145,11 @@ namespace massif::vt {
         GradientAtlas _gradientAtlas;
         std::map<std::weak_ptr<const TileBitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const TileBitmap>>> _compiledTileBitmapMap;
         std::map<std::weak_ptr<const TileSurface>, CompiledSurface, std::owner_less<std::weak_ptr<const TileSurface>>> _compiledTileSurfaceMap;
-        std::map<int, CompiledLabelBatch> _compiledLabelBatches;
-        int _labelBatchCounter = 0;
+        std::map<std::weak_ptr<const GlyphMap>, CompiledGlyphAtlas, std::owner_less<std::weak_ptr<const GlyphMap>>> _compiledGlyphAtlasMap;
+        GlyphMap::AtlasUpdate _glyphAtlasUpdate;
+        std::vector<LabelBufferSet> _labelBuffers[LABEL_BUFFER_RING];
+        int _labelBufferRing = 0;
+        int _labelBatchIndex = 0;
 
         struct CompiledModelMesh {
             GLuint vertexVBO = 0;

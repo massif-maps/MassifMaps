@@ -3023,6 +3023,48 @@ the same DEM WebP into their own structures; sharing the bitmap with them is not
 measured: iOS, a 256 px DEM, memory use on the device, the quiet seconds.
 
 
+## Labels on the GL thread: filter before the sort, grow the glyph atlas by rows, keep the batch buffers (2026-11-10)
+
+Crosscall HLTE556N (Adreno 610), demo `BenchActivity`, Massif style, `--es base composite`, hillshade + contours + terrain +
+drape, tilt 30 zoom 15.8, programmatic pan. Per frame, with temporary counters (not committed), in the seconds with 15+ drape
+bakes (~20 fps) against the quiet ones (~42 fps): `renderLabels` 4.5-6.7 ms against 1.6-1.9; the `updateLabel` loop 1.4-2.4 ms
+against 0.2-0.3. The label count does not explain it (about 100 labels drawn a frame early in the pan, 30 late). What moves with
+the tile arrivals:
+
+- A new glyph resets `GlyphMap::_bitmapPattern`; the next `getBitmapPattern()` re-copied the whole 4-16 MB atlas and
+  `buildCompiledBitmap` uploaded it as a new texture: 3-10 times a second, 4-16 MB a second.
+- `renderLabelPass` copied and stable-sorted all ~1100 labels of a pass (12 passes a frame) for the ~10% it draws.
+- Six `glBufferData` per batch (~10 batches a frame) reallocate on Adreno: 0.5-1.5 ms a frame in the heavy seconds.
+- Not changed: the occlusion test, 1-2 ms a frame in the heavy seconds. Elevation tiles clear its verdict cache and the
+  labels outside the depth read-back are ray-marched (25-30 a frame, none in the quiet seconds). Making it cheaper changes
+  WHEN a verdict flips, so it is left for a change of its own.
+
+Now the sort takes only labels that will be drawn; the glyph atlas is one texture per `GlyphMap` and gains only the rows loaded
+since (`GlyphMap::getAtlasUpdate`, per-row versions; a power-of-two growth still re-sends it whole); each batch keeps its six
+buffers across frames (ring of 3) and `glBufferSubData`s into them. Tests: `tests/vt/GlyphAtlasUpdateTest.cpp`.
+
+**A buffer design that LOST:** appending every batch of a frame into one buffer per attribute (fewer allocations on paper) took
+batch time from 1.3 to 5 ms a frame and the pan from 32 to 27 fps - the write lands in a buffer an earlier draw of the same frame
+reads. Per-batch buffers rewritten once a frame are what is kept.
+
+Interleaved base / patched x 3, app restarted each run, seconds 4+ of the pan:
+
+| | base | patched |
+|---|---|---|
+| sort, ms a frame (heavy seconds) | 0.30-0.32 | 0.10 |
+| glyph atlas lookup and upload, ms a frame | 0.24-0.31 | 0.11-0.17 |
+| batch (`batchMs`), ms a frame | 1.14-1.37 | 0.84-0.90 |
+| median fps over the pan (3 rounds) | 29.9 / 30.9 / 28.7 | 33.6 / 32.7 / 29.8 |
+| fps in the seconds with 10+ bakes (3 rounds) | 24.1 / 23.9 / 23.6 | 25.0 / 23.4 / 26.6 |
+| simpleperf (dwarf), `renderLabels` share of GL-thread samples, 7 s window, 2 rounds | 19.2 / 17.5 % | 13.9 / 13.8 % |
+
+The per-frame sections and the simpleperf share are consistent; the frame rate is **inside the round-to-round spread (about
+10 %)**: a gain of 1-2 fps is the direction of 5 of 6 comparisons, not proof. A static camera, base against base, differs by
+mean 0.87 (status bar and sky pixels), base against patched by 0.40-0.72: the labels are placed and drawn the same. Not measured:
+iOS, a release build, the memory of the kept buffers, `glTexSubImage2D` on other GPUs (a Mali or Adreno 7xx may prefer the whole
+upload).
+
+
 ## Drape re-bakes: the background's light term and a settle hold (2026-11-10)
 
 Crosscall HLTE556N (Adreno 610), `BenchActivity`, Massif style, `--es base composite`, hillshade + contours +
@@ -3068,4 +3110,3 @@ phone's ~10% run-to-run drift** (mean 30.4 vs 29.9). The bakes were never the wh
 (~17-19% of GL samples) and the tile arrival work that triggers the bakes remain. Not measured: iOS, a still
 camera (a hold never applies at rest), a style whose radiance is not neutral (the factor then follows the
 emissive at the same 1/16 steps as before).
-

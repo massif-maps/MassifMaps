@@ -46,6 +46,7 @@ void testAnimationProgress();
 void testRetainedLayerDedupe();
 void testGroundCover();
 void testLabelSlice();
+void testGlyphAtlasUpdate();
 void testLabelFade();
 void testLabelSpot();
 void testLabelSpotNear();
@@ -119,6 +120,7 @@ int main() {
     testRetainedLayerDedupe();
     testGroundCover();
     testLabelSlice();
+    testGlyphAtlasUpdate();
     testLabelFade();
     testLabelSpot();
     testLabelSpotNear();

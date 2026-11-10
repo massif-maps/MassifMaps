@@ -97,11 +97,11 @@ script packs the tarballs locally: [BUILDING.md](https://github.com/massif-maps/
 What the web package contains and how an app hosts it: [the web guide](/docs/getting-started/web).
 
 `@massif-maps/style-tools` is released on its own (`release-style-tools.yml`, called with `tools=…`: a
-`style-tools-v<version>` release carrying the compiler wasm, then npm). It also has dev builds: each push to master touching the style compiler
-(`libs-massif`, `tools/style-cli`) publishes `<latest + 1 patch>-dev.<run>` - `6.1.3-dev.412` after
-6.1.2 - under the `dev` dist-tag, from `release-style-tools.yml` (`publish-dev`). It sorts above
-every release so far and below the next, so `@massif-maps/style-tools@dev` is always the newest
-compiler and a `^6.1.2` range never picks it. npmjs.com lists that workflow as a second trusted
+`style-tools-v<version>` release carrying the compiler wasm, then npm). It also has dev builds: running `release-style-tools.yml` by hand (Actions, "Run workflow" on
+master; nothing builds on a push) publishes `<latest + 1 patch>-dev.<run>` - `6.1.3-dev.412` after
+6.1.2 - under the `dev` dist-tag (`publish-dev`). It sorts above
+every release so far and below the next, so `@massif-maps/style-tools@dev` is the last
+manual dev build and a `^6.1.2` range never picks it. npmjs.com lists that workflow as a second trusted
 publisher of the package.
 
 ## Release notes

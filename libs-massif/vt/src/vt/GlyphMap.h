@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 #include <unordered_map>
 #include <mutex>
 
@@ -48,6 +49,19 @@ namespace massif::vt {
         GlyphId loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, GlyphMode mode, const cglib::vec2<float>& origin);
         std::shared_ptr<const BitmapPattern> getBitmapPattern() const;
 
+        // What a texture last synced at version 'known' lacks: the rows loaded since, or the whole
+        // atlas when its power-of-two size changed. False when nothing changed.
+        struct AtlasUpdate {
+            std::uint64_t version = 0;
+            int width = 0;
+            int height = 0;
+            bool full = false;
+            int y0 = 0;
+            int y1 = 0;
+            std::vector<std::uint32_t> texels; // rows y0..y1, 'width' texels each
+        };
+        bool getAtlasUpdate(std::uint64_t knownVersion, int knownWidth, int knownHeight, AtlasUpdate& update) const;
+
     private:
         struct BuildState {
             int x0 = 0;
@@ -64,6 +78,8 @@ namespace massif::vt {
         std::unordered_map<std::shared_ptr<const Bitmap>, GlyphId> _bitmapGlyphMap;
         std::unordered_map<GlyphId, std::unique_ptr<const Glyph>> _glyphMap;
         mutable std::shared_ptr<BitmapPattern> _bitmapPattern;
+        std::uint64_t _version = 0;
+        std::vector<std::uint64_t> _rowVersions; // the version each atlas row last changed at
         BuildState _buildState;
         mutable std::mutex _mutex;
     };

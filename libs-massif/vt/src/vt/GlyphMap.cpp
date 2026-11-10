@@ -6,6 +6,7 @@
 #include <array>
 #include <map>
 #include <unordered_map>
+#include <algorithm>
 
 namespace massif::vt {
     GlyphMap::GlyphMap(int maxWidth, int maxHeight) : _maxWidth(maxWidth), _maxHeight(maxHeight) {
@@ -71,6 +72,12 @@ namespace massif::vt {
 
         _buildState.x0 += bitmap->width + 2;
 
+        _version++;
+        if (_rowVersions.size() < static_cast<std::size_t>(_buildState.y1)) {
+            _rowVersions.resize(_buildState.y1, 0);
+        }
+        std::fill(_rowVersions.begin() + _buildState.y0, _rowVersions.begin() + _buildState.y0 + bitmap->height + 2, _version);
+
         _bitmapPattern.reset();
 
         return glyphId;
@@ -94,5 +101,42 @@ namespace massif::vt {
         }
 
         return _bitmapPattern;
+    }
+
+    bool GlyphMap::getAtlasUpdate(std::uint64_t knownVersion, int knownWidth, int knownHeight, AtlasUpdate& update) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (knownWidth > 0 && knownVersion == _version) {
+            return false;
+        }
+
+        int width = 1;
+        while (width < _buildState.x1) { width *= 2; }
+        int height = 1;
+        while (height < _buildState.y1) { height *= 2; }
+
+        update.version = _version;
+        update.width = width;
+        update.height = height;
+        update.full = (width != knownWidth || height != knownHeight);
+        update.y0 = 0;
+        update.y1 = height;
+        if (!update.full) {
+            update.y0 = height;
+            update.y1 = 0;
+            for (std::size_t y = 0; y < _rowVersions.size(); y++) {
+                if (_rowVersions[y] > knownVersion) {
+                    update.y0 = std::min(update.y0, static_cast<int>(y));
+                    update.y1 = static_cast<int>(y) + 1;
+                }
+            }
+            update.y1 = std::max(update.y1, update.y0);
+        }
+
+        update.texels.assign(static_cast<std::size_t>(width) * (update.y1 - update.y0), 0);
+        for (int y = update.y0; y < std::min(update.y1, _buildState.y1); y++) {
+            std::copy(&_buildState.bitmapData[y * _maxWidth], &_buildState.bitmapData[y * _maxWidth] + _buildState.x1, &update.texels[static_cast<std::size_t>(y - update.y0) * width]);
+        }
+        return true;
     }
 }

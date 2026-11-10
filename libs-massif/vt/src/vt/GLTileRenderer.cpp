@@ -3,6 +3,7 @@
 #include <cctype>
 #include "SpanGeometry.h"
 #include "SpanDrapeLight.h"
+#include "DrapeLightTerm.h"
 #include "ExtrusionFloor.h"
 #include "GLTileRendererShaders.h"
 #include "Color.h"
@@ -6965,7 +6966,9 @@ namespace massif::vt {
         for (int i = 0; i < 3; i++) {
             combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * DRAPE_LIGHT_STEPS) * (i + 1));
         }
-        combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * DRAPE_LIGHT_STEPS) * 4);
+        for (int i = 0; i < 3; i++) {
+            combine(DrapeLightTerm::backgroundStep(_backgroundEmissive, _radiance(i), DRAPE_LIGHT_STEPS) * (i + 5));
+        }
         // The SDK layer opacity is baked in too; the opaque case adds nothing, so existing fingerprints hold.
         float layerOpacity = std::max(0.0f, std::min(1.0f, calculateDrapeLayerOpacity()));
         if (layerOpacity < 1.0f) {

@@ -35,6 +35,7 @@ void testGhostDepth();
 void testArrowHeadPass();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
+void testDrapeLightTerm();
 void testSpanResolver();
 void testSphericalTerrain();
 void testExtrusionOccluder();
@@ -108,6 +109,7 @@ int main() {
     testArrowHeadPass();
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
+    testDrapeLightTerm();
     testSpanResolver();
     testSphericalTerrain();
     testExtrusionOccluder();

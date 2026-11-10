@@ -19,6 +19,7 @@
 #include "renderers/components/KineticEventHandler.h"
 #include "components/StyleEnvironment.h"
 #include "terrain/AutoFlatten.h"
+#include "terrain/DrapeBakeSettle.h"
 #include "terrain/FlattenSwitch.h"
 #include "terrain/FlattenSwitchTimeline.h"
 #include "ui/MapMoveReason.h"
@@ -390,6 +391,8 @@ namespace massif {
         cglib::mat4x4<double> _drapeBakeLastMVPMatrix = cglib::mat4x4<double>::identity();
         // Quantised bake zoom, held while the camera moves (as mapbox) so a gesture does not re-bake every step.
         std::size_t _drapeBakeZoomTerm = 0;
+        DrapeBakeSettle _drapeBakeSettle;
+        unsigned _drapeBakeFrame = 0;
         std::unique_ptr<ScreenMaskBuffer> _terrainShadowMaskBuffer;
         unsigned int _flatShadowMaskTexture = 0;
         bool _shadowsPushed = false;

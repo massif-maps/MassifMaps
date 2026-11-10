@@ -632,10 +632,27 @@ crosses re-bakes the whole cover, and at 64 a day-cycle drag crossed one every f
 ground repainted continuously, always a few frames behind the buildings. Sixteen steps is still
 finer than a drape tile's own colour resolution and re-bakes a quarter as often.
 
+The map **background** enters the fingerprint as the factor the bake applies to it,
+`emissive + (1 - emissive) * radiance` per channel (`vt/DrapeLightTerm.h`), not as the emissive
+itself. A style's background emissive follows the zoom, and under a neutral radiance, every
+converted style's ground, that factor is exactly 1: the emissive stepping 0.25 -> 0.187 during a
+pan re-baked the whole cover four times for a picture that did not change.
+
 The count ration on that class is gone **at rest**. One stale tile per frame is right while the
 camera moves, but a light step marks the whole cover at once with the camera still, and a count
 repaints it tile by tile in front of the user — the ground visibly trailing the sky. At rest the
 60 ms wall-clock ceiling rations it instead, which is what it was written for.
+
+**A tile that already shows a complete picture waits for its content to stop arriving**
+(`terrain/DrapeBakeSettle.h`, moving camera only). The layers of a composite, and the hillshade and
+contours, land a few frames apart and each landing moved the fingerprint: a pan baked 167 re-bakes
+of 241, 74 of them replacing a picture at most 5 frames old, and 43 of 93 tiles were baked four
+times or more. A stale-class tile is now held until its fingerprint has been still for
+`SETTLE_FRAMES` (3), and never more than `MAX_HOLD_FRAMES` (10) from its first change. The first
+bake of a tile, stand-ins, partial and re-stacked tiles are never held, so no hole, no stand-in and
+no hillshade flash changes; what changes is that a late layer reaches an already-drawn tile up to
+~0.3 s later while the camera moves. At rest nothing is held. A held tile asks for the frame its
+wait ends in (`requestRedraw`).
 
 The zoom goes into the fingerprint quantised the same way (`DrapeTuning::bakeZoomTerm`), at the same
 quarter of a level the label re-placement uses: four bakes per zoom level, spread over frames by the

@@ -3800,12 +3800,26 @@ namespace massif {
                         return true;
                     };
 
+                    const cglib::mat4x4<double>& bakeMVPMatrix = viewState.getModelviewProjectionMat();
+                    std::chrono::steady_clock::time_point bakeNow = std::chrono::steady_clock::now();
+                    if (!(_drapeBakeLastMVPMatrix == bakeMVPMatrix)) {
+                        _drapeBakeLastMoveTime = bakeNow;
+                    }
+                    // Plus a settle window: a fast zoom is a chain of gestures, and each rest must not get the at-rest budget.
+                    bool bakeCameraMoving = std::chrono::duration<double, std::milli>(bakeNow - _drapeBakeLastMoveTime).count() < DRAPE_BAKE_SETTLE_MS;
+                    _drapeBakeLastMVPMatrix = bakeMVPMatrix;
+                    _drapeBakeFrame++;
+                    if (_drapeBakeFrame % 120 == 0) {
+                        _drapeBakeSettle.prune(_drapeBakeFrame, 240);
+                    }
+                    bool bakesHeld = false;
                     for (auto it = drapeTiles.begin(); it != drapeTiles.end(); it++) {
                         bool needsBake = false;
                         bool hasContent = false;
                         unsigned int replaced = 0;
                         int replacedSize = _terrainDrapeCache->getTextureResolution(it->first, 0);
                         unsigned int texture = _terrainDrapeCache->acquire(it->first, 0, it->second, resolutionOf(it->first), &replaced, needsBake, hasContent);
+                        _drapeBakeSettle.observe(it->first, it->second, _drapeBakeFrame);
                         if (replaced != 0) {
                             // Resized: the old picture carried across, so the leaf sharpens without a blank frame.
                             beginOffscreen();
@@ -3900,7 +3914,12 @@ namespace massif {
                         } else if (baked && !complete) {
                             partialTiles.push_back(request);     // shows part of the stack: a layer is simply absent
                         } else if (baked) {
-                            staleTiles.push_back(request);       // shows its own, older, picture
+                            // Its layers are still landing: one bake for all of them, not one per landing.
+                            if (bakeCameraMoving && _drapeBakeSettle.shouldHold(it->first, _drapeBakeFrame)) {
+                                bakesHeld = true;
+                            } else {
+                                staleTiles.push_back(request);   // shows its own, older, picture
+                            }
                         } else if (hasContent || draped.texture != 0) {
                             standInTiles.push_back(request);     // seeded, or standing in on an ancestor
                         } else {
@@ -3997,6 +4016,7 @@ namespace massif {
                             }
                         }
                         _terrainDrapeCache->markBaked(request.tileId, 0, bakedFingerprint, bakedMask);
+                        _drapeBakeSettle.baked(request.tileId);
                         TerrainDrapeCache::generateMipmaps(texture);
                         // Occlusion masks (#175), same pass and fingerprint as the drape; stack 1+k, R8.
                         for (std::size_t k = 0; k < drapeCuts.size(); k++) {
@@ -4026,14 +4046,6 @@ namespace massif {
                         }
                     };
                     // Counts set urgency; time sets how many. Priority order until spent, but always one.
-                    const cglib::mat4x4<double>& bakeMVPMatrix = viewState.getModelviewProjectionMat();
-                    std::chrono::steady_clock::time_point bakeNow = std::chrono::steady_clock::now();
-                    if (!(_drapeBakeLastMVPMatrix == bakeMVPMatrix)) {
-                        _drapeBakeLastMoveTime = bakeNow;
-                    }
-                    // Plus a settle window: a fast zoom is a chain of gestures, and each rest must not get the at-rest budget.
-                    bool bakeCameraMoving = std::chrono::duration<double, std::milli>(bakeNow - _drapeBakeLastMoveTime).count() < DRAPE_BAKE_SETTLE_MS;
-                    _drapeBakeLastMVPMatrix = bakeMVPMatrix;
                     // Settled: adopt this zoom for the drape. The fingerprint above reads this, so
                     // the tiles go stale on the frame the gesture ends and are re-baked from there.
                     if (!bakeCameraMoving) {
@@ -4121,6 +4133,8 @@ namespace massif {
                     // Count-rationed while moving; at rest only the time budget, as the whole cover can go stale at once.
                     bakeSome(staleTiles, bakeCameraMoving ? DRAPE_BAKE_BUDGET_STALE : static_cast<int>(staleTiles.size()));
 
+                    // A held tile bakes when its wait runs out; nothing else asks for that frame.
+                    drapeBakesLeft = drapeBakesLeft || bakesHeld;
                     // Nothing else asks for the frames rationed baking needs.
                     if (drapeBakesLeft) {
                         requestRedraw();

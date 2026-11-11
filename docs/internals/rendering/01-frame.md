@@ -351,7 +351,7 @@ frame's ground rule put the focus back saw a camera 300 m up: a coarser tile cut
 again 200 ms later), the tile set and label maps rebuilt, and the trees going from icon to point and
 back. Measured on the Catalyst demo, a `setFocusPos` to the current position with 300 m of altitude,
 once a second at z19: 46 blink events in 120 frames, none once `calculateCameraEvent` zeroes the
-height of a non-delta pan (`-noopMoveAlt`, [demo loop](../../contributing/catalyst-demo-loop.md)).
+height of a non-delta pan (`-noopMoveAlt`, [demo loop](../../contributing/demo-app.md)).
 
 ### Three things their parameterisation is picky about
 

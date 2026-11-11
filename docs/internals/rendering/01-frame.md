@@ -207,7 +207,8 @@ It draws over the 3D labels of the layers, which are faint lines under billboard
 The renderer is **not** a free-running loop. A frame is drawn when something calls
 `MapRenderer::requestRedraw()`: camera events, animations, a tile arriving, a label fade in
 progress, a drape/ground cover change, an elevation version change. `MapRenderer::logRedrawSources`
-exists to find out who is asking when the map will not settle.
+exists to find out who is asking when the map will not settle; it, and the 300-frame lines below, are
+compiled in only with `-DMASSIF_FRAME_PROFILER=1` (a global lock per request is not for production).
 
 **One requested frame is not enough to change what is on screen.** The surface is double-buffered
 and `RENDERMODE_WHEN_DIRTY` draws exactly as many frames as were asked for, so a single frame lands

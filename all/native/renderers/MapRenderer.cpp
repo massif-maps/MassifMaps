@@ -808,6 +808,7 @@ namespace massif {
         return projectionSurface;
     }
         
+#if MASSIF_FRAME_PROFILER
     // Call-site tally for requestRedraw; locked, as requests come from every thread.
     static std::mutex redrawSourceMutex;
     static std::map<std::pair<const char*, int>, int> redrawSourceCounts;
@@ -834,12 +835,15 @@ namespace massif {
         }
         Log::Infof("MapRenderer: redraw requests by source - %s", summary.empty() ? "none" : summary.c_str());
     }
+#endif
 
     void MapRenderer::requestRedraw(const char* callerFile, int callerLine) const {
+#if MASSIF_FRAME_PROFILER
         {
             std::lock_guard<std::mutex> lock(redrawSourceMutex);
             redrawSourceCounts[std::make_pair(callerFile, callerLine)]++;
         }
+#endif
 
         DirectorPtr<RedrawRequestListener> redrawRequestListener = _redrawRequestListener;
 
@@ -4447,6 +4451,7 @@ namespace massif {
         if (needRedraw) {
             requestRedraw();
         }
+#if MASSIF_FRAME_PROFILER
         // Mask: low half base pass, high half 3D pass, a bit per layer; no bit = an external requestRedraw.
         {
             static int frames = 0;
@@ -4468,6 +4473,7 @@ namespace massif {
                 redrawMaskSum = 0;
             }
         }
+#endif
     }
 
     void MapRenderer::drawOverlayLayers(float deltaSeconds, const ViewState& viewState) {

@@ -269,4 +269,4 @@ lists what to rename.
 * Before changing the renderer, read [`docs/internals/rendering/`](docs/internals/rendering/index.mdx)
   — it is written so one page covers one subsystem.
 * **A change ships with its documentation update in the same commit.** Which page, and the bar for
-  each kind of doc, is in [`.claude/CLAUDE.md`](.claude/CLAUDE.md#documentation--every-change-updates-it).
+  each kind of doc, is in [`CLAUDE.md`](CLAUDE.md#where-the-documentation-is) and the [document skill](.claude/skills/document/SKILL.md).

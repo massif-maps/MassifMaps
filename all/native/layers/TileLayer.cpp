@@ -27,6 +27,7 @@
 #include "terrain/TerrainTileTransformer.h"
 #include "ui/UTFGridClickInfo.h"
 #include "utils/Const.h"
+#include "utils/DebugSwitch.h"
 #include "utils/TileUtils.h"
 #include "utils/Log.h"
 #include "layers/TileProbe.h"
@@ -35,10 +36,6 @@
 #include "layers/CompositeVectorTileLayer.h"
 #include "layers/RasterTileLayer.h"
 #include "layers/HillshadeRasterTileLayer.h"
-#endif
-
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
 #endif
 
 #include <vt/TileTransformer.h>
@@ -81,33 +78,17 @@ namespace massif {
     }
 #endif
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     static bool isLineSourceDensityForced() {
-        static const bool forced = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return __system_property_get("debug.massif.linesourcedensity", property) > 0 && property[0] == '1';
-        }();
+        static const bool forced = DebugSwitch::flag("linesourcedensity", false);
         return forced;
     }
 
     // Forces area source density even for undraped fills (an un-subdivided fill floats above the ground).
     //   adb shell setprop debug.massif.areasourcedensity 1
     static bool isAreaSourceDensityForced() {
-        static const bool forced = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return __system_property_get("debug.massif.areasourcedensity", property) > 0 && property[0] == '1';
-        }();
+        static const bool forced = DebugSwitch::flag("areasourcedensity", false);
         return forced;
     }
-#else
-    static bool isLineSourceDensityForced() {
-        return false;
-    }
-
-    static bool isAreaSourceDensityForced() {
-        return false;
-    }
-#endif
 
 
     TileLayer::~TileLayer() {

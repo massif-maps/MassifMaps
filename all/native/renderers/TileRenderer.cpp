@@ -23,13 +23,8 @@
 #include "terrain/DrapeTuning.h"
 #include "terrain/ElevationManager.h"
 #include "utils/Const.h"
+#include "utils/DebugSwitch.h"
 #include "utils/Log.h"
-
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#include <cstdlib>
-#endif
-#include "utils/Const.h"
 
 #include <limits>
 #include <atomic>
@@ -894,87 +889,34 @@ namespace massif {
     }
 
     // Measurement switches (demo builds): debug.massif.groundpaint, demtaps (16/4/1), tilebg.
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TileRenderer::isTerrainTileBackgroundsForced() {
-        static const bool forced = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return __system_property_get("debug.massif.tilebg", property) > 0 && property[0] == '1';
-        }();
+        static const bool forced = DebugSwitch::flag("tilebg", false);
         return forced;
     }
-#else
-    bool TileRenderer::isTerrainTileBackgroundsForced() {
-        return false;
-    }
-#endif
 
     // Stencil masks stop a proxy tile painting through its replacement: A/B the zoom transitions.
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int TileRenderer::tileMasksMode() {
         static const int mode = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.tilemasks", property) > 0) {
-                if (property[0] == '0') {
-                    return 0;
-                }
-                if (property[0] == '1') {
-                    return 1;
-                }
-            }
-            return -1;
+            std::string value = DebugSwitch::text("tilemasks");
+            return value.empty() || (value[0] != '0' && value[0] != '1') ? -1 : value[0] - '0';
         }();
         return mode;
     }
+
     bool TileRenderer::isInline3DEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.inline3d", property) > 0 && property[0] == '0');
-        }();
+        static const bool enabled = DebugSwitch::flag("inline3d", true);
         return enabled;
     }
-#else
-    int TileRenderer::tileMasksMode() {
-        return -1;
-    }
 
-    bool TileRenderer::isInline3DEnabled() {
-        return true;
-    }
-#endif
-
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int TileRenderer::terrainDemTaps() {
-        static const int taps = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.demtaps", property) > 0) {
-                int value = std::atoi(property);
-                if (value > 0) {
-                    return value;
-                }
-            }
-            return 16;
-        }();
+        static const int taps = static_cast<int>(DebugSwitch::number("demtaps", 16, 0.0, false));
         return taps;
     }
-#else
-    int TileRenderer::terrainDemTaps() {
-        return 16;
-    }
-#endif
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TileRenderer::isTerrainPaintOnGroundForced() {
-        static const bool forced = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return __system_property_get("debug.massif.groundpaint", property) > 0 && property[0] == '1';
-        }();
+        static const bool forced = DebugSwitch::flag("groundpaint", false);
         return forced;
     }
-#else
-    bool TileRenderer::isTerrainPaintOnGroundForced() {
-        return false;
-    }
-#endif
 
     bool TileRenderer::onDrawFrame(float deltaSeconds, const ViewState& viewState) {
         auto lock = lockTimed();
@@ -1125,13 +1067,9 @@ namespace massif {
         tileRenderer->setTerrainTextureProvider(terrainTextureProvider);
         if (terrainMode && activeTerrainOptions) {
             pushLabelElevationProvider(*tileRenderer, viewState, activeTerrainOptions);
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
-            {
-                // debug.massif.labelanchor 0: anchor labels in the frame, the pre-2026-09 path.
-                char property[PROP_VALUE_MAX] = { 0 };
-                tileRenderer->setLabelAnchorOnCull(!(__system_property_get("debug.massif.labelanchor", property) > 0 && property[0] == '0'));
-            }
-#endif
+            // labelanchor 0: anchor labels in the frame, the pre-2026-09 path.
+            static const bool labelAnchorOnCull = DebugSwitch::flag("labelanchor", true);
+            tileRenderer->setLabelAnchorOnCull(labelAnchorOnCull);
             pushExtrusionElevationProvider(*tileRenderer, activeTerrainOptions);
         } else {
             // Bases first: dropping the labels flat re-measures the roofs, which must stand on the flat map too.
@@ -1603,28 +1541,16 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
     }
 
     float TileRenderer::getTerrainContentDepthShift() {
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
-        static const float depthShift = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.depthshift", property) > 0) {
-                return static_cast<float>(std::atof(property));
-            }
-            return 0.0f;
-        }();
+        static const float depthShift = static_cast<float>(DebugSwitch::number("depthshift", 0.0, std::numeric_limits<double>::lowest()));
         return depthShift;
-#else
-        return 0.0f;
-#endif
     }
 
     std::optional<std::regex> TileRenderer::noDrapeLayerFilter(const std::string& optionFilter) {
         std::string pattern = optionFilter;
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
-        char property[PROP_VALUE_MAX] = { 0 };
-        if (__system_property_get("debug.massif.nodrapelayers", property) > 0 && property[0]) {
-            pattern = (std::strcmp(property, "none") == 0 ? std::string() : property);
+        std::string overridden = DebugSwitch::text("nodrapelayers");
+        if (!overridden.empty()) {
+            pattern = (overridden == "none" ? std::string() : overridden);
         }
-#endif
         // Compiling a regex per frame is not free, and this changes about never.
         static std::mutex cacheMutex;
         static std::string cachedPattern;
@@ -1647,39 +1573,17 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return cachedFilter;
     }
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     float TileRenderer::terrainLineClearanceMeters() {
-        static const float meters = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.lineclearance", property) > 0) {
-                return static_cast<float>(std::atof(property));
-            }
-            return DEFAULT_LINE_CLEARANCE_METERS;
-        }();
+        static const float meters = static_cast<float>(DebugSwitch::number("lineclearance", DEFAULT_LINE_CLEARANCE_METERS, std::numeric_limits<double>::lowest()));
         return meters;
     }
-#else
-    float TileRenderer::terrainLineClearanceMeters() {
-        return DEFAULT_LINE_CLEARANCE_METERS;
-    }
-#endif
 
     int TileRenderer::terrainPaintDetailLevels() {
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         static const int levels = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.paintdetail", property) > 0) {
-                int value = std::atoi(property);
-                if (value >= 0 && value <= 4) {
-                    return value;
-                }
-            }
-            return DEFAULT_PAINT_DETAIL_LEVELS;
+            int value = static_cast<int>(DebugSwitch::number("paintdetail", DEFAULT_PAINT_DETAIL_LEVELS));
+            return value <= 4 ? value : DEFAULT_PAINT_DETAIL_LEVELS;
         }();
         return levels;
-#else
-        return DEFAULT_PAINT_DETAIL_LEVELS;
-#endif
     }
 
     bool TileRenderer::isPlanarProjectionMode() const {

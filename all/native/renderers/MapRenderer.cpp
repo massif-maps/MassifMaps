@@ -58,14 +58,12 @@
 #include "renderers/workers/VTLabelPlacementWorker.h"
 #include "renderers/workers/CullWorker.h"
 #include "utils/Const.h"
+#include "utils/DebugSwitch.h"
 #include "utils/FrameProfiler.h"
 #include "utils/Log.h"
 #include <vt/AnimationProgress.h>
 #include "components/FogOptions.h"
 
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
 #include "utils/ThreadUtils.h"
 
 #include <vt/RenderStats.h>
@@ -1776,19 +1774,10 @@ namespace massif {
         GLContext::CheckGLError("MapRenderer::onDrawFrame");
     }
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool MapRenderer::isBackgroundEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.background", property) > 0 && property[0] == '0');
-        }();
+        static const bool enabled = DebugSwitch::flag("background", true);
         return enabled;
     }
-#else
-    bool MapRenderer::isBackgroundEnabled() {
-        return true;
-    }
-#endif
 
     bool MapRenderer::isGroundCovered(const ViewState& viewState, bool skyDrawn, bool postProcessing) const {
         // The tiles paint the style background themselves; the plane under them costs a full-screen pass.
@@ -3707,16 +3696,7 @@ namespace massif {
                     static const double DRAPE_BAKE_TIME_BUDGET = 16.0;       // ms, camera moving
                     static const double DRAPE_BAKE_TIME_BUDGET_STILL = 60.0; // ms, camera at rest
                     // The moving budget outlives the move by this; debug.massif.drapesettle <ms> overrides it (demo builds).
-                    static const double DRAPE_BAKE_SETTLE_MS = [] {
-                        double settle = 300.0;
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
-                        char property[PROP_VALUE_MAX] = { 0 };
-                        if (__system_property_get("debug.massif.drapesettle", property) > 0) {
-                            settle = std::atof(property);
-                        }
-#endif
-                        return settle;
-                    }();
+                    static const double DRAPE_BAKE_SETTLE_MS = DebugSwitch::number("drapesettle", 300.0);
                     struct BakeRequest { vt::TileId tileId; std::size_t fingerprint; std::size_t drapedIndex; };
                     std::vector<BakeRequest> blankTiles, standInTiles, partialTiles, staleTiles, restackTiles;
 

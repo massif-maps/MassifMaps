@@ -11,6 +11,7 @@
 #include "terrain/ElevationTileGrid.h"
 #include "terrain/SmoothBaseLevel.h"
 #include "utils/Const.h"
+#include "utils/DebugSwitch.h"
 #include "utils/Log.h"
 
 #include <vt/RenderStats.h>
@@ -19,10 +20,6 @@
 #include <chrono>
 #include <ctime>
 #include <vector>
-
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
 
 namespace massif {
 
@@ -53,21 +50,12 @@ namespace massif {
         }
     };
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     // Patch a texture's border ring instead of re-encoding it whole when a neighbour lands.
     // Off with: adb shell setprop debug.massif.demborderpatch 0
     static bool isBorderPatchEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.demborderpatch", property) > 0 && property[0] == '0');
-        }();
+        static const bool enabled = DebugSwitch::flag("demborderpatch", true);
         return enabled;
     }
-#else
-    static bool isBorderPatchEnabled() {
-        return true;
-    }
-#endif
 
     ElevationTextureCache::GridKey ElevationTextureCache::gridKey(const std::shared_ptr<ElevationTileGrid>& grid) {
         // The decode, not the tile: a MeshResolution change re-decodes every grid under the same tile

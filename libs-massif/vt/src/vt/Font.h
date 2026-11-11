@@ -19,19 +19,16 @@
 
 namespace massif::vt {
     inline constexpr int GLYPH_RENDER_SIZE = 27;
-    // The SDF spread FreeType renders, in texels: also the padding around the glyph, and therefore the
-    // largest halo that can be drawn. It must MATCH the range the field is ENCODED over
-    // (BITMAP_SDF_SCALE), or the field truncates mid-gradient and a halo boxes every letter.
+    // The SDF spread FreeType renders, in texels: also the glyph padding, so the largest halo that can be drawn. It must MATCH the
+    // range the field is ENCODED over (BITMAP_SDF_SCALE), or the field truncates mid-gradient and a halo boxes every letter.
     inline constexpr int GLYPH_RENDER_SPREAD = 8; // NOTE: keep it equal to BITMAP_SDF_SCALE
 
-    // How much the sampled texture value (0..1) changes over one texel of signed distance. ONE
-    // convention for every SDF in the renderer: 128 / BITMAP_SDF_SCALE per texel, so 0..255 spans
-    // +-BITMAP_SDF_SCALE texels. A glyph encoded over a NARROWER range boxes every letter.
+    // How much the sampled texture value (0..1) changes per texel of signed distance. ONE convention for every SDF: 128 / BITMAP_SDF_SCALE
+    // per texel, so 0..255 spans +-BITMAP_SDF_SCALE texels. A glyph encoded over a NARROWER range boxes every letter.
     inline constexpr float GLYPH_SDF_UNIT = (128.0f / BITMAP_SDF_SCALE) / 255.0f;
 
-    // The em sizes a glyph may be rasterized at, as tangram has them (s_fontRasterSizes): a label takes
-    // the smallest that still covers it and is only magnified past the last. One raster size for every
-    // label undersampled the field itself, which is what made large text soft.
+    // The em sizes a glyph may be rasterized at, as tangram has them (s_fontRasterSizes): a label takes the smallest that covers it,
+    // magnified only past the last. One raster size for every label undersampled the field and made large text soft.
     inline constexpr std::array<int, 3> GLYPH_RENDER_EM_SIZES = { { 16, 28, 40 } };
 
     // The render size (em plus the SDF spread, which is what FontManager and the renderer count in)
@@ -73,9 +70,8 @@ namespace massif::vt {
             // The glyph belongs to the label's SECOND run of text (TextFormatter::Options), which
             // may have its own colour. Set by the formatter, read when the quads are built.
             bool secondary = false;
-            // The glyph belongs to the label's ICON run - the glyphs drawn before the text and left
-            // where they are when the text moves to another side (TextLabelStyle::iconGlyphs). Its
-            // own colour again, so a font icon does not have to be the colour of the name.
+            // The glyph belongs to the label's ICON run: drawn before the text and left in place when the text moves to another side
+            // (TextLabelStyle::iconGlyphs). Its own colour again, so a font icon need not be the name's colour.
             bool icon = false;
 
             explicit Glyph(std::uint32_t utf32Char, CodePoint codePoint, const GlyphMap::Glyph& baseGlyph, const cglib::vec2<float>& size, const cglib::vec2<float>& offset, const cglib::vec2<float>& advance) : utf32Char(utf32Char), codePoint(codePoint), baseGlyph(baseGlyph), size(size), offset(offset), advance(advance) { }

@@ -1700,9 +1700,8 @@ namespace massif::vt {
         _labelMapGeneration++; // invalidates a prepare running off the mutex
     }
     
-    // The style layer's occluded opacity, else this layer's default. Eased like a fade: the occluders change as
-    // building tiles load and grow in, and an instant verdict flickered a half-hidden name. A label not judged
-    // for a while (it was hidden, or is new) takes the verdict outright.
+    // The occluded opacity eases like a fade: occluders grow in as building tiles load, and an instant verdict flickered a half-hidden name.
+    // A label not judged for a while (it was hidden, or is new) takes the verdict outright.
     void GLTileRenderer::judgeLabelOcclusion(Label& label) {
         float occludedOpacity = std::min(1.0f, label.getStyle()->occlusionOpacity.value_or(_labelOcclusionOpacity));
         bool judged = label.isOcclusionKnown() && _labelOcclusionFrame - label.getOcclusionStamp() < LABEL_OCCLUSION_STALE_FRAMES;
@@ -3221,8 +3220,7 @@ namespace massif::vt {
         }
 
         VT_STAT_SPLIT(labelReleaseNs, labelMapClock);
-        // A new id where a label of the layer stood is the same POI: it keeps the icon's state, the text fades in.
-        // A fresh start hid it until the next placement pass, a blink at every zoom level its name appears at.
+        // A new id where a label of the layer stood is the same POI: it keeps the icon's state and the text fades in, no blink.
         // Two icons would overlap, so the old one goes at once; the name fades in only when the old one drew none.
         auto takeOver = [](Label& next, Label& previous) {
             next.setVisible(previous.isVisible());
@@ -4219,14 +4217,8 @@ namespace massif::vt {
         return !renderLayerMap.empty();
     }
 
-    // The ghost pass of line-occlusion-opacity (01-frame.md). It runs once per frame after EVERY layer's 3D pass, over
-    // the renderers in stack order, so the ghost of the topmost layer is on top: they are translucent, and drawn
-    // from inside each layer's own pass the route's ghost lay over the arrow's, whatever the layers' order.
-    //
-    // With a stencil buffer all ghosts of the frame are one draw-once group (03-vt-renderer.md): bit 0x80 is cleared
-    // once, then each pass runs over the WHOLE stack, top renderer first and top style layer first within it, so a
-    // pixel takes the colour of the topmost ghost that covers it, at the one faint opacity: a casing never tints its
-    // fill and a lower layer never shows through a higher one. Without one the ghosts draw in stack order.
+    // Ghost pass of line-occlusion-opacity (01-frame.md), once per frame after EVERY layer's 3D pass so the topmost layer's ghost lies on top.
+    // With a stencil all ghosts are one draw-once group (03-vt-renderer.md, bit 0x80): the topmost ghost's colour wins, a casing never tints its fill.
     void GLTileRenderer::flushOccludedGeometry() {
         std::vector<std::shared_ptr<GLTileRenderer>> renderers;
         renderers.swap(occludedQueue());
@@ -4260,11 +4252,8 @@ namespace massif::vt {
             glStencilMask(0);
         }
 
-        // Two sweeps with a stencil buffer. First the pixels an extrusion stamped (BUILDING_STENCIL_BIT): there it
-        // won the depth test against the lines, i.e. it hides them, so the ghost is wanted whatever the depth pulls
-        // of the layers are (the building's own ordinal is lower than the lines' - a low or flattened roof hides a
-        // line yet sits nearer than the ghost's depth by less than the pulls differ). Then the depth test as before,
-        // for what no extrusion stamped: a ridge. The draw-once bit makes each pixel belong to one sweep.
+        // Two sweeps: first the pixels an extrusion stamped (BUILDING_STENCIL_BIT) - it hides the lines there, whatever the depth pulls say;
+        // then the depth test for what none stamped (a ridge). The draw-once bit makes each pixel belong to one sweep.
         for (int sweep = 0; sweep < 2; sweep++) {
             bool stampSweep = sweep == 0;
             if (!(sweeps & (stampSweep ? GHOST_SWEEP_STAMP : GHOST_SWEEP_DEPTH))) {
@@ -4381,9 +4370,8 @@ namespace massif::vt {
                     if (drawOncePass == DrawOncePass::NONE) {
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
                     } else {
-                        // One geometry batches the styles of several rules (a maneuver arrow's four attachments, a
-                        // `back/` line and its main line), drawn in style order by the index buffer. A pixel is
-                        // stamped by the first fragment, so draw the batch once per style, the topmost first.
+                        // One geometry batches the styles of several rules (a maneuver arrow's attachments, a `back/` line and its main line) in style order.
+                        // A pixel is stamped by the first fragment, so draw the batch once per style, the topmost first.
                         for (int style = geometry->getStyleParameters().parameterCount - 1; style >= 0; style--) {
                             _ghostStyle = style;
                             renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity * *occlusionOpacity, renderLayer->tileSize, geometry);
@@ -4541,9 +4529,8 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass) {
-        // Group only labels needing a GPU height by tile (a batch binds one tile's elevation); anchored
-        // ones share a batch to keep the draw count down. Stable, so the culler's order survives;
-        // the invisible are dropped first, since the loop below skips them and most labels are.
+        // Group only labels needing a GPU height by tile (a batch binds one tile's elevation); anchored ones share a batch.
+        // Stable so the culler's order survives; the invisible go first, as the loop below skips them and most labels are.
         VT_STAT_CLOCK(sortClock);
         std::vector<std::shared_ptr<Label>> grouped;
         if (_terrainMode) {
@@ -5063,9 +5050,8 @@ namespace massif::vt {
         float texelSizeX = static_cast<float>(std::max(1, terrainTexture.textureSize(0)));
         float texelSizeY = static_cast<float>(std::max(1, terrainTexture.textureSize(1)));
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], texelSizeX, texelSizeY, 1.0f / texelSizeX, 1.0f / texelSizeY);
-        // Lattice clamp: draped geometry snaps its height to the surface's grid, in node-uv units (0 =
-        // off). The surface itself needs it only on a stitched edge. Never on a sphere: tile-local xy
-        // is curved there (docs/internals/rendering/18-globe.md).
+        // Lattice clamp: draped geometry snaps its height to the surface's grid, in node-uv units (0 = off); the surface needs it only on a stitched edge.
+        // Never on a sphere: tile-local xy is curved there (docs/internals/rendering/18-globe.md).
         bool latticeNodes = (gridSurface && edgeCoarsening == cglib::vec4<float>(1, 1, 1, 1)) || _transformer->isSpherical();
         if (terrainGridSurfaces() && _terrainRegularGridResolution > 0 && _terrainDemTaps >= 16 && !latticeNodes) {
             double worldTileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
@@ -5150,9 +5136,8 @@ namespace massif::vt {
         if (params.baseOffset < 0 || params.texCoordOffset < 0) {
             return true; // not an extrusion
         }
-        // A foot vertex's shadow lookup is its building's top lifted by how far its ground is under the level
-        // base, so it lands at the roof on a slope too (08-lighting-sky-fog.md). The unlifted top is read off the
-        // run's first vertex above the foot, and a re-resolve starts from it again.
+        // A foot vertex's shadow lookup is its building's top lifted by how far its ground is under the level base, so it
+        // lands at the roof on a slope too (08-lighting-sky-fog.md); the unlifted top is read off the run's first vertex above the foot.
         auto setRunFootTop = [&](const TileGeometry::BaseRun& run, float dropMeters) {
             const VertexArray<std::uint8_t>& data = geometry->getVertexGeometry();
             if (params.attribsOffset < 0 || params.heightOffset < 0 || data.empty()) {

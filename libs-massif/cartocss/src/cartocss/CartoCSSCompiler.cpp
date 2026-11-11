@@ -91,9 +91,8 @@ namespace massif::css {
                 predicateResults.push_back(boost::indeterminate(result) ? PREDICATE_INDETERMINATE : (result ? PREDICATE_TRUE : PREDICATE_FALSE));
             }
 
-            // The optimized property lists are a pure function of these results, so identical results at
-            // the next zoom mean identical lists and attachments. Comparing 80 bytes here replaces
-            // rebuilding and deep-comparing every property of the layer.
+            // The optimized property lists are a pure function of these results, so identical results at the next zoom mean identical
+            // lists and attachments; comparing 80 bytes replaces deep-comparing every property of the layer.
             if (zoom > minZoom && predicateResults == prevPredicateResults) {
                 continue;
             }
@@ -306,9 +305,8 @@ namespace massif::css {
             std::size_t fieldId = state.getPropertyFieldId(property.property);
 
             for (auto propertySetIt = propertySets.begin(); propertySetIt != propertySets.end(); propertySetIt++) {
-                // Check if this attribute is already set for given property set. The property that
-                // set it came earlier in this list, which compileLayer sorted by decreasing
-                // specificity, so it always wins over this one - no need to compare them.
+                // This attribute is already set if an earlier property set it: the list is sorted by decreasing specificity, so that one
+                // always wins and no comparison is needed.
                 if (state.propertySetHasField(*propertySetIt, fieldId)) {
                     continue;
                 }

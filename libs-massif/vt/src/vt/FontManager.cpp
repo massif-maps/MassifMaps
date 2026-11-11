@@ -33,9 +33,8 @@ namespace massif::vt {
 
             FT_Init_FreeType(&_library);
 
-            // The glyph field is built from a rasterized coverage bitmap by the 'bsdf' module,
-            // never from the outline by the 'sdf' one - see addFreeTypeGlyph for why. Both carry
-            // their own spread, and both have to match the range the field is encoded over.
+            // The glyph field is built from a rasterized coverage bitmap by the 'bsdf' module, never from the outline by 'sdf' (see
+            // addFreeTypeGlyph). Both carry their own spread, which has to match the range the field is encoded over.
             FT_Int spread = GLYPH_RENDER_SPREAD;
             FT_Property_Set(_library, "sdf", "spread", &spread);
             FT_Property_Set(_library, "bsdf", "spread", &spread);
@@ -352,9 +351,8 @@ namespace massif::vt {
                     FT_Outline_Embolden(&face->glyph->outline, strength);
                 }
             }
-            // Rasterize coverage first, then let FreeType's 'bsdf' module build the field from that
-            // bitmap, as tangram does. FreeType's outline SDF gets the sign wrong where a stem meets a
-            // shoulder, so the middle of a stroke reads as outside the glyph.
+            // Rasterize coverage first, then let FreeType's 'bsdf' module build the field from that bitmap, as tangram does. FreeType's
+            // outline SDF gets the sign wrong where a stem meets a shoulder, so the middle of a stroke reads as outside.
             error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
             if (error != 0 && error != FT_Err_Cannot_Render_Glyph) {
                 return 0;

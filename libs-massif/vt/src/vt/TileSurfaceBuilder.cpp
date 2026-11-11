@@ -213,14 +213,12 @@ namespace massif::vt {
             i2 = i1;
         }
 
-        // GPU terrain skirts: extrude the tile borders downwards to cover cracks between neighbours
-        // sampling different elevation levels. The skirt bottom z is a sentinel the terrain vertex
-        // shader decodes, so skirts are only built when the renderer enables them.
+        // GPU terrain skirts: extrude the tile borders downwards to cover cracks between neighbours sampling different elevation levels.
+        // The skirt bottom z is a sentinel the terrain vertex shader decodes, so skirts are built only when the renderer enables them.
         if (_terrainSkirts) {
             float drop = SKIRT_DEPTH * static_cast<float>(matrix(0, 0));
-            // On a SPHERE the vertex position is curved, so overwriting its z with a sentinel would
-            // destroy the point the shader displaces from. The drop travels in its own attribute
-            // there, and every vertex needs an entry once any of them does.
+            // On a SPHERE the vertex position is curved, so overwriting z with a sentinel would destroy the point the shader displaces from.
+            // The drop travels in its own attribute there, and every vertex needs an entry once any of them does.
             bool sphericalSkirts = _transformer->isSpherical();
             if (sphericalSkirts && skirtDrops.size() < coords2D.size()) {
                 skirtDrops.fill(0.0f, coords2D.size() - skirtDrops.size());
@@ -452,9 +450,8 @@ namespace massif::vt {
         VertexArray<cglib::vec3<float>> binormals;
         VertexArray<std::size_t> indices;
 
-        // Flat planar geometry (matches DefaultVertexTransformer): the height is applied on the GPU from
-        // the elevation texture, so the mesh z is 0 and the normal/binormal are the constant flat-tile
-        // frame.
+        // Flat planar geometry (matches DefaultVertexTransformer): height is applied on the GPU from the elevation texture, so mesh z is 0
+        // and normal/binormal are the constant flat-tile frame.
         float invRes = 1.0f / static_cast<float>(res);
         for (int j = 0; j <= res; j++) {
             float v = j * invRes;

@@ -84,14 +84,12 @@ namespace massif::mvt {
         // A custom head outline as an SVG-style path (M/L/Z, absolute), in multiples of the line
         // width: x runs along the line, y across it. Empty means the built-in triangle.
         StringProperty _arrowPath = StringProperty("");
-        // Applied to the fitted contour, about its centre. The scale multiplies what the box gave
-        // it; the rotation is in degrees, clockwise on screen, and turns the head relative to the
-        // direction of travel - an icon drawn pointing up needs 90.
+        // Applied to the fitted contour about its centre; rotation is degrees clockwise on screen relative to
+        // the direction of travel (an icon drawn pointing up needs 90).
         FloatProperty _arrowScale = FloatProperty(1.0f);
         FloatProperty _arrowRotation = FloatProperty(0.0f);
-        // 'drape' (the default, and what every style did before this existed), 'span' for a bridge
-        // or 'underground' for a tunnel: a structure that does NOT follow the ground but takes its
-        // height from its own two ends. See vt::LineElevationMode.
+        // 'drape' (default), 'span' for a bridge or 'underground' for a tunnel: those take their height from
+        // their own two ends instead of the ground. See vt::LineElevationMode.
         StringProperty _elevationMode = StringProperty("drape");
         // mapbox's line-occlusion-opacity: the opacity a second, ghost draw keeps where 3D content
         // hides the line. 0 = hidden there, as before, and the line stays draped.

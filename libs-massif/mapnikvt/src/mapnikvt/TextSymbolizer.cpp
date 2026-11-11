@@ -42,9 +42,8 @@ namespace massif::mvt {
         bool allowOverlap = _allowOverlap.getValue(exprContext);
         bool allowOverlapSameFeatureId = _allowOverlapSameFeatureId.getValue(exprContext);
         bool sameFeatureIdDependent = _sameFeatureIdDependent.getValue(exprContext);
-        // 'clip' means something entirely different from allow-overlap: clipped text leaves the label
-        // pipeline for the tile geometry, so it gets no culler, no min-distance and no placement.
-        // Upstream defaulted it to allow-overlap, handing that path to every overlapping style.
+        // 'clip' is not allow-overlap: clipped text leaves the label pipeline for the tile geometry (no culler,
+        // min-distance or placement). Upstream defaulted it to allow-overlap.
         bool clip = _clip.getValue(exprContext);
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
@@ -96,9 +95,8 @@ namespace massif::mvt {
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(_fill.getFunction(exprContext), _opacity.getFunction(exprContext));
         vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
         vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
-        // Style pixels, like the text size beside it: the halo has to keep its width RELATIVE to the
-        // glyphs on every display, and the renderer measures in device pixels. Left unscaled it shrank
-        // against its own text as the dpi rose.
+        // Style pixels, like the text size: the halo must keep its width relative to the glyphs on every
+        // display, and the renderer measures in device pixels.
         vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale * pixelScale);
 
         vt::TileId tileId = exprContext.getTileId();
@@ -111,9 +109,8 @@ namespace massif::mvt {
         }
 
         float bitmapSize = -1;
-        // Every line placement walks the line at 'spacing' and is measured with the run length a
-        // line placement needs. Only the two that lay a glyph RUN out get the line itself
-        // (vt::Label::isLineRun); 'billboard-line-repeat' puts one upright billboard per step.
+        // Every line placement walks the line at 'spacing'; only the two that lay a glyph RUN out get the
+        // line itself (vt::Label::isLineRun), 'billboard-line-repeat' puts one billboard per step.
         bool billboardRepeat = (placement == vt::LabelOrientation::LINE_BILLBOARD_REPEAT);
         bool repeatAlongLine = (placement == vt::LabelOrientation::LINE || placement == vt::LabelOrientation::LINE_BILLBOARD_3D || billboardRepeat);
         bool lineRun = (repeatAlongLine && !billboardRepeat);
@@ -123,9 +120,8 @@ namespace massif::mvt {
         // a run laid along the line is tested against its turns; a billboard repeat is not
         float glyphSize = (lineRun ? sizeStatic : 0.0f);
         float spacing = _spacing.getValue(exprContext);
-        // A repeat must not stack on itself: 'spacing' is walked per TILE, so each tile starts its own
-        // phase and two anchors can land a few pixels apart across a border. Only the culler can see
-        // that, and it needs a group distance - the label's own size is the floor.
+        // A repeat must not stack on itself: 'spacing' is walked per TILE, so anchors can land a few pixels apart
+        // across a border. Only the culler sees that and needs a group distance; the label's size is the floor.
         if (repeatAlongLine && spacing > 0 && !_minimumDistance.isDefined()) {
             minimumDistance = sizeStatic * fontScale;
         }
@@ -280,14 +276,12 @@ namespace massif::mvt {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 
-                    // One counter for the WHOLE feature, so each repeat along the line gets a unique id.
-                    // Restarting it per segment gave one repeat in every segment the same id, and labels
-                    // sharing an id are merged - so text-spacing placed the repeats then collapsed them.
+                    // One counter for the WHOLE feature so each repeat gets a unique id; per-segment restarts shared ids,
+                    // and labels sharing an id are merged, collapsing the text-spacing repeats.
                     int counter = 0;
                     for (const auto& vertices : verticesList) {
-                        // A run with no spacing is ONE run for the whole line, and it is the line
-                        // that carries it. A repeat has no run, so spacing 0 falls through to
-                        // generateLinePoints, which steps it once - at the middle, like a billboard.
+                        // A run with no spacing is ONE run carried by the line; a repeat has no run, so spacing 0 falls
+                        // through to generateLinePoints, which steps it once at the middle.
                         if (spacing <= 0 && lineRun) {
                             textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                             continue;
@@ -437,9 +431,8 @@ namespace massif::mvt {
 
     vt::LabelOrientation TextSymbolizer::getPlacement(const ExpressionContext& exprContext) const {
         vt::LabelOrientation placement = _placement.getValue(exprContext);
-        // CALLOUT keeps its placement: the rotation is applied to the glyph quads by the style
-        // transform like any other billboard, and a rotated callout (the peak-finder look) is a
-        // normal thing to ask for.
+        // CALLOUT keeps its placement: the style transform rotates its glyph quads like any billboard,
+        // and a rotated callout (peak-finder look) is legitimate.
         if (placement != vt::LabelOrientation::LINE && placement != vt::LabelOrientation::CALLOUT) {
             if (_orientationAngle.isDefined()) { // if orientation is explictly defined, use POINT placement
                 placement = vt::LabelOrientation::POINT;
@@ -480,9 +473,8 @@ namespace massif::mvt {
             return symbolizerContext.getFontManager()->getFont(name, baseFont);
         });
 
-        // Rasterize the glyphs at a size that covers the label instead of magnifying one raster to every
-        // size, which left large text soft (tangram's s_fontRasterSizes ladder). The style keeps the last
-        // word: a face named 'face?glyph_size=N' is handed back untouched.
+        // Rasterize glyphs at a size covering the label instead of magnifying one raster (tangram's s_fontRasterSizes
+        // ladder); a face named 'face?glyph_size=N' is handed back untouched.
         const SymbolizerContext::Settings& settings = symbolizerContext.getSettings();
         float emSizePixels = _size.getStaticValue(exprContext) * settings.getFontScale() * settings.getPixelScale();
         if (std::shared_ptr<const vt::Font> sizedFont = symbolizerContext.getFontManager()->getFont(font, vt::pickGlyphRenderSize(emSizePixels))) {
@@ -523,9 +515,8 @@ namespace massif::mvt {
         float secondaryScale = _secondaryScale.getValue(exprContext);
         float secondaryGap = _secondaryDx.getValue(exprContext) * fontScale;
         float secondaryOffset = -_secondaryDy.getValue(exprContext) * fontScale;
-        // NOT scaled by fontScale, unlike the offsets above: splitLines accumulates a word's width from
-        // advances taken at the STYLE size, so a threshold in device pixels wraps fontScale times too
-        // late. Where a label wraps is a property of the style, not of the display.
+        // NOT scaled by fontScale: splitLines sums advances at the STYLE size, so a device-pixel threshold
+        // wraps fontScale times too late. Where a label wraps belongs to the style, not the display.
         return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth, characterSpacing, lineSpacing, secondaryText, secondaryScale, secondaryGap, secondaryOffset);
     }
 }

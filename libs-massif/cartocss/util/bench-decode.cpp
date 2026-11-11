@@ -124,10 +124,8 @@ namespace {
         return hasher.value;
     }
 
-    // tileHash with the batching taken out, so two styles drawing the same features from different
-    // attachments compare equal: per kind (flat 2D, 3D...) the triangles drawn and the set of slots.
-    // Flat lines and fills share batches (a plain fill joins a line or a patterned batch), so a
-    // slot carries the fill pattern it samples, and a line its dash.
+    // tileHash without batching, so two styles drawing the same features from different attachments compare equal: per kind the
+    // triangles drawn and the slots. Flat lines and fills share batches, so a slot carries its fill pattern or dash.
     std::uint64_t contentHash(const vt::Tile& tile) {
         vt::ViewState viewState;
         viewState.zoom = static_cast<float>(tile.getTileId().zoom) + 0.5f;

@@ -33,9 +33,8 @@ namespace massif::vt {
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const = 0;
 
             virtual void tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const = 0;
-            // The line a LABEL is laid along, never drawn as line geometry - only read, to place glyphs
-            // and anchor them onto the terrain. It needs none of the subdivision a drawn line needs, and
-            // each vertex costs an elevation sample on every re-anchor. Same result by default.
+            // The line a LABEL is laid along, never drawn as geometry - only read to place glyphs and anchor them onto the terrain. It needs
+            // none of a drawn line's subdivision, and each vertex costs an elevation sample on every re-anchor. Same result by default.
             virtual void tesselateLabelLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
                 tesselateLineString(points, count, tesselatedPoints);
             }
@@ -44,18 +43,16 @@ namespace massif::vt {
 
         virtual ~TileTransformer() = default;
 
-        // True when tile geometry is displaced by a terrain elevation - the style variable
-        // 'render::3d'. The transformer is the right source: the layer builds a new one whenever
-        // the terrain is switched, and the tile caches are dropped with it.
+        // True when tile geometry is displaced by a terrain elevation - the style variable 'render::3d'. The transformer is the right
+        // source: the layer builds a new one whenever the terrain is switched, and the tile caches are dropped with it.
         virtual bool isElevationBased() const { return false; }
 
         // True when the renderer bakes flat lines and fills into a per-tile drape texture, which clips
         // them to the tile the way the stencil masks do on a flat map.
         virtual bool isFlatContentDraped() const { return false; }
 
-        // True when the tile surface is a SPHERE rather than the Mercator plane. The terrain
-        // displacement needs it: a height is radial and carries no Mercator stretch, and tile-local
-        // xy is no longer the tile's unit square, so the DEM lookup cannot use it.
+        // True when the tile surface is a SPHERE, not the Mercator plane. Terrain displacement needs it: a height is radial with no Mercator
+        // stretch, and tile-local xy is no longer the tile's unit square, so the DEM lookup cannot use it.
         virtual bool isSpherical() const { return false; }
 
         virtual cglib::vec3<double> calculateTileOrigin(const TileId& tileId) const = 0;

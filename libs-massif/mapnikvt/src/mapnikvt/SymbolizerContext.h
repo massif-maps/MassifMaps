@@ -33,9 +33,8 @@ namespace massif::mvt {
             float getGeometryScale() const { return _geometryScale; }
             float getFontScale() const { return _fontScale; }
             float getZoomLevelBias() const { return _zoomLevelBias; }
-            // Screen pixels per style pixel - the renderer scales everything by it, so a label's
-            // size in style units only becomes a size in pixels here. Glyph rasterization needs it
-            // (see pickGlyphRenderSize); nothing else does.
+            // Screen pixels per style pixel; only glyph rasterization needs it (see pickGlyphRenderSize),
+            // since the renderer scales everything else by it.
             float getPixelScale() const { return _pixelScale; }
 
             const std::shared_ptr<const StyleParameterStore>& getStyleParameterStore() const { return _styleParameterStore; }

@@ -49,9 +49,8 @@ namespace massif::mvt {
         void setStyleParameterStore(std::shared_ptr<const StyleParameterStore> paramStore) { _styleParameterStore = std::move(paramStore); }
         const std::shared_ptr<const StyleParameterStore>& getStyleParameterStore() const { return _styleParameterStore; }
 
-        // While the selecting parameter is folded both ways, it reads as the value forced on it
-        // rather than as the one the store holds - see resolveSelectionParameter. Held by value:
-        // a property that is not foldable copies the context into a per-frame function.
+        // While the selecting parameter is folded both ways it reads as the forced value, not the store's (see
+        // resolveSelectionParameter). Held by value: a non-foldable property copies the context into a per-frame function.
         void setStyleParameterOverride(const std::string& name, const Value& value) { _styleParamOverrideName = name; _styleParamOverrideValue = value; _styleParamOverride = true; }
         void clearStyleParameterOverride() { _styleParamOverride = false; }
         bool hasStyleParameterOverride() const { return _styleParamOverride; }

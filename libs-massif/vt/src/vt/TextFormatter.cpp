@@ -73,9 +73,8 @@ namespace massif::vt {
     }
 
     void TextFormatter::appendSecondaryRun(std::vector<Font::Glyph>& glyphs) const {
-        // The second run is laid out on its own, left aligned, then scaled and placed after the
-        // first one. Its lines keep their relative positions: a CR pseudo-glyph carries an
-        // ABSOLUTE pen position, so every one of them is rebased on the block's origin.
+        // The second run is laid out on its own, left aligned, then scaled and placed after the first. A CR pseudo-glyph carries an
+        // ABSOLUTE pen position, so each line is rebased on the block's origin to keep its relative position.
         std::vector<Font::Glyph> secondary = layoutLines(_options.secondaryText, cglib::vec2<float>(-1, _options.alignment(1)), cglib::vec2<float>(0, 0));
         if (secondary.empty()) {
             return;

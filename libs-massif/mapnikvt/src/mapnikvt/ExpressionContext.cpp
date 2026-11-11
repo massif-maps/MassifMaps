@@ -95,9 +95,8 @@ namespace massif::mvt {
             } else if (name == "view::tilt") {
                 return viewState.tilt;
             } else if (name == "view::distance") {
-                // Metres from the camera to the label being ranked. Only defined where the style function
-                // is evaluated PER LABEL - the culler's ranking pass; 0 in every other evaluation,
-                // including the one the renderer does per batch.
+                // Metres from the camera to the label being ranked; defined only where the function is evaluated PER LABEL
+                // (the culler's ranking pass), 0 otherwise, including the renderer's per-batch evaluation.
                 return viewState.labelDistance;
             } else if (name == "view::brightness") {
                 // mapbox's ["measure-light", "brightness"]. Resolved per frame, so a label whose

@@ -20,9 +20,8 @@ namespace {
         }
     };
 
-    // The bit pattern, not a rounded value: two footprints share a vertex only when the source
-    // repeated the same integer coordinate, and the decoder's transform is affine, so both come
-    // out of it identical. Rounding would instead glue neighbours that merely pass close by.
+    // The bit pattern, not a rounded value: footprints share a vertex only when the source repeated the same integer coordinate,
+    // and the affine decoder keeps them identical. Rounding would glue neighbours that merely pass close by.
     PointKey pointKey(const cglib::vec2<float>& p) {
         PointKey key;
         float x = p(0) == 0.0f ? 0.0f : p(0); // -0 and +0 are the same vertex
@@ -48,9 +47,8 @@ namespace {
         }
     }
 
-    // Where the rings cross the line coord == value, as an interval along the other axis. Only a
-    // segment with its two ends strictly on opposite sides counts: a ring merely touching the line
-    // has no inside to share with the tile on the far side.
+    // Where the rings cross the line coord == value, as an interval along the other axis. Only a segment with its ends strictly
+    // on opposite sides counts: a ring merely touching the line has no inside to share with the far tile.
     bool crossingInterval(const std::vector<const std::vector<cglib::vec2<float>>*>& rings, int axis, float value, float lo, float hi, float& minT, float& maxT) {
         bool found = false;
         int other = 1 - axis;

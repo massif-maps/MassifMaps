@@ -99,9 +99,8 @@ namespace massif::mvt {
         }
     }
 
-    // The child tile (x, y) `dz` zooms under an uncompressed vector tile: each layer's extent divided by
-    // 2^dz and its geometry shifted, features outside the child plus a 1/8 tile buffer dropped.
-    // Empty when the tile does not parse or an extent does not divide.
+    // The child tile (x, y) `dz` zooms under an uncompressed vector tile: layer extent divided by 2^dz, geometry shifted,
+    // features outside the child plus a 1/8 buffer dropped. Empty when it does not parse or an extent does not divide.
     inline std::vector<unsigned char> subtileMBVT(const std::vector<unsigned char>& data, int dz, int x, int y) {
         using namespace subtile_detail;
         if (dz <= 0 || dz >= 24) {

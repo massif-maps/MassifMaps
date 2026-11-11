@@ -13,22 +13,19 @@
 #include <cmath>
 
 namespace massif::vt {
-    // Texels per style pixel a plate cell is drawn at. At one texel per pixel the cell is upscaled
-    // by the display's pixel ratio before it reaches the screen, and linear filtering turned a 1 px
-    // border into a soft 3 px smear and flattened the corner arcs.
+    // Texels per style pixel a plate cell is drawn at: at one texel per pixel the display's pixel ratio upscales the cell and linear
+    // filtering smeared a 1 px border into 3 px and flattened the corner arcs.
     inline constexpr int PLATE_SUPERSAMPLE = 4;
     inline constexpr int MAX_PLATE_RADIUS = 32; // style pixels; beyond this the cell stops growing
 
-    // The atlas cell a label's plate is nine-sliced from, in TEXELS. It spans the OUTER shape and
-    // carries both of the plate's shapes - r the fill's coverage, a the whole plate's - so ONE quad
-    // draws both; as two quads, fill-over-border leaves border * a * (1 - a) showing through.
+    // The atlas cell a label's plate is nine-sliced from, in TEXELS. It spans the OUTER shape and carries both shapes (r the fill's
+    // coverage, a the whole plate's) so ONE quad draws both; as two quads, fill-over-border leaves border * a * (1 - a) showing through.
     struct PlateCell {
         int radiusTexels = 0;
         int borderTexels = 0;
 
-        // A square, and never narrower than its own corners. The extra 2 is the transparent margin
-        // appendPlate needs: it samples one texel inside the cell, because the atlas gutter around
-        // it is transparent and linear filtering would bleed into it.
+        // A square, never narrower than its own corners. The extra 2 is the transparent margin appendPlate needs: it samples one texel
+        // inside the cell, as linear filtering would otherwise bleed into the transparent atlas gutter.
         int size() const { return std::max(4 * PLATE_SUPERSAMPLE, radiusTexels * 2 + 2) + 2; }
         // What the cell was built at, in style pixels - the geometry has to use these rather than
         // the style's own values, or the quad does not line up with what was drawn into the cell.
@@ -36,9 +33,8 @@ namespace massif::vt {
         float borderWidth() const { return static_cast<float>(borderTexels) / PLATE_SUPERSAMPLE; }
     };
 
-    // 'radius' is the FILL's corner radius and both are style pixels. A border thinner than a texel
-    // still gets one: rounded to nothing, the cell has no ring and the border draws as a second FILLED
-    // plate - the darkening this path exists to avoid.
+    // 'radius' is the FILL's corner radius, both in style pixels. A border thinner than a texel still gets one: rounded to nothing
+    // the cell has no ring and the border draws as a second FILLED plate - the darkening this path exists to avoid.
     inline PlateCell snapPlateCell(float radius, float borderWidth) {
         PlateCell cell;
         float border = std::max(0.0f, borderWidth);
@@ -47,9 +43,8 @@ namespace massif::vt {
         return cell;
     }
 
-    // Antialiased coverage of a rounded rectangle spanning [x0,x1] x [y0,y1] with corner radius r: the
-    // standard rounded-box signed distance, ramped over one texel. Measuring the corner offsets alone
-    // collapses to zero coverage at r = 0, which is the DEFAULT radius.
+    // Antialiased coverage of a rounded rectangle spanning [x0,x1] x [y0,y1] with corner radius r: the standard rounded-box signed
+    // distance, ramped over one texel. Corner offsets alone collapse to zero coverage at r = 0, the DEFAULT radius.
     inline float roundedRectCoverage(float x, float y, float x0, float y0, float x1, float y1, float r) {
         float hx = (x1 - x0) * 0.5f, hy = (y1 - y0) * 0.5f;
         r = std::min(r, std::min(hx, hy));
@@ -60,9 +55,8 @@ namespace massif::vt {
         return std::min(1.0f, std::max(0.0f, 0.5f - d));
     }
 
-    // The cell's texels, row major, size() x size(). Bytes are R, G, B, A: rgb is the FILL's
-    // coverage and a the whole plate's, so a plate with no border comes out premultiplied white
-    // and needs no shader of its own (see labelFsh).
+    // The cell's texels, row major, size() x size(), bytes R,G,B,A: rgb is the FILL's coverage and a the whole plate's, so a plate
+    // with no border comes out premultiplied white and needs no shader of its own (see labelFsh).
     inline std::vector<std::uint32_t> buildPlateBitmapData(const PlateCell& cell) {
         int size = cell.size();
         std::vector<std::uint32_t> data(static_cast<std::size_t>(size) * size);

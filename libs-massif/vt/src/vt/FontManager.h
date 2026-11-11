@@ -28,9 +28,8 @@ namespace massif::vt {
         virtual ~FontManager();
 
         std::string loadFontData(const std::vector<unsigned char>& data);
-        // Registers a font decoded only once a name it may answer to is asked for - a woff2 must be
-        // decompressed to be read at all, and a style packs far more fonts than it uses. 'hintName' is
-        // the file name; a request matching no hint goes to the FontDataLoader before the full sweep.
+        // Registers a font decoded only once a name it may answer to is asked for (a woff2 must be decompressed to be read, and a style
+        // packs far more fonts than it uses). 'hintName' is the file name; a request matching no hint goes to the FontDataLoader first.
         void addPendingFontData(const std::string& hintName, FontDataProvider dataProvider);
         void setFontDataLoader(FontDataLoader loader);
         std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const;

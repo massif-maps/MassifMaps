@@ -1,18 +1,5 @@
-// Host bench for CartoCSSCompiler::compileLayer: loads a style project as CartoCSSMapLoader does and
-// times the compile per layer, so a compiler change can be timed and - with CSSBENCH_DUMP - checked for
-// an identical result without a device round trip.
-//
-//   R=<mobile-sdk checkout>
-//   clang++ -O2 -w -std=c++17 -o cssbench $R/libs-carto/cartocss/test/CompileBench.cpp \
-//     $R/libs-carto/cartocss/src/cartocss/{CartoCSSParser,CartoCSSCompiler,Expression,Predicate}.cpp \
-//     $R/libs-carto/mapnikvt/src/mapnikvt/{StringUtils,CSSColorParser,ParserUtils,ParseTables,\
-// ExpressionContext,TransformUtils,Predicate,Feature,ExpressionUtils,PredicateUtils,Expression,Value}.cpp \
-//     -I $R/libs-carto/cartocss/src -I $R/libs-carto/mapnikvt/src -I $R/libs-carto/vt/src \
-//     -I $R/libs-external -I $R/libs-external/picojson -I $R/libs-external/boost \
-//     -I $R/libs-external/stdext -I $R/libs-external/cglib -I $R/libs-external/utf8/source
-//
-//   ./cssbench <style-dir> <project.json> [repeats] [layer]
-//   CSSBENCH_DUMP=/tmp/after.txt ./cssbench ... && diff /tmp/before.txt /tmp/after.txt
+// Host bench for CartoCSSCompiler::compileLayer: times the compile per layer, as CartoCSSMapLoader loads a style project;
+// CSSBENCH_DUMP=<file> dumps the result so a compiler change can be diffed without a device round trip.
 
 #include "cartocss/CartoCSSParser.h"
 #include "cartocss/CartoCSSCompiler.h"

@@ -23,9 +23,8 @@ namespace massif::mvt {
             return result;
         }
 
-        // Build the evaluation context: adjusted (integer) zoom for rule/predicate selection,
-        // style parameter map for param:: predicates/expressions, and a ViewState carrying the
-        // fractional view zoom for zoom-dependent property functions (view::zoom).
+        // Adjusted (integer) zoom selects rules/predicates, the style parameter map serves param::, and a ViewState
+        // carries the fractional view zoom for view::zoom functions.
         ExpressionContext exprContext;
         exprContext.setAdjustedZoom(static_cast<int>(viewZoom));
         if (styleParameterStore) {
@@ -42,8 +41,7 @@ namespace massif::mvt {
                 continue;
             }
             for (const std::shared_ptr<const Rule>& rule : style->getZoomRules(exprContext.getAdjustedZoom())) {
-                // Skip a normal styling rule BEFORE its filter is evaluated: the same layer may
-                // carry line/text rules, and their filters read feature fields - there is no
+                // Skip a normal styling rule BEFORE its filter is evaluated: its filters read feature fields and there is no
                 // feature here.
                 bool isConfigRule = std::any_of(rule->getSymbolizers().begin(), rule->getSymbolizers().end(), [](const std::shared_ptr<const Symbolizer>& symbolizer) {
                     return std::dynamic_pointer_cast<const LayerConfigSymbolizer>(symbolizer) != nullptr;
@@ -65,9 +63,8 @@ namespace massif::mvt {
                         continue;
                     }
                     result.visible = true;
-                    // Evaluate every property the style actually set. Evaluating the raw
-                    // property Expression handles view::zoom (via viewState), 'zoom' and
-                    // param:: (via exprContext) uniformly, regardless of the property type.
+                    // Evaluate every property the style set: the raw Expression handles view::zoom (viewState), 'zoom' and
+                    // param:: (exprContext) uniformly.
                     for (const std::string& propertyName : configSymbolizer->getPropertyNames()) {
                         const Property* property = configSymbolizer->getProperty(propertyName);
                         if (!property || !property->isDefined()) {

@@ -27,9 +27,8 @@
 namespace massif::mbvtbuilder {
     class MBVTLayerEncoder;
 
-    // The per-layer geometry store and its geojson-vt tile index, and a wrapper around one feature's
-    // geometry. Both are defined in the .cpp so that the mapbox headers stay out of every
-    // translation unit that includes this one.
+    // The per-layer geometry store, its geojson-vt tile index and a feature-geometry wrapper, defined in the .cpp so the mapbox
+    // headers stay out of every translation unit including this one.
     struct MBVTLayerData;
     struct MBVTFeatureGeometry;
 

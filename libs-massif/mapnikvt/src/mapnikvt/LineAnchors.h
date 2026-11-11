@@ -38,9 +38,8 @@ namespace massif::mvt {
         return true;
     }
 
-    // maplibre's getAnchors (get_anchors.ts) as distances along the line, the middle tried only when
-    // no anchor passes. glyphSize 0 skips the max-angle test: a billboard is not laid along the line.
-    // fitScale shrinks the label for the fit and angle tests only; the offset stays maplibre's.
+    // maplibre's getAnchors (get_anchors.ts) as distances along the line, the middle tried only when no anchor passes.
+    // glyphSize 0 skips the max-angle test (a billboard is not laid along the line); fitScale shrinks the label for fit and angle tests only.
     template <typename InTile>
     std::vector<float> lineLabelAnchors(const std::vector<cglib::vec2<float>>& points, const std::vector<float>& lengths, bool continued, float step, float labelLength, float glyphSize, float maxAngle, InTile inTile, float fitScale = 1.0f) {
         std::vector<float> anchors;

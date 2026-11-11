@@ -61,9 +61,8 @@ namespace massif::mvt {
 
         virtual bool hasLayer(const std::string& name) const = 0;
 
-        // `clip` off yields every feature of the layer, whatever the clip box - the anchor pass
-        // needs the parts of a building this tile does not draw. It runs on its own caches, so it
-        // cannot leak an out-of-box geometry into the drawing pass.
+        // `clip` off yields every feature of the layer whatever the clip box (the anchor pass needs the parts of a building this
+        // tile does not draw), on its own caches so no out-of-box geometry leaks into the drawing pass.
         virtual std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields, bool clip = true) const = 0;
 
         virtual bool findFeature(long long localId, std::string& layerName, Feature& feature) const = 0;

@@ -641,9 +641,8 @@ namespace massif::vt {
         #endif
             float meters;
             if (uElevationLatticeCell.x != 0.0) {
-                // Same two-triangle split as the surface mesh (anti-diagonal), so draped geometry
-                // follows it between nodes. On an edge, the coarser neighbour's cell reproduces its
-                // chords; the edge test is in tile units.
+                // Same two-triangle split as the surface mesh (anti-diagonal), so draped geometry follows it between nodes. On an edge the
+                // coarser neighbour's cell reproduces its chords; the edge test is in tile units.
                 highp vec2 unitPos = pos.xy * uTileUnitScale;
                 highp vec2 cell = uElevationLatticeCell;
                 if (unitPos.x < 0.00001) cell.y *= uTerrainEdgeCoarsening.x;       // west edge
@@ -954,9 +953,8 @@ namespace massif::vt {
             highp float o = uShadowParams.x * uShadowParams.z;
             highp float ref = pos.z;
             mediump float facing = smoothstep(0.0, 0.15, ndl);
-            // Receiver-plane slope: stored depth is the texel centre's, metres off at a grazing sun.
-            // Ground only (extrusion bevels are discontinuous); before any early return so quad
-            // derivatives stay defined.
+            // Receiver-plane slope: stored depth is the texel centre's, metres off at a grazing sun. Ground only (extrusion bevels are
+            // discontinuous); before any early return so quad derivatives stay defined.
             highp vec2 dzduv = vec2(0.0);
         #if defined(DERIVATIVES) && !defined(SHADOW_RECEIVER_3D)
             {

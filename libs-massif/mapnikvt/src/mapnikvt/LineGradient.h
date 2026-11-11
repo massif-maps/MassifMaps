@@ -15,9 +15,8 @@
 #include <memory>
 
 namespace massif::mvt {
-    // The ramp a `line-gradient` stop list draws: a string of `position:color` pairs (a leading `step;`
-    // holds each colour until the next position; two colours at one position are a hard edge), or the same
-    // pairs as an array of [position, color]. Null when the value is neither.
+    // The ramp a `line-gradient` stop list draws: `position:color` pairs (a leading `step;` holds each colour until the next
+    // position; two colours at one position are a hard edge) or [position, color] arrays. Null when neither.
     std::shared_ptr<const vt::ColorRamp> buildLineGradient(const Value& value);
 
     // A ramp from the premultiplied colour at the centre of each of its texels, positions 0..1. Equal ramps are one object.

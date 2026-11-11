@@ -124,9 +124,8 @@ namespace massif::mvt {
                     | (karma::lit("skewx")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewXTransformExpression, _val, _1)]
                     | (karma::lit("skewy")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewYTransformExpression, _val, _1)]
                     | (karma::string << '(' <<  (expression % ',') << ')') [_pass = phoenix::bind(&getFunctionExpression, _val, _1, _2)]
-                    // Parenthesised, and that is load-bearing: what reaches a factor as a predicate is an
-                    // 'and'/'or', which term0 writes WITHOUT them, so `a and (b or c)` came back out as
-                    // `a and b or c`. karma chose this alternative differently under emcc than clang.
+                    // Parenthesised, load-bearing: a predicate reaching a factor is an 'and'/'or' that term0 writes WITHOUT them, so `a and (b or c)`
+                    // came back as `a and b or c`. karma chose this alternative differently under emcc than clang.
                     | ('(' << predicate << ')')         [_pass = phoenix::bind(&getExpressionPredicate, _val, _1)]
                     | ('[' << stringExpression << ']')  [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
                     | ('(' << expression << ')')        [_1 = _val]

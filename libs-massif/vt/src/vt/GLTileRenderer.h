@@ -23,7 +23,6 @@
 #include "TileTransformer.h"
 #include "TileBitmap.h"
 #include "TileBackground.h"
-#include "TileBitmap.h"
 #include "RasterGroups.h"
 #include "PaintShadeCache.h"
 #include "TileSurface.h"

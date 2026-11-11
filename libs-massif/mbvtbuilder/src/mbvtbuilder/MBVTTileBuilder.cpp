@@ -12,9 +12,8 @@
 
 namespace massif::mbvtbuilder
 {
-    // geojson-vt's tile pyramid with our own drill: rooted at the deepest tile containing the layer, only the
-    // requested tile converted to int16, no built-tile cache (the SDK caches the encoded MVT), and no split
-    // once nothing in the node is bigger than the target tile.
+    // geojson-vt's tile pyramid with our own drill: rooted at the deepest tile containing the layer, only the requested tile converted
+    // to int16, no built-tile cache (the SDK caches the encoded MVT), no split once nothing exceeds the target tile.
     struct MBVTTileIndex
     {
         using VTFeatures = mapbox::geojsonvt::detail::vt_features;
@@ -346,9 +345,8 @@ namespace massif::mbvtbuilder
             return node;
         }
 
-        // The deepest tile whose BUFFERED extent still contains the whole layer. Any tile whose
-        // buffered bounds touch the data is a descendant of it, so rooting the pyramid here loses
-        // nothing and skips every level above, where clipping removes nothing and only copies.
+        // The deepest tile whose BUFFERED extent contains the whole layer: any tile touching the data descends from it, so rooting here
+        // loses nothing and skips the levels above, where clipping removes nothing and only copies.
         void findRootTile(const MBVTTileIndex::VTFeatures &features, double bufferFraction, int maxZoom, int &rootZoom, std::uint32_t &rootX, std::uint32_t &rootY)
         {
             rootZoom = 0;
@@ -417,9 +415,8 @@ namespace massif::mbvtbuilder
             return *data.index;
         }
 
-        // Cuts the pyramid down towards (zoom, tileX, tileY), reusing whatever slice is cached and
-        // stopping early on a small node. Returns the deepest node on the path, which is the wanted tile
-        // only when it drilled all the way; null means the tile holds none of the layer.
+        // Cuts the pyramid down towards (zoom, tileX, tileY), reusing the cached slice and stopping early on a small node. Returns the deepest
+        // node on the path (the wanted tile only if it drilled all the way); null means the tile holds none of the layer.
         const MBVTTileIndex::Node *drillToTile(MBVTTileIndex &index, int zoom, std::uint32_t tileX, std::uint32_t tileY, int &nodeZoom, std::uint32_t &nodeX, std::uint32_t &nodeY)
         {
             auto nodeAt = [&index](int z, std::uint32_t x, std::uint32_t y) -> const MBVTTileIndex::Node *
@@ -508,17 +505,15 @@ namespace massif::mbvtbuilder
                 return mapbox::geojsonvt::detail::InternalTile({ node->features, static_cast<std::uint8_t>(zoom), static_cast<std::uint32_t>(tileX), static_cast<std::uint32_t>(tileY), index.extent, tolerance, index.lineMetrics }).tile;
             }
 
-            // Stopped on a coarser node: cut the wanted tile straight out of it. Not cached - the
-            // SDK caches the encoded tile, and caching this would grow the index by a node per tile
-            // for exactly the datasets the stop exists to keep cheap.
+            // Stopped on a coarser node: cut the wanted tile straight out of it, uncached - the SDK caches the encoded tile, and caching this
+            // would grow the index by a node per tile for exactly the datasets the stop keeps cheap.
             const double z2 = static_cast<double>(1u << zoom);
             const double p = index.bufferFraction;
             const double minX = (tileX - p) / z2, maxX = (tileX + 1 + p) / z2;
             const double minY = (tileY - p) / z2, maxY = (tileY + 1 + p) / z2;
 
-            // Pick the features that touch the tile FIRST: geojson-vt's clip reserves its output for the
-            // whole input, so running it straight over a coarse node allocates for every feature in the
-            // layer, on every tile.
+            // Pick the features touching the tile FIRST: geojson-vt's clip reserves its output for the whole input, so running it over a
+            // coarse node allocates for every feature in the layer, on every tile.
             MBVTTileIndex::VTFeatures candidates;
             for (const auto &feature : node->features)
             {

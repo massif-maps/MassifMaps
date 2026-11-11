@@ -39,9 +39,8 @@ namespace massif::vt {
             std::optional<Transform> transform;
             std::shared_ptr<const GlyphMap> glyphMap;
             int glyphRenderSize;
-            // Metres from the camera beyond which the label is not placed at all; 0 = no limit. A label
-            // glyph is screen-space, so a name 5 km away is drawn at the size of one 50 m away and a
-            // tilted view fills its horizon band with unreadable labels.
+            // Metres from the camera beyond which the label is not placed; 0 = no limit. Glyphs are screen-space, so a name 5 km away
+            // draws as big as one 50 m away and a tilted view fills its horizon band with unreadable labels.
             float maxDistance;
             // What this label keeps while its anchor is hidden by 3D content (mapbox's
             // text-occlusion-opacity, per style layer). Unset = the layer's own default.
@@ -61,9 +60,8 @@ namespace massif::vt {
             float iconRefScale = 0.0f;
             // mapbox's icon-opacity, live - what the icon PLATE fades by (see TextLabelStyle).
             std::optional<FloatFunction> iconOpacityFunc;
-            // The text size the icon run was measured in ems of. The icon keeps the SIZE IN PIXELS
-            // that gives, whatever the text does afterwards - mapbox sizes an icon by icon-size and
-            // the name by text-size, and they are not the same ramp. 0 leaves the icon on the text.
+            // The text size the icon run was measured in ems of. The icon keeps the SIZE IN PIXELS that gives whatever the text does
+            // (mapbox ramps icon-size and text-size separately). 0 leaves the icon on the text.
             float iconRefSize = 0.0f;
             // mapbox text-padding / icon-padding: screen pixels grown around this label's box
             // for the COLLISION test, so two labels keep apart without either being drawn bigger.
@@ -72,9 +70,8 @@ namespace massif::vt {
             // Added to the placement priority by the culler, per label and per pass - the one
             // place a style function may read view::distance (see TextLabelStyle::rankFunc).
             FloatFunction rankFunc;
-            // CALLOUT orientation only - see LabelOrientation. Pixels, except the anchor, which is
-            // a fraction of the screen height from the top (< 0 = stack from the label's own
-            // anchor). lineGlyph is the atlas cell the leader line quad is textured from.
+            // CALLOUT orientation only (see LabelOrientation). Pixels, except the anchor: a fraction of the screen height from the top
+            // (< 0 = stack from the label's own anchor). lineGlyph is the atlas cell the leader line quad is textured from.
             float calloutScreenAnchor;
             bool calloutBandFollow = false; // see TextLabelStyle::calloutBandFollow
             bool calloutAnchorVisible = false; // see TextLabelStyle::calloutAnchorVisible
@@ -88,9 +85,8 @@ namespace massif::vt {
             std::optional<cglib::vec2<float>> calloutLineAnchor;
             std::optional<cglib::vec2<float>> calloutBandAnchor;
             std::optional<GlyphMap::Glyph> calloutLineGlyph;
-            // A plate drawn behind part of the label. 'glyph' is the atlas cell it is nine-sliced from,
-            // and fill AND border come from that ONE cell (r the fill's coverage, a the whole plate's),
-            // so one quad draws both. 'radius'/'borderWidth' are what the cell was built at.
+            // A plate drawn behind part of the label. 'glyph' is the atlas cell it is nine-sliced from; fill AND border come from that ONE cell
+            // (r the fill's coverage, a the whole plate's), so one quad draws both. 'radius'/'borderWidth' are what the cell was built at.
             struct Plate {
                 LabelPlateStyle style;
                 std::optional<GlyphMap::Glyph> glyph;
@@ -111,9 +107,8 @@ namespace massif::vt {
             // Justification of the text's lines for a label with no variants; a variant carries
             // its own (see Variant::lineAlign). -1 flush left, 0 centred, +1 flush right.
             float textLineAlign = 0.0f;
-            // How much of every colour on this label is emitted rather than lit by the scene -
-            // mapbox's text-/icon-emissive-strength. 1 = drawn as authored, which keeps a label
-            // legible at night and is mapbox's own default.
+            // How much of every colour on this label is emitted rather than lit by the scene - mapbox's text-/icon-emissive-strength.
+            // 1 = drawn as authored (legible at night, mapbox's default).
             FloatFunction emissiveFunc = FloatFunction(1.0f);
             // The halo's own, when it differs - see TextLabelStyle. Unset takes the label's.
             std::optional<FloatFunction> haloEmissiveFunc;
@@ -121,15 +116,13 @@ namespace massif::vt {
             explicit Style(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float scale, float ascent, float descent, const std::optional<Transform>& transform, std::shared_ptr<const GlyphMap> glyphMap, int glyphRenderSize, float maxDistance = 0.0f, const std::optional<ColorFunction>& secondaryColorFunc = std::optional<ColorFunction>(), FloatFunction rankFunc = FloatFunction(0.0f), float calloutScreenAnchor = -1.0f, float calloutOffset = 0.0f, float calloutStep = 0.0f, int calloutMaxRows = 8, int calloutPersistPasses = 0, float calloutLineWidth = 1.0f, const std::optional<cglib::vec2<float>>& calloutLineAnchor = std::optional<cglib::vec2<float>>(), const std::optional<cglib::vec2<float>>& calloutBandAnchor = std::optional<cglib::vec2<float>>(), const std::optional<GlyphMap::Glyph>& calloutLineGlyph = std::optional<GlyphMap::Glyph>(), const Plate& textPlate = Plate(), const Plate& iconPlate = Plate(), float textLineAlign = 0.0f, const std::optional<ColorFunction>& iconColorFunc = std::optional<ColorFunction>()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), scale(scale), ascent(ascent), descent(descent), transform(transform), glyphMap(std::move(glyphMap)), glyphRenderSize(glyphRenderSize), maxDistance(maxDistance), secondaryColorFunc(secondaryColorFunc), rankFunc(std::move(rankFunc)), calloutScreenAnchor(calloutScreenAnchor), calloutOffset(calloutOffset), calloutStep(calloutStep), calloutMaxRows(calloutMaxRows), calloutPersistPasses(calloutPersistPasses), calloutLineWidth(calloutLineWidth), calloutLineAnchor(calloutLineAnchor), calloutBandAnchor(calloutBandAnchor), calloutLineGlyph(calloutLineGlyph), textPlate(textPlate), iconPlate(iconPlate), textLineAlign(textLineAlign), iconColorFunc(iconColorFunc) { }
         };
 
-        // One candidate layout of the label's TEXT. The icon glyphs before the first line break are
-        // never moved, so a shield keeps its icon on the feature whichever side the culler puts the name
-        // on. An empty variant list is the fixed layout.
+        // One candidate layout of the label's TEXT. Icon glyphs before the first line break never move, so a shield keeps its icon
+        // on the feature whichever side the name takes. An empty variant list is the fixed layout.
         struct Variant {
             cglib::vec2<float> shift; // glyph units, added to the text pen
             bool drawText;            // false = the icon alone, the last resort of 'text-optional'
-            // How the lines of a wrapped name are justified on THIS side: -1 flush left, 0 centred,
-            // +1 flush right. It is the side's own value, so a two-line name is flush against the
-            // icon whichever side it ends up on.
+            // How the lines of a wrapped name are justified on THIS side: -1 flush left, 0 centred, +1 flush right. The side's own value,
+            // so a two-line name is flush against the icon whichever side it ends up on.
             float lineAlign = 0.0f;
 
             explicit Variant(const cglib::vec2<float>& shift, bool drawText, float lineAlign = 0.0f) : shift(shift), drawText(drawText), lineAlign(lineAlign) { }

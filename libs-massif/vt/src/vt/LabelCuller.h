@@ -80,9 +80,8 @@ namespace massif::vt {
             std::vector<cglib::bbox2<float>> partBounds;
             long long localId = 0;
             bool allowOverlapSameFeatureId = false;
-            // The envelope is a screen-aligned rectangle, so its bounds ARE its shape and two such
-            // records need no separating-axis test. True for every billboard label, whatever the
-            // camera does - they face it.
+            // The envelope is a screen-aligned rectangle, so its bounds ARE its shape and two such records need no separating-axis test.
+            // True for every billboard label, whatever the camera does.
             bool axisAligned = false;
             // In _reservedGrid: the insertion index of the label holding it.
             int reservation = -1;
@@ -124,13 +123,11 @@ namespace massif::vt {
         // Fills the record's envelope, bounds and axisAligned flag from a world-space quad.
         void projectEnvelope(const std::array<cglib::vec3<float>, 4>& worldEnvelope, CullRecord& record) const;
         bool calculateScreenEnvelope(const std::shared_ptr<Label>& label, float size, CullRecord& record) const;
-        // A CALLOUT label is lifted away from its anchor until it finds free screen space instead
-        // of being hidden. Returns false when it ran out of rows. Updates the label's offset and
-        // the cull record in place.
+        // A CALLOUT label is lifted away from its anchor until it finds free screen space instead of being hidden. Returns false when
+        // it ran out of rows. Updates the label's offset and the cull record in place.
         bool placeCalloutLabel(LabelInfo& labelInfo, const std::function<bool(const LabelInfo&)>& testGroupDistance);
-        // A label whose style names several sides (TextLabelStyle::anchors) takes the first free
-        // one - tangram's 'do { ... } while (isOccluded() && nextAnchor())' (labelManager.cpp).
-        // A name yields to a label shown last pass (see 06-labels.mdx), evicting only when nothing else fits.
+        // A label whose style names several sides (TextLabelStyle::anchors) takes the first free one - tangram's 'do { ... } while
+        // (isOccluded() && nextAnchor())' (labelManager.cpp). A name evicts a label shown last pass only when nothing else fits (06-labels.mdx).
         bool placeAnchoredLabel(LabelInfo& labelInfo, int index, const std::function<bool(const LabelInfo&)>& testGroupDistance);
 
         cglib::mat4x4<float> _localCameraProjMatrix;

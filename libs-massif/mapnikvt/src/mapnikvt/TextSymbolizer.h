@@ -161,14 +161,12 @@ namespace massif::mvt {
         // rebuilds its labels constantly; 0 (the default) hides a name the first pass it loses.
         FloatProperty _calloutPersist = FloatProperty(0.0f);
         FloatProperty _calloutLineWidth = FloatProperty(1.0f);
-        // Which point of the label box the leader line ends at, and which one sits on the band
-        // line - 'center', 'bottom-left', 'top-right', ... (see getLabelBoxAnchorTable). Rotated
-        // with the text, so a tilted name can hang from its first letter.
+        // Which point of the label box the leader line ends at, and which sits on the band line ('center', 'bottom-left',
+        // ...; see getLabelBoxAnchorTable). Rotated with the text.
         StringProperty _calloutLineAnchor = StringProperty("");
         StringProperty _calloutAlign = StringProperty("");
-        // Added to placement-priority by the culler, once per label and per placement pass, so
-        // that the expression can read view::distance: 'text-rank: [ele] - [view::distance]/50'
-        // ranks summits by height and nearness. Ranking only - it never changes how a label looks.
+        // Added to placement-priority by the culler per label and pass, so the expression can read view::distance
+        // ('text-rank: [ele] - [view::distance]/50'). Ranking only, never the look.
         FloatFunctionProperty _rank = FloatFunctionProperty(0.0f);
         // A second run of text after the name, at its own size: an elevation, a road number. Same
         // label, same plate, same colour - only the size and the baseline differ.
@@ -179,9 +177,8 @@ namespace massif::mvt {
         FloatFunctionProperty _secondaryOpacity = FloatFunctionProperty(1.0f);
         FloatProperty _secondaryDx = FloatProperty(0.0f); // gap between the runs, pixels
         FloatProperty _secondaryDy = FloatProperty(0.0f); // baseline shift of the second run, pixels (down is positive, like dy)
-        // A filled plate behind the text, for any placement - the classic-map use is a label over
-        // busy ground. The FILL COLOUR is the switch, as the border's width is its own: no colour,
-        // no plate. Opacity defaulting to 0 made 'background-fill' alone a silent no-op.
+        // A filled plate behind the text, any placement; the FILL COLOUR is the switch (no colour, no plate), as opacity
+        // defaulting to 0 made 'background-fill' alone a silent no-op.
         ColorProperty _backgroundFill = ColorProperty("transparent");
         FloatProperty _backgroundOpacity = FloatProperty(1.0f);
         FloatProperty _backgroundRadius = FloatProperty(0.0f);

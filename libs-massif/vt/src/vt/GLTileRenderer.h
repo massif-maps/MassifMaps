@@ -281,9 +281,8 @@ namespace massif::vt {
         int renderTerrainShadowMask(const std::vector<TileId>& tileIds);
         // Sum of the casters' fade-in blends: how far the shadow map drifted from growing extrusions.
         float shadowCasterFadeSignature(const std::vector<TileId>* coveredBy) const;
-        // A spinning model casts here: its shadow moves every frame though nothing else changed.
-        // lightBounds: where in lightViewProj's clip space, the part of the page to redraw.
-        // The tiles whose light-space column reaches clipBounds: all a page redrawn there alone needs.
+        // A spinning model casts here: its shadow moves every frame though nothing else changed. lightBounds = the part of the page (in lightViewProj clip space)
+        // to redraw; the filter keeps the tiles whose light-space column reaches clipBounds: all a page redrawn there alone needs.
         void filterShadowCasterTiles(const std::vector<TileId>& tileIds, const std::vector<std::pair<double, double> >& tileHeights, const cglib::mat4x4<double>& lightViewProj, const cglib::bbox2<double>& clipBounds, std::vector<TileId>& casterTileIds) const;
         bool spinningShadowCasterBounds(const std::vector<TileId>* coveredBy, const cglib::mat4x4<double>& lightViewProj, cglib::bbox2<double>& lightBounds) const;
         // Draws this renderer's shadow casters for the given tiles into the bound framebuffer; returns the draws.
@@ -335,9 +334,8 @@ namespace massif::vt {
         // maskTextures[k]: mask k per drape tile; styleLayerMasks: live style layer -> mask index.
         // A layer absent from it draws unmasked.
         void setDrapeCoverageMasks(const std::vector<std::map<TileId, GLuint> >& maskTextures, const std::map<int, int>& styleLayerMasks);
-        // Draws one tile's surface with an external drape, writing depth; returns the draws or -1 no
-        // texture, -2 shared grid inactive, -3 tile not registered. uvOffset/uvScale pick a sub-rect
-        // (an ancestor's while the own bake waits), which keeps a budgeted bake from flashing.
+        // Draws one tile's surface with an external drape, writing depth; returns the draws or -1 no texture, -2 shared grid inactive,
+        // -3 tile not registered. uvOffset/uvScale pick a sub-rect (an ancestor's while the own bake waits), so a budgeted bake does not flash.
         int renderDrapedSurface(const TileId& targetTileId, GLuint drapeTexture, float uvOffsetX = 0.0f, float uvOffsetY = 0.0f, float uvScale = 1.0f);
         // Flat-colour surface for a tile whose drape is not baked yet, keeping the depth buffer complete.
         int renderDrapedSurfaceFill(const TileId& targetTileId, const Color& color);
@@ -382,10 +380,8 @@ namespace massif::vt {
         void setClickHandlerLayerFilter(const std::optional<std::regex>& filter);
         void setViewState(const ViewState& viewState);
         void setLineAntialiasScale(float scale);
-        // labelOnlyTiles: off-frustum tiles whose labels are placed (so they arrive opaque), never drawn.
-        // spanReferenceTiles: fetched unseen for stranded bridge chords (collectUnresolvedSpanEnds);
-        // they only join the span unions, so one overlapping the view does not double geometry.
-        // shadowCasterTiles: off-frustum render tiles whose extrusions only cast; no surface, no labels.
+        // labelOnlyTiles: off-frustum, labels placed (arrive opaque), never drawn. spanReferenceTiles: fetched unseen for stranded bridge chords
+        // (collectUnresolvedSpanEnds), join only span unions. shadowCasterTiles: off-frustum, extrusions only cast; no surface, no labels.
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles = {}, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles = {}, const std::map<TileId, std::shared_ptr<const Tile>>& shadowCasterTiles = {});
         void teleportVisibleTiles(int dx, int dy);
 
@@ -400,9 +396,8 @@ namespace massif::vt {
         bool startFrame(float dt);
         // layerOpacity: the SDK layer's, for a pass no screen-space blend wraps (the 3D pass).
         void renderGeometry(bool geom2D, bool geom3D, bool inline3D = false, float layerOpacity = 1.0f);
-        // The second draw of every line carrying line-occlusion-opacity, once the extrusions have written depth:
-        // a renderer queues itself after its 3D pass, and one flush after the last layer's draws them all, the
-        // topmost layer's ghost on top.
+        // The second draw of every line with line-occlusion-opacity, once the extrusions have written depth: a renderer queues itself
+        // after its 3D pass and one flush after the last layer draws them all, the topmost layer's ghost on top.
         static void queueOccludedGeometry(const std::shared_ptr<GLTileRenderer>& renderer);
         static void flushOccludedGeometry();
         // Once per frame, before the first layer's 3D pass: forgets which pixels an extrusion covers (the ghost pass's stamp).
@@ -945,8 +940,7 @@ namespace massif::vt {
         std::atomic<bool> _groundAOBakeable { false };
         float _groundAOAttenuation = 0.69f;
         bool _groundAOMaskPass = false; // set only while the mask is being drawn
-        // Anchor depths meet the half-resolution buffer within rounding: mapbox's offset, and a ramp to
-        // fade rather than switch.
+        // Anchor depths meet the half-resolution buffer within rounding: mapbox's offset, and a ramp to fade rather than switch.
         // Whole-label fade behind extrusions, ray-tested on the CPU against their meshes (06-labels.mdx).
         float calculateLabelVisibility(const Label& label);
         struct FrameOccluder {

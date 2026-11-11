@@ -61,9 +61,8 @@ namespace massif::mvt {
             if (strokeLinejoin == vt::LineJoinMode::BEVEL) {
                 miterDotLimit = 1.0f;
             } else {
-                // 'miterlimit' is the ratio miter-length / line-width at which a join bevels (SVG, mapnik, tangram);
-                // it picks the branch only, the inner corner is bounded by vt's INNER_MITER_LIMIT.
-                // ratio = 1 / cos(turn / 2) = 1 / sqrt((1 + dot) / 2)  =>  dot = 2 / ratio^2 - 1.
+                // 'miterlimit' is miter-length / line-width at which a join bevels (SVG, mapnik, tangram); it picks the branch only, vt's INNER_MITER_LIMIT
+                // bounds the inner corner. ratio = 1 / sqrt((1 + dot) / 2)  =>  dot = 2 / ratio^2 - 1.
                 float strokeMiterLimit = std::max(_strokeMiterLimit.getStaticValue(exprContext), 1.0f);
                 miterDotLimit = 2.0f / (strokeMiterLimit * strokeMiterLimit) - 1.0f;
             }

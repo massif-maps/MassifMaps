@@ -29,9 +29,8 @@ namespace massif::mvt {
             return true;
         }
 
-        // A value the selecting parameter cannot be equal to, to fold the comparison the other way.
-        // '=' calls two values of unrelated types unequal, so a string does for everything that is
-        // not one, and a longer string does for a string.
+        // A value the selecting parameter cannot equal, to fold the comparison the other way: '=' calls values of unrelated types
+        // unequal, so a string does for any non-string and a longer string for a string.
         Value makeUnequalValue(const Value& val) {
             if (auto stringVal = std::get_if<std::string>(&val)) {
                 return Value(*stringVal + '\x01');
@@ -111,18 +110,16 @@ namespace massif::mvt {
                     continue;
                 }
 
-                // Prefilter before building anything: a style with no rule left at this zoom (or
-                // none that its parameters can satisfy) contributes nothing, and building a layer
-                // builder for it is pure cost - a tile goes through every style of every layer.
+                // Prefilter before building anything: a style with no rule left at this zoom (or none its parameters can satisfy) contributes
+                // nothing and a layer builder for it is pure cost, as a tile goes through every style of every layer.
                 std::vector<std::shared_ptr<const Rule>> rules = preFilterStyleRules(style, exprContext, layerPresent ? layer : std::shared_ptr<const Layer>());
                 if (rules.empty()) {
                     styleIdx++;
                     continue;
                 }
 
-                // Consecutive styles of one source layer drawing flat geometry share a tile layer, so
-                // their lines and fills pack into a few draw calls; the builder keeps their order.
-                // Unclipped, layer-major order is what keeps one tile's casing under the next one's fill.
+                // Consecutive styles of one source layer drawing flat geometry share a tile layer so lines and fills pack into few draw calls;
+                // the builder keeps their order. Unclipped, layer-major order keeps one tile's casing under the next one's fill.
                 std::string drawOnceGroup = ValueConverter<std::string>::convert(std::visit(ExpressionEvaluator(exprContext, nullptr), style->getDrawOnce()));
                 bool shareable = layerPresent && clippedPerTile && style->getOpacity() == 1.0f && !style->getCompOp() && drawOnceGroup.empty() && !style->hasElevationMode() && drawsFlatGeometry(rules);
                 if (sharedBuilder && !(shareable && sharedLayer == layer->getName())) {
@@ -136,9 +133,8 @@ namespace massif::mvt {
 
                 auto tileLayerBuilder = std::make_unique<vt::TileLayerBuilder>(styleName, styleLayerIdx, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
                 tileLayerBuilder->setStyleState(_symbolizerContext.getSettings().getStyleState(), selectionStateKey);
-                // The tile's own zoom, not the render zoom: this decides GEOMETRY, so it has to be
-                // fixed when the tile is built. A zoom-dependent reach is therefore sampled once
-                // per tile, which is as close as a decode-time split can get.
+                // The tile's own zoom, not the render zoom: this decides GEOMETRY, so it is fixed at build time and a zoom-dependent
+                // reach is sampled once per tile, as close as a decode-time split gets.
                 vt::ViewState tileViewState;
                 tileViewState.zoom = static_cast<float>(tileId.zoom);
                 tileViewState.styleZoomShift = static_cast<float>(zoomShift);
@@ -222,9 +218,8 @@ namespace massif::mvt {
         const std::set<std::string>* symbolizerFieldsPtr = symbolizerFields.count(std::string()) == 0 ? &symbolizerFields : nullptr;
         const std::set<std::string>* styleFieldsPtr = styleFields.count(std::string()) == 0 ? &styleFields : nullptr;
 
-        // One anchor per BUILDING, before anything is drawn: the pieces of one building have to read the
-        // ground at the same place, and the pieces this tile does not draw help decide where that is.
-        // Skipped unless the layer extrudes, and on a flat map, where every anchor answers the same.
+        // One anchor per BUILDING before anything is drawn: its pieces must read the ground at the same place, and pieces this
+        // tile does not draw help decide where. Skipped unless the layer extrudes, and on a flat map.
         bool extrudes = _transformer && _transformer->isElevationBased();
         if (extrudes) {
             extrudes = false;
@@ -372,9 +367,8 @@ namespace massif::mvt {
         Value fieldValue = std::visit(ExpressionEvaluator(exprContext, nullptr), selectionParameter.fieldExpression);
         std::uint64_t stateKey = hashValue(fieldValue);
 
-        // Both appearances, built by forcing the parameter to a value that answers the comparison
-        // one way and then the other. The foldable properties then read no parameter at all, so
-        // each branch folds to a constant - which is what makes it a style slot.
+        // Both appearances, built by forcing the parameter to a value answering the comparison each way: foldable properties then
+        // read no parameter and each branch folds to a constant, which is what makes it a style slot.
         exprContext.setStyleParameterOverride(selectionParameter.name, fieldValue);
         Symbolizer::FeatureProcessor selectedProcessor = symbolizer->createFeatureProcessor(exprContext, _symbolizerContext);
         exprContext.setStyleParameterOverride(selectionParameter.name, makeUnequalValue(fieldValue));
@@ -387,9 +381,8 @@ namespace massif::mvt {
         bool selected = stateKey == selectionStateKey;
 
         Symbolizer::FeatureProcessor processor = [selectedProcessor, unselectedProcessor, stateKey, selected](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            // Only one branch draws, and it is the active one unless that branch paints nothing -
-            // then the other one lays the vertices down and they are pointed at an invisible slot,
-            // so the feature can still appear when the parameter changes.
+            // Only one branch draws: the active one, unless it paints nothing - then the other lays the vertices down and points at an
+            // invisible slot, so the feature can still appear when the parameter changes.
             bool drawSelected = selected ? static_cast<bool>(selectedProcessor) : !static_cast<bool>(unselectedProcessor);
             const Symbolizer::FeatureProcessor& drawProcessor = drawSelected ? selectedProcessor : unselectedProcessor;
             const Symbolizer::FeatureProcessor& otherProcessor = drawSelected ? unselectedProcessor : selectedProcessor;

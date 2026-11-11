@@ -36,27 +36,24 @@ namespace massif::mvt {
             // The Options::TileDrawSize the style's zoom numbers are written for; 0 = whatever the app sets.
             float tileDrawSize = 0.0f;
 
-            // Sun, shadows, fog and the terrain view distance. Each is a normal style property - a
-            // constant or any zoom-dependent expression - and isDefined() says whether the style set it
-            // at all; unset means the application's own setting stands.
+            // Sun, shadows, fog and the terrain view distance: normal style properties (constant or zoom expression);
+            // isDefined() says whether the style set it, unset leaves the application's own setting.
             FloatFunctionProperty sunAzimuth = FloatFunctionProperty(315.0f);      // degrees from north, clockwise
             FloatFunctionProperty sunAltitude = FloatFunctionProperty(45.0f);      // degrees above the horizon
             ColorFunctionProperty sunColor = ColorFunctionProperty("#ffffff");
             FloatFunctionProperty sunIntensity = FloatFunctionProperty(1.0f);
             FloatFunctionProperty ambientIntensity = FloatFunctionProperty(0.35f);
             ColorFunctionProperty ambientColor = ColorFunctionProperty("#ffffff"); // the sky's tint in shadow
-            // Building (3D extrusion) lighting. Unset means the extrusions follow the sun, on the
-            // same normalised-Lambert model the terrain surface uses; these two tune the walls
-            // alone, without moving the sun that lights the ground.
+            // Building lighting: unset follows the sun, on the terrain's normalised-Lambert model; these two tune
+            // the walls alone, without moving the sun that lights the ground.
             FloatFunctionProperty buildingLightIntensity = FloatFunctionProperty(1.0f);
             FloatFunctionProperty buildingAmbient = FloatFunctionProperty(0.35f);
             // How dark the foot of a wall goes (0 = flat facade), and over how many metres of
             // absolute height it fades out - shared by every part of one building.
             FloatFunctionProperty buildingVerticalGradient = FloatFunctionProperty(0.65f);
             FloatFunctionProperty buildingVerticalGradientHeight = FloatFunctionProperty(20.0f);
-            // Contact shadow on the GROUND around a footprint, on the mapbox names. ON by default:
-            // an extrusion without one reads as pasted onto the map rather than standing on it.
-            // 0 radius turns it off.
+            // Contact shadow on the GROUND around a footprint, on the mapbox names. ON by default, as an extrusion
+            // without one reads as pasted on; 0 radius turns it off.
             FloatFunctionProperty buildingAoGroundRadius = FloatFunctionProperty(4.0f);      // metres
             FloatFunctionProperty buildingAoGroundAttenuation = FloatFunctionProperty(1.75f); // exponent of (1 - d)
             // Metres between subdivisions ALONG a wall. 0 = the terrain grid's own cell, which is
@@ -68,38 +65,31 @@ namespace massif::mvt {
             FloatFunctionProperty textOcclusionOpacity = FloatFunctionProperty(1.0f);
             // Bevel between a wall and the roof, rounding the hard 90 degrees. 0 = off.
             FloatFunctionProperty buildingEdgeRadius = FloatFunctionProperty(0.0f); // metres
-            // Roofs multiplied by this. A roof faces the sky and is physically the BRIGHTEST face,
-            // but darkening it is what makes a block read as 3D rather than as a lit slab - it is
-            // how mapbox's buildings look, and it is a styling choice, not a lighting one.
+            // Roofs multiplied by this. Physically the brightest face, but darkening it is what makes a block
+            // read as 3D (mapbox's look): a styling choice, not a lighting one.
             FloatFunctionProperty buildingRoofShade = FloatFunctionProperty(1.0f);
-            // Every extrusion's height, multiplied. mapbox's `fill-extrusion-vertical-scale`, and
-            // the way Standard grows its buildings out of the ground as they appear (0 at z15, 1 at
-            // z15.3) - a ZOOM ramp, not a timed animation, so it is the same at every visit.
+            // Every extrusion's height, multiplied: mapbox's `fill-extrusion-vertical-scale`, and how Standard grows buildings
+            // out of the ground (0 at z15, 1 at z15.3) - a zoom ramp, not a timed animation.
             FloatFunctionProperty buildingHeightScale = FloatFunctionProperty(1.0f);
-            // The same, but a CAMERA effect the shadow caster ignores: a style flattens its extrusions as
-            // the view turns onto the map, and those buildings are still there. Anything meaning "not
-            // there yet" belongs in buildingHeightScale, which the caster does follow.
+            // The same, but a CAMERA effect the shadow caster ignores (flattened buildings are still there).
+            // Anything meaning "not there yet" belongs in buildingHeightScale, which the caster follows.
             FloatFunctionProperty buildingHeightViewScale = FloatFunctionProperty(1.0f);
-            // Whether a tile's fade-in also RAISES its buildings. Off: the walls used to be scaled by the
-            // tile blend, so every building grew out of the ground as its tile faded in. A style that
-            // wants that writes a zoom ramp on buildingHeightScale, as mapbox does.
+            // Whether a tile's fade-in also RAISES its buildings (they used to scale with the tile blend). A style
+            // wanting that writes a zoom ramp on buildingHeightScale, as mapbox does.
             FloatFunctionProperty buildingGrowOnAppear = FloatFunctionProperty(0.0f);
-            // Whether a tile's fade-in also fades its buildings IN. On, like every other kind of
-            // geometry; a style that ramps its own extrusion opacity over zoom turns it off and
-            // owns the appearance itself.
+            // Whether a tile's fade-in also fades its buildings IN, like every other geometry; a style ramping its
+            // own extrusion opacity over zoom turns it off.
             FloatFunctionProperty buildingFadeOnAppear = FloatFunctionProperty(1.0f);
             // 0 makes the bevel a flat facet with its own tone instead of a rolled edge.
             FloatFunctionProperty buildingRoundedRoof = FloatFunctionProperty(1.0f);
             // 0/1: also round the vertical corners, where that reaches a pixel (08-lighting-sky-fog.md).
             FloatFunctionProperty buildingEdgeCorners = FloatFunctionProperty(0.0f);
             FloatFunctionProperty terrainLighting = FloatFunctionProperty(0.0f);   // 0/1: light the terrain with the sun
-            // 0/1: the style's 2D colours ALREADY carry the scene light, so the ground must not be lit a
-            // second time - a converted MapBox style folds mapbox's ground radiance into every colour at
-            // conversion time. Says nothing about the terrain's shadows, which stay on.
+            // 0/1: the style's 2D colours ALREADY carry the scene light (a converted MapBox style folds the ground radiance
+            // in), so the ground must not be lit twice. Says nothing about terrain shadows, which stay on.
             FloatFunctionProperty colorsPrelit = FloatFunctionProperty(0.0f);
-            // How much of an extrusion's colour is EMITTED rather than lit, mapbox's
-            // fill-extrusion-emissive-strength. 0 is at the mercy of the scene light, 1 is drawn as
-            // authored whatever the hour. Above 1 it overdrives, as their mix() does.
+            // Share of an extrusion's colour EMITTED rather than lit (mapbox fill-extrusion-emissive-strength): 0 follows
+            // the scene light, 1 is drawn as authored. Above 1 it overdrives, as their mix() does.
             FloatFunctionProperty buildingEmissive = FloatFunctionProperty(0.0f);
             // The same question for the map's BACKGROUND, which is a Map setting rather than a
             // symbolizer: mapbox's background-emissive-strength. 1 draws it as authored.

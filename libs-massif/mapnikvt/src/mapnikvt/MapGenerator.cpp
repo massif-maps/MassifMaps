@@ -195,9 +195,8 @@ namespace massif::mvt {
     }
 
     void MapGenerator::internAttributes(pugi::xml_node mapNode) {
-        // A style repeats the same long expressions in every rule (a POI colour is 400 characters, written
-        // 200 times). Each one is written once, under <Defines>, and referred to as "@@<id>"; MapParser
-        // expands them back before it reads a symbolizer.
+        // Long expressions repeat in every rule (a POI colour: 400 chars, written 200 times): each is written once under
+        // <Defines> as "@@<id>" and MapParser expands them back before it reads a symbolizer.
         struct Use {
             std::size_t count = 0;
             std::string id;

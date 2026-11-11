@@ -146,9 +146,8 @@ namespace massif::css {
             }
 
             std::size_t insertProperty(const Property& prop) {
-                // Only properties of the same field can compare equal, so the scan goes over that
-                // field's bucket instead of everything inserted so far - comparing two properties
-                // means a deep expression comparison, and a big layer inserts hundreds of them.
+                // Only properties of the same field can compare equal, so scan that field's bucket, not everything inserted so far:
+                // a comparison is a deep expression comparison and a big layer inserts hundreds.
                 std::size_t fieldId = _fieldIds.emplace(prop.getField(), _fieldIds.size()).first->second;
                 std::vector<std::size_t>& fieldProperties = _fieldPropertyIndex[fieldId];
                 auto it = std::find_if(fieldProperties.begin(), fieldProperties.end(), [&prop, this](std::size_t otherProperty) {
@@ -166,9 +165,8 @@ namespace massif::css {
                 return _properties.size() - 1;
             }
 
-            // Exact membership test - every (property, property set) pair asks it, and it replaces
-            // a scan over the whole property list of the set. Fields past the mask (no real style
-            // gets there) fall back to that scan.
+            // Exact membership test asked by every (property, property set) pair, replacing a scan of the set's property list;
+            // fields past the mask (no real style gets there) fall back to the scan.
             bool propertySetHasField(const FilteredPropertySet& propertySet, std::size_t fieldId) const {
                 if (fieldId >= FIELD_MASK_BITS) {
                     return findPropertySetProperty(propertySet, fieldId) != nullptr;
@@ -183,9 +181,8 @@ namespace massif::css {
                 return it != propertySet.properties.end() ? _properties[*it].get() : nullptr;
             }
 
-            // The first thing mergePropertySetProperty does, without the property set copy the merge
-            // needs. Most pairs are rejected here, so the copy is worth avoiding. One mask test per
-            // filter replaces the walk over the property set's own filters.
+            // The first thing mergePropertySetProperty does, without its property set copy: most pairs are rejected here, and one
+            // mask test per filter replaces walking the set's own filters.
             bool canMergePropertySetProperty(const FilteredPropertySet& propertySet, const FilteredProperty& property) const {
                 if (_predicateMasksOverflowed) {
                     for (std::size_t filter : property.filters) {

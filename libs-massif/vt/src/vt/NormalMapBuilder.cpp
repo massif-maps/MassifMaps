@@ -159,9 +159,8 @@ namespace massif::vt {
             float heights[3][3];
             for (int y = 0; y < height; y++) {
                 double y1 = boost::math::constants::pi<double>() * ((tileId.y + (height - y - 0.5) / height) / (1 << tileId.zoom) - 0.5);
-                // Web Mercator: sin(lat) = tanh(2 * y1), so ss = cos(lat). This is the Mercator
-                // scale correction MapLibre applies in the shader as 'scaleFactor'; here it is
-                // baked into the normal (dz), so the shader does not need a latitude range.
+                // Web Mercator: sin(lat) = tanh(2 * y1), so ss = cos(lat): MapLibre's shader 'scaleFactor', baked into the normal (dz)
+                // here so the shader needs no latitude range.
                 double rz = std::tanh(2.0 * y1);
                 double ss = std::sqrt(std::max(0.0, 1.0 - rz * rz));
 
@@ -208,9 +207,8 @@ namespace massif::vt {
             std::uint32_t u32;
             std::uint8_t u8[sizeof(std::uint32_t)];
         } packedNormal;
-        // Round instead of truncating: the components only have 8 bits, and truncating maps a flat
-        // normal to 127 rather than 127.5, a fixed -0.004 bias on every x and y that shows up as a
-        // systematic aspect shift on gentle terrain.
+        // Round, not truncate: components have 8 bits, and truncating maps a flat normal to 127 not 127.5, a -0.004 bias
+        // on every x and y that shows as a systematic aspect shift on gentle terrain.
         auto packComponent = [](float value) {
             float scaled = (value + 1.0f) * 127.5f + 0.5f;
             return static_cast<std::uint8_t>(scaled < 0.0f ? 0.0f : (scaled > 255.0f ? 255.0f : scaled));

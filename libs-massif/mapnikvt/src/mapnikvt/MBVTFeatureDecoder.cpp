@@ -525,9 +525,8 @@ namespace massif::mvt {
         }
         int layerIndex = layerIt->second;
 
-        // Its own caches: the shared geometry cache holds only features the clip box KEPT, and
-        // getGeometry returns a cached one without re-testing it, so an unclipped pass filling that
-        // cache would hand the drawing pass features from the next tile over.
+        // Its own caches: the shared geometry cache holds only features the clip box KEPT and returns them untested, so
+        // an unclipped pass filling it would hand the drawing pass features from the next tile over.
         if (!clip) {
             auto geometryCache = std::make_shared<GeometryCache>();
             geometryCache->reserve(_tile->layers(layerIndex).features_size());

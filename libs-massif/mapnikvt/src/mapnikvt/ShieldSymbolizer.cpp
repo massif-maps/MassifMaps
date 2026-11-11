@@ -88,9 +88,8 @@ namespace massif::mvt {
             _logger->write(Logger::Severity::ERROR, "Failed to load shield icon font " + iconFaceName);
             return glyphs;
         }
-        // Rasterized for the size the ICON is drawn at, not the text's: a fallback rasterizes its
-        // own glyphs at its own render size and shapeGlyphs scales the metrics for it, so a large
-        // icon next to small text is not a magnified 19px raster.
+        // Rasterized for the ICON's size, not the text's: a fallback rasterizes its glyphs at its own render size and shapeGlyphs
+        // scales the metrics, so a large icon beside small text is not a magnified 19px raster.
         float iconSizePixels = (iconSize > 0 ? iconSize : fontSize * fontScale) * settings.getPixelScale();
         if (std::shared_ptr<const vt::Font> sizedFace = symbolizerContext.getFontManager()->getFont(iconFace, vt::pickGlyphRenderSize(iconSizePixels))) {
             iconFace = sizedFace;
@@ -161,9 +160,8 @@ namespace massif::mvt {
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        // The shield image's own scale, on top of the display's: everything the IMAGE is measured by
-        // takes it, the text keeps fontScale alone. Baked at a static value - the image glyph has ONE
-        // size - and re-scaled at draw by the ratio to the live ramp.
+        // The image's own scale on top of the display's; the text keeps fontScale alone. Baked at a static value (the image
+        // glyph has ONE size) and re-scaled at draw by the ratio to the live ramp.
         float imageScale = fontScale * _imageScale.getStaticValue(exprContext);
         vt::FloatFunction imageScaleFunc = _imageScaleFuncBuilder.createScaledFloatFunction(_imageScale.getFunction(exprContext), fontScale);
         float pixelScale = symbolizerContext.getSettings().getPixelScale();
@@ -196,9 +194,8 @@ namespace massif::mvt {
         vt::TextFormatter shieldFormatter(font, sizeStatic, shieldFormatterOptions);
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LabelOrientation placement = getPlacement(exprContext);
-        // Same split as TextSymbolizer: every line placement repeats along the line, only the ones laying
-        // a glyph RUN out get the line itself. A shield never runs along it, so the two 'billboard-line'
-        // spellings differ here only in the plane the icon faces.
+        // Same split as TextSymbolizer: line placements repeat along the line, only glyph-RUN ones get the line itself.
+        // A shield never runs along it, so the two 'billboard-line' spellings differ only in the plane the icon faces.
         bool billboardRepeat = (placement == vt::LabelOrientation::LINE_BILLBOARD_REPEAT);
         bool repeatAlongLine = (placement == vt::LabelOrientation::LINE || placement == vt::LabelOrientation::LINE_BILLBOARD_3D || billboardRepeat);
         vt::LabelOrientation orientation = placement;
@@ -233,9 +230,8 @@ namespace massif::mvt {
         bool textOptional = _textOptional.getValue(exprContext);
         std::vector<vt::Font::Glyph> iconGlyphs = buildIconGlyphs(font, symbolizerContext, exprContext, sizeStatic);
         std::optional<vt::ColorFunction> iconColorFunc;
-        // An SDF shield-file joins the icon run as a glyph too (TileLayerBuilder), so it needs the
-        // icon colour even with no font icon beside it. Without this a white city dot took the text
-        // fill instead and drew near-black.
+        // An SDF shield-file joins the icon run as a glyph (TileLayerBuilder), so it needs the icon colour even with no font
+        // icon beside it; otherwise a white city dot took the text fill and drew near-black.
         bool sdfBackground = sdfMode && backgroundImage && backgroundImage->bitmap;
         if (_iconFill.isDefined() && (!iconGlyphs.empty() || sdfBackground)) {
             iconColorFunc = _iconFillFuncBuilder.createColorOpacityFunction(_iconFill.getFunction(exprContext), _iconOpacity.getFunction(exprContext));
@@ -259,9 +255,8 @@ namespace massif::mvt {
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(_fill.getFunction(exprContext), _opacity.getFunction(exprContext));
         vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
         vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
-        // Style pixels, like the text size beside it: the halo has to keep its width RELATIVE to the
-        // glyphs on every display, and the renderer measures in device pixels. Left unscaled it shrank
-        // against its own text as the dpi rose.
+        // Style pixels, like the text size: the halo must keep its width relative to the glyphs on every
+        // display, and the renderer measures in device pixels.
         vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale * pixelScale);
 
         vt::TileId tileId = exprContext.getTileId();
@@ -282,9 +277,8 @@ namespace massif::mvt {
         }
         long long groupId = (allowOverlap ? -1 : 0);
         if (!allowOverlap && minimumDistance > 0) {
-            // Per TEXT along a line, as TextSymbolizer groups its repeats: one group for every
-            // shield in the style made 'shield-min-distance' a distance between DIFFERENT roads,
-            // and a style stating its symbol spacing there lost most of its shields.
+            // Per TEXT along a line, as TextSymbolizer groups repeats: one group for every shield made 'shield-min-distance'
+            // a distance between DIFFERENT roads and lost most of a style's shields.
             groupId = (repeatAlongLine ? (hash & 0x7fffffffU) : 1);
         }
 
@@ -440,14 +434,12 @@ namespace massif::mvt {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 
-                    // One counter for the WHOLE feature, so each repeat along the line gets a unique id.
-                    // Restarting it per segment gave one repeat in every segment the same id, and labels
-                    // sharing an id are merged - so text-spacing placed the repeats then collapsed them.
+                    // One counter for the WHOLE feature so each repeat gets a unique id; per-segment restarts shared ids,
+                    // and labels sharing an id are merged, collapsing the text-spacing repeats.
                     int counter = 0;
                     for (const auto& vertices : verticesList) {
-                        // The line carries the label only when no repeat is generated on it. A
-                        // repeat with no spacing falls through to generateLinePoints, which steps
-                        // it once - at the middle, like the billboard it is.
+                        // The line carries the label only when no repeat is generated on it; a repeat with no spacing falls through to
+                        // generateLinePoints, which steps it once at the middle, like the billboard it is.
                         if (spacing <= 0 && !billboardRepeat) {
                             textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, false, false, 0);
                             continue;

@@ -97,9 +97,8 @@ namespace massif::vt {
         return x * 73856093LL ^ y * 19349663LL;
     }
 
-    // Crowns of one tile layer, as discs ranked by a per-point priority. A crown is outranked when a
-    // higher-ranked disc of another point crosses it: a local test with no cascade, so it decides the
-    // same way in every tile that sees the neighbours within reach (TileLayerBuilder::MODEL_REACH).
+    // Crowns of one tile layer, as discs ranked by a per-point priority. A crown is outranked when a higher-ranked disc of another point
+    // crosses it: a local test, no cascade, so every tile seeing the neighbours within reach decides alike (TileLayerBuilder::MODEL_REACH).
     class ModelFootprints final {
     public:
         struct Footprint {

@@ -297,9 +297,8 @@ namespace massif::css {
             mapSettings.southPoleColor.setExpression(CartoCSSMapnikTranslator::buildExpression(southPoleColor));
         }
 
-        // Sun, shadows, fog and the terrain view distance. Same treatment as every other map
-        // property: whatever expression the style wrote, zoom-dependent or not, is kept as an
-        // expression and evaluated per frame.
+        // Sun, shadows, fog and the terrain view distance: like every other map property, whatever expression the style wrote
+        // is kept and evaluated per frame.
         const std::pair<const char*, mvt::FloatFunctionProperty mvt::Map::Settings::*> floatProperties[] = {
             { "sun-azimuth", &mvt::Map::Settings::sunAzimuth },
             { "sun-altitude", &mvt::Map::Settings::sunAltitude },
@@ -424,9 +423,8 @@ namespace massif::css {
         map->setParameters(parameters);
         map->setStyleParameters(styleParameters.empty() ? declaredStyleParameters : styleParameters);
 
-        // What each entry of the project's `layers` draws. An entry may name ONE attachment, so a source
-        // layer can be drawn at several DEPTHS - a pedestrian area under the parks and its road casings
-        // over them. A bare entry keeps every attachment no other entry claims.
+        // What each entry of the project's `layers` draws. An entry may name ONE attachment, so a source layer can be drawn at several DEPTHS
+        // (area under the parks, its casings over them); a bare entry keeps every attachment no other entry claims.
         std::map<std::string, std::set<std::string>> claimedAttachments;
         // A layer every entry names an attachment of draws its unclaimed ones (a child project's new
         // rules) with its topmost entry: dropped, an extending project could add nothing to it.

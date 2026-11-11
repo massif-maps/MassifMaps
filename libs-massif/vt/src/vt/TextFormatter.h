@@ -27,9 +27,8 @@ namespace massif::vt {
             float wrapWidth;
             float characterSpacing;
             float lineSpacing;
-            // A second run of text set after the first one, at its own size - an elevation after a
-            // summit name. One label, one baseline, one plate: the pair is laid out as a block and
-            // the alignment applies to the block. Empty = nothing to add, which is the default.
+            // A second run of text set after the first at its own size - an elevation after a summit name. One label, baseline and plate:
+            // the pair is laid out as a block and the alignment applies to the block. Empty = nothing to add (default).
             std::string secondaryText;
             float secondaryScale;  // of the main font size
             float secondaryGap;    // between the runs, in pixels like dx/dy

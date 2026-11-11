@@ -14,9 +14,8 @@ namespace massif::mvt {
     SymbolizerContext::Settings::Settings(float tileSize, std::shared_ptr<const StyleParameterStore> styleParameterStore, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale, vt::StyleStateRef styleState) :
         _tileSize(tileSize), _geometryScale(1.0f), _fontScale(1.0f), _zoomLevelBias(0.0f), _pixelScale(pixelScale), _styleParameterStore(std::move(styleParameterStore)), _fallbackFont(std::move(fallbackFont)), _styleState(std::move(styleState))
     {
-        // These three are read ONCE, here: they scale the geometry and the glyphs a tile is built
-        // with, so they can never be live - changing one goes through a full re-decode, which
-        // rebuilds these settings.
+        // Read ONCE here: they scale the geometry and glyphs a tile is built with, so changing one needs a full
+        // re-decode, which rebuilds these settings.
         if (_styleParameterStore) {
             std::shared_ptr<const std::map<std::string, Value>> styleParameterValueMap = _styleParameterStore->getValues();
 

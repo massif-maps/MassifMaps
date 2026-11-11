@@ -25,13 +25,11 @@ namespace {
     // Triangles in the fan of a round line join - tangram's PolyLineBuilder value (JoinTypes::round,
     // core/src/util/builders.h). Each one costs a vertex and an index triple per join.
     static const std::size_t ROUND_JOIN_TRIANGLES = 5;
-    // Below this turn (about 10 degrees) a round join is drawn as a plain miter. Tangram fans at
-    // every angle, but their line shader has no antialias ramp: here five near-degenerate slivers
-    // each carry their own ramp, and the ramps cut a hairline seam across the line.
+    // Below this turn (about 10 degrees) a round join is a plain miter: tangram fans at every angle,
+    // but here near-degenerate slivers each carry an antialias ramp and cut a hairline seam.
     static const float ROUND_JOIN_DOT_LIMIT = 0.985f;
-    // Half-widths the INNER corner of a bevel/round join may reach. The true miter point runs away at
-    // a near-reversal and needles out past any shorter segment, and no build-time value can bound it -
-    // the miter is a SCREEN quantity while the segment is in tile units. 1 holds at every zoom.
+    // Half-widths the INNER corner of a bevel/round join may reach: the true miter runs away at a
+    // near-reversal and is a SCREEN quantity, so no build-time bound works. 1 holds at every zoom.
     static const float INNER_MITER_LIMIT = 1.0f;
     // Bounds of the inner-corner cap a line vertex carries in its height slot (tile units): lineVsh
     // reads 0 as "no cap", so the floor keeps a tiny cap off zero after int16 packing.
@@ -71,9 +69,8 @@ namespace {
 }
 
 namespace {
-    // The cell every label plate is nine-sliced from (see LabelPlateBitmap.h), cached per
-    // (radius, border) in texels: the glyph map dedupes by bitmap POINTER, so handing it a fresh
-    // instance every time would add a cell to the atlas per style rebuild.
+    // The label plate's nine-slice cell (see LabelPlateBitmap.h), cached per (radius, border): the
+    // glyph map dedupes by bitmap POINTER, so a fresh instance would grow the atlas per rebuild.
     std::shared_ptr<const massif::vt::Bitmap> buildPlateBitmap(const massif::vt::PlateCell& cell) {
         static std::mutex mutex;
         static std::map<std::pair<int, int>, std::shared_ptr<const massif::vt::Bitmap>> cache;
@@ -382,9 +379,8 @@ namespace massif::vt {
                 }
             }
             if (style.elevationMode == LineElevationMode::SPAN && !vertices.empty()) {
-                // The tiler splits a way where structure/brunnel changes, so a bridge feature's first
-                // and last vertex ARE its portals - unless the TILE cut them. Tested against the tile,
-                // not the clip box: the source clips at its own buffer, well inside ours.
+                // A bridge feature's first and last vertex ARE its portals unless the TILE cut them;
+                // tested against the tile, not the clip box (the source clips well inside ours).
                 const Vertex& p0 = vertices.front();
                 const Vertex& p1 = vertices.back();
                 SpanVertexInfo info;
@@ -433,9 +429,8 @@ namespace massif::vt {
 
         TileGeometry::Type type = TileGeometry::Type::POLYGON;
 
-        // Only a SECOND, different pattern splits the geometry. A plain fill joins a patterned one
-        // (and the other way round) on a per-slot flag, because alternating the two was 48% of
-        // every geometry draw in a city frame - see docs/internals/rendering/10-performance.md.
+        // Only a SECOND, different pattern splits the geometry; a plain fill joins a patterned one on a
+        // per-slot flag. See docs/internals/rendering/10-performance.md.
         bool patternConflict = style.pattern && _builderParameters.pattern && _builderParameters.pattern != style.pattern;
         if (patternConflict || _builderParameters.gradient || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
@@ -546,9 +541,8 @@ namespace massif::vt {
 
         return [style, transform, invTransTransform, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
             bool span = style.elevationMode == LineElevationMode::SPAN && !verticesList.empty() && !verticesList.front().empty();
-            // A deck HANGS under the road it carries, so its min-height is negative - and polygon3DVsh
-            // takes the resolved base only where the height is positive. Shift the whole prism by its
-            // BASE instead, in METRES, since resolveSpanBases converts to internal z units there.
+            // A deck HANGS under its road (negative min-height) and polygon3DVsh takes the resolved base
+            // only for positive heights: shift the prism by its BASE in METRES (resolveSpanBases converts).
             float spanBaseOffset = 0.0f;
             if (span) {
                 spanBaseOffset = minHeight;
@@ -604,9 +598,8 @@ namespace massif::vt {
             return PointLabelProcessor();
         }
 
-        // SDF mode hands the image to the same glyph path a font uses, which is what buys the
-        // crisp scaling and lets the halo pass in Label::calculateVertexData pick it up - that pass
-        // skips non-SDF glyphs on purpose.
+        // SDF mode uses the font glyph path: crisp scaling, and the halo pass in
+        // Label::calculateVertexData picks it up (it skips non-SDF glyphs on purpose).
         GlyphMap::GlyphMode glyphMode = style.sdfMode ? GlyphMap::GlyphMode::SDF : GlyphMap::GlyphMode::BITMAP;
         const GlyphMap::Glyph* baseGlyph = glyphMap->getGlyph(glyphMap->loadBitmapGlyph(style.image->bitmap, glyphMode));
         if (!baseGlyph) {
@@ -707,17 +700,15 @@ namespace massif::vt {
         if (needsNewLabelStyle) {
             std::optional<GlyphMap::Glyph> calloutLineGlyph;
             if (style.orientation == LabelOrientation::CALLOUT && style.calloutLineWidth > 0) {
-                // The leader line is drawn as one more glyph quad, so it needs an opaque cell in the
-                // text's atlas; the quad itself is sized at draw time. ONE shared instance - the glyph
-                // map dedupes by bitmap POINTER, so a new one per style would grow the atlas.
+                // The leader line is a glyph quad needing an opaque atlas cell. ONE shared instance:
+                // the glyph map dedupes by bitmap POINTER, so one per style would grow the atlas.
                 static const std::shared_ptr<const Bitmap> whiteBitmap = std::make_shared<Bitmap>(4, 4, std::vector<std::uint32_t>(16, 0xffffffffU));
                 if (const GlyphMap::Glyph* lineGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(whiteBitmap, GlyphMap::GlyphMode::BITMAP))) {
                     calloutLineGlyph = *lineGlyph;
                 }
             }
-            // A plate is nine-sliced from one atlas cell: corners keep the radius, edges stretch along
-            // one axis, the centre fills. Cached by (radius, border) in texels, so a rebuilt style does
-            // not grow the atlas. The cell spans the OUTER shape and carries the fill in its r channel.
+            // Nine-sliced from one atlas cell, cached by (radius, border) so a rebuilt style does not
+            // grow the atlas. The cell spans the OUTER shape and carries the fill in its r channel.
             auto resolvePlate = [&font](const LabelPlateStyle& plateStyle) {
                 TileLabel::Style::Plate plate;
                 plate.style = plateStyle;
@@ -754,9 +745,8 @@ namespace massif::vt {
             _labelStyle = labelStyle;
         }
 
-        // The glyphs that come before the text and stay on the anchor when the text moves: the
-        // shield bitmap first, then the icon run the style shaped for us. Built once per style
-        // rather than per label - neither depends on the feature's text.
+        // The glyphs before the text that stay on the anchor when it moves: shield bitmap, then the
+        // icon run. Built once per style, as neither depends on the feature's text.
         std::vector<Font::Glyph> iconGlyphs;
         if (style.backgroundImage) {
             // SDF mode hands the image to the glyph path a font uses - crisp at any size, and
@@ -773,9 +763,8 @@ namespace massif::vt {
             }
         }
         iconGlyphs.insert(iconGlyphs.end(), style.iconGlyphs.begin(), style.iconGlyphs.end());
-        // What the anchored text has to clear: half of it on each side, like tangram's
-        // (own + relative) * 0.5 (labelProperty.h). The shield bitmap is centred on the anchor by
-        // its own offset, so this is measured around the anchor and not around the run's origin.
+        // What the text must clear, half on each side like tangram's (own + relative) * 0.5
+        // (labelProperty.h); measured around the anchor, as the shield bitmap is centred on it.
         cglib::vec2<float> iconExtent(0, 0);
         if (!style.anchors.empty() && !iconGlyphs.empty()) {
             cglib::bbox2<float> iconBBox = massif::vt::measureGlyphRun(iconGlyphs, false);
@@ -930,17 +919,15 @@ namespace massif::vt {
         styleParameters.colorFuncs[0] = ColorFunction(Color(1.0f, 1.0f, 1.0f, 1.0f));
 
         VertexArray<std::uint16_t> geoPosIndexes;
-        // The scales are what the vertices are QUANTISED to on the way into int16, so they have to be
-        // measured from the data exactly as the main path does. Passing 1 collapsed every skirt vertex
-        // onto integer tile coordinates - one triangle per block instead of a contact shadow.
+        // The scales QUANTISE vertices into int16, so measure them from the data as the main path does:
+        // passing 1 collapsed every skirt vertex onto integer tile coordinates.
         float coordScale = calculateScale(coords, _groundIndices);
         float binormalScale = calculateScale(_groundBinormals, _groundIndices);
         float texCoordScale = calculateScale(_groundTexCoords, _groundIndices);
         float heightScale = calculateScale(heights, _groundIndices);
 
-        // ...and the index buffer is UNSIGNED SHORT, so the same split and remap the main path does.
-        // Without it a dense tile runs past 65535 skirt vertices, the indices wrap, and triangles
-        // stitch unrelated vertices into slivers hundreds of metres long.
+        // The index buffer is UNSIGNED SHORT: split and remap as the main path does, or past 65535
+        // skirt vertices the indices wrap and stitch unrelated vertices into long slivers.
         for (std::size_t offset = 0; offset < _groundIndices.size(); ) {
             std::size_t count = std::min(std::size_t(65535), _groundIndices.size() - offset);
 
@@ -978,9 +965,8 @@ namespace massif::vt {
     }
 
     void TileLayerBuilder::beginStyleVariant(std::uint64_t stateKey) {
-        // Both slots have to land in the SAME geometry as the vertices, so make room for them
-        // before anything is registered - a flush in the middle of a variant would leave the second
-        // slot indexing another geometry's style parameters.
+        // Both slots must land in the SAME geometry as the vertices: make room before registering, as
+        // a mid-variant flush would leave the second slot indexing another geometry's parameters.
         if (_builderParameters.parameterCount + 2 > TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
@@ -1197,9 +1183,8 @@ namespace massif::vt {
         // For an extrusion the texcoord slot carries the footprint centroid, and the vertex stage
         // hands it straight to applyTerrain - which expects raw coord units. Same scale, then.
         if (_builderParameters.type == TileGeometry::Type::POLYGON3D && _polygon3DAnchorExtent > 0.0f) {
-            // The anchor shares the coord scale but can lie far outside the coords it was fitted to:
-            // under deep overzoom a palace's centroid is several tiles from the piece this tile draws,
-            // and it overflowed the int16. Fit the scale to the anchors too.
+            // The anchor shares the coord scale but can lie tiles away under deep overzoom and overflowed
+            // the int16: fit the scale to the anchors too.
             coordScale = std::min(coordScale, std::pow(2.0f, std::floor(std::log(32767.0f / (_polygon3DAnchorExtent + 1.0f)) / std::log(2.0f))));
         }
         float texCoordScale = (_builderParameters.type == TileGeometry::Type::POLYGON3D ? coordScale : calculateScale(texCoords, _indices));
@@ -1367,9 +1352,8 @@ namespace massif::vt {
             vertexGeomLayoutParams.vertexSize += sizeof(float);
         }
 
-        // The ground an extrusion stands on, resolved on the CPU after the fact and patched into
-        // the uploaded vertices. A full float: it is written per building rather than per tile, so
-        // a shared int16 scale would have to be chosen before any of them are known.
+        // The ground an extrusion stands on, patched into the uploaded vertices after a CPU resolve.
+        // A full float: written per building, so no shared int16 scale could be chosen up front.
         if (type == TileGeometry::Type::POLYGON3D || !spanInfos.empty()) {
             vertexGeomLayoutParams.baseOffset = vertexGeomLayoutParams.vertexSize;
             vertexGeomLayoutParams.vertexSize += sizeof(float);
@@ -1562,9 +1546,8 @@ namespace massif::vt {
         if (style.pattern) {
             du_dx = _tileSize / style.pattern->widthScale;
             dv_dy = _tileSize / style.pattern->heightScale;
-            // The tile's own phase, so the pattern runs on across a tile border. Wrapped at ONE PERIOD
-            // (bitmap->width * widthScale here), not at the bitmap width, which left a fraction of a
-            // period at every border. Accumulated in DOUBLE: a float loses the remainder by z21.
+            // The tile's phase, so the pattern runs on across borders: wrapped at ONE PERIOD (not the
+            // bitmap width) and accumulated in DOUBLE, as a float loses the remainder by z21.
             double uPeriod = static_cast<double>(style.pattern->bitmap->width) * style.pattern->widthScale;
             double vPeriod = static_cast<double>(style.pattern->bitmap->height) * style.pattern->heightScale;
             u0 = static_cast<float>(std::fmod((_tileId.x + 0.5) * static_cast<double>(du_dx), uPeriod));
@@ -1607,9 +1590,8 @@ namespace massif::vt {
             if (points.size() < 3) {
                 return 0.0f;
             }
-            // Which way is IN comes from the ring's traversal alone: the caller orients the rings against
-            // each other, so the edge normal already points out of the MATERIAL. Each ring's own winding
-            // instead inset a hole toward its own centre, inverting the band around it.
+            // IN comes from the traversal alone: the caller orients rings against each other, so the
+            // edge normal points out of the MATERIAL. A ring's own winding would invert a hole's band.
             for (std::size_t i = 0; i < points.size(); i++) {
                 std::size_t prev = (i + points.size() - 1) % points.size();
                 std::size_t next = (i + 1) % points.size();
@@ -1623,9 +1605,8 @@ namespace massif::vt {
                 cglib::vec2<float> nPrev = extrusionEdgeNormal(points[prev], points[i]);
                 cglib::vec2<float> nNext = extrusionEdgeNormal(points[i], points[next]);
 
-                // The miter is 1/cos(halfAngle) - NOT 2/(1 + dot), which is that value squared and
-                // over-insets every corner (2x instead of 1.41x at a right angle, far worse when
-                // sharp). Capped at 4, past which the corner is simply cut.
+                // The miter is 1/cos(halfAngle), NOT 2/(1 + dot) (its square, over-insetting every
+                // corner). Capped at 4, past which the corner is cut.
                 float cosHalfAngle = std::sqrt(std::max(0.0f, 0.5f * (1.0f + cglib::dot_product(nPrev, nNext))));
                 cglib::vec2<float> bisector = nPrev + nNext;
                 float bisectorLen = cglib::length(bisector);
@@ -1633,9 +1614,8 @@ namespace massif::vt {
                     return 0.0f; // the two edges double back on each other
                 }
                 bisector = bisector * (1.0f / bisectorLen);
-                // A deliberate divergence from mapbox, which has no edge-length term: a 1.4-unit edge
-                // meeting a 4.1 inset crosses at both ends and turns the roof ring inside out. A third of
-                // the shorter adjacent edge is what the WALL cutback already imposes.
+                // Deliberately unlike mapbox (no edge-length term): a short edge under a large inset
+                // turns the roof ring inside out. A third of the shorter edge matches the WALL cutback.
                 float maxInset = std::min(lenPrev, lenNext) / 3.0f;
                 insetList[ring][i] = points[i] - bisector * std::min(radius * std::min(4.0f, 1.0f / cosHalfAngle), maxInset);
                 any = true;
@@ -1652,9 +1632,8 @@ namespace massif::vt {
         if (points.size() < 3 || _polygon3DGroundRadius <= 0.0f) {
             return;
         }
-        // Only footprints that reach this TILE. The walls have always been clipped this way and the
-        // shadow never was, so under overzoom - where one source tile's features are handed to every
-        // target tile derived from it - each tile laid the shadow of every building in the source.
+        // Only footprints that reach this TILE: under overzoom every derived tile gets the source
+        // tile's features, and each laid the shadow of every building in it.
         cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
         for (const cglib::vec2<float>& p : points) {
             bounds.add(p);
@@ -1670,14 +1649,12 @@ namespace massif::vt {
         }
         float invRadius = 1.0f / radius;
 
-        // Which side of an edge the building stands on, so the fragment holds the band at full strength
-        // there instead of letting it fall off under the walls. The caller orients the rings against
-        // each other because the tile data does not - a courtyard wound like its parent filled solid.
+        // Which side of an edge the building stands on, so the band holds full strength there. Rings are
+        // oriented by the caller because tile data is not: a courtyard wound like its parent filled solid.
         float inwardSign = (extrusionRingArea2(points) > 0.0f ? 1.0f : -1.0f) * (hole ? -1.0f : 1.0f);
 
-        // One quad per edge, covering that edge's bounding CAPSULE: the fragment measures its distance
-        // to the segment, so the caps round every corner and join one edge's shadow to the next with no
-        // union here. Overlaps are resolved by MIN blending in the mask pass.
+        // One quad per edge covering its bounding CAPSULE: the fragment measures distance to the
+        // segment, so caps round the corners. Overlaps are resolved by MIN blending in the mask pass.
         for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
             cglib::vec2<float> delta = points[i] - points[j];
             float len = cglib::length(delta);
@@ -1689,9 +1666,8 @@ namespace massif::vt {
             cglib::vec2<float> offset = normal * radius;
             float segLen = len * invRadius;
 
-            // Split ALONG the wall, at the terrain lattice's step: the quad's corners land on the surface
-            // but its interior interpolates linearly, so one quad over a 50 m wall cuts into a slope at
-            // one end and floats at the other. Across the wall the span is only 2 * radius.
+            // Split ALONG the wall at the terrain lattice's step: a quad's interior interpolates linearly,
+            // so a long one cuts into a slope at one end and floats at the other.
             float span = len + 2.0f * radius;
             float step = (_polygon3DGroundStep > 0.0f ? _transformer->calculateHeight(points[0], _polygon3DGroundStep) : GROUND_SKIRT_STEP);
             int steps = std::max(1, std::min(128, static_cast<int>(std::ceil(span / std::max(1.0e-6f, step)))));
@@ -1745,8 +1721,7 @@ namespace massif::vt {
         centroid = centroid * (1.0f / (3.0f * area));
 
         // The apex line: a pyramid collapses it to the centroid, a gable stretches it along the
-        // footprint's longest axis. Taken from the longest EDGE rather than an oriented bounding box -
-        // a building long enough to read as gabled has its ridge parallel to its longest wall.
+        // longest EDGE (not an oriented bbox), since a gabled ridge runs parallel to the longest wall.
         cglib::vec2<float> ridge(0, 0);
         if (shape == RoofShape::GABLED) {
             float longest = 0.0f;
@@ -1815,9 +1790,8 @@ namespace massif::vt {
     }
 
     std::int8_t TileLayerBuilder::packGradientT(float height) const {
-        // The facade gradient, evaluated HERE rather than in the shader: this height and the reach are
-        // both style values in one unit, while the shader's height carries a packing and a tile scale.
-        // Absolute, so every part of a building shares one ramp instead of restarting per wall.
+        // The facade gradient is evaluated HERE, not in the shader, whose height carries a packing and
+        // tile scale. Absolute, so every part of a building shares one ramp.
         float t = _polygon3DGradientHeight > 0.0f ? height / _polygon3DGradientHeight : 1.0f;
         return static_cast<std::int8_t>(std::max(0, std::min(127, static_cast<int>(std::lround(t * 127.0f)))));
     }
@@ -1847,9 +1821,8 @@ namespace massif::vt {
         return base;
     }
 
-    // mapbox's fill_extrusion_bucket chamfer, ported whole: each wall backs off from its corners and the
-    // wedge that opens is filled from the SAME columns, so the two walls' normals meet across the fill.
-    // Cutting the walls back WITHOUT filling the wedge notches a building's base.
+    // mapbox's fill_extrusion_bucket chamfer, ported whole: walls back off their corners and the wedge
+    // is filled from the SAME columns; cutting back WITHOUT the fill notches the building's base.
     void TileLayerBuilder::appendPolygon3DRing(const std::vector<cglib::vec2<float>>& points, const std::vector<cglib::vec2<float>>& inset, const std::vector<float>& rows, float insetLocal, float roofHeight, bool chamfer, std::int8_t styleIndex) {
         std::size_t n = points.size();
         if (n < 3 || rows.size() < 2) {
@@ -1869,10 +1842,8 @@ namespace massif::vt {
             inBox[i] = _polygonClipBox.inside(bounds);
         }
 
-        // A wall only backs off from a corner this tile can also FILL: with one of the two edges
-        // clipped away the wedge is never emitted, and a lone cut-back wall leaves a gap straight
-        // through the building at the tile border.
-        // A corner nothing is cut back from gets no wedge: the two chamfers then meet at the roof vertex.
+        // A wall only backs off from a corner this tile can FILL: with an edge clipped away no wedge is
+        // emitted and the cut-back leaves a gap at the tile border. No cut-back, no wedge.
         std::vector<float> cut(n, 0.0f);
         bool corners = _polygon3DEdgeCorners && insetLocal * _tileSize * 2.0f >= EDGE_CORNER_MIN_PIXELS;
         if (chamfer && corners) {
@@ -1889,9 +1860,8 @@ namespace massif::vt {
         std::vector<std::size_t> roofVertex(n, NO_COLUMN);
         std::size_t topRow = rows.size() - 1;
         std::vector<float> capRow(1, rows.back()), roofRow(1, roofHeight);
-        // 127 at the wall's normal, 0 at the roof's: the vertex stage blends the two and that
-        // interpolation IS the rounding. Held at 64 across the band the chamfer becomes a flat facet -
-        // a rim around every roof, which is what makes shapes separable looking straight down.
+        // 127 at the wall's normal, 0 at the roof's: the blend IS the rounding. Held at 64 the chamfer
+        // is a flat facet, a rim around every roof.
         std::int8_t capSide = _polygon3DRoundedRoof ? static_cast<std::int8_t>(127) : static_cast<std::int8_t>(64);
         std::int8_t roofSide = _polygon3DRoundedRoof ? static_cast<std::int8_t>(0) : static_cast<std::int8_t>(64);
 
@@ -1920,9 +1890,8 @@ namespace massif::vt {
             return;
         }
 
-        // One roof vertex per corner, shared by the two chamfers that meet there and by the corner
-        // triangle above them. Its binormal is the bisector - the only value the two edges agree
-        // on, and the one a flat facet reads at the roof end of its band.
+        // One roof vertex per corner, shared by the two chamfers and the corner triangle. Its binormal
+        // is the bisector, the only value both edges agree on.
         for (std::size_t i = 0; i < n; i++) {
             std::size_t next = (i + 1) % n;
             if (capEnd[i] == NO_COLUMN && capStart[next] == NO_COLUMN) {
@@ -1940,9 +1909,8 @@ namespace massif::vt {
                 _indices.append(capEnd[i], capStart[i], roofVertex[j]);
                 _indices.append(capEnd[i], roofVertex[j], roofVertex[i]);
             }
-            // ...and the wedge between this wall and the next, which is the vertical rounding. A
-            // corner nothing was cut back from - a collinear vertex, which OSM footprints are full
-            // of - has no wedge and would only add degenerate triangles.
+            // The wedge between this wall and the next is the vertical rounding. A corner with no
+            // cut-back (a collinear vertex) has none and would only add degenerate triangles.
             if (cut[i] > 0.0f && wallEnd[i] != NO_COLUMN && wallStart[next] != NO_COLUMN) {
                 for (std::size_t k = 0; k < topRow; k++) {
                     _indices.append(wallStart[next] + k, wallEnd[i] + k, wallEnd[i] + k + 1);
@@ -1959,9 +1927,8 @@ namespace massif::vt {
     bool TileLayerBuilder::tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& rawPointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style) {
         _tesselator.clear();
         _polygon3DFloorPoints.clear();
-        // Drop repeated points, including the one an MVT ring closes with. A zero-length edge only
-        // ever produced a zero-area wall quad, but the bevel spans corner to corner and turns one
-        // into a NaN tangent - a vertex that quantises to garbage and streaks across the tile.
+        // Drop repeated points, including the MVT ring's closing one: a zero-length edge gives the
+        // bevel a NaN tangent that quantises to garbage and streaks across the tile.
         std::vector<std::vector<cglib::vec2<float>>> pointsList;
         pointsList.reserve(rawPointsList.size());
         for (const std::vector<cglib::vec2<float>>& raw : rawPointsList) {
@@ -1975,17 +1942,15 @@ namespace massif::vt {
             while (points.size() > 1 && points.back() == points.front()) {
                 points.pop_back();
             }
-            // Oriented ONCE, here: the outer ring counter-clockwise, every hole the other way. Nothing
-            // downstream looks at winding again - normals, quad winding and the roof inset all follow the
-            // traversal direction, so a courtyard wound like its parent faced its walls inward.
+            // Oriented ONCE, here (outer CCW, holes the other way): everything downstream follows the
+            // traversal, so a courtyard wound like its parent faced its walls inward.
             if (extrusionRingNeedsReverse(points, !pointsList.empty())) {
                 std::reverse(points.begin(), points.end());
             }
             pointsList.push_back(std::move(points));
         }
-        // The anchor every vertex of this extrusion is elevated at: the mean of the OUTER ring, as
-        // maplibre does. Sampling the terrain per vertex instead shears the roof down the slope. The
-        // anchor pass overrides it where this footprint is one piece of a bigger building.
+        // The elevation anchor: the mean of the OUTER ring, as maplibre does (per-vertex terrain
+        // shears the roof down the slope). The anchor pass overrides it for a piece of a bigger building.
         _polygon3DCentroid = cglib::vec2<float>(0, 0);
         if (_polygon3DAnchor || (!pointsList.empty() && !pointsList[0].empty())) {
             cglib::vec2<float> centroid(0, 0);
@@ -1998,16 +1963,14 @@ namespace massif::vt {
                 }
                 centroid = centroid * (1.0f / pointsList[0].size());
             }
-            // The tile's UNIT SQUARE with y flipped, which is what resolveExtrusionBases reads back
-            // to know where to ask for the ground - stored unflipped it asks at a mirrored position.
-            // Not calculatePoint: that is this on a plane and a CURVED point on a globe (18-globe.md).
+            // The tile's UNIT SQUARE with y flipped, as resolveExtrusionBases reads it back (unflipped it
+            // asks at a mirrored position). Not calculatePoint, a CURVED point on a globe (18-globe.md).
             cglib::vec2<float> anchor(centroid(0), 1.0f - centroid(1));
             _polygon3DCentroid = anchor;
             _polygon3DAnchorExtent = std::max(_polygon3DAnchorExtent, std::max(std::abs(anchor(0)), std::abs(anchor(1))));
         }
-        // Edge radius: the wall stops short of the roof and a bevel band bridges the two, the roof ring
-        // inset by the same amount. It reads as ROUNDED because the band's normals interpolate between
-        // the two - one quad per edge, not a fillet. Skipped for a building too short to give it up.
+        // Edge radius: the wall stops short of the roof and a bevel band bridges them. It reads as
+        // ROUNDED through interpolated normals, not a fillet. Skipped for a building too short.
         float edgeRadius = 0.0f;
         float insetLocal = 0.0f;
         float wallTop = maxHeight;
@@ -2017,9 +1980,8 @@ namespace massif::vt {
         bool shapedRoof = style.roofShape != RoofShape::FLAT && style.roofHeight > 0.0f;
         _polygon3DTop = packTopHeight(shapedRoof ? maxHeight + style.roofHeight : maxHeight);
         if (!shapedRoof && _polygon3DEdgeRadius > 0.0f && maxHeight - minHeight > 2.0f * _polygon3DEdgeRadius && !pointsList.empty() && !pointsList[0].empty()) {
-            // The horizontal inset is TILE-LOCAL and the vertical drop is in the style's metres, so
-            // the clamp the ring imposes has to come back through the same conversion or the bevel
-            // is taller than it is wide.
+            // The inset is TILE-LOCAL, the drop in style metres: the ring's clamp must come back through
+            // the same conversion or the bevel is taller than wide.
             float localPerMeter = _transformer->calculateHeight(pointsList[0][0], 1.0f);
             float inset = insetRings(pointsList, _polygon3DEdgeRadius * localPerMeter, roofList);
             if (inset > 0.0f && localPerMeter > 0.0f) {
@@ -2039,9 +2001,8 @@ namespace massif::vt {
         bool drawRoof = _polygon3DRoofs.insert(roofKey(pointsList, maxHeight)).second;
 
         if (minHeight != maxHeight) {
-            // The heights every wall column carries a vertex at. The extra row where the gradient knees
-            // is what makes 'building-vertical-gradient-height' mean anything on a tall wall, the
-            // lighting being per vertex; the knee is a style value, so the rows serve every edge.
+            // The heights every wall column has a vertex at. The extra row at the gradient's knee is what
+            // makes 'building-vertical-gradient-height' work with per-vertex lighting.
             std::vector<float> rows;
             rows.push_back(minHeight);
             if (_polygon3DGradientHeight > minHeight && _polygon3DGradientHeight < wallTop) {
@@ -2057,9 +2018,8 @@ namespace massif::vt {
             return true;
         }
 
-        // The contact shadow, on the GROUND - not at minHeight, or a building:part starting at 20 m
-        // casts its shadow 20 m up. Only for a footprint that is actually EXTRUDED and stands on the
-        // ground: a SPAN hangs from its own chord, so its shadow would be a halo it never touches.
+        // The contact shadow sits on the GROUND, not at minHeight, and only for an EXTRUDED footprint
+        // standing on it: a SPAN hangs from its chord, so its shadow would be a halo.
         if (style.elevationMode == LineElevationMode::DRAPE && minHeight <= 0.0f && maxHeight > minHeight) {
             for (std::size_t ring = 0; ring < pointsList.size(); ring++) {
                 appendGroundSkirt(pointsList[ring], 0.0f, ring > 0, styleIndex);
@@ -2089,9 +2049,8 @@ namespace massif::vt {
             bounds.add(_coords[i1 + offset]);
             bounds.add(_coords[i2 + offset]);
             if (_polygonClipBox.inside(bounds)) {
-                // NOT through the transformer's subdivision, unlike a draped 2D polygon: subdividing the
-                // roof only buys one that follows the terrain more closely than the walls holding it up.
-                // Tangram tesselates its extrusions the same way, and the triangles saved are vertex work.
+                // NOT through the transformer's subdivision, unlike a draped 2D polygon: a roof following
+                // the terrain closer than its walls buys nothing. Tangram tesselates extrusions the same way.
                 _indices.append(i0 + offset, i2 + offset, i1 + offset);
             }
         }
@@ -2130,9 +2089,8 @@ namespace massif::vt {
         const cglib::vec2<float>& lastPoint = linePoints.back();
         bool ownEnd = lastPoint(0) >= 0 && lastPoint(0) < 1 && lastPoint(1) >= 0 && lastPoint(1) < 1;
 
-        // 'arrow only' emits the head and nothing else, so a style can paint it OVER the shaft and the
-        // head keeps its own outline where it overlaps its line. Drawn from the last segment with a
-        // direction, hung on the last vertex with no pull-back - there is no line here to pull back.
+        // 'arrow only' emits just the head so a style can paint it OVER the shaft, keeping its own
+        // outline. Hung on the last vertex with no pull-back, as there is no line here.
         if (style.endArrowOnly) {
             if (cycle || !ownEnd || !style.hasEndArrow()) {
                 return false;
@@ -2149,9 +2107,8 @@ namespace massif::vt {
         }
 
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;
-        // An offset line carries its offset in the vertex shader as binormal * offset * side, so a
-        // vertex with a zero binormal is not offset at all: the sharp-join fix below can not be
-        // applied to it and such a line keeps the plain (overlapping) split.
+        // An offset is applied in the vertex shader as binormal * offset * side, so a zero-binormal
+        // vertex is not offset: the sharp-join fix below cannot apply and the plain split is kept.
         bool offsetLine = !(style.offsetFunc == FloatFunction(0));
         // The shader caps the inner corner in tile units against an extrusion in coord units: one scale only.
         bool exactInnerCorners = !offsetLine && std::abs(cglib::length(_transformer->calculateVector(points[0], cglib::vec2<float>(1, 0))) - 1.0f) < 1.0e-3f;
@@ -2247,9 +2204,8 @@ namespace massif::vt {
                     _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
                 }
                 else {
-                    // Split line segments, INNER corners collapsed onto the centre line: two full-width
-                    // quads meeting at p0 overlap in a lens that blends twice, which darkens a
-                    // line-opacity line at every sharp turn. Collapsing them leaves the quads touching.
+                    // Split segments, INNER corners collapsed onto the centre line: overlapping quads
+                    // blend twice and darken a line-opacity line at every sharp turn.
                     bool innerSecond = cglib::dot_product(prevTangent, binormal) < 0;
                     cglib::vec2<float> centre(0, 0);
                     cglib::vec2<float> outerTexCoord(u0, innerSecond ? v0 : v1);
@@ -2274,9 +2230,8 @@ namespace massif::vt {
                     // The cross-section that ENDS the incoming quad.
                     appendCrossSection(prevBinormal);
 
-                    // Winding mirrors with the turn side - back faces are culled for 2D geometry. A round
-                    // join must stay round HERE too: this branch takes over from the bevel one at 90
-                    // degrees, and a single triangle cuts a hairpin's outer corner flat.
+                    // Winding mirrors with the turn side (back faces are culled for 2D). A round join must
+                    // stay round HERE too: this branch takes over at 90 degrees and one triangle cuts it flat.
                     std::size_t hubIndex = i0 + (innerSecond ? 1 : 0);
                     std::size_t lastRimIndex = i0 + (innerSecond ? 0 : 1);
                     std::size_t fanTriangles = (style.joinMode == LineJoinMode::ROUND ? ROUND_JOIN_TRIANGLES : 1);
@@ -2286,9 +2241,8 @@ namespace massif::vt {
                         float cross = outerA(0) * outerB(1) - outerA(1) * outerB(0);
                         float turn = std::atan2(cross, cglib::dot_product(outerA, outerB));
                         if (std::abs(cross) < 1.0e-4f) {
-                            // A line reversing exactly onto itself: the two outer offsets are
-                            // antiparallel and the cross product no longer carries the direction.
-                            // Sweep the half circle that faces AWAY from the incoming segment.
+                            // A line reversing onto itself: the outer offsets are antiparallel and the cross
+                            // product loses the direction. Sweep the half circle facing AWAY from the incoming segment.
                             cglib::vec2<float> ccwMid(-outerA(1), outerA(0));
                             float halfTurn = boost::math::constants::pi<float>();
                             turn = (cglib::dot_product(ccwMid, prevTangent) < 0 ? halfTurn : -halfTurn);
@@ -2308,18 +2262,16 @@ namespace massif::vt {
                         }
                     }
 
-                    // The cross-section that STARTS the outgoing quad - last, so the next iteration finds
-                    // it where it expects. Emitted before the fan, the quad was built off two of the fan's
-                    // rim vertices and the segment after the join lost its inner half.
+                    // The cross-section that STARTS the outgoing quad goes last, where the next iteration
+                    // expects it; before the fan, the quad was built off two rim vertices.
                     std::size_t i1 = _coords.size();
                     appendCrossSection(binormal);
                     _indices.append(hubIndex, lastRimIndex, i1 + (innerSecond ? 0 : 1));
                 }
             }
             else if ((style.joinMode == LineJoinMode::ROUND && dot < ROUND_JOIN_DOT_LIMIT) || dot < style.miterDotLimit) {
-                // Use bevel line join - and, for a round join, a fan of triangles across the outer
-                // corner instead of the single flattening triangle. A round join is round at EVERY
-                // angle, so it does not wait for the miter limit the way a bevel does.
+                // Bevel join; a round join gets a fan across the outer corner instead, and is round at
+                // EVERY angle rather than waiting for the miter limit.
                 cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal);
                 std::int8_t sin = static_cast<std::int8_t>(127.0f * cglib::dot_product(prevTangent, lerpedBinormal));
                 // Only the INNER corner uses this here. Clamped to INNER_MITER_LIMIT, unless the shader can
@@ -2339,9 +2291,8 @@ namespace massif::vt {
                     }
                 };
 
-                // The cross-section that ENDS the incoming quad. The next loop iteration links the
-                // outgoing quad to the LAST TWO vertices written here, so whatever a round join adds
-                // has to sit BETWEEN the two pairs, never after them.
+                // The cross-section that ENDS the incoming quad. The next iteration links to the LAST TWO
+                // vertices written here, so a round join's additions must sit BETWEEN the pairs.
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, -sin), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
@@ -2352,9 +2303,8 @@ namespace massif::vt {
                 }
                 setInnerReach(i0 + (innerSecond ? 1 : 0));
 
-                // Round join: a fan across the outer corner, tangram's addFan but hubbed on the CENTRE
-                // LINE rather than the miter point - which sits at a full half-width, where the antialias
-                // ramp is already at zero alpha, so a hub there left a hairline gap at every join.
+                // Round join: tangram's addFan, but hubbed on the CENTRE LINE: the miter point sits where
+                // the antialias ramp is at zero alpha, leaving a hairline gap.
                 std::size_t innerIndex = i0 + (innerSecond ? 1 : 0);
                 std::size_t outerIndexA = i0 + (innerSecond ? 0 : 1);
                 std::size_t fanTriangles = (style.joinMode == LineJoinMode::ROUND && dot < ROUND_JOIN_DOT_LIMIT ? ROUND_JOIN_TRIANGLES : 1);
@@ -2366,9 +2316,8 @@ namespace massif::vt {
                     _texCoords.append(cglib::vec2<float>(u0, (v0 + v1) * 0.5f));
                     _binormals.append(cglib::vec2<float>(0, 0));
                     _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 0, 0));
-                    // A quad ends on the CHORD from its outer corner to the miter point, which does
-                    // not pass through the centre, so a fan hubbed on the centre leaves a sliver
-                    // against that chord - a hairline seam at every join. Close it on both sides.
+                    // A quad ends on the CHORD to the miter point, which misses the centre, so a centre-hubbed
+                    // fan leaves a sliver seam against it. Close it on both sides.
                     if (innerSecond) {
                         _indices.append(innerIndex, miterIndex, outerIndexA);
                     } else {
@@ -2390,9 +2339,8 @@ namespace massif::vt {
                         _texCoords.append(cglib::vec2<float>(u0, innerSecond ? v0 : v1));
                         _binormals.append(radial);
                         _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, innerSecond ? 1 : -1, 0));
-                        // Winding follows the turn side, as the bevel triangle below does: back
-                        // faces are culled for 2D geometry, so a fan wound the same way for both
-                        // turn directions loses every join that turns the other way.
+                        // Winding follows the turn side, as the bevel triangle below does: back faces are
+                        // culled for 2D, so one winding loses every join turning the other way.
                         if (innerSecond) {
                             _indices.append(innerIndex, lastRimIndex, radialIndex);
                         } else {
@@ -2462,9 +2410,8 @@ namespace massif::vt {
                 _indices.append(i0 - 1, i0 + 0, i0 + 1);
             }
 
-            // An arrow head replaces the cap and pulls the line's last vertices back by its own length,
-            // so the line stops where the head starts. The pull-back rides the binormal attribute, which
-            // the shader scales by the line width - the head's size is in pixels, not metres.
+            // An arrow head replaces the cap and pulls the last vertices back by its length. The pull-back
+            // rides the binormal, which the shader scales by line width: head size is pixels, not metres.
             bool endArrow = !cycle && ownEnd && style.hasEndArrow();
             cglib::vec2<float> setback = endArrow ? tangent * lineEndArrowInradius(style) : cglib::vec2<float>(0, 0);
 
@@ -2485,25 +2432,22 @@ namespace massif::vt {
     }
 
     float TileLayerBuilder::lineEndArrowInradius(const LineStyle& style) {
-        // Sizes are multiples of the LINE WIDTH; one binormal unit is half a line width, so a base
-        // of endArrowWidth line widths is endArrowWidth units to each side, and a length of
-        // endArrowLength line widths is 2 * endArrowLength units.
+        // Sizes are multiples of the LINE WIDTH and one binormal unit is half of it: a base is
+        // endArrowWidth units per side, a length 2 * endArrowLength units.
         float halfBase = style.endArrowWidth;
         float length = 2.0f * style.endArrowLength;
         return halfBase * length / (halfBase + std::sqrt(halfBase * halfBase + length * length));
     }
 
-    // A CUSTOM head outline, offset outward by half a line width with miter joins - a homothety only
-    // keeps the edges equidistant on the built-in triangle. The miter is left unclamped, since clamping
-    // bevels the tip. A concave contour can self-intersect: the known limit of offsetting this cheaply.
+    // A CUSTOM head outline offset by half a line width with miter joins (a homothety only holds for
+    // the built-in triangle). Unclamped miter, as clamping bevels the tip; a concave contour can self-intersect.
     std::vector<cglib::vec2<float>> TileLayerBuilder::lineEndArrowShapeOutline(const LineStyle& style) {
         const std::vector<cglib::vec2<float>>& shape = *style.endArrowShape;
         std::size_t n = shape.size();
         std::vector<cglib::vec2<float>> skeleton;
         skeleton.reserve(n);
-        // MEASURED, not assumed: the line's own edge sits TWO binormal units from its centre, so a unit
-        // is a quarter of the line width. A path coordinate is documented as one line width, hence the
-        // four, and the outward offset below is two units.
+        // MEASURED: the line's edge sits TWO binormal units from its centre, so a unit is a quarter
+        // of the line width; a path coordinate is one line width, hence four.
         constexpr float UNITS_PER_LINE_WIDTH = 4.0f;
         constexpr float OFFSET_UNITS = UNITS_PER_LINE_WIDTH * 0.5f;
         for (const cglib::vec2<float>& vertex : shape) {
@@ -2533,9 +2477,8 @@ namespace massif::vt {
                 continue;
             }
             bisector = bisector * (1.0f / len);
-            // A REFLEX vertex - the inside of a swallow tail's notch - has to be clamped: its miter
-            // runs away from the contour instead of along it, and an unclamped one folds the outline
-            // over itself. Convex corners keep the exact miter, which is what keeps a tip sharp.
+            // A REFLEX vertex (a swallow tail's notch) must be clamped, or its miter runs away and folds
+            // the outline over itself. Convex corners keep the exact miter, keeping a tip sharp.
             float turn = (d0(0) * d1(1) - d0(1) * d1(0)) * winding;
             float miter = 1.0f / std::max(1.0e-2f, cglib::dot_product(bisector, n0));
             outline.push_back(cur + bisector * OFFSET_UNITS * (turn < 0 ? std::min(miter, 1.0f) : miter));
@@ -2553,22 +2496,19 @@ namespace massif::vt {
 
         float halfBase = style.endArrowWidth;
         float length = 2.0f * style.endArrowLength;
-        // The head hangs on its INCENTER, not its tip or base: a homothety about the incenter moves
-        // every edge by the SAME distance, so a casing rule draws the same triangle a few units bigger.
-        // Anchoring the tip pins the two triangles at the point and the border reads as a wedge.
+        // The head hangs on its INCENTER: a homothety about it moves every edge the SAME distance, so a
+        // casing draws the same triangle bigger. Anchoring the tip makes the border read as a wedge.
         float inradius = lineEndArrowInradius(style);
         cglib::vec2<float> base = -tangent * inradius;
         cglib::vec2<float> tip = tangent * (length - inradius);
 
-        // The head is solid: its corners carry a zero antialias distance, so the fragment shader keeps
-        // them opaque. A line's distance field describes a band one width wide, not a triangle, and
-        // stretched over this one it faded the silhouette near the barbs.
+        // The head is solid: zero antialias distance at its corners keeps it opaque, as a line's
+        // distance field (a band one width wide) faded the silhouette near the barbs.
         const cglib::vec4<std::int8_t> attrib(styleIndex, 0, 0, 0);
         std::size_t i0 = _coords.size();
 
-        // A head drawn on its own has a SLOT cut out of its base, one line width wide, which is what
-        // lets a style put the head OVER the shaft and still read as one polygon: the slot leaves the
-        // shaft untouched while the shoulders, barbs and tip paint over it.
+        // A head on its own has a one-line-width SLOT cut from its base, so a style can paint it OVER
+        // the shaft and leave the shaft untouched while shoulders, barbs and tip cover it.
         if (style.endArrowOnly && halfBase > 1.0f) {
             cglib::vec2<float> slot = binormal;
             _coords.append(p0, p0, p0);
@@ -2653,9 +2593,8 @@ namespace massif::vt {
                 cglib::vec2<float> u = poly[b] - poly[a], v = poly[c] - poly[a];
                 return (u(0) * v(1) - u(1) * v(0)) * winding;
             };
-            // A flattened curve leaves runs of nearly straight points: an ear whose area is a
-            // rounding error is not a failure, it is just flat, so it is clipped rather than
-            // refused. Refusing them is what left holes in the head.
+            // A flattened curve leaves near-straight runs: an ear of rounding-error area is flat, not a
+            // failure, so clip it. Refusing them left holes in the head.
             std::size_t guard = 0;
             while (remaining.size() > 3 && guard++ < n * n * 2) {
                 bool clipped = false;
@@ -2700,9 +2639,8 @@ namespace massif::vt {
             return false;
         }
 
-        // No docking slot here, unlike the built-in triangle: a slot is a notch where the shaft enters
-        // the head, and a custom contour is placed AHEAD of the line end rather than straddling it -
-        // cutting one through the middle of an icon only gashes it.
+        // No docking slot, unlike the built-in triangle: a custom contour sits AHEAD of the line end,
+        // so a notch would only gash the icon.
         std::vector<std::vector<cglib::vec2<float>>> pieces { outline };
 
         const cglib::vec4<std::int8_t> attrib(styleIndex, 0, 0, 0);

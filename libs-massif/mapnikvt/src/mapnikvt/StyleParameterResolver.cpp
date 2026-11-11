@@ -93,9 +93,8 @@ namespace massif::mvt {
             return false;
         }
 
-        // The field expression the parameter is compared with, when EVERY read of it in this
-        // expression is an '=' against something the feature alone answers. Nothing otherwise: a
-        // read the fold cannot account for would be frozen at the value the decode happened to use.
+        // The field expression the parameter is compared with, when EVERY read of it is an '=' against something the
+        // feature alone answers; nothing otherwise, as an unaccounted read would freeze at the decode's value.
         std::optional<Expression> resolveFieldExpression(const Expression& expr, const std::string& name) {
             std::size_t reads = countStyleParameterReads(expr, name);
             std::vector<std::shared_ptr<ComparisonPredicate>> comparisons;
@@ -199,9 +198,8 @@ namespace massif::mvt {
     }
 
     std::optional<SelectionParameter> resolveSelectionParameter(Map& map, const std::shared_ptr<Logger>& logger) {
-        // The three properties of a line that become style SLOTS - a slot is refilled per frame, so
-        // both branches of the fold share the same vertices. Anything else a fold touched would have
-        // to be tesselated twice, which is the decode this is here to avoid.
+        // The line properties that become style SLOTS, refilled per frame, so both fold branches share vertices;
+        // anything else would be tesselated twice, which is the decode this avoids.
         static const std::set<std::string> FOLDABLE_PROPERTIES = { "stroke", "stroke-opacity", "stroke-width" };
 
         // Opt-in: a style that asks for nothing is not walked at all

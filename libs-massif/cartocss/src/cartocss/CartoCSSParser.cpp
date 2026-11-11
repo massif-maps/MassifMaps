@@ -90,9 +90,8 @@ namespace massif::css {
                 constid = qi::lexeme['$' >> +(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 unescapedfieldid = qi::lexeme[+(qi::print - qi::char_("[]{}")) > -(qi::char_("[") > unescapedfieldid > qi::char_("]")) > -(qi::char_("{") > unescapedfieldid > qi::char_("}"))];
 
-                // One parse of the head, then an optional tail - NOT two alternatives both starting with
-                // `expression`. Every parenthesised sub-expression comes through here, so backtracking on
-                // a missing comma costs 2^depth: a 28-deep ternary took over a minute to load.
+                // One parse of the head, then an optional tail, not two alternatives starting with `expression`: backtracking on a missing
+                // comma costs 2^depth (a 28-deep ternary took over a minute to load).
                 expressionlist =
                     expression                                      [_val = _1]
                     >> -((',' > (expression % ','))                 [_val = phoenix::bind(&makeListExpression, _val, _1)]

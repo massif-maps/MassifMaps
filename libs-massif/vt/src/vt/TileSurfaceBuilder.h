@@ -39,9 +39,8 @@ namespace massif::vt {
         // inside its frame (the shadow caster's ring) asks this first.
         bool isTileSurfaceCached(const TileId& tileId) const { return _tileSurfaceCache.count(tileId) > 0; }
 
-        // Builds a single shared unit-grid surface in tile-local [0,1] coordinates. Unlike
-        // buildTileSurface it carries no per-tile world placement - it is drawn with each tile's own MVP
-        // and terrain uniforms - so the mesh is built ONCE and reused, as tangram's raster grid is.
+        // Builds a single shared unit-grid surface in tile-local [0,1] coordinates. Unlike buildTileSurface it has no per-tile world placement
+        // (drawn with each tile's own MVP and terrain uniforms), so the mesh is built ONCE and reused, as tangram's raster grid is.
         std::shared_ptr<TileSurface> buildRegularGridSurface(int resolution) const;
         static constexpr int GRID_INDEX_BAND = 6; // cells per index band: fits a 16-entry vertex cache
         // The grid's indices come in GRID_CULL_BLOCKS^2 contiguous blocks, row by row from the tile's

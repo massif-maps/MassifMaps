@@ -508,9 +508,8 @@ namespace massif::vt {
             }
         }
 
-        // The elevation version moves for ANY tile decode; unchanged heights must not drop caches.
-        // Anchored means the heights are known NOW: a miss after a 2D/3D ramp step leaves a vertex at another
-        // exaggeration, so the GPU places the label until data lands.
+        // The elevation version moves for ANY tile decode; unchanged heights must not drop caches. Anchored means heights are known NOW:
+        // a miss after a 2D/3D ramp step leaves a vertex at another exaggeration, so the GPU places the label until data lands.
 #if MASSIF_VT_RENDER_STATS
         if (_elevationAnchored && !complete) {
             VT_STAT_INC(labelAnchorMisses); // from its CPU height to the GPU's, which can differ
@@ -596,9 +595,8 @@ namespace massif::vt {
             VT_STAT_INC(placementReanchorsHidden);
         }
 
-        // Out of view: dropped, not kept, so the culler skips it and it claims no border cells. The
-        // culler's distance cut reads the placement, so it is repeated here to stop the search itself
-        // (performance-log 29); the frustum is the padded one.
+        // Out of view: dropped so the culler skips it and it claims no border cells. The culler's distance cut reads the placement,
+        // so it is repeated here to stop the search itself (performance-log 29); the frustum is the padded one.
         cglib::bbox3<double> geometryBBox = calculateGeometryBBox(viewState);
         // The application's cut, not the constant: it must match the culler's or raising that does nothing.
         bool beyondCutoff = LabelDistance::isTooFar(viewState.focusDistance, cglib::length(geometryBBox.center() - viewState.origin), viewState.labelViewDistance);

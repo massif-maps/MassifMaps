@@ -43,9 +43,8 @@ namespace massif::mvt {
         // 'span' stands the prism on its own chord instead of on the ground - a bridge DECK, whose
         // min-height/height are then a thickness rather than a height above the terrain.
         StringProperty _elevationMode = StringProperty("drape");
-        // mapbox's fill-extrusion-emissive-strength. UNSET (-1) rather than 0 or 1: an extrusion
-        // that says nothing takes the Map block's building-emissive, which is what every style did
-        // before this existed. Same sentinel as TextSymbolizer's halo-emissive-strength.
+        // mapbox's fill-extrusion-emissive-strength. UNSET (-1) takes the Map block's building-emissive, as every style
+        // did before this existed; same sentinel as TextSymbolizer's halo-emissive-strength.
         FloatFunctionProperty _emissive = FloatFunctionProperty(-1.0f);
 
         ColorFunctionBuilder _fillFuncBuilder;

@@ -24,9 +24,8 @@ namespace massif::vt {
             int texCoordOffset;
             int normalOffset;
             int binormalOffset;
-            // How far a skirt vertex hangs below the surface, as its own attribute. Present only on
-            // a SPHERE, where the flat encoding (replacing the vertex z with a sentinel) destroys
-            // the curved position the shader needs. -1, and absent from the vertex, on a plane.
+            // How far a skirt vertex hangs below the surface, as its own attribute. Only on a SPHERE, where the flat encoding (vertex z
+            // replaced by a sentinel) destroys the curved position the shader needs. -1, and absent from the vertex, on a plane.
             int skirtOffset;
 
             VertexGeometryLayoutParameters() : vertexSize(0), coordOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), skirtOffset(-1) { }

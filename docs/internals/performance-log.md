@@ -3288,3 +3288,17 @@ in fps is not measured. PMTiles reads its header and never had it.
 lock. `Log::Info` reaches the log listener even with info off, so on a phone every load paid a logcat write
 inside the lock. The lines now run outside it (the "Loading" line before it, the missing-tile lines after
 the query is finished). Not measured: a host has no listener or logcat to pay for, so only the order changed.
+
+## Figures moved out of code comments (2026-11-11)
+
+Trimming the `libs-massif` comments to the two-line rule removed these figures from the code. They are kept as
+they were written, not re-measured:
+
+- `TileLayerBuilder.cpp`, pattern split: alternating a plain and a patterned fill was 48 % of every geometry draw
+  in a city frame, which is why the builder splits a layer by pattern ([10-performance.md](rendering/10-performance.md)).
+- `SpanResolver.cpp`, end bucketing: the earlier quadratic pass took a second per build once a city's every bridge
+  arrived at z14.
+- `CompileBench.cpp` (cartocss) lost its build recipe with its header; its paths named the old `libs-carto/`
+  layout, so it was stale. The bench compiles `CartoCSSParser`, `CartoCSSCompiler`, `Expression` and `Predicate`
+  with the `mapnikvt` parse utilities and runs as `cssbench <style-dir> <project.json> [repeats] [layer]`;
+  `CSSBENCH_DUMP=<file>` writes the compiled output for a before/after diff.

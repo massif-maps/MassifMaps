@@ -54,21 +54,18 @@ namespace massif::mvt {
     protected:
         static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 
-        // 'right, left, top, bottom' and the four corners, in preference order - the culler takes
-        // the first side that is free (see vt::LabelAnchor). Empty is one fixed layout, which is
-        // what every shield did before the property existed.
+        // 'right, left, top, bottom' and the four corners in preference order; the culler takes the first free side
+        // (see vt::LabelAnchor). Empty is one fixed layout, as before the property existed.
         static std::vector<vt::LabelAnchor> parseAnchors(const std::string& anchors);
         // 'left' / 'middle' / 'right' / 'auto' - see _textHorizontalAlignment.
         static vt::LabelLineAlign parseLineAlign(const std::string& align);
-        // The icon run: the glyphs of 'icon-name' shaped from 'icon-face-name', centred on the anchor
-        // and marked as the icon run so they keep their place when the text moves. The face is resolved
-        // as a FALLBACK of the label font, which puts its glyphs in the label's own atlas.
+        // The icon run: 'icon-name' glyphs shaped from 'icon-face-name', centred on the anchor and marked as the icon run so they keep
+        // their place when the text moves. The face is a FALLBACK of the label font, so its glyphs land in the label's own atlas.
         std::vector<vt::Font::Glyph> buildIconGlyphs(const std::shared_ptr<const vt::Font>& font, const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext, float fontSize) const;
 
         StringProperty _file;
-        // Scales the shield IMAGE without touching the text. An SDF sprite has to ship at its own
-        // resolution and be shrunk here: resampling the field into a smaller bitmap loses exactly
-        // the resolution the field needs, and the smaller the icon the blockier it came out.
+        // Scales the shield IMAGE, not the text. An SDF sprite ships at its own resolution and is shrunk here: resampling the
+        // field into a smaller bitmap loses the resolution it needs (the smaller the icon, the blockier).
         FloatFunctionProperty _imageScale = FloatFunctionProperty(1.0f);
         BoolProperty _unlockImage = BoolProperty(false);
         FloatProperty _shieldDx = FloatProperty(0.0f);
@@ -89,9 +86,8 @@ namespace massif::mvt {
         FloatFunctionProperty _iconHaloRadius = FloatFunctionProperty(0.0f);
         FloatProperty _iconDx = FloatProperty(0.0f);
         FloatProperty _iconDy = FloatProperty(0.0f);
-        // How the LINES of a wrapped name are justified inside the text block - 'left', 'middle',
-        // 'right' or 'auto'. 'auto' follows the side the culler put the name on, flush against the icon
-        // either way. Unset keeps every line centred.
+        // How the LINES of a wrapped name are justified in the text block: 'left', 'middle', 'right' or 'auto' (follows the side
+        // the culler put the name on, flush against the icon). Unset keeps every line centred.
         StringProperty _textHorizontalAlignment = StringProperty("");
         // The plate behind the ICON, mirroring 'background-*' (which is the one behind the text).
         // The shield image is a distance field, drawn like a glyph rather than blitted.

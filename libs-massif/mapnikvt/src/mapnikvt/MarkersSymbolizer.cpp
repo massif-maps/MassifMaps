@@ -274,9 +274,8 @@ namespace massif::mvt {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 
-                    // One counter for the WHOLE feature, so each repeat along the line gets a unique id.
-                    // Restarting it per segment gave one repeat in every segment the same id, and labels
-                    // sharing an id are merged - so text-spacing placed the repeats then collapsed them.
+                    // One counter for the WHOLE feature so each repeat gets a unique id; per-segment restarts shared ids,
+                    // and labels sharing an id are merged, collapsing the text-spacing repeats.
                     int counter = 0;
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {

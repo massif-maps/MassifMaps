@@ -147,9 +147,8 @@ namespace massif::vt {
         // Label::calculateVertexData, split by what it spends the time on.
         static inline std::atomic<long long> labelPlacementNs{0};
         static inline std::atomic<long long> labelLineBuildNs{0};
-        // Line-label runs laid out from scratch. The layout is keyed on the view-projection, so this is
-        // one per visible line label per frame while the camera moves, plus one per culler pass - the
-        // price of a run that follows the line as the CURRENT camera projects it.
+        // Line-label runs laid out from scratch. Keyed on the view-projection: one per visible line label per frame while the camera
+        // moves, plus one per culler pass - the price of a run that follows the line as the CURRENT camera projects it.
         static inline std::atomic<long long> lineLayoutBuilds{0};
         static inline std::atomic<long long> labelTransformNs{0}; // world transform of the glyph quads (what a GPU billboard would remove)
         static inline std::atomic<long long> labelAttribNs{0};    // normals / uvs / attribs / indices plumbing into the batch arrays

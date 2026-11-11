@@ -411,7 +411,7 @@ void testPersistentCachePurge() {
         sqlite3pp::database db(cachePath.c_str());
         sqlite3pp::query query(db, "SELECT tileId FROM persistent_cache");
         for (auto it = query.begin(); it != query.end(); ++it) {
-            ids.insert((*it).get<long long>(0));
+            ids.insert((*it).get<std::int64_t>(0));
         }
         return ids;
     };

@@ -9070,12 +9070,12 @@ namespace massif::vt {
 
         shaderProgram.uniforms.resize(std::accumulate(uniformMap.begin(), uniformMap.end(), 0, [](int prev, const std::pair<std::string, int>& item) { return std::max(prev, 1 + item.second); }));
         for (auto it = uniformMap.begin(); it != uniformMap.end(); it++) {
-            shaderProgram.uniforms[it->second] = glGetUniformLocation(program, it->first.c_str());;
+            shaderProgram.uniforms[it->second] = glGetUniformLocation(program, it->first.c_str());
         }
 
         shaderProgram.attribs.resize(std::accumulate(attribMap.begin(), attribMap.end(), 0, [](int prev, const std::pair<std::string, int>& item) { return std::max(prev, 1 + item.second); }));
         for (auto it = attribMap.begin(); it != attribMap.end(); it++) {
-            shaderProgram.attribs[it->second] = glGetAttribLocation(program, it->first.c_str());;
+            shaderProgram.attribs[it->second] = glGetAttribLocation(program, it->first.c_str());
         }
     }
 

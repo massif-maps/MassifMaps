@@ -299,6 +299,9 @@ void testMBTilesZoomRange() {
     {
         MBTilesTileDataSource source(2, 14, path);
         TEST_CHECK(source.getMinZoom() == 2 && source.getMaxZoom() == 14, "a declared zoom range wins");
+        std::shared_ptr<TileData> deeper = source.loadTile(MapTile(1, 1, 5, 0));
+        TEST_CHECK(deeper && deeper->isReplaceWithParent(), "an absent tile above the minimum zoom asks for its parent");
+        TEST_CHECK(!source.loadTile(MapTile(1, 1, 2, 0)), "an absent tile at the minimum zoom is no tile");
     }
     {
         MBTilesTileDataSource source(path);

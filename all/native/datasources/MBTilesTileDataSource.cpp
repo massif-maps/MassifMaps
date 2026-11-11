@@ -169,8 +169,8 @@ namespace massif {
     }
 
     std::shared_ptr<TileData> MBTilesTileDataSource::loadTile(const MapTile& mapTile) {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
         Log::Infof("MBTilesTileDataSource::loadTile: Loading %s", mapTile.toString().c_str());
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         if (!_database) {
             Log::Errorf("MBTilesTileDataSource::loadTile: Failed to load %s: Couldn't connect to the database", mapTile.toString().c_str());
             return std::shared_ptr<TileData>();
@@ -192,14 +192,16 @@ namespace massif {
             auto it = query.begin();
             if (it == query.end()) {
                 std::shared_ptr<TileData> tileData = std::make_shared<TileData>(std::shared_ptr<BinaryData>());
-                if (mapTile.getZoom() > getMinZoom()) {
+                bool hasParent = mapTile.getZoom() > getMinZoom();
+                query.finish();
+                lock.unlock();
+                if (hasParent) {
                     Log::Infof("MBTilesTileDataSource::loadTile: Tile data doesn't exist in the database, redirecting to parent");
                     tileData->setReplaceWithParent(true);
-                } else {
-                    Log::Infof("MBTilesTileDataSource::loadTile: Tile data doesn't exist in the database");
-                    return std::shared_ptr<TileData>();
+                    return tileData;
                 }
-                return tileData;
+                Log::Infof("MBTilesTileDataSource::loadTile: Tile data doesn't exist in the database");
+                return std::shared_ptr<TileData>();
             }
             
             std::size_t dataSize = (*it).column_bytes(0);

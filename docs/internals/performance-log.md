@@ -3283,3 +3283,8 @@ timing `getMaxZoom` for 3 s, Release): before, mean 170-1800 us, p99 4-19 ms, **
 read from an atomic, mean 0.02 us, max 0.09-1.4 ms (scheduler noise). Tile loads per second did not move
 (335-418 k before, 343-401 k after). The stall is the lock, so it shows on a host as on a phone; what a phone gains
 in fps is not measured. PMTiles reads its header and never had it.
+
+`loadTile` also formatted and logged one `Log::Infof` line per tile, and one per missing tile, while holding that
+lock. `Log::Info` reaches the log listener even with info off, so on a phone every load paid a logcat write
+inside the lock. The lines now run outside it (the "Loading" line before it, the missing-tile lines after
+the query is finished). Not measured: a host has no listener or logcat to pay for, so only the order changed.

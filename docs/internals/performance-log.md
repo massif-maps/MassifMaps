@@ -3234,3 +3234,40 @@ Pan fps (`rs_bench.sh`, n = 20-22 s windows): the interleaved pairs above leaned
 two installs of the master build (A, B) and the fix (C), six rotated orders, 17 runs. Means A 26.5 (n=5), B 26.9, C 26.7; drape GPU
 5.7 / 6.1 / 6.0 ms, bakes a second 4.7 / 5.8 / 5.2. The fix sits inside the master-vs-master spread (0.4 fps); single runs span
 21.8-30.9 and the phone drifts ~10% over a session. A temporary counter also showed the cap never fires during the pan.
+
+
+
+## Inside a drape bake: no draw-side lever for the cold-city hitches (2026-11-10)
+
+Crosscall (Adreno 610), `master` + the `PROF RAW` metric + temporary per-bake counters (not committed), dense-centre camera
+(45.2095 -> south, zoom 15.8, tilt 30), cold install before every run. Per bake: draw calls, indices, the `renderTileGeometry` sections
+(`RenderStats` deltas), VBO misses, CPU ms per drape layer, and a `glFinish` after the layer draws for the GPU wait.
+
+- **Shader compiles are real but startup-only.** On a cold install every program variant a bake needs is compiled on first use: the bake
+  variants (`line` x5, `polygon`, `tilebackground`) 20-70 ms each, `tilesurfacedrape` 141, `tilesurfacefill` 101, `terrainpaint` 162,
+  about 0.85 s in total, with a single bake stalling up to 247 ms. Every one of them happened in the first 5 s after launch (one
+  renderer per vt group recompiles the same id in 4-14 ms once the driver has it); none fell in the pan, which begins 40 s later.
+  A first look at an unfiltered log read these as the pan's tail; the timestamps say otherwise.
+- **In the pan a bake is cheap on the CPU.** 208 bakes: mean 7.0 ms, p99 32, max 33 ms of GL-thread time, 15 geometry draws and 5.1 VBO
+  uploads each. Of the `renderTileGeometry` time, 66% is `buildCompiledTileGeometry` (the first-use VBO upload, ~0.7 ms each, correlation
+  with the bake's ms 0.80), style functions 11%, `glDrawElements` 12%, uniforms 4%, vertex binding 3%, program select 2%. The per-draw
+  work that is not an upload is ~125 us, ~1.9 ms per bake: halving it saves ~1 ms against a 100 ms frame. A 100 ms frame is not
+  made of one 33 ms bake: in the `PROF SPIKE` lines of those frames the `sky`, `drape`, `prepare`, `cover` and `layers3D` sections are
+  all inflated (20-70 ms each), which is the GL thread blocked behind the GPU, not a draw-side cost.
+- **Not fill, not one kind of draw.** Cold, dense centre, interleaved, 3 rounds each (frames over 100 ms, p99 ms, median fps):
+
+| arm | > 100 ms | p99 | median fps |
+|---|---|---|---|
+| base | 2 / 9 / 11 | 96 / 107 / 104 | 22.9 / 22.4 / 21.4 |
+| no polygon draws in the bake | 6 / 4 / 2 | 102 / 93 / 93 | 20.7 / 23.3 / 25.7 |
+| no line draws in the bake | 3 / 4 / 7 | 88 / 95 / 104 | 23.3 / 22.0 / 22.7 |
+| drape resolution 512 (a quarter of the pixels) | 5 / 5 / 8 | 97 / 99 / 103 | 22.3 / 22.8 / 21.7 |
+
+Dropping either half of the draws trims the tail a little (mean 4-4.7 against 7.3 events per run, inside the 2-11 spread of the base
+alone); a quarter of the pixels does nothing, so the bake is not fill-bound. Together with the earlier result (all draws skipped: 0 / 0 / 1)
+the tail scales with the amount of drawing as a whole, not with any one draw, constant or program, and nothing here is a single draw-side
+lever that keeps the picture identical. The counters cost ~3 fps (22 against 25-27 without them). The `glFinish` wait (mean 32 ms per
+bake) includes the previous frame's queued work, so it is not a per-bake GPU cost.
+
+Not tried, and where the remaining candidates are: pre-compiling the bake's program variants at start (removes the 0.85 s cold-start
+stalls, not the pan's), spreading a bake over frames (changes what a frame shows), a pan-time VBO upload from another thread.

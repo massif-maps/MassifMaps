@@ -4,6 +4,7 @@
 #include "renderers/MapRenderer.h"
 #include "renderers/TileRenderer.h"
 #include "renderers/drawdatas/TileDrawData.h"
+#include "utils/DebugSwitch.h"
 #include "utils/Log.h"
 #include "utils/TileUtils.h"
 #include "core/BinaryData.h"
@@ -22,10 +23,6 @@
 #include <cmath>
 #include <functional>
 
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
-
 #include "graphics/Bitmap.h"
 
 #include <vt/TileId.h>
@@ -40,37 +37,19 @@
 namespace massif
 {
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     // Interleaved A/B of the paint against the normal-map tile set, without a rebuild and
     // without reaching into a composite layer's internal hillshade child:
     //   adb shell setprop debug.massif.terrainpaint 0
     static bool isTerrainPaintDisabledByProperty() {
-        static const bool disabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return __system_property_get("debug.massif.terrainpaint", property) > 0 && property[0] == '0';
-        }();
+        static const bool disabled = !DebugSwitch::flag("terrainpaint", true);
         return disabled;
     }
-#else
-    static bool isTerrainPaintDisabledByProperty() {
-        return false;
-    }
-#endif
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     // A/B of the shaded-DEM cache behind the paint's drape bake: adb shell setprop debug.massif.paintshade 0
     static bool isPaintShadeCacheDisabledByProperty() {
-        static const bool disabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return __system_property_get("debug.massif.paintshade", property) > 0 && property[0] == '0';
-        }();
+        static const bool disabled = !DebugSwitch::flag("paintshade", true);
         return disabled;
     }
-#else
-    static bool isPaintShadeCacheDisabledByProperty() {
-        return false;
-    }
-#endif
 
     HillshadeRasterTileLayer::HillshadeRasterTileLayer(const std::shared_ptr<TileDataSource> &dataSource, const std::shared_ptr<ElevationDecoder> &elevationDecoder) : CustomRasterTileLayer(dataSource),
         _elevationDecoder(elevationDecoder),

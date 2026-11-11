@@ -19,6 +19,10 @@ all on the link — and `libs-external/boost` symlinked as in [`BUILDING.md`](..
 generated-table lookups, the base-class chain, handle generations and the stale-handle rule,
 `set`/`get` per value type, and dotted path resolution.
 
+It is also where renderer-free SDK logic is tested (about 80 `*Test.cpp` files: the drape and terrain
+LOD maths, camera clearance, caches, day-cycle light, the C ABI...), plus `ProfileGuardTest.py`, which
+checks the build profiles' compile guards.
+
 `style/` covers the mapnikvt style MODEL without the renderer: what `resolveLayerConfig` reads out
 of a style layer that also carries ordinary line/text rules, which is what a converted MapBox style
 produces. Only the TUs the model needs are linked — the symbolizer implementations pull vt's tile
@@ -53,6 +57,12 @@ type, so they are device-verified rather than covered here. What is covered is t
 factories are generated from (`SpecSchemaTest.cpp`): a second, schema-only generator run over the
 archive sources, read as JSON, so a class whose `!spec` is missing or whose constructors stopped
 resolving fails here rather than in an integration two repos away.
+
+## Bindings and CI
+
+`bindings/run.sh` is a separate compile-only check of the generated Swift and TypeScript names; it is
+not part of `ctest`. CI runs `tests/run.sh` and the binding drift check (`.github/workflows/tests.yml`)
+on a PR carrying the `run-tests` label, or by hand; a release runs them too.
 
 ## The style XML round-trip — outside this suite
 

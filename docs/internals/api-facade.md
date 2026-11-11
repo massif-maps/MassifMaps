@@ -1558,7 +1558,7 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 | `add(path)`, `remove(path)` | `MultiOSMOfflineGeocodingService` and its reverse | the same, for geocoding databases |
 | `calculateAddresses([requestHandle])` | `GeocodingService`, `ReverseGeocodingService` | returns **GeoJSON**: `calculateAddresses` gives a vector the facade has no channel for, and each feature carrying its result's `address` and `rank` is the shape a caller rebuilt by hand |
 
-That was the first set. The table now holds 78 methods; later additions include the camera on
+That was the first set. The table now holds 99 methods; later additions include the camera on
 `BaseMapView` (`moveTo`, `moveCameraTo`, `flyTo`, `fitBounds`, `screenToMap`, `mapToScreen`,
 `stopFlight`), feature editing on `GeoJSONVectorTileDataSource`, the external sources of
 `CompositeVectorTileLayer`, area downloads on `PersistentCacheTileDataSource`, and the celestial
@@ -2110,7 +2110,7 @@ is the one piece of new API this path would want.
   would each want their own accessor and their own typemap per language. Nothing needs one yet.
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
   the generator can read, so each one is a thunk in `MethodImpls.cpp` or a sibling file, plus a
-  `!method` declaration for the typings. 78 exist — see the table above for the first ones and why.
+  `!method` declaration for the typings. 99 exist — see the table above for the first ones and why.
 - **A class the profile only forward-declares keeps its declared name in a traversal.** 14 of the
   116 object getters are in that position — `VectorTileClickInfo.layer` without `Layer.i` — because
   `typeid` needs a complete type. In the full profile they all have headers; in a reduced table they

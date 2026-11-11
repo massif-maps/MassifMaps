@@ -58,6 +58,7 @@ void testCustomSource();
 void testCustomLayer();
 void testGetterLock();
 void testDestroyLock();
+void testDebugSwitch();
 void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
@@ -484,6 +485,7 @@ int main() {
     testCustomLayer();
     testGetterLock();
     testDestroyLock();
+    testDebugSwitch();
     testBundleAssets();
     testTileMetaData();
     testElevationDecoderResolve();

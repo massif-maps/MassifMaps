@@ -949,3 +949,7 @@ after setting one, and **reset them when you are done** — they survive until r
 They exist only in builds compiled with `-DMASSIF_DEBUG_PROPERTIES=1`, which `scripts/android-dev`
 always passes. An SDK build never reads them and runs each switch's default. `gputimer` is the
 exception: it lives in `FrameProfiler`, so it needs `-PprofileRender` instead.
+
+A new switch is one line: `static const bool x = DebugSwitch::flag("name", defaultValue);` (or `number`,
+`text`) from `utils/DebugSwitch.h`, which returns the default wherever properties are compiled out, so
+no `#if` or stub at the call site.

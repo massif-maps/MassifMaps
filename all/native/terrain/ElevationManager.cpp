@@ -14,6 +14,7 @@
 #include "rastertiles/MapBoxElevationDataDecoder.h"
 #include "rastertiles/TerrariumElevationDataDecoder.h"
 #include "utils/Const.h"
+#include "utils/DebugSwitch.h"
 #include "utils/Log.h"
 #include "utils/TileUtils.h"
 
@@ -25,10 +26,6 @@
 #include <cstdlib>
 #include <unordered_set>
 #include <limits>
-
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
 
 namespace massif {
 
@@ -966,25 +963,10 @@ namespace massif {
 
     // Mesh cells a node averages the DEM over (ElevationNodeField::DEFAULT_BOX_CELLS), with the
     // measurement override:  adb shell setprop debug.massif.nodebox <cells>
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int ElevationManager::nodeBoxCells() {
-        static const int cells = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.nodebox", property) > 0) {
-                int value = std::atoi(property);
-                if (value > 0) {
-                    return value;
-                }
-            }
-            return ElevationNodeField::DEFAULT_BOX_CELLS;
-        }();
+        static const int cells = static_cast<int>(DebugSwitch::number("nodebox", ElevationNodeField::DEFAULT_BOX_CELLS, 0.0, false));
         return cells;
     }
-#else
-    int ElevationManager::nodeBoxCells() {
-        return ElevationNodeField::DEFAULT_BOX_CELLS;
-    }
-#endif
 
     MapTile ElevationManager::clampTileZoom(const MapTile& mapTile) const {
         // Tangram's rule verbatim (RasterSource::addRasterTask). Deliberately NOT idempotent -

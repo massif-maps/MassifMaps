@@ -1,4 +1,5 @@
 #include "TerrainDepthWorker.h"
+#include "utils/DebugSwitch.h"
 #include "utils/Log.h"
 
 // __ANDROID__ (always set by the NDK) rather than TARGET_OS_ANDROID: the latter is only passed
@@ -10,8 +11,6 @@
 #if _MASSIF_TERRAINDEPTHWORKER_EGL
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
-#include <sys/system_properties.h>
-#include <cstdlib>
 #endif
 
 namespace massif {
@@ -38,30 +37,12 @@ namespace massif {
     bool TerrainDepthWorker::isSupported() {
         // The synchronous read-back stays reachable at runtime, so the two can be compared on
         // one device: 'adb shell setprop debug.massif.asyncdepth 0'.
-        static const bool enabled = [] {
-#if MASSIF_DEBUG_PROPERTIES
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.asyncdepth", property) > 0 && property[0] == '0');
-#else
-            return true;
-#endif
-        }();
+        static const bool enabled = DebugSwitch::flag("asyncdepth", true);
         return enabled;
     }
 
     int TerrainDepthWorker::getMovingSubmitInterval(int defaultInterval) {
-        static const int interval = [defaultInterval] {
-#if MASSIF_DEBUG_PROPERTIES
-            char property[PROP_VALUE_MAX] = { 0 };
-            if (__system_property_get("debug.massif.asyncdepthms", property) > 0) {
-                int value = std::atoi(property);
-                if (value >= 0) {
-                    return value;
-                }
-            }
-#endif
-            return defaultInterval;
-        }();
+        static const int interval = static_cast<int>(DebugSwitch::number("asyncdepthms", defaultInterval));
         return interval;
     }
 

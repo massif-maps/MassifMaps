@@ -3,13 +3,10 @@
 #include "terrain/DrapeEviction.h"
 #include "terrain/DrapeStandIn.h"
 #include "terrain/DrapeTuning.h"
+#include "utils/DebugSwitch.h"
 #include "utils/Log.h"
 
 #include <vt/RenderStats.h>
-
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
 
 #include <algorithm>
 
@@ -118,19 +115,10 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 256;
 
     // Measurement switch for the mipmapped drape textures: debug.massif.drapemip 0 goes back to
     // GL_LINEAR with no mipmap chain. Read once (Android only).
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TerrainDrapeCache::isMipmapEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.drapemip", property) > 0 && property[0] == '0');
-        }();
+        static const bool enabled = DebugSwitch::flag("drapemip", true);
         return enabled;
     }
-#else
-    bool TerrainDrapeCache::isMipmapEnabled() {
-        return true;
-    }
-#endif
 
     unsigned int TerrainDrapeCache::createTexture(bool mask, int resolution) {
         std::vector<unsigned int>& pool = (mask ? _maskTexturePools : _texturePools)[resolution];
@@ -321,33 +309,15 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 256;
 
     // Measurement switch: debug.massif.drapebudget 0 caps the cache by tile COUNT again, as it did
     // before the budget existed. Read once (Android only).
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TerrainDrapeCache::isBudgetEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.drapebudget", property) > 0 && property[0] == '0');
-        }();
+        static const bool enabled = DebugSwitch::flag("drapebudget", true);
         return enabled;
     }
-#else
-    bool TerrainDrapeCache::isBudgetEnabled() {
-        return true;
-    }
-#endif
 
-#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TerrainDrapeCache::isCoverageMaskEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.drapemask", property) > 0 && property[0] == '0');
-        }();
+        static const bool enabled = DebugSwitch::flag("drapemask", true);
         return enabled;
     }
-#else
-    bool TerrainDrapeCache::isCoverageMaskEnabled() {
-        return true;
-    }
-#endif
 
     std::size_t TerrainDrapeCache::getEntryCap() {
         return MAX_ENTRIES;

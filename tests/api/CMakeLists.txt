@@ -225,6 +225,7 @@ add_executable(api_tests
   CustomLayerTest.cpp
   GetterLockTest.cpp
   DestroyLockTest.cpp
+  DebugSwitchTest.cpp
   BundleAssetsTest.cpp
   CAbiTest.cpp
   MetaDataTest.cpp

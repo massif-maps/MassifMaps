@@ -21,6 +21,10 @@
 #include <emscripten/console.h>
 #endif
 
+#if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#include <cstdio>
+#endif
+
 namespace massif {
 
 #ifdef __ANDROID__
@@ -72,6 +76,13 @@ namespace massif {
         } else {
             emscripten_console_log(message.c_str());
         }
+    }
+#endif
+#if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+    enum LogType { LOG_TYPE_FATAL, LOG_TYPE_ERROR, LOG_TYPE_WARNING, LOG_TYPE_INFO, LOG_TYPE_DEBUG };
+
+    static void OutputLog(LogType logType, const std::string& tag, const char* text) {
+        std::fprintf(stderr, "%s: %s\n", tag.c_str(), text);
     }
 #endif
 

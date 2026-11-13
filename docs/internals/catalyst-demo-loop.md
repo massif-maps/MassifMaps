@@ -6,7 +6,7 @@ description: Reproduce a rendering bug in seconds with the iOS demo running as a
 # The Mac Catalyst demo loop
 
 The iOS demo (`scripts/ios-dev/MassifDemo`) also builds as a native **Mac Catalyst** app. It links the
-`libmassif.a` that `scripts/ios-dev/build-plugin-catalyst.sh` already built (MetalANGLE merged in), takes
+`libmassif.a` that `scripts/ios-dev/build-plugin-spm.sh catalyst` already built (MetalANGLE merged in), takes
 every knob as a launch argument, and writes screenshots from inside the process: no simulator, no
 NativeScript, no Screen Recording permission. Use it to reproduce an SDK rendering bug against the same
 data and style as the Alpi Maps app.
@@ -29,7 +29,7 @@ It differs from the simulator project in three ways:
   `MASSIF_SDK_DIR` is the Xcode build setting; the script sets it from its `SDK_DIR` variable (default: the
   MAIN checkout of the repo, so its lib is linked even when the script runs from a worktree). Set
   `SDK_DIR=<worktree>` to run against the lib that worktree built. The lib is never rebuilt here: after a
-  C++ change run `build-plugin-catalyst.sh` in that checkout, then rerun the demo (Xcode relinks).
+  C++ change run `build-plugin-spm.sh catalyst` in that checkout, then rerun the demo (Xcode relinks).
 - `SUPPORTS_MACCATALYST=YES`, `TARGETED_DEVICE_FAMILY=1,2` (plain Catalyst, "scale to match iPad", not
   "Optimize for Mac"), ad-hoc signing (`CODE_SIGN_IDENTITY=-`, no team).
 - no `OpenGLES.framework` (MetalANGLE provides MGLKit); `IOSurface` and `CoreVideo` are added.

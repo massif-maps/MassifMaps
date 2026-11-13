@@ -197,7 +197,7 @@ def buildIOSLib(args, baseArch, outputDir=None):
     '-DCMAKE_OSX_ARCHITECTURES=%s' % arch,
     '-DCMAKE_OSX_SYSROOT=%s' % ('macosx' if platform == 'MACCATALYST' else 'iphone%s' % platform.lower()),
     # Valhalla 3.8 uses std::filesystem, which Apple gates on iOS 13 / macOS 10.15.
-    '-DCMAKE_OSX_DEPLOYMENT_TARGET=%s' % ('13.1' if platform == 'MACCATALYST' else '13.0'),
+    '-DCMAKE_OSX_DEPLOYMENT_TARGET=%s' % ('13.1' if platform == 'MACCATALYST' else os.environ.get('MASSIF_IOS_DEPLOYMENT_TARGET', '13.0')),
     '-DCMAKE_BUILD_TYPE=%s' % args.configuration,
     "-DSDK_CPP_DEFINES=%s" % " ".join(defines),
     "-DSDK_DEV_TEAM='%s'" % (args.devteam if args.devteam else ""),

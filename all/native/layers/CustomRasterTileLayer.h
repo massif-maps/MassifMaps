@@ -111,7 +111,7 @@ namespace massif {
         virtual std::string getEffectiveShaderSource() const;
 
         static const std::string PASSTHROUGH_SHADER;
-        static const int DRAPE_REBAKE_MIN_MS = 100;
+        enum { DRAPE_REBAKE_MIN_MS = 100 };
 
         std::string _shaderSource;
         std::vector<std::shared_ptr<TileDataSource> > _extraDataSources;

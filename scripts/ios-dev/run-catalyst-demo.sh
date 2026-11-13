@@ -35,7 +35,7 @@ APP="$DD/Build/Products/Debug-maccatalyst/MassifDemo.app"
 PIDFILE=${PIDFILE:-$DD.pid}
 
 if [ ! -f "$SDK_DIR/build/ios_metal-MACCATALYST-arm64/Release/libmassif.a" ]; then
-  echo "no Catalyst lib in $SDK_DIR - run build-plugin-catalyst.sh there first (or set SDK_DIR)" >&2
+  echo "no Catalyst lib in $SDK_DIR - run build-plugin-spm.sh catalyst there first (or set SDK_DIR)" >&2
   exit 1
 fi
 

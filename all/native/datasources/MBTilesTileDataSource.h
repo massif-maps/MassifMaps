@@ -105,7 +105,7 @@ namespace massif {
         MBTilesScheme::MBTilesScheme _scheme;
         std::unique_ptr<sqlite3pp::database> _database;
         // Atomic, not under _mutex: the render thread asks every frame, and _mutex is held for a whole tile query.
-        static constexpr int ZOOM_UNSET = -1000;
+        enum { ZOOM_UNSET = -1000 };
         mutable std::atomic<int> _cachedMinZoom;
         mutable std::atomic<int> _cachedMaxZoom;
         mutable std::optional<MapBounds> _cachedDataExtent;

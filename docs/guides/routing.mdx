@@ -140,6 +140,24 @@ MassifObject request = Massif.object("routing", "trace", Spec.of("match-request"
 router.callAsync("matchRoute", result -> …, request);
 ```
 
+## Looking ahead
+
+`lookAhead(lat, lon, bearing, lengthMeters, profile)` on the offline service walks the graph ahead of a
+position, with no destination. It map-matches the position and a point 30 m ahead along `bearing` to
+find the road, then follows the exit closest to straight on, for `lengthMeters`. It returns an empty
+object when no road of the profile matches. It returns a JSON string:
+
+```json
+{"junctions": [{"distance": 140, "lat": 46.1, "lon": 6.2, "arrival": 92,
+                "exits": [{"heading": 2, "enterable": true}, {"heading": 182, "enterable": false}]}],
+ "ahead": {"kind": "noEntry", "distance": 310}}
+```
+
+`enterable` is the profile's access in that direction, so a one-way street entered against its
+direction is `false` and a bike contraflow street is `true`. `ahead` appears only when the road ahead
+ends (`end`) or can no longer be entered (`noEntry`). Turn restrictions, time windows and gates are
+ignored. Use `callAsync`: it runs on the calling thread like `matchRoute`.
+
 ## Indoor routing
 
 `SGREOfflineRoutingService` (experimental) routes over a graph the app provides as GeoJSON —

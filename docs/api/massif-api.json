@@ -5990,6 +5990,34 @@
         },
         {
           "cppClass": "massif::MultiValhallaOfflineRoutingService",
+          "name": "lookAhead",
+          "args": [
+            {
+              "name": "lat",
+              "type": "float"
+            },
+            {
+              "name": "lon",
+              "type": "float"
+            },
+            {
+              "name": "bearing",
+              "type": "float"
+            },
+            {
+              "name": "lengthMeters",
+              "type": "float"
+            },
+            {
+              "name": "profile",
+              "type": "string"
+            }
+          ],
+          "returns": "string",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MultiValhallaOfflineRoutingService",
           "name": "remove",
           "args": [
             {

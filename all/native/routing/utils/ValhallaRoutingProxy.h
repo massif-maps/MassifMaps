@@ -37,6 +37,7 @@ namespace massif {
 #ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
         static std::shared_ptr<RouteMatchingResult> MatchRoute(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, const std::shared_ptr<RouteMatchingRequest>& request);
         static std::shared_ptr<RoutingResult> CalculateRoute(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, const std::shared_ptr<RoutingRequest>& request);
+        static std::string LookAhead(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, double lat, double lon, double bearing, double lengthMeters);
         static void AddLocale(const std::string& key, const std::string& json);
 #endif
 

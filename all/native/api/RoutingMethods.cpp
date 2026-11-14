@@ -137,6 +137,23 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** lookAhead(lat, lon, bearing, lengthMeters, profile) -> JSON string. Blocking: use callAsync. */
+        Result lookAheadRouting(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            double lat = 0;
+            double lon = 0;
+            double bearing = 0;
+            double lengthMeters = 0;
+            std::string profile;
+            if (!args.getDouble(0, lat) || !args.getDouble(1, lon) || !args.getDouble(2, bearing) ||
+                !args.getDouble(3, lengthMeters) || !args.getString(4, profile)) {
+                return RESULT_BAD_SPEC;
+            }
+            result = PropertyValue::ofString(
+                static_cast<MultiValhallaOfflineRoutingService*>(obj)
+                    ->lookAhead(lat, lon, bearing, lengthMeters, profile));
+            return RESULT_OK;
+        }
+
         /** setConfigurationParameter(param, value) - valhalla's own limits, e.g. max distances. */
         Result setRoutingConfiguration(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             std::string param;
@@ -167,6 +184,8 @@ namespace massif { namespace api {
                                 &removeRoutingDatabase);
         Methods::registerMethod("massif::MultiValhallaOfflineRoutingService", "addLocale",
                                 &addRoutingLocale);
+        Methods::registerMethod("massif::MultiValhallaOfflineRoutingService", "lookAhead",
+                                &lookAheadRouting);
         Methods::registerMethod("massif::MultiValhallaOfflineRoutingService",
                                 "setConfigurationParameter", &setRoutingConfiguration);
 #endif

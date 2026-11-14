@@ -28,10 +28,12 @@
 !method(massif::MultiValhallaOfflineRoutingService, add, arg(database, string), returns(void))
 !method(massif::MultiValhallaOfflineRoutingService, remove, arg(database, string), returns(bool))
 !method(massif::MultiValhallaOfflineRoutingService, addLocale, arg(key, string), arg(json, string), returns(void))
+!method(massif::MultiValhallaOfflineRoutingService, lookAhead, arg(lat, float), arg(lon, float), arg(bearing, float), arg(lengthMeters, float), arg(profile, string), returns(string))
 !method(massif::MultiValhallaOfflineRoutingService, setConfigurationParameter, arg(param, string), arg(value, json), returns(void))
 
 %std_io_exceptions(massif::MultiValhallaOfflineRoutingService::matchRoute)
 %std_io_exceptions(massif::MultiValhallaOfflineRoutingService::calculateRoute)
+%std_io_exceptions(massif::MultiValhallaOfflineRoutingService::lookAhead)
 
 %feature("director") massif::MultiValhallaOfflineRoutingService;
 

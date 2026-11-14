@@ -522,7 +522,7 @@ export const METHODS: { [cls: string]: string } = {
     'massif::MultiOSMOfflineGeocodingService': 'add,v;remove,b',
     'massif::MultiOSMOfflineReverseGeocodingService': 'add,v;remove,b',
     'massif::MultiTileDataSource': 'add,v;remove,b',
-    'massif::MultiValhallaOfflineRoutingService': 'add,v;addLocale,v;remove,b;setConfigurationParameter,v',
+    'massif::MultiValhallaOfflineRoutingService': 'add,v;addLocale,v;lookAhead,s;remove,b;setConfigurationParameter,v',
     'massif::PersistentCacheTileDataSource': 'clear,v;startDownloadArea,v;stopAllDownloads,v',
     'massif::ReverseGeocodingService': 'calculateAddresses,j',
     'massif::RouteMatchingRequest': 'setCustomParameter,v',

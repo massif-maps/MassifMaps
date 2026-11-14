@@ -55,6 +55,17 @@ namespace massif {
         virtual std::shared_ptr<RoutingResult> calculateRoute(const std::shared_ptr<RoutingRequest>& request) const;
 
         /**
+         * Walks the routing graph ahead of a position, along the road heading closest to the bearing.
+         * @param lat Latitude of the position, in degrees.
+         * @param lon Longitude of the position, in degrees.
+         * @param bearing Direction of travel in degrees clockwise from north.
+         * @param lengthMeters How far ahead to look.
+         * @param profile The costing to test access with, for example "bicycle". Empty uses the service profile.
+         * @return A JSON string: junctions ahead with the heading and per-mode enterability of each exit, and where the road ahead ends or becomes no-entry.
+         */
+        std::string lookAhead(double lat, double lon, double bearing, double lengthMeters, const std::string& profile) const;
+
+        /**
          * Adds a new database.
          * @param database The database file patht to be added.
          */

@@ -59,6 +59,7 @@ The ones an app usually sets:
 | `sac_scale_labels` | 0 (1 on e-ink) | the T1..T6 grade along each trail |
 | `road_osm_low` | 0 | major roads drawn as OSM Carto draws them at low zoom |
 | `oneway_emphasis` | 0 | 0 arrows from z16; 1 from z15, closer and opaque; 2 the same, 1.3 times as large |
+| `travel_mode` | 0 | 1 draws a faded arrow against the traffic on one-way streets that bikes may ride both ways (tiles with `oneway_bicycle` = no) |
 | `route_focus` | 0 | 1 fades the hiking and cycling route network (outdoor, topo) to 0.35 of its opacity, live |
 | `cycle_focus` | 0 | 1 draws separated cycleways teal and 1.5 times as wide |
 | `lighting` | 1 (0 on e-ink) | 0 draws every colour flat, lit by no hour |

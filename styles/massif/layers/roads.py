@@ -411,7 +411,6 @@ def oneway(v):
     # icon converts to a shield, which drops the line placement. A dark arrow in a white edge, which
     # reads on a white street, a coloured major and a night road alike
     arrow = c.get('oneway-arrow', 'ink')
-    # TODO(alpimaps#127): a hollow contraflow arrow for bikes where `oneway_bicycle` = no, once the tiles carry it
     return [gate(layer('oneway' + ('' if arrow == 'ink' else '-' + arrow) + suffix + ('-e%d' % emphasis if emphasis else ''),
                        'symbol', 'transportation', minzoom=minzoom, filter=base + [['==', get('oneway'), value]],
                        layout={'symbol-placement': 'line',
@@ -420,7 +419,23 @@ def oneway(v):
                                'icon-allow-overlap': True, 'icon-ignore-placement': True},
                        paint={'icon-opacity': opacity}, emissive={'icon-emissive-strength': 1}), v, 'oneway_emphasis', emphasis)
             for emphasis, (minzoom, spacing, opacity, size) in ONEWAY.items()
-            for suffix, value, icon in (('', 1, 'oneway-' + arrow), ('-reverse', -1, 'oneway-reverse-' + arrow))]
+            for suffix, value, icon in (('', 1, 'oneway-' + arrow), ('-reverse', -1, 'oneway-reverse-' + arrow))
+            ] + contraflow(v, base, arrow)
+
+
+def contraflow(v, base, arrow):
+    """Bikes may ride a one-way street both ways (`oneway_bicycle` = no, from the tiles): the arrow against
+    the traffic, faded, at its own spacing so it falls between the solid arrows. Only while `travel_mode` is 1 (bike)."""
+    minzoom, _, _, size = ONEWAY[1]
+    spacing = (260, 170)
+    return [gate(layer('oneway-contra' + ('' if arrow == 'ink' else '-' + arrow) + suffix, 'symbol', 'transportation',
+                       minzoom=minzoom,
+                       filter=base + [['==', get('oneway'), value], ['==', get('oneway_bicycle'), 'no']],
+                       layout={'symbol-placement': 'line', 'symbol-spacing': ['step', ['zoom'], spacing[0], 17, spacing[1]],
+                               'icon-image': icon, 'icon-size': size, 'icon-rotation-alignment': 'map',
+                               'icon-allow-overlap': True, 'icon-ignore-placement': True},
+                       paint={'icon-opacity': 0.5}, emissive={'icon-emissive-strength': 1}), v, 'travel_mode', 1)
+            for suffix, value, icon in (('', 1, 'oneway-reverse-' + arrow), ('-reverse', -1, 'oneway-' + arrow))]
 
 
 def bridges(v):

@@ -363,8 +363,9 @@ Switches (0/1):
   lines, no `service`: a dark solid line from their first zoom, fading out over z15-16.5 as dark sleepers take over).
 - `oneway_emphasis` (0, 1, 2) — 0: the arrows from z16, spaced 200, opacity 0.8. 1: from z15, spaced 120
   from z17, opacity 1. 2: as 1, 1.3 times as large, spaced 90 from z17. One layer pair per level
-  (`oneway`, `oneway-e1`, `oneway-e2`), gated on the parameter. A hollow contraflow arrow for bikes
-  waits for an `oneway_bicycle` attribute in the tiles (not there yet).
+  (`oneway`, `oneway-e1`, `oneway-e2`), gated on the parameter.
+- `travel_mode` (0, 1 = bike) — a faded arrow against the traffic, at its own spacing (260, 170 from z17), where the tiles
+  carry `oneway_bicycle` = no (cairn `--transportation_cycleway`). Layer pair `oneway-contra`, from z15.
 - `route_focus` (0) — the waymarked-route network (`route-bicycle`, `route-hiking`: outdoor, topo) at 0.35
   of its opacity, for an app colouring a route over it. SDK only, read by `line-opacity` alone, so a
   toggle redraws without a re-decode. The network has no label or shield layer here, so nothing else to hide.

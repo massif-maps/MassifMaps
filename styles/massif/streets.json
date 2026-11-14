@@ -28,6 +28,7 @@
       "lighting",
       "models_3d",
       "oneway_emphasis",
+      "travel_mode",
       "route_focus",
       "cycle_focus",
       "sac_scale_labels",
@@ -10467,6 +10468,232 @@
             "oneway_emphasis"
           ],
           2
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "oneway-contra",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway"
+          ],
+          1
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": [
+          "step",
+          [
+            "zoom"
+          ],
+          260,
+          17,
+          170
+        ],
+        "icon-image": "oneway-reverse-ink",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.45,
+          16,
+          0.6,
+          18,
+          1
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 0.5
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "travel_mode"
+          ],
+          1
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "oneway-contra-reverse",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway"
+          ],
+          -1
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": [
+          "step",
+          [
+            "zoom"
+          ],
+          260,
+          17,
+          170
+        ],
+        "icon-image": "oneway-ink",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.45,
+          16,
+          0.6,
+          18,
+          1
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 0.5
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "travel_mode"
+          ],
+          1
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -146688,6 +146915,13 @@
         0,
         1,
         2
+      ]
+    },
+    "travel_mode": {
+      "default": 0,
+      "values": [
+        0,
+        1
       ]
     },
     "route_focus": {

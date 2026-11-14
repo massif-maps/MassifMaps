@@ -32,6 +32,8 @@ PARAMS = {
     'models_3d': {'default': 0, 'values': SWITCH},
     # one-way arrows: 0 from z16 as ever; 1 from z15, closer, opaque; 2 as 1 and 1.3 times as large
     'oneway_emphasis': {'default': 0, 'values': [0, 1, 2]},
+    # 1 while the rider is on a bike: one-way streets that bikes may ride both ways get a faded contraflow arrow
+    'travel_mode': {'default': 0, 'values': SWITCH},
     # the waymarked-route network (outdoor, topo) at 0.35 of its opacity; SDK only, opacity alone so a toggle redraws
     'route_focus': {'default': 0, 'values': SWITCH},
     # separated cycleways teal and 1.5 times as wide

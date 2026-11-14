@@ -236,7 +236,9 @@
 @building_stroke_width: 0.4;
 @label_spacing: 250;
 @marker_stroke_width: 1;
-@oneway_opacity: 0.8;
+@oneway_contra_spacing: 215;
+@oneway_opacity: 0.5;
+@oneway_opacity_2: 0.8;
 @oneway_spacing: 200;
 @oneway_spacing_2: 160;
 @oneway_spacing_3: 145;
@@ -247,7 +249,6 @@
 @text_size: 11;
 @text_wrap_width: 88;
 @trail_spacing: 300;
-@tunnel_stroke_opacity: 0.5;
 
 /* A road class's fill width, ramped over zoom as the road rules have it: a child project's
    rule takes it as `line-gap-width: @road_width_primary` to draw its own casing. */

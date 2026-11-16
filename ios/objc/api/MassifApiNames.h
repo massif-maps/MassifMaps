@@ -1153,6 +1153,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodGetPoints;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodInsert;
 FOUNDATION_EXPORT MassifMethod const MassifMethodLoadTile;
+FOUNDATION_EXPORT MassifMethod const MassifMethodLookAhead;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMapToScreen;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMatchRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMoveCameraTo;

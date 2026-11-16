@@ -11986,6 +11986,7 @@ export interface MethodTypes {
         add: { args: [database: string]; result: void };
         addLocale: { args: [key: string, json: string]; result: void };
         calculateRoute: { args: [request: Handle]; result: Handle<'massif::RoutingResult'>; resultClass: 'massif::RoutingResult' };
+        lookAhead: { args: [lat: number, lon: number, bearing: number, lengthMeters: number, profile: string]; result: string };
         matchRoute: { args: [request: Handle]; result: Handle<'massif::RouteMatchingResult'>; resultClass: 'massif::RouteMatchingResult' };
         remove: { args: [database: string]; result: boolean };
         setConfigurationParameter: { args: [param: string, value: Json]; result: void };

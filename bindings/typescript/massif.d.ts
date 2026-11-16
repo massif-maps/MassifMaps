@@ -9087,6 +9087,7 @@ export interface MethodTypes {
     add: (database: string) => void;
     addLocale: (key: string, json: string) => void;
     calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+    lookAhead: (lat: number, lon: number, bearing: number, lengthMeters: number, profile: string) => string;
     matchRoute: (request: Handle) => Handle<"massif::RouteMatchingResult">;
     remove: (database: string) => boolean;
     setConfigurationParameter: (param: string, value: Json) => void;

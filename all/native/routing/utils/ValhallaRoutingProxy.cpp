@@ -17,7 +17,10 @@
 #include "utils/NetworkUtils.h"
 #include "utils/Log.h"
 
+#include <algorithm>
+#include <cmath>
 #include <ctime>
+#include <stdexcept>
 #include <vector>
 #include <string>
 #include <vector>
@@ -245,6 +248,211 @@ namespace massif {
             throw GenericException("Exception while calculating route", ex.what());
         }
         return ParseRoutingResult(request->getProjection(), resultString);
+    }
+
+    namespace {
+        const int LOOK_AHEAD_MAX_JUNCTIONS = 16;
+        const int LOOK_AHEAD_MAX_STEPS = 256;
+        const double LOOK_AHEAD_PROBE_METERS = 30.0;
+
+        void PointAhead(double lat, double lon, double bearing, double meters, double& aheadLat, double& aheadLon) {
+            const double radius = 6371000.0;
+            const double toRadians = M_PI / 180.0;
+            double angular = meters / radius;
+            double theta = bearing * toRadians;
+            double phi = lat * toRadians;
+            double phiAhead = std::asin(std::sin(phi) * std::cos(angular) + std::cos(phi) * std::sin(angular) * std::cos(theta));
+            double lambdaAhead = lon * toRadians + std::atan2(std::sin(theta) * std::sin(angular) * std::cos(phi), std::cos(angular) - std::sin(phi) * std::sin(phiAhead));
+            aheadLat = phiAhead / toRadians;
+            aheadLon = lambdaAhead / toRadians;
+        }
+
+        uint32_t AccessMaskForProfile(const std::string& profile) {
+            if (profile == "pedestrian") {
+                return valhalla::baldr::kPedestrianAccess;
+            } else if (profile == "bicycle") {
+                return valhalla::baldr::kBicycleAccess;
+            } else if (profile == "motorcycle") {
+                return valhalla::baldr::kMotorcycleAccess;
+            } else if (profile == "truck") {
+                return valhalla::baldr::kTruckAccess;
+            } else if (profile == "bus") {
+                return valhalla::baldr::kBusAccess;
+            }
+            return valhalla::baldr::kAutoAccess;
+        }
+
+        double AngleDelta(double first, double second) {
+            double delta = std::fabs(std::fmod(first - second, 360.0));
+            return delta > 180.0 ? 360.0 - delta : delta;
+        }
+
+        std::vector<valhalla::midgard::PointLL> DirectedShape(const valhalla::baldr::graph_tile_ptr& tile, const valhalla::baldr::DirectedEdge* edge) {
+            std::vector<valhalla::midgard::PointLL> shape = tile->edgeinfo(edge).shape();
+            if (!edge->forward()) {
+                std::reverse(shape.begin(), shape.end());
+            }
+            return shape;
+        }
+
+        struct LookAheadExit {
+            valhalla::baldr::GraphId id;
+            const valhalla::baldr::DirectedEdge* edge;
+            double heading;
+            bool enterable;
+        };
+    }
+
+    // Starts on the edge the position matches in the direction of `bearing`, then follows the enterable exit that
+    // is closest to straight on, listing every node that has a real choice (>= 2 exits besides the way back).
+    std::string ValhallaRoutingProxy::LookAhead(const std::vector<std::shared_ptr<sqlite3pp::database> >& databases, const std::string& profile, const Variant& config, double lat, double lon, double bearing, double lengthMeters) {
+        using namespace valhalla::baldr;
+        picojson::object result;
+        picojson::array junctions;
+        try {
+            std::stringstream ss;
+            ss << config.toPicoJSON().serialize();
+            boost::property_tree::ptree configTree;
+            rapidjson::read_json(ss, configTree);
+            auto reader = std::make_shared<GraphReader>(databases);
+
+            // locate is not built (VALHALLA_SERVICES off): map-match two points along the bearing instead, which also
+            // honours the profile's access, so the edge found is one the user may travel in that direction
+            double aheadLat = lat;
+            double aheadLon = lon;
+            PointAhead(lat, lon, bearing, LOOK_AHEAD_PROBE_METERS, aheadLat, aheadLon);
+            picojson::array shape;
+            for (const std::pair<double, double>& point : {std::make_pair(lat, lon), std::make_pair(aheadLat, aheadLon)}) {
+                picojson::object shapePoint;
+                shapePoint["lat"] = picojson::value(point.first);
+                shapePoint["lon"] = picojson::value(point.second);
+                shape.push_back(picojson::value(shapePoint));
+            }
+            picojson::array attributes;
+            for (const char* attribute : {"edge.id", "matched.distance_along_edge"}) {
+                attributes.push_back(picojson::value(attribute));
+            }
+            picojson::object filters;
+            filters["attributes"] = picojson::value(attributes);
+            filters["action"] = picojson::value("include");
+            picojson::object request;
+            request["shape"] = picojson::value(shape);
+            request["costing"] = picojson::value(profile);
+            request["shape_match"] = picojson::value("map_snap");
+            request["filters"] = picojson::value(filters);
+
+            std::string matched;
+            try {
+                valhalla::Api api;
+                valhalla::ParseApi(picojson::value(request).serialize(), valhalla::Options::trace_attributes, api, valhalla_locales);
+                valhalla::loki::loki_worker_t lokiworker(configTree, reader);
+                lokiworker.trace(api);
+                valhalla::thor::thor_worker_t thorworker(configTree, reader);
+                matched = thorworker.trace_attributes(api);
+                lokiworker.cleanup();
+            } catch (const std::exception&) {
+                // no road of this profile at the position, in that direction
+                return picojson::value(result).serialize();
+            }
+
+            picojson::value parsed;
+            std::string error = picojson::parse(parsed, matched);
+            if (!error.empty()) {
+                throw std::runtime_error(error);
+            }
+            if (!parsed.is<picojson::object>() || !parsed.contains("edges") || !parsed.get("edges").is<picojson::array>() || parsed.get("edges").get<picojson::array>().empty()) {
+                return picojson::value(result).serialize();
+            }
+            const picojson::value& firstEdge = parsed.get("edges").get<picojson::array>().front();
+            if (!firstEdge.is<picojson::object>() || !firstEdge.contains("id")) {
+                return picojson::value(result).serialize();
+            }
+            double percentAlong = 0.0;
+            if (parsed.contains("matched_points") && parsed.get("matched_points").is<picojson::array>() && !parsed.get("matched_points").get<picojson::array>().empty()) {
+                const picojson::value& firstPoint = parsed.get("matched_points").get<picojson::array>().front();
+                if (firstPoint.is<picojson::object>() && firstPoint.contains("distance_along_edge")) {
+                    percentAlong = firstPoint.get("distance_along_edge").get<double>();
+                }
+            }
+
+            const uint32_t accessMask = AccessMaskForProfile(profile);
+            GraphId edgeId(static_cast<uint64_t>(firstEdge.get("id").get<double>()));
+            graph_tile_ptr tile = reader->GetGraphTile(edgeId);
+            if (!tile) {
+                return picojson::value(result).serialize();
+            }
+            const DirectedEdge* edge = tile->directededge(edgeId);
+            double travelled = (1.0 - percentAlong) * edge->length();
+
+            for (int step = 0; step < LOOK_AHEAD_MAX_STEPS && travelled < lengthMeters && static_cast<int>(junctions.size()) < LOOK_AHEAD_MAX_JUNCTIONS; step++) {
+                GraphId nodeId = edge->endnode();
+                graph_tile_ptr nodeTile = reader->GetGraphTile(nodeId);
+                if (!nodeTile) {
+                    break;
+                }
+                const NodeInfo* node = nodeTile->node(nodeId);
+                valhalla::midgard::PointLL nodeLL = nodeTile->get_node_ll(nodeId);
+                GraphId opposingId = reader->GetOpposingEdgeId(edgeId);
+
+                std::vector<valhalla::midgard::PointLL> arrivalShape = DirectedShape(tile, edge);
+                double arrivalHeading = arrivalShape.size() >= 2 ? arrivalShape[arrivalShape.size() - 2].Heading(arrivalShape.back()) : bearing;
+
+                std::vector<LookAheadExit> exits;
+                for (uint32_t i = 0; i < node->edge_count(); i++) {
+                    GraphId outId(nodeId.tileid(), nodeId.level(), node->edge_index() + i);
+                    const DirectedEdge* out = nodeTile->directededge(outId);
+                    if (outId == opposingId || out->is_shortcut() || ((out->forwardaccess() | out->reverseaccess()) & accessMask) == 0) {
+                        continue;
+                    }
+                    std::vector<valhalla::midgard::PointLL> outShape = DirectedShape(nodeTile, out);
+                    double heading = outShape.size() >= 2 ? outShape[0].Heading(outShape[1]) : arrivalHeading;
+                    exits.push_back({outId, out, heading, (out->forwardaccess() & accessMask) != 0});
+                }
+
+                const LookAheadExit* straight = nullptr;
+                for (const LookAheadExit& exit : exits) {
+                    if (exit.enterable && (!straight || AngleDelta(exit.heading, arrivalHeading) < AngleDelta(straight->heading, arrivalHeading))) {
+                        straight = &exit;
+                    }
+                }
+
+                if (exits.size() >= 2) {
+                    picojson::object junction;
+                    junction["distance"] = picojson::value(travelled);
+                    junction["lat"] = picojson::value(static_cast<double>(nodeLL.lat()));
+                    junction["lon"] = picojson::value(static_cast<double>(nodeLL.lng()));
+                    junction["arrival"] = picojson::value(arrivalHeading);
+                    picojson::array exitsJson;
+                    for (const LookAheadExit& exit : exits) {
+                        picojson::object exitJson;
+                        exitJson["heading"] = picojson::value(static_cast<double>(exit.heading));
+                        exitJson["enterable"] = picojson::value(exit.enterable);
+                        exitsJson.push_back(picojson::value(exitJson));
+                    }
+                    junction["exits"] = picojson::value(exitsJson);
+                    junctions.push_back(picojson::value(junction));
+                }
+
+                if (!straight) {
+                    picojson::object ahead;
+                    ahead["kind"] = picojson::value(exits.empty() ? "end" : "noEntry");
+                    ahead["distance"] = picojson::value(travelled);
+                    result["ahead"] = picojson::value(ahead);
+                    break;
+                }
+
+                edge = straight->edge;
+                edgeId = straight->id;
+                tile = nodeTile;
+                travelled += edge->length();
+            }
+            result["junctions"] = picojson::value(junctions);
+            result["heading"] = picojson::value(bearing);
+        }
+        catch (const std::exception& ex) {
+            throw GenericException("Exception while looking ahead", ex.what());
+        }
+        return picojson::value(result).serialize();
     }
 #endif
 

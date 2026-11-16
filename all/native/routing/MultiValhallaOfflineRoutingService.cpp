@@ -185,6 +185,32 @@ namespace massif {
         return result;
     }
 
+    std::string MultiValhallaOfflineRoutingService::lookAhead(double lat, double lon, double bearing, double lengthMeters, const std::string& profile) const {
+        std::string result;
+        accessLocalPackages([this, &result, lat, lon, bearing, lengthMeters, &profile](const std::map<std::string, std::shared_ptr<ValhallaRoutingPackageHandler> >& packageHandlerMap) {
+            std::vector<std::shared_ptr<sqlite3pp::database> > packageDatabases;
+            for (auto it = packageHandlerMap.begin(); it != packageHandlerMap.end(); it++) {
+                if (auto valhallaRoutingHandler = std::dynamic_pointer_cast<ValhallaRoutingPackageHandler>(it->second)) {
+                    if (std::shared_ptr<sqlite3pp::database> database = valhallaRoutingHandler->getDatabase()) {
+                        packageDatabases.push_back(database);
+                    }
+                }
+            }
+
+            std::string costing;
+            Variant configuration;
+            {
+                std::lock_guard<std::recursive_mutex> lock(_mutex);
+                costing = profile.empty() ? _profile : profile;
+                configuration = _configuration;
+            }
+
+            result = ValhallaRoutingProxy::LookAhead(packageDatabases, costing, configuration, lat, lon, bearing, lengthMeters);
+        });
+
+        return result;
+    }
+
     void MultiValhallaOfflineRoutingService::addLocale(const std::string& key, const std::string& json) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         ValhallaRoutingProxy::AddLocale(key, json);

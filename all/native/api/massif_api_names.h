@@ -612,6 +612,7 @@ const char* massif_property_name(massif_property property);
 #define MASSIF_METHOD_GET_STYLE_PARAMETER "getStyleParameter"
 #define MASSIF_METHOD_INSERT "insert"
 #define MASSIF_METHOD_LOAD_TILE "loadTile"
+#define MASSIF_METHOD_LOOK_AHEAD "lookAhead"
 #define MASSIF_METHOD_MAP_TO_SCREEN "mapToScreen"
 #define MASSIF_METHOD_MATCH_ROUTE "matchRoute"
 #define MASSIF_METHOD_MOVE_CAMERA_TO "moveCameraTo"

@@ -600,6 +600,7 @@ MassifMethod const MassifMethodGetPoints = @"getPoints";
 MassifMethod const MassifMethodGetStyleParameter = @"getStyleParameter";
 MassifMethod const MassifMethodInsert = @"insert";
 MassifMethod const MassifMethodLoadTile = @"loadTile";
+MassifMethod const MassifMethodLookAhead = @"lookAhead";
 MassifMethod const MassifMethodMapToScreen = @"mapToScreen";
 MassifMethod const MassifMethodMatchRoute = @"matchRoute";
 MassifMethod const MassifMethodMoveCameraTo = @"moveCameraTo";

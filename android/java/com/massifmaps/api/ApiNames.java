@@ -1152,6 +1152,7 @@ public final class ApiNames {
     public static final String METHOD_GET_STYLE_PARAMETER = "getStyleParameter";
     public static final String METHOD_INSERT = "insert";
     public static final String METHOD_LOAD_TILE = "loadTile";
+    public static final String METHOD_LOOK_AHEAD = "lookAhead";
     public static final String METHOD_MAP_TO_SCREEN = "mapToScreen";
     public static final String METHOD_MATCH_ROUTE = "matchRoute";
     public static final String METHOD_MOVE_CAMERA_TO = "moveCameraTo";

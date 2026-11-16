@@ -236,7 +236,7 @@ namespace massif {
         if (!_cycleActive) {
             _cycleMs = 0;
         }
-        if (followUp.continuation) {
+        if (followUp.continuation || culler.consumeRetried()) {
             scheduleContinuation();
         }
 

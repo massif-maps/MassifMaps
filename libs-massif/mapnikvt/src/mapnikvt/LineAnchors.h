@@ -66,6 +66,29 @@ namespace massif::mvt {
         return anchors;
     }
 
+    // A line the anchors skipped, though a run could lie on the part of it inside the tile: the half step of a
+    // 'continued' line (the start lies outside this tile) puts its first anchor in the neighbour, and the neighbour
+    // measures from its own start, so a tile can be left with none. Such a line is named by a run of its own.
+    // vertices are tile-normalised; labelLength is in tile pixels, tested at half its size like the anchors.
+    template <typename Vertices>
+    inline bool lineLabelHole(const Vertices& vertices, float tileSize, float labelLength) {
+        if (vertices.size() < 2) {
+            return false;
+        }
+        float length = 0;
+        bool touchesTile = false;
+        for (std::size_t i = 0; i < vertices.size(); i++) {
+            if (i > 0) {
+                length += cglib::length(vertices[i] - vertices[i - 1]) * tileSize;
+                // a segment can cross the tile with both ends outside it
+                const cglib::vec2<float>& a = vertices[i - 1];
+                const cglib::vec2<float>& b = vertices[i];
+                touchesTile = touchesTile || (std::max(a(0), b(0)) > 0 && std::min(a(0), b(0)) < 1 && std::max(a(1), b(1)) > 0 && std::min(a(1), b(1)) < 1);
+            }
+        }
+        return touchesTile && length >= labelLength * 0.5f;
+    }
+
     // Where the first spaced marker sits along a line of `lineLength`, or -1 for none: from the whole
     // line, not its first segment, and none on a line too short to hold two markers.
     inline float lineMarkerStart(float lineLength, float spacing, float markerSize) {

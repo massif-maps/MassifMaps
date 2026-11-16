@@ -104,6 +104,11 @@ namespace massif::vt {
 
         bool isVisible() const { return _visible; }
         void setVisible(bool visible) { _visible = visible; }
+        bool isOnScreen() const { return _onScreen; }
+        void setOnScreen(bool onScreen) { _onScreen = onScreen; }
+        // A line run the culler hid on screen takes another spot along its stretch on the next pass: a still camera gets
+        // SLIDE_RETRIES of them, then it stays where it is. False when it has none left.
+        bool retrySlide(const cglib::mat4x4<double>& viewProjMatrix);
 
         bool isActive() const { return _active; }
         void setActive(bool active) { _active = active; }
@@ -232,6 +237,7 @@ namespace massif::vt {
         static constexpr float LINE_DIRECTION_WINDOW = 1.5f; // glyph units
         static constexpr float LINE_REVERSE_HYSTERESIS = 0.02f; // fraction of the run length
         static constexpr float LINE_VERTICAL_RUN_FRACTION = 0.2f; // |dx| below this fraction of the run counts as vertical
+        static constexpr int SLIDE_RETRIES = 6;
         static constexpr double PLACEMENT_ROOM_FACTOR = 1.25; // room the glyph run is given on the line, relative to its own length
         static constexpr double PLACEMENT_SIMPLIFY_TOLERANCE = 0.6; // glyph units: a DEM contour's cell zigzag is dropped; a street's bend (Rue du 19 Mars 1962, ~0.9 em off its chord at z15) is kept
         // maplibre's window of 3/5 em the style's text-max-angle is summed over (get_anchors.ts)
@@ -435,6 +441,8 @@ namespace massif::vt {
         std::shared_ptr<const Placement> findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines, const Placement* oldPlacement = nullptr) const;
         std::shared_ptr<const Placement> findClippedPointPlacement(const ViewState& viewState, const std::list<TilePoint>& tilePoints) const;
         std::shared_ptr<const Placement> findClippedLinePlacement(const ViewState& viewState, const std::list<TileLine>& tileLines) const;
+        std::shared_ptr<const Placement> findOnScreenLinePlacement(const ViewState& viewState, const TilePoint& anchor, int attempt) const;
+        bool slideRunOntoScreen(const ViewState& viewState);
 
         const TileId _tileId;
         const int _layerIndex;
@@ -495,6 +503,12 @@ namespace massif::vt {
         int _geometryCount = 0;
 
         std::shared_ptr<const Placement> _placement;
+        int _slideAttempt = 0;
+        int _slideRetries = 0;
+        cglib::mat4x4<double> _slideRetryView = cglib::mat4x4<double>::identity();
+        bool _slideRetry = false;
+        bool _placementSlid = false; // placed by slideRunOntoScreen, not at the anchor: the padded-band keep rule has no anchor to judge
+        bool _onScreen = false;
         mutable std::shared_ptr<const Placement> _cachedFlippedPlacement;
 
         // Verdict of the last line layout, kept across cache rebuilds (and carried over by

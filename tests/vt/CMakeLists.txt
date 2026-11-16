@@ -68,6 +68,7 @@ add_executable(vt_tests
   LabelStableTest.cpp
   LabelOcclusionKeepTest.cpp
   LabelGroupDistanceTest.cpp
+  LabelSlideTest.cpp
   GLBParserTest.cpp
   ModelInstancesTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"

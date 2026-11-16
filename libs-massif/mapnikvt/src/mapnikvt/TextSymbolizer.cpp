@@ -287,7 +287,8 @@ namespace massif::mvt {
                             continue;
                         }
 
-                        for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, true, glyphSize, maxAngle)) {
+                        auto linePoints = generateLinePoints(vertices, spacing, textSize, tileSize, true, glyphSize, maxAngle);
+                        for (const auto& transformedPoints : linePoints) {
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
                                 // The line goes with the label only when a run is laid out on it:
@@ -295,6 +296,11 @@ namespace massif::mvt {
                                 textProcessor(localId, generatedLabelId, groupId, vertex, billboardRepeat ? vt::TileLayerBuilder::Vertices() : vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                                 counter++;
                             }
+                        }
+                        if (lineRun && linePoints.empty() && lineLabelHole(vertices, tileSize, textSize)) {
+                            long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
+                            textProcessor(localId, generatedLabelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
+                            counter++;
                         }
                     }
                 }

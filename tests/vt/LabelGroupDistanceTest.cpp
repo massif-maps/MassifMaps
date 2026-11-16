@@ -31,13 +31,13 @@ namespace {
         void tesselateTriangles(const std::size_t*, std::size_t, VertexArray<cglib::vec2<float>>&, VertexArray<cglib::vec2<float>>&, VertexArray<std::size_t>&) const override { }
     };
 
-    std::shared_ptr<Label> buildIcon(long long id, long long groupId, float minimumGroupDistance, const cglib::vec2<float>& position) {
+    std::shared_ptr<Label> buildIcon(long long id, long long groupId, float minimumGroupDistance, const cglib::vec2<float>& position, int priority = -1) {
         GlyphMap::Glyph baseGlyph(GlyphMap::GlyphMode::SDF, 0, 0, 1, 1, cglib::vec2<float>(0, 0));
         std::vector<Font::Glyph> glyphs;
         glyphs.emplace_back('O', 'O', baseGlyph, cglib::vec2<float>(2, 2), cglib::vec2<float>(-1, -1), cglib::vec2<float>(0, 0));
         auto style = std::make_shared<TileLabel::Style>(LabelOrientation::BILLBOARD_2D, ColorFunction(Color(1, 1, 1, 1)), FloatFunction(1.0f), ColorFunction(Color()), FloatFunction(0.0f), false, 1.0f, 1.0f, 0.0f, std::optional<Transform>(), std::shared_ptr<const GlyphMap>(), 27);
         TileLabel tileLabel(id, id, groupId, std::move(glyphs), position, std::vector<cglib::vec2<float>>(), style,
-                            TileLabel::PlacementInfo(10 - static_cast<int>(id), minimumGroupDistance, false, false), -1);
+                            TileLabel::PlacementInfo(priority >= 0 ? priority : 10 - static_cast<int>(id), minimumGroupDistance, false, false), -1);
         auto label = std::make_shared<Label>(tileLabel, TileId(0, 0, 0), 0, cglib::mat4x4<double>::identity(), std::make_shared<FlatTransformer>());
         label->setActive(true);
         return label;
@@ -96,5 +96,24 @@ void testLabelGroupDistance() {
         auto second = buildIcon(2, 2, 1000, apart);
         cull({ first, second });
         TEST_CHECK(first->isVisible() && second->isVisible(), "but only against its own group");
+    }
+
+    // The screen is ~x +- 54.6 world units here and its padded band ~65.
+    {
+        auto band = buildIcon(1, 1, 1000, cglib::vec2<float>(58, 0));
+        auto shown = buildIcon(2, 1, 1000, cglib::vec2<float>(0, 0));
+        cull({ band, shown });
+        TEST_CHECK(band->isVisible() && !band->isOnScreen(), "a label in the padded band is placed, and is not on screen");
+        TEST_CHECK(shown->isVisible() && shown->isOnScreen(), "and it keeps none of its group off the screen");
+    }
+
+    {
+        auto settled = buildIcon(1, 1, 1000, cglib::vec2<float>(0, 0), 5);
+        auto entering = buildIcon(2, 1, 1000, cglib::vec2<float>(10, 0), 5);
+        settled->setVisible(true);
+        settled->setOnScreen(true);
+        entering->setVisible(true);
+        cull({ entering, settled });
+        TEST_CHECK(settled->isVisible() && !entering->isVisible(), "one that was in the band does not evict the one the user reads when it scrolls in");
     }
 }

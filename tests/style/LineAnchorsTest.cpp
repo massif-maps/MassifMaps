@@ -74,6 +74,14 @@ void testLineAnchors() {
         std::vector<float> at = anchors(polyline({ { 0, 0 }, { 2000, 0 } }), true, 540, 140, 12);
         TEST_CHECK(at.size() == 4 && at[0] == 270, "half a step, then a step apart");
     }
+    // a line the half step skips, though its part in the tile holds a run, is a hole to fill (Rue Pasteur, Caluire, z17)
+    {
+        using V = std::vector<cglib::vec2<float>>;
+        TEST_CHECK(mvt::lineLabelHole(V { { -0.25f, 0.99f }, { 0.20f, 0.70f } }, 256, 105), "a 138 px line crossing the tile is a hole");
+        TEST_CHECK(!mvt::lineLabelHole(V { { -0.25f, -0.01f }, { 0.20f, -0.30f } }, 256, 105), "its copy in the tile beside, wholly outside, is not");
+        TEST_CHECK(!mvt::lineLabelHole(V { { 0.1f, 0.5f }, { 0.15f, 0.5f } }, 256, 105), "a line shorter than half the label is not");
+        TEST_CHECK(mvt::lineLabelHole(V { { -1.0f, 0.5f }, { 2.0f, 0.5f } }, 256, 105), "a line crossing the tile with both ends outside it is");
+    }
     // Oneway arrows (marker-spacing): the first sits half a spacing into the WAY. Read off its first
     // segment, a 4 px stub at a junction put an arrow on the junction itself, on every way of a city.
     TEST_CHECK(std::fabs(mvt::lineMarkerStart(600, 200, 16) - 100) < 1e-4f, "a long way starts half a spacing in");

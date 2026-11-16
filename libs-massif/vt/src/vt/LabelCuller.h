@@ -27,6 +27,9 @@
 namespace massif::vt {
     class LabelCuller final {
     public:
+        /** Whether a hidden line run was sent to another spot: the next pass is owed even if the camera rests. */
+        bool consumeRetried() { bool retried = _retried; _retried = false; return retried; }
+
         explicit LabelCuller(float scale);
 
         void setViewState(const ViewState& viewState);
@@ -63,6 +66,7 @@ namespace massif::vt {
         bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex, std::size_t& cursor);
 
     private:
+        bool _retried = false;
         static constexpr int GRID_RESOLUTION_X = 16;
         static constexpr int GRID_RESOLUTION_Y = 32;
         static constexpr float EXTRA_LABEL_BUFFER = 1.0f; // extra buffer for the label
@@ -94,6 +98,7 @@ namespace massif::vt {
         struct LabelInfo {
             bool valid;
             bool wasVisible;
+            bool wasOnScreen; // drawn inside the real viewport, not only inside the padded one
             bool occluded; // partly hidden by 3D content on the last frame drawn
             bool unknown; // its occlusion was never judged: it may be behind a building, so it takes no slot from a label in the clear
             bool standIn;

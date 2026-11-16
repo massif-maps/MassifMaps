@@ -277,7 +277,7 @@ namespace massif::vt {
                 if (label->isStandIn()) {
                     VT_STAT_INC(cullerStandIn);
                 }
-                validLabelList.push_back({ valid, wasVisible, label->isPartlyOccluded(), !label->isOcclusionKnown(), label->isStandIn(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
+                validLabelList.push_back({ valid, wasVisible, label->isOnScreen(), label->isPartlyOccluded(), !label->isOcclusionKnown(), label->isStandIn(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
                                            variants.size() > 1 ? variants : std::vector<CullRecord>() });
             }
         }
@@ -310,6 +310,10 @@ namespace massif::vt {
             if (labelInfo1.wasVisible != labelInfo2.wasVisible) {
                 return labelInfo1.wasVisible;
             }
+            // One waiting in the padded band must not take a slot from a name the user is reading.
+            if (labelInfo1.wasOnScreen != labelInfo2.wasOnScreen) {
+                return labelInfo1.wasOnScreen;
+            }
             if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
                 return labelInfo1.layerIndex < labelInfo2.layerIndex;
             }
@@ -329,9 +333,11 @@ namespace massif::vt {
         bool changed = false;
         // Labels of one group must stay the group's minimum distance apart. A callout tests it at every row
         // it tries; testing after placement would take a free row and then hide the label anyway.
-        auto testGroupDistance = [&groupMap](const LabelInfo& info) {
+        auto testGroupDistance = [this, &groupMap](const LabelInfo& info) {
             long long groupId = info.label->getGroupId();
-            if (groupId <= 0) {
+            // Nobody sees a label outside the screen, so it keeps no distance (nor claims one): off the edge, it
+            // used to hold a street's other names away while the street was in view with none.
+            if (groupId <= 0 || isOffscreen(info.cullRecord)) {
                 return true;
             }
             for (const LabelInfo* otherLabelInfo : groupMap[groupId]) {
@@ -407,9 +413,13 @@ namespace massif::vt {
                 if (groupId >= 0 && !label->isFullyOccluded()) {
                     addGridRecord(_recordGrid, labelInfo.cullRecord);
                 }
-                if (groupId > 0) {
+                if (groupId > 0 && !isOffscreen(labelInfo.cullRecord)) {
                     groupMap[groupId].push_back(&labelInfo);
                 }
+            }
+            label->setOnScreen(visible && !isOffscreen(labelInfo.cullRecord));
+            if (!visible && labelInfo.valid && !isOffscreen(labelInfo.cullRecord) && label->retrySlide(_viewState.viewProjMatrix)) {
+                _retried = true;
             }
             if (visible && isOffscreen(labelInfo.cullRecord)) {
                 label->setOpacity(1.0f); // see isOffscreen - it arrives already drawn

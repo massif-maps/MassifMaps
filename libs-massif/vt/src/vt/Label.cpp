@@ -379,6 +379,7 @@ namespace massif::vt {
 
     void Label::snapPlacement(const Label& label) {
         _placement = label._placement;
+        _placementSlid = label._placementSlid;
         _placementReanchored = false;
         _cachedFlippedPlacement = label._cachedFlippedPlacement;
         // The re-snap below runs before any view state: place by the old scale or the run changes shape.
@@ -566,6 +567,9 @@ namespace massif::vt {
             scale *= calculateTerrainScaleFactor(_placement ? _placement->position : calculateGeometryBBox(viewState).center(), viewState);
             _placementGlyphScale = scale;
             _placementTextLength = calculateLineRunLength() * scale;
+            if (slideRunOntoScreen(viewState)) {
+                return false; // the anchor did not change, so a visible run is not faded again
+            }
         }
         if (_placement) {
             std::array<cglib::vec3<float>, 4> envelope;
@@ -575,7 +579,7 @@ namespace massif::vt {
                 bbox.add(viewState.origin + cglib::vec3<double>::convert(pos));
             }
             // The run follows the PROJECTED line; foreshortening can leave a stretch too short while another fits.
-            if (viewState.labelFrustum.inside(bbox) && (!isLineRun() || _lineLayoutValid)) {
+            if (viewState.labelFrustum.inside(bbox) && (!isLineRun() || _lineLayoutValid || _placementSlid)) {
                 return false;
             }
         }
@@ -583,6 +587,8 @@ namespace massif::vt {
         if (_tilePoints.empty() && _tileLines.empty()) {
             return false;
         }
+        _placementSlid = false;
+        _slideAttempt = 0;
 
         // Only a placed and visible label's re-anchor can be seen as it moving.
         if (!_placement) {
@@ -1953,5 +1959,157 @@ namespace massif::vt {
             updateBestPlacement(tileLine, i0, tileLine.vertices.size());
         }
         return bestPlacement;
+    }
+
+    std::shared_ptr<const Label::Placement> Label::findOnScreenLinePlacement(const ViewState& viewState, const TilePoint& anchor, int attempt) const {
+        const TileLine* tileLine = nullptr;
+        for (const TileLine& candidate : _tileLines) {
+            if (candidate.tileId == anchor.tileId && candidate.localId == anchor.localId) {
+                tileLine = &candidate;
+                break;
+            }
+        }
+        if (!tileLine || tileLine->vertices.size() < 2) {
+            return std::shared_ptr<const Placement>();
+        }
+        const std::vector<cglib::vec3<double>>& vertices = tileLine->vertices;
+        std::vector<double> lengths(vertices.size(), 0);
+        for (std::size_t i = 1; i < vertices.size(); i++) {
+            lengths[i] = lengths[i - 1] + cglib::length(vertices[i] - vertices[i - 1]);
+        }
+
+        double anchorLength = 0, anchorDistance = std::numeric_limits<double>::infinity();
+        for (std::size_t i = 0; i + 1 < vertices.size(); i++) {
+            cglib::vec3<double> edge = vertices[i + 1] - vertices[i];
+            double edgeLength2 = edge(0) * edge(0) + edge(1) * edge(1);
+            double t = (edgeLength2 > 0 ? ((anchor.position(0) - vertices[i](0)) * edge(0) + (anchor.position(1) - vertices[i](1)) * edge(1)) / edgeLength2 : 0);
+            t = std::min(1.0, std::max(0.0, t));
+            cglib::vec3<double> offset = vertices[i] + edge * t - anchor.position;
+            double distance = offset(0) * offset(0) + offset(1) * offset(1);
+            if (distance < anchorDistance) {
+                anchorDistance = distance;
+                anchorLength = lengths[i] + t * (lengths[i + 1] - lengths[i]);
+            }
+        }
+
+        double need = _placementTextLength * PLACEMENT_ROOM_FACTOR;
+        double eps = std::max(1e-9, lengths.back() * 1e-9);
+        double begin = 0, end = 0, bestBegin = 0, bestEnd = 0, bestGap = std::numeric_limits<double>::infinity();
+        bool open = false;
+        auto close = [&]() {
+            if (open && end - begin >= need) {
+                double gap = std::max(begin - anchorLength, std::max(anchorLength - end, 0.0));
+                if (gap < bestGap) {
+                    bestGap = gap;
+                    bestBegin = begin;
+                    bestEnd = end;
+                }
+            }
+            open = false;
+        };
+        for (std::size_t i = 0; i + 1 < vertices.size(); i++) {
+            double t0 = 0, t1 = 1;
+            bool inside = true;
+            for (int plane = 0; plane < 6 && inside; plane++) {
+                double d0 = viewState.frustum.plane_distance(plane, vertices[i]);
+                double d1 = viewState.frustum.plane_distance(plane, vertices[i + 1]);
+                if (d0 < 0 && d1 < 0) {
+                    inside = false;
+                } else if (d0 < 0) {
+                    t0 = std::max(t0, d0 / (d0 - d1));
+                } else if (d1 < 0) {
+                    t1 = std::min(t1, d0 / (d0 - d1));
+                }
+            }
+            if (!inside || !(t0 < t1)) {
+                close();
+                continue;
+            }
+            double segmentLength = lengths[i + 1] - lengths[i];
+            double segmentBegin = lengths[i] + t0 * segmentLength;
+            double segmentEnd = lengths[i] + t1 * segmentLength;
+            if (open && segmentBegin <= end + eps) {
+                end = segmentEnd;
+            } else {
+                close();
+                begin = segmentBegin;
+                end = segmentEnd;
+                open = true;
+            }
+        }
+        close();
+        if (bestGap == std::numeric_limits<double>::infinity()) {
+            return std::shared_ptr<const Placement>();
+        }
+
+        static const double fractions[] = { 0.5, 0.25, 0.75, 0.1, 0.9 };
+        double target = bestBegin + (bestEnd - bestBegin) * fractions[attempt % 5];
+        target = std::min(std::max(target, bestBegin + need * 0.5), bestEnd - need * 0.5);
+        std::size_t index = 0;
+        while (index + 2 < vertices.size() && lengths[index + 1] < target) {
+            index++;
+        }
+        double edgeLength = lengths[index + 1] - lengths[index];
+        double t = (edgeLength > 0 ? (target - lengths[index]) / edgeLength : 0);
+        return buildLinePlacement(*tileLine, index, vertices[index] + (vertices[index + 1] - vertices[index]) * std::min(1.0, std::max(0.0, t)));
+    }
+
+    bool Label::retrySlide(const cglib::mat4x4<double>& viewProjMatrix) {
+        if (!_placement || !isLineRun() || _tilePoints.empty() || _tileLines.empty()) {
+            return false;
+        }
+        if (!(viewProjMatrix == _slideRetryView)) {
+            _slideRetryView = viewProjMatrix;
+            _slideRetries = 0;
+            _slideAttempt = 0;
+        }
+        if (_slideRetries >= SLIDE_RETRIES) {
+            return false;
+        }
+        _slideRetries++;
+        _slideAttempt++;
+        _slideRetry = true;
+        return true;
+    }
+
+    bool Label::slideRunOntoScreen(const ViewState& viewState) {
+        if (_tilePoints.empty() || _tileLines.empty() || !viewState.frustum.inside(calculateGeometryBBox(viewState))) {
+            return false;
+        }
+        auto onScreen = [&viewState](const cglib::vec3<double>& position) {
+            for (int plane = 0; plane < 6; plane++) {
+                if (viewState.frustum.plane_distance(plane, position) < 0) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (_placement && onScreen(_placement->position) && !_slideRetry) {
+            return false;
+        }
+        const TilePoint& anchor = _tilePoints.front();
+        std::shared_ptr<const Placement> placement;
+        // Attempt 0 is the anchor (the middle of the stretch when it is off the screen); 1.. are the other spots.
+        int attempt = (_slideRetry ? _slideAttempt : 0);
+        bool anchorOnScreen = onScreen(anchor.position);
+        bool atAnchor = anchorOnScreen && attempt % 6 == 0;
+        if (atAnchor) {
+            if (_placement) {
+                placement = findSnappedLinePlacement(anchor.position, _tileLines);
+            }
+        } else {
+            placement = findOnScreenLinePlacement(viewState, anchor, anchorOnScreen ? attempt % 6 - 1 : attempt);
+        }
+        if (!_slideRetry) {
+            _slideAttempt = 0;
+        }
+        _slideRetry = false;
+        if (!placement) {
+            return false;
+        }
+        _placement = placement;
+        _placementSlid = !atAnchor;
+        _cachedFlippedPlacement.reset();
+        return true;
     }
 }

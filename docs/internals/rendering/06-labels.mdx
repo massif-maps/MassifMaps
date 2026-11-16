@@ -276,6 +276,17 @@ Zola's name across its bend, short of the straight stretch maplibre uses): a til
 1× the name overran the stretch it fits on screen (Rue de la Viscose unnamed below z17); the layout,
 which knows the scale, drops what then does not fit.
 
+**A tile can be left with no anchor on a street that crosses it.** maplibre clips a line to its tile and
+restarts the spacing there; a vt tile keeps the whole way (`MBVTSubtile` culls features, it does not clip),
+so the spacing runs from the way's start. A tile that sees the start outside itself takes the line as
+continued and puts the first anchor half a step in, in the neighbour, and the neighbour measures from the
+start it sees: Rue Pasteur (Champagne-au-Mont-d'Or, z17) had one anchor in an unloaded tile and a second
+that did not fit, and no label anywhere in view. Of 134 (way, z17 tile) pairs in two z14 tiles with room
+for a run, 32 had no anchor in that tile (simulated, no max-angle test). `lineLabelHole` (`LineAnchors.h`)
+names such a line: the tile got no anchor, part of it lies in the tile and it holds half a run. It then
+gets a run of its own, the `text-spacing: 0` kind (no anchor, placed on the longest stretch in view), with
+a tile-scoped id. Neighbouring tiles may each add one for the same street; the group distance keeps one.
+
 The layout lays each glyph on the line itself, after a Douglas-Peucker pass
 (`PLACEMENT_SIMPLIFY_TOLERANCE`, 0.6 em) that drops a DEM contour's cell zigzag, about half an em,
 so the max-angle test does not read it as corners. At one em it also erased a street's real bend:
@@ -715,6 +726,29 @@ band it needs is a horizontal one, over the same horizon.
 `TileRenderer::cullLabels` take it from, so the tile bucket below and the culler's grid never
 disagree about where the band is. Half a screen width is the useful setting for a panorama — every
 name in it is then a placement and a collision test per pass, which is the price.
+
+**The band must not cost a street its name on the screen.** A repeat's anchor is fixed per tile (maplibre's
+`getAnchors`), so a street can have its anchor in the band while the part in view has none, and a
+label in the band used to keep its `text-min-distance` group (250 px for the Massif road names) and
+a slot ahead of the names the user reads. Two rules, host-tested (`LabelSlideTest`,
+`LabelGroupDistanceTest`), not yet seen on a device:
+
+- A label outside the real viewport neither keeps nor claims a group distance, and sorts after one
+  that was drawn on screen (`Label::isOnScreen`), whatever else ties.
+- A line run whose placement is off the real screen is put in the MIDDLE of the stretch of its own line
+  that is on screen and holds the run (`slideRunOntoScreen`), the stretch nearest its anchor, or on the
+  anchor itself when that is on screen. The anchor may lie far beyond the padded band: it used to be
+  placed only inside it, so a street in view had no name until its anchor was nearly on screen. A run
+  whose centre is on screen never moves, whoever put it there, so the name stays on the ground while
+  the street is panned and moves only when it is left behind. It once clamped to the screen edge, which
+  glued the name to the edge and under the buttons. A street with less than a run in view keeps its
+  anchor. The move is not a new placement, so a drawn run is not faded again.
+- A spot is blind to what stands there: the middle of a street's stretch fell on the name of the
+  boulevard crossing it, and an anchor sat under the avenue's name at the street's other end; both lost the
+  collision and the street went unnamed with room a few hundred pixels along it. A line run the culler
+  hides on screen (`Label::retrySlide`) takes the next spot along its stretch on the next pass (its anchor,
+  middle, a quarter, three quarters, a tenth, nine tenths, round again) and keeps the first that is not
+  hidden. A run hidden everywhere cycles each pass, which costs a placement per pass while it is.
 
 **The band is worth nothing without the tiles that fill it.** A label cannot be placed early if it
 does not exist, and it does not exist until its tile reaches the renderer. `TileLayer` sorted every

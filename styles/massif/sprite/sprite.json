@@ -1,4 +1,28 @@
 {
+  "bike-oneway-both-accent": {
+    "x": 160,
+    "y": 2388,
+    "width": 20,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "bike-oneway-reverse-warn": {
+    "x": 182,
+    "y": 2388,
+    "width": 16,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "bike-oneway-warn": {
+    "x": 200,
+    "y": 2388,
+    "width": 16,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
   "dot-capital": {
     "x": 34,
     "y": 2388,
@@ -8,7 +32,7 @@
     "visible": true
   },
   "dot": {
-    "x": 160,
+    "x": 218,
     "y": 2388,
     "width": 8,
     "height": 8,
@@ -16,7 +40,7 @@
     "visible": true
   },
   "oneway-reverse-ink": {
-    "x": 170,
+    "x": 228,
     "y": 2388,
     "width": 16,
     "height": 8,
@@ -24,7 +48,7 @@
     "visible": true
   },
   "oneway-reverse-dark": {
-    "x": 188,
+    "x": 246,
     "y": 2388,
     "width": 16,
     "height": 8,
@@ -32,7 +56,7 @@
     "visible": true
   },
   "oneway-ink": {
-    "x": 206,
+    "x": 264,
     "y": 2388,
     "width": 16,
     "height": 8,
@@ -40,7 +64,7 @@
     "visible": true
   },
   "oneway-dark": {
-    "x": 224,
+    "x": 282,
     "y": 2388,
     "width": 16,
     "height": 8,
@@ -136,7 +160,7 @@
     "visible": true
   },
   "pattern-park": {
-    "x": 242,
+    "x": 300,
     "y": 2388,
     "width": 8,
     "height": 8,

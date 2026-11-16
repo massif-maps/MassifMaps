@@ -186,7 +186,9 @@ def gate(lay, v, name, value=1):
     test = ['==', ['config', name], value]
     meta['massif:filter'] = ['all', meta['massif:filter'], test] if 'massif:filter' in meta else test
     meta['massif:layout'] = {**meta.get('massif:layout', {}), 'visibility': 'visible'}
-    lay['layout'] = {**lay.get('layout', {}), 'visibility': 'visible' if v.params[name] == value else 'none'}
+    # gates stack: the layer is drawn only while every one of them holds
+    shown = v.params[name] == value and lay.get('layout', {}).get('visibility') != 'none'
+    lay['layout'] = {**lay.get('layout', {}), 'visibility': 'visible' if shown else 'none'}
     return lay
 
 

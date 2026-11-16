@@ -7149,12 +7149,23 @@
           ]
         },
         "massif:filter": [
-          "==",
+          "all",
           [
-            "config",
-            "oneway_emphasis"
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            0
           ],
-          0
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            0
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -7244,12 +7255,23 @@
           ]
         },
         "massif:filter": [
-          "==",
+          "all",
           [
-            "config",
-            "oneway_emphasis"
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            0
           ],
-          0
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            0
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -7349,12 +7371,23 @@
           ]
         },
         "massif:filter": [
-          "==",
+          "all",
           [
-            "config",
-            "oneway_emphasis"
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            1
           ],
-          1
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            0
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -7454,12 +7487,23 @@
           ]
         },
         "massif:filter": [
-          "==",
+          "all",
           [
-            "config",
-            "oneway_emphasis"
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            1
           ],
-          1
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            0
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -7559,12 +7603,23 @@
           ]
         },
         "massif:filter": [
-          "==",
+          "all",
           [
-            "config",
-            "oneway_emphasis"
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            2
           ],
-          2
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            0
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -7664,12 +7719,23 @@
           ]
         },
         "massif:filter": [
-          "==",
+          "all",
           [
-            "config",
-            "oneway_emphasis"
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            2
           ],
-          2
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            0
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -7677,7 +7743,341 @@
       }
     },
     {
-      "id": "oneway-contra",
+      "id": "bike-oneway",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway"
+          ],
+          1
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 200,
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.6,
+          18,
+          1
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-warn",
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 0.8
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            0
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bike-oneway-reverse",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway"
+          ],
+          -1
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 200,
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.6,
+          18,
+          1
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-reverse-warn",
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 0.8
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            0
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bike-oneway-both",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 200,
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.6,
+          18,
+          1
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-both-accent",
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 0.8
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            0
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bike-oneway-e1",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7720,7 +8120,7 @@
           1
         ],
         [
-          "==",
+          "!=",
           [
             "get",
             "oneway_bicycle"
@@ -7735,11 +8135,10 @@
           [
             "zoom"
           ],
-          260,
+          200,
           17,
-          170
+          120
         ],
-        "icon-image": "oneway-reverse-ink",
         "icon-size": [
           "interpolate",
           [
@@ -7758,10 +8157,11 @@
         "icon-rotation-alignment": "map",
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-warn",
         "visibility": "none"
       },
       "paint": {
-        "icon-opacity": 0.5
+        "icon-opacity": 1
       },
       "metadata": {
         "massif:paint": {
@@ -7777,12 +8177,23 @@
           ]
         },
         "massif:filter": [
-          "==",
+          "all",
           [
-            "config",
-            "travel_mode"
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            1
           ],
-          1
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -7790,7 +8201,7 @@
       }
     },
     {
-      "id": "oneway-contra-reverse",
+      "id": "bike-oneway-reverse-e1",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -7833,7 +8244,7 @@
           -1
         ],
         [
-          "==",
+          "!=",
           [
             "get",
             "oneway_bicycle"
@@ -7848,11 +8259,10 @@
           [
             "zoom"
           ],
-          260,
+          200,
           17,
-          170
+          120
         ],
-        "icon-image": "oneway-ink",
         "icon-size": [
           "interpolate",
           [
@@ -7871,10 +8281,11 @@
         "icon-rotation-alignment": "map",
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-reverse-warn",
         "visibility": "none"
       },
       "paint": {
-        "icon-opacity": 0.5
+        "icon-opacity": 1
       },
       "metadata": {
         "massif:paint": {
@@ -7890,12 +8301,503 @@
           ]
         },
         "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            1
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bike-oneway-both-e1",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
           "==",
           [
-            "config",
-            "travel_mode"
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": [
+          "step",
+          [
+            "zoom"
+          ],
+          200,
+          17,
+          120
+        ],
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.45,
+          16,
+          0.6,
+          18,
+          1
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-both-accent",
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            1
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bike-oneway-e2",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway"
           ],
           1
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": [
+          "step",
+          [
+            "zoom"
+          ],
+          200,
+          17,
+          90
+        ],
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.6,
+          16,
+          0.8,
+          18,
+          1.3
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-warn",
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            2
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bike-oneway-reverse-e2",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway"
+          ],
+          -1
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": [
+          "step",
+          [
+            "zoom"
+          ],
+          200,
+          17,
+          90
+        ],
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.6,
+          16,
+          0.8,
+          18,
+          1.3
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-reverse-warn",
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            2
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      }
+    },
+    {
+      "id": "bike-oneway-both-e2",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "minor",
+              "service"
+            ]
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "motorway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "oneway_bicycle"
+          ],
+          "no"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": [
+          "step",
+          [
+            "zoom"
+          ],
+          200,
+          17,
+          90
+        ],
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.6,
+          16,
+          0.8,
+          18,
+          1.3
+        ],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "icon-image": "bike-oneway-both-accent",
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-opacity": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
+        },
+        "massif:filter": [
+          "all",
+          [
+            "==",
+            [
+              "config",
+              "oneway_emphasis"
+            ],
+            2
+          ],
+          [
+            "==",
+            [
+              "config",
+              "travel_mode"
+            ],
+            1
+          ]
         ],
         "massif:layout": {
           "visibility": "visible"
@@ -106591,7 +107493,7 @@
         "text-justify": "auto",
         "text-optional": true,
         "icon-allow-overlap": true,
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "text-color": [

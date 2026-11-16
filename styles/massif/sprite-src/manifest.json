@@ -17,6 +17,9 @@
     "saddle":         { "brown": { "FILL": "#8a6e55" }, "mono": { "FILL": "#000000" } },
     "oneway":         { "ink": { "STROKE": "#3c4250", "HALO": "#ffffff" }, "dark": { "STROKE": "#1a1a1a", "HALO": "#ffffff" } },
     "oneway-reverse": { "ink": { "STROKE": "#3c4250", "HALO": "#ffffff" }, "dark": { "STROKE": "#1a1a1a", "HALO": "#ffffff" } },
+    "bike-oneway":         { "warn": { "STROKE": "#e8710a", "HALO": "#ffffff" } },
+    "bike-oneway-reverse": { "warn": { "STROKE": "#e8710a", "HALO": "#ffffff" } },
+    "bike-oneway-both":    { "accent": { "STROKE": "#1a73e8", "HALO": "#ffffff" } },
     "shield-plate": {
       "neutral": { "FILL": "#ffffff", "STROKE": "#1b1d27" },
       "mono":    { "FILL": "#ffffff", "STROKE": "#000000" },

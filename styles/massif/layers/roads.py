@@ -405,37 +405,48 @@ ONEWAY = {
 
 
 def oneway(v):
+    """The one-way arrows, for a car (`travel_mode` 0) or, in bike mode (1), the bike's own: `bike_oneway`."""
     c = v.palette
     base = ['all', in_class(CLASSES), ['!=', get('class'), 'motorway']]
     # its own layer per arrow colour: an icon that differs by variant is data-driven, and a data-driven
     # icon converts to a shield, which drops the line placement. A dark arrow in a white edge, which
     # reads on a white street, a coloured major and a night road alike
     arrow = c.get('oneway-arrow', 'ink')
-    return [gate(layer('oneway' + ('' if arrow == 'ink' else '-' + arrow) + suffix + ('-e%d' % emphasis if emphasis else ''),
-                       'symbol', 'transportation', minzoom=minzoom, filter=base + [['==', get('oneway'), value]],
-                       layout={'symbol-placement': 'line',
-                               'symbol-spacing': spacing[0] if spacing[0] == spacing[1] else ['step', ['zoom'], spacing[0], 17, spacing[1]],
-                               'icon-image': icon, 'icon-size': size, 'icon-rotation-alignment': 'map',
-                               'icon-allow-overlap': True, 'icon-ignore-placement': True},
-                       paint={'icon-opacity': opacity}, emissive={'icon-emissive-strength': 1}), v, 'oneway_emphasis', emphasis)
+    return [gate(gate(layer('oneway' + ('' if arrow == 'ink' else '-' + arrow) + suffix + ('-e%d' % emphasis if emphasis else ''),
+                            'symbol', 'transportation', minzoom=minzoom, filter=base + [['==', get('oneway'), value]],
+                            layout={'symbol-placement': 'line',
+                                    'symbol-spacing': spacing[0] if spacing[0] == spacing[1] else ['step', ['zoom'], spacing[0], 17, spacing[1]],
+                                    'icon-image': icon, 'icon-size': size, 'icon-rotation-alignment': 'map',
+                                    'icon-allow-overlap': True, 'icon-ignore-placement': True},
+                            paint={'icon-opacity': opacity}, emissive={'icon-emissive-strength': 1}), v, 'oneway_emphasis', emphasis),
+                      v, 'travel_mode', 0)
             for emphasis, (minzoom, spacing, opacity, size) in ONEWAY.items()
             for suffix, value, icon in (('', 1, 'oneway-' + arrow), ('-reverse', -1, 'oneway-reverse-' + arrow))
-            ] + contraflow(v, base, arrow)
+            ] + bike_oneway(v, base)
 
 
-def contraflow(v, base, arrow):
-    """Bikes may ride a one-way street both ways (`oneway_bicycle` = no, from the tiles): the arrow against
-    the traffic, faded, at its own spacing so it falls between the solid arrows. Only while `travel_mode` is 1 (bike)."""
-    minzoom, _, _, size = ONEWAY[1]
-    spacing = (260, 170)
-    return [gate(layer('oneway-contra' + ('' if arrow == 'ink' else '-' + arrow) + suffix, 'symbol', 'transportation',
-                       minzoom=minzoom,
-                       filter=base + [['==', get('oneway'), value], ['==', get('oneway_bicycle'), 'no']],
-                       layout={'symbol-placement': 'line', 'symbol-spacing': ['step', ['zoom'], spacing[0], 17, spacing[1]],
-                               'icon-image': icon, 'icon-size': size, 'icon-rotation-alignment': 'map',
-                               'icon-allow-overlap': True, 'icon-ignore-placement': True},
-                       paint={'icon-opacity': 0.5}, emissive={'icon-emissive-strength': 1}), v, 'travel_mode', 1)
-            for suffix, value, icon in (('', 1, 'oneway-reverse-' + arrow), ('-reverse', -1, 'oneway-' + arrow))]
+def bike_oneway(v, base):
+    """In bike mode (`travel_mode` 1) the one-way arrows are the bike's, with a ring on the tail: orange where a
+    bike may only go the way of the traffic (going against the cars would be wrong), and on a street bikes may
+    ride both ways (`oneway_bicycle` = no, from the tiles, set on one-way ways only) one blue double-headed arrow.
+    Same `oneway_emphasis` ramp as the car's."""
+    def arrows(emphasis, minzoom, spacing, opacity, size):
+        layout = {'symbol-placement': 'line',
+                  'symbol-spacing': spacing[0] if spacing[0] == spacing[1] else ['step', ['zoom'], spacing[0], 17, spacing[1]],
+                  'icon-size': size, 'icon-rotation-alignment': 'map',
+                  'icon-allow-overlap': True, 'icon-ignore-placement': True}
+        tag = '-e%d' % emphasis if emphasis else ''
+        one_way = ['!=', get('oneway_bicycle'), 'no']
+        return [gate(gate(layer('bike-oneway' + suffix + tag, 'symbol', 'transportation', minzoom=minzoom,
+                                filter=base + [['==', get('oneway'), value], one_way],
+                                layout={**layout, 'icon-image': icon}, paint={'icon-opacity': opacity},
+                                emissive={'icon-emissive-strength': 1}), v, 'oneway_emphasis', emphasis), v, 'travel_mode', 1)
+                for suffix, value, icon in (('', 1, 'bike-oneway-warn'), ('-reverse', -1, 'bike-oneway-reverse-warn'))
+                ] + [gate(gate(layer('bike-oneway-both' + tag, 'symbol', 'transportation', minzoom=minzoom,
+                                     filter=base + [['==', get('oneway_bicycle'), 'no']],
+                                     layout={**layout, 'icon-image': 'bike-oneway-both-accent'}, paint={'icon-opacity': opacity},
+                                     emissive={'icon-emissive-strength': 1}), v, 'oneway_emphasis', emphasis), v, 'travel_mode', 1)]
+    return [lay for emphasis, spec in ONEWAY.items() for lay in arrows(emphasis, *spec)]
 
 
 def bridges(v):

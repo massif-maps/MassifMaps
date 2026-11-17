@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Map font-directory="fonts" background-image="" background-color="{'transparent'}" north-pole-color="{'transparent'}" south-pole-color="{'transparent'}">
+	<Parameters />
+	<StyleParameters />
+	<Style name="poi" filter-mode="first">
+		<Rule name="auto">
+			<MinScaleDenominator>33.3238983</MinScaleDenominator>
+			<MaxScaleDenominator>8530.91797</MaxScaleDenominator>
+			<Filter>[{'name'}]&lt;&gt;null</Filter>
+			<ShieldSymbolizer anchors="{'bottom,right,left'}" collision-padding="2" face-name="{'Scenario'}" icon-face-name="{'Scenario'}" icon-name="{'o'}" icon-size="12" placement="{'billboard'}" placement-priority="25600000" size="10.8" text-horizontal-alignment="{'auto'}" text-optional="true" text-radial-offset="10.8" wrap-before="true" wrap-width="97.2">[{'name'}]</ShieldSymbolizer>
+		</Rule>
+	</Style>
+	<Style name="transportation_name" filter-mode="first">
+		<Rule name="auto">
+			<MinScaleDenominator>33.3238983</MinScaleDenominator>
+			<MaxScaleDenominator>136494.688</MaxScaleDenominator>
+			<Filter>[{'class'}]='minor'</Filter>
+			<TextSymbolizer character-spacing="0.15*linear([{'view::zoom'}],10,8,18,14)" collision-padding="1" face-name="{'Scenario'}" fit-ratio="0.8" fit-steps="3" max-char-angle-delta="30" minimum-distance="250" placement="{'billboard-line'}" placement-priority="23900000" size="linear([{'view::zoom'}],10,8,18,14)" spacing="250" text-transform="{'uppercase'}">[{'name'}]</TextSymbolizer>
+		</Rule>
+	</Style>
+	<Layer name="poi">
+		<StyleName>poi</StyleName>
+	</Layer>
+	<Layer name="transportation_name">
+		<StyleName>transportation_name</StyleName>
+	</Layer>
+</Map>

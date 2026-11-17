@@ -35,7 +35,8 @@ satisfy for one quad to draw both — line-label layout (`Label.cpp`): that a gl
 line it names — and line tesselation (`TileLayerBuilder.cpp` and the six TUs it names): how far out
 of its own width a line reaches at a join, and the per-vertex progress a gradient line carries. That last chain wants tess2 and bidi but **no font** —
 `TextFormatter` reaches `Font` through its interface only, so freetype and harfbuzz stay out.
-Anything reaching GL still belongs behind a device check instead.
+Anything reaching GL still belongs behind a device check instead. Label placement over real tiles
+is the exception that links more: see [Label scenarios](#label-scenarios).
 
 `archive/` covers the MBTiles and PMTiles sources over small archives each test writes itself:
 what they read out of their own metadata. It is a binary of its own because it links sqlite (the
@@ -57,6 +58,68 @@ type, so they are device-verified rather than covered here. What is covered is t
 factories are generated from (`SpecSchemaTest.cpp`): a second, schema-only generator run over the
 archive sources, read as JSON, so a class whose `!spec` is missing or whose constructors stopped
 resolving fails here rather than in an integration two repos away.
+
+## Label scenarios
+
+`vt/LabelScenarioTest.cpp` runs **real vector tiles** through the style and the label culler, and
+checks what the placement decides. The chain is the renderer's, minus GL:
+
+```
+tile.pbf -> mapnikvt (LayerTileReader, the style) -> TileLabel -> Label -> LabelCuller::process
+```
+
+one pass per camera of a path, the way `VTLabelPlacementWorker` drives it (`culler.reset()`, one
+`process`, and another pass while a line run was sent to another spot). It links all of mapnikvt but
+the MLT decoder, and **no font**: `ScenarioFontManager.cpp` stands in for `FontManager.cpp` with one
+monospace face whose glyphs are boxes, so only relative sizes carry. Between passes the harness
+copies what `GLTileRenderer` does: tiles at `floor(zoom)` covering the screen and the label band, one
+label per `(layer, id)` merged across tiles, and the placement state (visibility, side, size step)
+handed on to what is built again when the tile set changes. Only `FontManager` drags freetype in; with
+it stood in for, the symbolizers link here. It does **not** model the fade (a pass
+finds the last one faded in), the POI take-over by spot, terrain occlusion or a tilted view.
+
+A scenario is a few tiles and the camera paths that reach one final camera:
+
+```cpp
+list.push_back(champagne("name", { zoomIn(to, 15.5, 20), jump(to) }));
+```
+
+`jump` is the final camera at once; `zoomIn` many small zoom steps; `travel(from, to, steps)` a pan, a
+pinch or both, centre and zoom together; `via(stops, steps)` several in turn (zoom out and back in, a
+detour). A path is any list of `Camera`s (centre in tiles of the fixture's zoom, render zoom), each
+placed `passes` times, and every path of a scenario ends on the same camera. `watch` names the labels
+whose state is printed per path. Every scenario is checked for four invariants, and prints a score per
+path (the visible names weighted by priority, an icon alone a quarter) to compare policies by a number:
+
+| Invariant | Holds when |
+|---|---|
+| path independence | every path ends on the same visible set, POI sides and line-run size steps |
+| settling | placing again at the final camera flips no visibility, side or size step |
+| a POI keeps its text | no POI is left without its text by a street name on a side it could have taken |
+| no overlap | no two placed labels overlap, in the boxes the culler tests |
+
+An invariant the culler breaks today goes in the scenario's `knownFailures`: it prints `XFAIL`, and
+the run **fails once it holds**, so the mark cannot outlive the fix. `LABEL_SCENARIO_VERBOSE=1`
+prints every visible label of every path.
+
+To **see** it, `LABEL_SCENARIO_HTML=/tmp/pages /tmp/massif-tests-build/vt/vt_tests` (the directory must
+exist) writes one page per scenario: the final frame of every path side by side, as the culler placed it —
+the screen, the band labels are placed in around it, every box it tested, the names squeezed into them.
+What a path does differently from the first is red, dashed where it hid a label the first showed, and
+the `watch`ed names are yellow. Open the page in any browser; no SDK build is involved.
+
+Adding a case is a tile and a few lines:
+
+1. Crop the tile to what the case needs, to a few KB: `label-scenarios/crop_tile.py in.pbf
+   label-scenarios/tiles/<zoom>-<x>-<y>.pbf x0 y0 x1 y1` (window in the tile's extent units; keeps
+   `poi` and `transportation_name` unless layers are named).
+2. Add the scenario in `scenarios()`. The camera is in tiles of the fixture's zoom: tile
+   `8410 + 350 / 4096` is unit 350 of tile 8410.
+3. A layer the style does not draw needs a rule in `label-scenarios/style/scenario.mss` (values copied
+   from `styles/massif/carto/style.mss`), compiled into the `scenario.xml` the host reads, since the
+   CartoCSS compiler is not linked here:
+   `massif-style css2xml label-scenarios/style/project.json label-scenarios/style/scenario.xml`
+   (built by `libs-massif/cartocss/util`, see below).
 
 ## Bindings and CI
 
@@ -94,4 +157,5 @@ its `.cpp` in `style/CMakeLists.txt`. Keep `STYLE_SOURCES` short for the same re
 `vt/VtTest.cpp` is that `main` for the vt side. It links `Label.cpp` and the tile-builder chain, so
 a new case has to reach its subject through a header or through those objects — adding another
 `.cpp` is the signal to check what it pulls first, because the font stack and GL are one include
-away and neither belongs here.
+away and neither belongs here. The label scenarios are the one place that links all of mapnikvt, and
+they stay clear of the font stack by the stand-in `FontManager`.

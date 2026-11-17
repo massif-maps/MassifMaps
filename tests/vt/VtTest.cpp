@@ -60,6 +60,7 @@ void testLabelNormalBuild();
 void testNormalMapSlope();
 void testLabelGroupDistance();
 void testLabelSlide();
+void testLabelScenarios();
 void testCollisionPadding();
 void testLabelSplitBox();
 void testLabelAnchorAlign();
@@ -136,6 +137,7 @@ int main() {
     testNormalMapSlope();
     testLabelGroupDistance();
     testLabelSlide();
+    testLabelScenarios();
     testCollisionPadding();
     testLabelSplitBox();
     testLabelAnchorAlign();

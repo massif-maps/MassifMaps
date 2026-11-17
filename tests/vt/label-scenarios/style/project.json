@@ -1,0 +1,4 @@
+{
+  "styles": ["scenario.mss"],
+  "layers": ["transportation_name", "poi"]
+}

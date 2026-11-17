@@ -4,6 +4,10 @@
 # its interface only, so freetype and harfbuzz - the weight ../README.md keeps out - stay out.
 # Anything reaching GL still belongs behind a device check instead.
 file(GLOB TESS2_SOURCES "${SDK_BASE_DIR}/libs-external/tess2/source/*.c")
+# The label scenarios run real tiles through the style: all of mapnikvt but the MLT decoder, which
+# needs a library of its own, and a FontManager with no FreeType behind it (ScenarioFontManager.cpp).
+file(GLOB MAPNIKVT_SOURCES "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/*.cpp" "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/mbvtpackage/*.cc")
+list(FILTER MAPNIKVT_SOURCES EXCLUDE REGEX "MLTFeatureDecoder")
 file(GLOB BIDI_SOURCES "${SDK_BASE_DIR}/libs-external/bidi/bidi.c" "${SDK_BASE_DIR}/libs-external/bidi/ucdn.c")
 
 add_executable(vt_tests
@@ -69,6 +73,10 @@ add_executable(vt_tests
   LabelOcclusionKeepTest.cpp
   LabelGroupDistanceTest.cpp
   LabelSlideTest.cpp
+  LabelScenarioTest.cpp
+  LabelScenario.cpp
+  LabelScenarioView.cpp
+  ScenarioFontManager.cpp
   GLBParserTest.cpp
   ModelInstancesTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
@@ -88,6 +96,10 @@ add_executable(vt_tests
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/BitmapManager.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/NormalMapBuilder.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/GLBParser.cpp"
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/FontNames.cpp"
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/BitmapCanvas.cpp"
+  "${SDK_BASE_DIR}/libs-external/pugixml/pugixml/src/pugixml.cpp"
+  ${MAPNIKVT_SOURCES}
   ${TESS2_SOURCES}
   ${BIDI_SOURCES})
 
@@ -106,6 +118,16 @@ target_include_directories(vt_tests PRIVATE
   # vt uses boost only for boost::math::constants::pi - see ../../BUILDING.md for the symlink.
   "${SDK_BASE_DIR}/libs-external/boost"
   # GLBParser.cpp reads the glTF JSON chunk with it.
-  "${SDK_BASE_DIR}/libs-external/rapidjson/include")
+  "${SDK_BASE_DIR}/libs-external/rapidjson/include"
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src"
+  "${SDK_BASE_DIR}/libs-external/pbf"
+  "${SDK_BASE_DIR}/libs-external/picojson"
+  "${SDK_BASE_DIR}/libs-external/pugixml/pugixml/src"
+  "${SDK_BASE_DIR}/libs-external/tinyformat")
+
+target_compile_definitions(vt_tests PRIVATE SCENARIO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/label-scenarios")
+
+find_package(ZLIB REQUIRED)
+target_link_libraries(vt_tests PRIVATE ZLIB::ZLIB)
 
 add_test(NAME vt COMMAND vt_tests)

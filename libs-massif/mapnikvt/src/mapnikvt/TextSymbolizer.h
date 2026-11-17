@@ -11,6 +11,7 @@
 #include "FontSet.h"
 #include "Expression.h"
 #include "FunctionBuilder.h"
+#include "vt/Styles.h"
 
 #include <vector>
 #include <optional>
@@ -43,6 +44,8 @@ namespace massif::mvt {
             bindProperty("minimum-distance", &_minimumDistance);
             bindProperty("collision-padding", &_collisionPadding);
             bindProperty("max-char-angle-delta", &_maxCharAngleDelta);
+            bindProperty("fit-steps", &_fitSteps);
+            bindProperty("fit-ratio", &_fitRatio);
             bindProperty("max-distance", &_maxDistance);
             bindProperty("occlusion-opacity", &_occlusionOpacity);
             bindProperty("z-elevate", &_zElevate);
@@ -142,6 +145,10 @@ namespace massif::mvt {
         FloatProperty _collisionPadding = FloatProperty(0.0f);
         // mapbox text-max-angle, degrees; the default is maplibre's
         FloatProperty _maxCharAngleDelta = FloatProperty(45.0f);
+        // A line run may be drawn up to fit-steps times smaller, by fit-ratio each, when its full size does not
+        // fit or collides; 0 keeps the one size.
+        FloatProperty _fitSteps = FloatProperty(0.0f);
+        FloatProperty _fitRatio = FloatProperty(vt::DEFAULT_LABEL_FIT_RATIO);
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Negative = unset, i.e. the layer's own default stands.
         FloatProperty _occlusionOpacity = FloatProperty(-1.0f);

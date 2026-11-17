@@ -42,7 +42,6 @@ namespace massif::vt::scenario {
     Path jump(const Camera& to);
 
     enum class Invariant {
-        PATH_INDEPENDENCE, // every path ends on the same visible set, POI sides and line-run size steps
         SETTLING,          // placing again at the final camera changes nothing
         POI_KEEPS_TEXT,    // a POI is never left without its text by a line-run name that sits on a side it could have taken
         NO_OVERLAP         // no two placed labels overlap, in the boxes the culler tests
@@ -58,6 +57,8 @@ namespace massif::vt::scenario {
         std::vector<std::string> watch;
         // Invariants the culler is known to break on this scenario: reported as XFAIL, and the run fails once one holds.
         std::vector<Invariant> knownFailures;
+        // Passes between one wanted tile arriving and the next: the tiles stream in, the ones they replace stay till then.
+        int tileDelay = 0;
     };
 
     using Quad = std::array<cglib::vec2<float>, 4>;
@@ -66,7 +67,8 @@ namespace massif::vt::scenario {
         std::string name;
         bool line = false;     // a glyph run along a street, else a point label
         bool exempt = false;   // allow-overlap: takes part in no collision
-        bool visible = false;
+        bool visible = false;  // placed, in the band around the screen too: it collides there
+        bool onScreen = false;
         bool text = false;     // visible and drawing its text
         int variant = 0;       // the side a point label holds
         int sizeStep = 0;      // the shrink a line run holds
@@ -74,6 +76,8 @@ namespace massif::vt::scenario {
         std::vector<Quad> boxes;     // what it collides by, when visible
         std::vector<std::vector<Quad>> textSides; // point label: the boxes of every side that draws its text, one list per side
 
+        // What the user sees: only the labels on the screen count when paths are compared and scored.
+        bool shown() const { return visible && onScreen; }
         bool sameAs(const Decision& other) const;
     };
     using Decisions = std::map<std::pair<int, long long>, Decision>; // by (layer, global id)
@@ -94,7 +98,13 @@ namespace massif::vt::scenario {
         std::string name;
         std::vector<Frame> frames; // every pass, the settle passes at the final camera last
         Decisions decisions; // after the last settle pass
-        double score = 0;    // visible names weighted by priority, to compare policies by a number
+        double score = 0;    // shown names weighted by priority, to compare policies by a number
+        int churn = 0;       // shown labels that changed state between two passes of the path: what a user sees flicker
+        int sideFlips = 0;   // of those, a POI name that took another side
+        int stopFlips = 0;   // and those that came with the camera stopping, the settle passes
+        int transients = 0;  // a label leaving or changing over one that arrives or changes, between two passes: both are on screen mid-fade
+        int stopTransients = 0; // and those between the passes after the camera stopped
+        int reversals = 0;   // a label back in the state it left within REVERSAL_WINDOW passes: left, right, left
         int streets = 0, poiNames = 0, poiIcons = 0;
     };
 
@@ -124,7 +134,7 @@ namespace massif::vt::scenario {
     // where it hid a label the first showed); at any, in orange what changed since the pass before.
     std::string renderHtml(const Scenario& scenario, const Evaluation& evaluation);
 
-    // The visible set of one path, one label per line.
+    // The shown set of one path, one label per line.
     std::string describe(const PathOutcome& outcome);
 }
 

@@ -27,7 +27,7 @@ flowchart TD
 
   subgraph worker["VTLabelPlacementWorker — one fresh LabelCuller per pass"]
     seq["cullLabels per vector layer, SEQUENTIALLY<br/>the screen grid accumulates across layers on purpose"]
-    proc["LabelCuller::process<br/>wasVisible → updatePlacement → project →<br/>sort by priority/wasVisible/layer/size → greedy insert"]
+    proc["LabelCuller::process<br/>wasVisible → updatePlacement → project →<br/>sort by priority/anchor y/id → greedy insert"]
     seq --> proc
   end
 
@@ -159,11 +159,11 @@ grid.
 2. `Label::updatePlacement` — only re-places a label when its envelope has fully left the frustum;
    resets opacity;
 3. projects envelopes to screen space;
-4. sorts by priority → `wasVisible` → layer index → size → opacity;
+4. sorts by priority → anchor screen y → local id (MapLibre's order; nothing shown before ranks a label);
 5. greedily inserts into a **16×32 screen grid** with SAT polygon-overlap tests.
 
-A visible label keeps its slot unless a strictly higher-priority label overlaps it — that hysteresis
-is what stops labels flickering when the camera moves slightly.
+A visible label no longer outranks one of equal priority; the flicker control is a POI's held side and the
+renderer's reversible fade (see *Which labels keep their text* below).
 
 **A stand-in tile's labels sort after all others, whatever their priority.** While a tile loads,
 `TileLayer` draws an ancestor up to `MaxStandInLevel` levels coarser under it
@@ -338,6 +338,39 @@ its road, and off the curve on a bent one, so what absorbs the flapping is now
 rather than being clamped against its end, where it would collapse and read as `UNREADABLE`.
 Covered by `tests/vt/LineLabelTest.cpp`.
 
+### A line run that may shrink (`text-fit-steps`, fork-specific)
+
+```css
+#transportation_name::road_label { text-fit-steps: 2; text-fit-ratio: 0.85; }
+```
+
+A street shorter than its name is unnamed, however much of the map is free around it. `text-fit-steps`
+(default 0 = one size, as before) lets a LINE or `billboard-line` run be drawn up to that many times smaller,
+by `text-fit-ratio` each (default 0.85, clamped to 0.3-0.99); the size of step `k` is `ratio^k`. Point labels,
+callouts and `text-clip` ignore it.
+
+- **The culler picks the step.** `LabelCuller` takes the label's held size first. When that does not fit the
+  street (the layout is `NO_ROOM`) or collides, it looks for the largest smaller size that is free (halving over the steps, each laid out afresh). A label drawn small tries the larger sizes each pass and goes back up when one is free,
+  so a still scene keeps one size and only a changed neighbourhood moves it. A size it is not drawn at is judged
+  without the layout's grace and keep thresholds (the `strict` layout, which also leaves that history untouched): with them a size that did not fit read as fitting
+  for four passes, and a name where only the small size fits hopped big and small until the grace ran out. Only labels whose style asks pay
+  for the extra layouts.
+- **Placement uses the smallest size.** `_placementTextLength`, the on-screen stretch the slide looks for
+  (`findOnScreenLinePlacement`) and the placement search all measure the run at `ratio^steps`, or a street that
+  only the smaller run fits would never be placed. The anchors and `lineLabelHole` already test at half size.
+- **The size is one factor.** `Label::getSizeFactor()` multiplies the size inside `calculateLabelScale`, the one
+  place the envelope, the layout and the draw pass all read it, so they cannot disagree. The line-layout cache is
+  keyed on that scale and is rebuilt only when the step changes.
+- **Fine steps instead of an animation.** The size changes at once. A ratio near 1 with more steps
+  (`text-fit-ratio: 0.95; text-fit-steps: 8`, down to about 0.66) makes each change about 5%, which is hard to
+  see; the culler halves over the steps, so it lays a run out about `log2(steps)` times, not `steps`. A smaller ratio
+  with fewer steps makes visible hops. An ease of the drawn size toward the target was tried and dropped: the
+  hops that remained were the culler's, not the size's.
+- **What it does not do.** The style batch still sizes the SDF edge ramp for the full size, so a shrunk run's
+  edges are a little softer. Keep `ratio^steps` above about 0.7: below that a name stops being readable.
+
+`LabelFitSizeTest` pins the culler's choice; the look of a smaller run is a device check.
+
 ### Text drawn as geometry (`text-clip`)
 
 `text-clip` takes the text off the label pipeline entirely: `TextSymbolizer` builds `vt::TextStyle`
@@ -441,7 +474,7 @@ What changes, and only for this orientation:
   (`text-callout-screen-anchor`, a fraction of the screen height from the top; below 0 it stacks
   from its own anchor instead), and while the grid says it is taken it moves up one
   `text-callout-step` at a time, for at most `text-callout-max-rows` rows. Everything else — the
-  priority sort, the `wasVisible` hysteresis, the shared grid — is untouched, so callouts collide
+  priority sort, the shared grid — is untouched, so callouts collide
   with ordinary labels and with each other in the usual way.
 - **The lift is in SCREEN PIXELS, and it stays there.** Two things make that true, and both had to
   be fixed before a row of names was a row:
@@ -767,7 +800,11 @@ surface, no render tile. `TileRenderer::refreshTiles` splits the draw datas on `
 which is exactly "the visTile was outside the view frustum", so the preloading ring stops being
 drawn too. Skipping that split cost **4.3% of the frame rate** (below).
 
-Measured on the style preview (Grenoble, z16, top-down, 381×444 pane), counting every label that
+A POI also leaves every *later* label the room for its icon: the smallest box a label can still draw (its icon-only
+layout, or its one box) is reserved too, and a name takes a side that does not cover one before a side that does. It is
+a choice between sides that keep the name, never a reason to drop to the icon, so `LabelYieldTest` still has the name
+win its first side when an icon sits on every side. This is what lets a POI sit between two names that, each placed on
+the side that suited it first, left it nowhere (Angélina between Chocolat Sève and Selectour). Measured on the style preview (Grenoble, z16, top-down, 381×444 pane), counting every label that
 becomes visible *on screen* while still undrawn, bucketed by what it was on the previous pass:
 
 | | without the band tiles | with them |
@@ -820,24 +857,24 @@ tiles that are, by construction, off screen — which showed up as `drape` +1.7 
 `renderTiles` ends up slightly *below* baseline because the preloading ring stopped being drawn with
 them.
 
-**Which labels keep their text.** The culler sorts by priority → `wasVisible` → layer index → size →
-opacity and inserts greedily, so a label sorted earlier claims its side first;
-`shield-placement-priority` is the knob for "these names matter more than those", and a bigger
-`shield-size` sorts earlier among equal priorities.
+**Which labels keep their text.** The culler places in MapLibre's order: priority (`symbol-sort-key`), then the
+anchor's screen y (lower on the screen first), then the feature's local id. Nothing that was shown before ranks a
+label, so a pass places what the scene says and a newcomer of equal priority does not evict a label by being ahead of
+it in a list; `shield-placement-priority` is the knob for "these names matter more than those". Labels a building
+half hides, and labels never judged against the buildings, still sort after the ones in the clear.
 
 Insertion is **greedy and single-pass**: a label takes the first of its sides that is free. On a
 fresh screen a name placed there may leave a neighbour's icon nowhere to go — the neighbour is
 hidden. That is what mapbox does, and it is what makes a dense POI field readable: names win space
 from icons.
 
-**But a name does not evict a label already on screen.** Every label shown on the last pass reserves
-the box it held (`_reservedGrid`, per layer). A side whose name covers a reservation still to be
-inserted is skipped: the label tries its other sides, then its icon alone. Only when none of those
-fits does it take the first side that did, evicting as before, so yielding never hides it. The icon
-alone ignores reservations: a higher-ranked icon still wins. Measured on the style preview
-(Grenoble z16.5, pitch 50, terrain, two-finger rotate and mouse pan, 4 alternating page loads):
-mid-screen collision flips 47 → 36 per rotation and 69 → 45 per pan, and slightly MORE labels per
-pass (65–75 → 69–82). `LabelYieldTest` pins the four cases.
+**A name picks the side that leaves the others room.** The one thing that carries over from a pass is a POI's side:
+the held side is tried first, as mapbox tries `prevAnchor` first, so a free side does not change under a moving camera.
+Before it takes one, the culler reserves the smallest box each later label can still draw (its icon-only layout, or its
+one box; `_reservedGrid`). A side clear of every reservation wins; one that covers a later label's footprint still keeps
+the name and is taken before the icon alone; with an icon on every side the name takes the first one and the icon is not
+placed (`LabelYieldTest`). Without this a POI is hidden by a neighbour that was placed first on a side that suited it and
+did not need to take (Angélina between Chocolat Sève and Selectour: mapbox hides her, this keeps her).
 
 **Two alternatives were tried and reverted, both on the device and both worth not re-deriving:**
 
@@ -851,9 +888,16 @@ pass (65–75 → 69–82). `LabelYieldTest` pins the four cases.
   every icon that fits, so the dense camera showed ~18 names where greedy shows ~60. Icons are not
   worth that much.
 
-Yielding only to what the user already sees is what avoids the first one's collapse: on a fresh
-screen nothing is reserved and greedy fills it, and from then on the screen only changes where
-space is free.
+**What does not carry over, and what that costs.** A slow zoom and a jump to the same view give different POIs: the held
+side makes the result depend on how the camera got there, as it does in mapbox, maplibre and tangram (any hysteresis
+does; a result that depends on the view alone flips a label every time its box crosses an overlap). We tried a pass at
+rest that dropped the history: the same POIs however the camera got there, but about 20 labels reshuffled when the
+camera stopped (Selectour visible while zooming out, hidden at the stop), and it was removed. A fitting run restarts from
+its full size every pass: a run's box at the size it was left at made two passes at one view disagree. Every change is
+faded by the renderer's reversible ramp (a label that flips back mid-fade never reaches full opacity), except the one
+replacing an abandoned cycle. On the Champagne tiles (`tests/vt/LabelScenario*.cpp`, twelve paths) this model shows
+about 296 POI names against 251 for the one it replaced, which reserved street boxes and ranked by what was shown, and
+makes about a third more flips on the way: the fade is what hides those, and the harness does not model it.
 
 ### Justifying a wrapped name (fork-specific)
 
@@ -1088,8 +1132,8 @@ Labels start appearing at 1 s instead of 20, and the settled picture carries sli
 Steady-state placement is still rationed exactly as before. The frame cost of that one unrationed
 pass is not yet measured.
 
-**A forced placement commits without a fade** — only the one replacing an abandoned cycle, which with
-slicing off never happens; a redo for a moved camera now cross-fades. It replaces the whole screen in one pass, so blending
+**A forced placement commits without a fade** — the one replacing an abandoned cycle, which with
+slicing off never happens. It replaces the whole screen in one pass, so blending
 it in drew every outgoing label on top of its replacement for the length of the fade — a pan came
 out of it with road names printed twice and half-faded POIs. mapbox commits a forced placement with
 `fadeDuration == 0`; `snapLabelTransition` is that, consumed once by the next `startFrame`. The

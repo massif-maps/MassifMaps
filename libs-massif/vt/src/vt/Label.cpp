@@ -380,6 +380,7 @@ namespace massif::vt {
     void Label::snapPlacement(const Label& label) {
         _placement = label._placement;
         _placementSlid = label._placementSlid;
+        setSizeStep(label._sizeStep);
         _placementReanchored = false;
         _cachedFlippedPlacement = label._cachedFlippedPlacement;
         // The re-snap below runs before any view state: place by the old scale or the run changes shape.
@@ -566,7 +567,7 @@ namespace massif::vt {
             // At the placement: the merged geometry's centre can be far away, and the factor varies with distance.
             scale *= calculateTerrainScaleFactor(_placement ? _placement->position : calculateGeometryBBox(viewState).center(), viewState);
             _placementGlyphScale = scale;
-            _placementTextLength = calculateLineRunLength() * scale;
+            _placementTextLength = calculateLineRunLength() * scale * getMinSizeFactor();
             if (slideRunOntoScreen(viewState)) {
                 return false; // the anchor did not change, so a visible run is not faded again
             }
@@ -670,7 +671,7 @@ namespace massif::vt {
         return std::min(maxFactor, std::max(0.05f, factor));
     }
 
-    bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope, std::vector<std::array<cglib::vec3<float>, 4>>* glyphEnvelopes) const {
+    bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope, std::vector<std::array<cglib::vec3<float>, 4>>* glyphEnvelopes, bool strict) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = calculateLabelScale(size, viewState, placement);
         if (!placement || scale <= 0) {
@@ -696,7 +697,7 @@ namespace massif::vt {
         bool valid = isSurfaceFacingView(viewState, *placement);
         if (isLineRun()) {
             // Bounds of the laid-out run, as drawn; reuses the existing layout rather than re-laying for this view.
-            updateLineVertexData(placement, scale, viewState, false);
+            updateLineVertexData(placement, scale, viewState, false, strict);
 
             float glyphPadding = (scale > 0 ? padding / scale : 0);
             float minX = std::numeric_limits<float>::max(), maxX = -std::numeric_limits<float>::max();
@@ -783,13 +784,13 @@ namespace massif::vt {
         }
     }
 
-    bool Label::calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes, std::vector<std::vector<std::array<cglib::vec3<float>, 4>>>& partEnvelopes) const {
+    bool Label::calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes, std::vector<std::vector<std::array<cglib::vec3<float>, 4>>>& partEnvelopes, bool strict) const {
         // Only point labels have variants; a callout has a placement search of its own.
         if (_variantBBoxes.empty() || isLineRun() || _style->orientation == LabelOrientation::CALLOUT) {
             envelopes.resize(1);
             partEnvelopes.resize(1);
             partEnvelopes[0].clear();
-            return calculateEnvelope(size, buffer, viewState, envelopes[0], isLineRun() ? &partEnvelopes[0] : nullptr);
+            return calculateEnvelope(size, buffer, viewState, envelopes[0], isLineRun() ? &partEnvelopes[0] : nullptr, strict);
         }
 
         envelopes.resize(_variantBBoxes.size());
@@ -1190,6 +1191,7 @@ namespace massif::vt {
         if (!placement) {
             return 0.0f;
         }
+        size *= getSizeFactor();
         float zoomScale = size * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState);
         if (_style->orientation != LabelOrientation::CALLOUT) {
             return zoomScale;
@@ -1276,7 +1278,7 @@ namespace massif::vt {
         return p;
     }
 
-    Label::LineLayout Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool keepRun) const {
+    Label::LineLayout Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool keepRun, bool strict) const {
         const std::vector<Placement::Edge>& edges = placement->edges;
         if (edges.empty() || !(scale > 0)) {
             return LineLayout::NO_ROOM;
@@ -1469,8 +1471,9 @@ namespace massif::vt {
 
         // Hysteresis: a run already laid out gets a wider allowance, so one near the threshold does
         // not flap on the smallest pan.
-        float minSegmentDotProduct = (_lineLayoutValid ? MIN_LINE_SEGMENT_DOTPRODUCT_KEEP : MIN_LINE_SEGMENT_DOTPRODUCT);
-        float maxRunAngleSpread = (_lineLayoutValid ? MAX_LINE_RUN_ANGLE_SPREAD_KEEP : MAX_LINE_RUN_ANGLE_SPREAD);
+        bool drawn = _lineLayoutValid && !strict;
+        float minSegmentDotProduct = (drawn ? MIN_LINE_SEGMENT_DOTPRODUCT_KEEP : MIN_LINE_SEGMENT_DOTPRODUCT);
+        float maxRunAngleSpread = (drawn ? MAX_LINE_RUN_ANGLE_SPREAD_KEEP : MAX_LINE_RUN_ANGLE_SPREAD);
 
         bool readable = true;
         cglib::vec2<float> prevDir(0, 0);
@@ -1545,14 +1548,14 @@ namespace massif::vt {
         return readable || keepRun ? LineLayout::PLACED : LineLayout::UNREADABLE;
     }
 
-    void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const {
+    void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView, bool strict) const {
         // Only the renderer rebuilds on a view change: the culler's view state lags the frame.
         const cglib::mat4x4<double>& mvpMatrix = viewState.viewProjMatrix;
         // A flat run is keyed on the camera axes (its reading direction), so a pan reuses it.
         bool viewChanged = rebuildForView && (isScreenLineRun()
             ? mvpMatrix != _cachedMVPMatrix
             : viewState.orientation[0] != _cachedCameraXAxis || viewState.orientation[1] != _cachedCameraYAxis);
-        if (scale == _cachedScale && placement == _cachedPlacement && !viewChanged) {
+        if (!strict && scale == _cachedScale && placement == _cachedPlacement && !viewChanged) {
             return;
         }
         VT_STAT_INC(lineLayoutBuilds);
@@ -1562,28 +1565,32 @@ namespace massif::vt {
         _cachedIndices.clear();
         // Heights alone moved the run (a 2D/3D ramp re-anchors it every frame): it stays as placed, and
         // the fit is judged again once the culler or the view moves it.
-        bool keepRun = _placementReanchored && _lineLayoutValid && placement != _cachedPlacement;
-        LineLayout layout = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices, keepRun);
+        bool keepRun = !strict && _placementReanchored && _lineLayoutValid && placement != _cachedPlacement;
+        LineLayout layout = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices, keepRun, strict);
         _cachedValid = (layout == LineLayout::PLACED);
         // Grace for a placed run that stops fitting: culler and renderer judge fit from different view
-        // states, so an edge case alternates. UNREADABLE gets no grace.
-        if (_cachedValid) {
-            _lineLayoutFailures = 0;
-        }
-        else if (layout == LineLayout::NO_ROOM && _lineLayoutValid && ++_lineLayoutFailures <= LINE_LAYOUT_FAILURE_GRACE) {
-            _cachedValid = true;
-        }
-        else {
-            _lineLayoutFailures = 0;
-            if (layout == LineLayout::UNREADABLE) {
-                // Draw nothing while it fades out: the quads just built are the overlapping ones.
-                _cachedVertices.clear();
-                _cachedTexCoords.clear();
-                _cachedAttribs.clear();
-                _cachedIndices.clear();
+        // states, so an edge case alternates. UNREADABLE gets no grace, and a strict layout none, nor does it count.
+        if (!strict) {
+            if (_cachedValid) {
+                _lineLayoutFailures = 0;
+            }
+            else if (layout == LineLayout::NO_ROOM && _lineLayoutValid && ++_lineLayoutFailures <= LINE_LAYOUT_FAILURE_GRACE) {
+                _cachedValid = true;
+            }
+            else {
+                _lineLayoutFailures = 0;
             }
         }
-        _lineLayoutValid = _cachedValid;
+        if (!_cachedValid && layout == LineLayout::UNREADABLE) {
+            // Draw nothing while it fades out: the quads just built are the overlapping ones.
+            _cachedVertices.clear();
+            _cachedTexCoords.clear();
+            _cachedAttribs.clear();
+            _cachedIndices.clear();
+        }
+        if (!strict) {
+            _lineLayoutValid = _cachedValid;
+        }
         _cachedScale = scale;
         _cachedPlacement = placement;
         _cachedMVPMatrix = mvpMatrix;
@@ -1819,7 +1826,7 @@ namespace massif::vt {
         double textLengthBase = 0;
         if (isLineRun()) {
             float glyphScale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
-            textLengthBase = calculateLineRunLength() * glyphScale;
+            textLengthBase = calculateLineRunLength() * glyphScale * getMinSizeFactor();
         }
 
         // Ranking and fit use the run's own plane: projected length for a screen run (tilt shortens

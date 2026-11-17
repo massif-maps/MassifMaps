@@ -110,39 +110,17 @@ void testLabelYield() {
         auto poi = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), poiSides(true));
         auto other = buildLabel(2, 0, right, buildIcon(), {});
         cull({ poi, other });
-        TEST_CHECK(poi->isVisible() && poi->drawsText() && poi->getVariantIndex() == 0, "a new neighbour does not stop the higher-ranked POI naming itself on its first side");
-        TEST_CHECK(!other->isVisible(), "the neighbour its name covers is not placed, as greedy insertion always did");
+        TEST_CHECK(poi->isVisible() && poi->drawsText() && poi->getVariantIndex() == 1, "a new neighbour makes the higher-ranked POI name itself on the side that leaves it its icon");
+        TEST_CHECK(other->isVisible(), "and is placed");
     }
 
     {
         auto poi = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), poiSides(true));
-        auto other = buildLabel(2, 0, right, buildIcon(), {});
-        other->setVisible(true);
-        cull({ poi, other });
-        TEST_CHECK(other->isVisible(), "a label shown on the last pass keeps its place against a higher-ranked name");
-        TEST_CHECK(poi->isVisible() && poi->drawsText() && poi->getVariantIndex() == 1, "the POI names itself on its free side instead");
-    }
-
-    {
-        auto poi = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), poiSides(true));
-        auto east = buildLabel(2, 0, right, buildIcon(), {});
-        auto west = buildLabel(3, 0, left, buildIcon(), {});
-        east->setVisible(true);
-        west->setVisible(true);
-        cull({ poi, east, west });
-        TEST_CHECK(east->isVisible() && west->isVisible(), "both neighbours shown on the last pass stay when every side of the name covers one");
-        TEST_CHECK(poi->isVisible() && !poi->drawsText(), "the POI is drawn as its icon alone rather than evicting either");
-    }
-
-    {
-        auto poi = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), poiSides(false));
-        auto east = buildLabel(2, 0, right, buildIcon(), {});
-        auto west = buildLabel(3, 0, left, buildIcon(), {});
-        east->setVisible(true);
-        west->setVisible(true);
-        cull({ poi, east, west });
-        TEST_CHECK(poi->isVisible() && poi->getVariantIndex() == 0, "a POI with no icon-only layout is not hidden for yielding: it takes its first side");
-        TEST_CHECK(!east->isVisible() && west->isVisible(), "and evicts only the neighbour that side covers");
+        auto rightOther = buildLabel(2, 0, right, buildIcon(), {});
+        auto leftOther = buildLabel(3, 0, left, buildIcon(), {});
+        cull({ poi, rightOther, leftOther });
+        TEST_CHECK(poi->isVisible() && poi->drawsText() && poi->getVariantIndex() == 0, "with an icon on both sides the higher-ranked POI still names itself on its first, as greedy insertion always did");
+        TEST_CHECK(!rightOther->isVisible() && leftOther->isVisible(), "and only the icon its name covers is not placed");
     }
 
     for (bool shown : { true, false }) {
@@ -202,5 +180,31 @@ void testLabelYield() {
         } else {
             TEST_CHECK(poi->isVisible() && !street->isVisible(), "a street name half hidden by a building gives way to the POI in the clear");
         }
+    }
+
+    // MapLibre's order among equal priorities: the anchor lower on the screen first, then the lower feature id; what was shown
+    // before decides nothing.
+    for (bool firstShown : { true, false }) {
+        auto first = buildLabel(1, 5, cglib::vec2<float>(0, 0), buildIcon(), {});
+        auto second = buildLabel(2, 5, cglib::vec2<float>(0, 0), buildIcon(), {});
+        first->setVisible(firstShown);
+        second->setVisible(!firstShown);
+        cull({ first, second });
+        TEST_CHECK(first->isVisible() && !second->isVisible(), firstShown ? "a tie at one height goes to the lower id" : "even when the other one was shown");
+    }
+
+    {
+        auto high = buildLabel(1, 5, cglib::vec2<float>(0, 1), buildIcon(), {});
+        auto low = buildLabel(2, 5, cglib::vec2<float>(0, 0), buildIcon(), {});
+        cull({ high, low });
+        TEST_CHECK(low->isVisible() && !high->isVisible(), "a tie between two heights goes to the one lower on the screen, whatever the ids");
+    }
+
+    {
+        auto poi = buildLabel(1, 10, cglib::vec2<float>(0, 0), buildIconAndName(), poiSides(true));
+        poi->setVariantIndex(1);
+        poi->setVisible(true);
+        cull({ poi });
+        TEST_CHECK(poi->drawsText() && poi->getVariantIndex() == 1, "a POI keeps the side it held while it is free");
     }
 }

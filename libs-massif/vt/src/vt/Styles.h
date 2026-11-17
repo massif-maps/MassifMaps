@@ -262,10 +262,16 @@ namespace massif::vt {
         explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f, bool sdfMode = false, ColorFunction haloColorFunc = ColorFunction(), FloatFunction haloRadiusFunc = FloatFunction()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance), sdfMode(sdfMode), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)) { }
     };
 
+    // text-fit-ratio's default: the size factor of each shrink step of a line run.
+    constexpr float DEFAULT_LABEL_FIT_RATIO = 0.85f;
+
     struct TextLabelStyle final {
         // mapbox text-padding / icon-padding: screen pixels around the box, for the collision test only.
         float collisionPadding = 0.0f;
         float maxAngle = 0.785398f; // mapbox text-max-angle, radians: a line run turning more is dropped
+        // A line run may be drawn up to fitSteps times smaller, by fitRatio each, where the full size does not fit.
+        int fitSteps = 0;
+        float fitRatio = DEFAULT_LABEL_FIT_RATIO;
         LabelOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;

@@ -9,6 +9,8 @@
 #include "vt/FontManager.h"
 #include "vt/FontNames.h"
 
+#include <algorithm>
+#include <cmath>
 #include <vector>
 #include <tuple>
 
@@ -54,6 +56,8 @@ namespace massif::mvt {
         float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale * pixelScale;
         float collisionPadding = _collisionPadding.getValue(exprContext) * fontScale; // grows the box in glyph units, scaled to pixels with it
         float maxAngle = _maxCharAngleDelta.getValue(exprContext) * boost::math::constants::pi<float>() / 180.0f;
+        int fitSteps = std::max(0, static_cast<int>(std::lround(_fitSteps.getValue(exprContext))));
+        float fitRatio = std::min(0.99f, std::max(0.3f, _fitRatio.getValue(exprContext)));
         float maxDistance = _maxDistance.getValue(exprContext);
         float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
         bool zElevate = _zElevate.getValue(exprContext);
@@ -201,10 +205,12 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, glyphSize, maxAngle, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, zElevate, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutAnchorVisible, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, glyphSize, maxAngle, fitSteps, fitRatio, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, zElevate, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutAnchorVisible, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
             style.collisionPadding = collisionPadding;
             style.maxAngle = maxAngle;
+            style.fitSteps = fitSteps;
+            style.fitRatio = fitRatio;
             style.calloutBandFollow = calloutBandFollow;
             style.calloutAnchorVisible = calloutAnchorVisible;
             style.emissiveFunc = emissiveFunc;

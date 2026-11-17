@@ -67,6 +67,8 @@ namespace massif::vt {
             // for the COLLISION test, so two labels keep apart without either being drawn bigger.
             float collisionPadding = 0.0f;
             float maxAngle = 0.785398f; // see TextLabelStyle::maxAngle
+            int fitSteps = 0; // see TextLabelStyle::fitSteps
+            float fitRatio = DEFAULT_LABEL_FIT_RATIO;
             // Added to the placement priority by the culler, per label and per pass - the one
             // place a style function may read view::distance (see TextLabelStyle::rankFunc).
             FloatFunction rankFunc;

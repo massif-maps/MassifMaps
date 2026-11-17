@@ -758,6 +758,8 @@ namespace massif::css {
         { "text-min-distance", "minimum-distance" },
         { "text-collision-padding", "collision-padding" },
         { "text-max-char-angle-delta", "max-char-angle-delta" },
+        { "text-fit-steps", "fit-steps" },
+        { "text-fit-ratio", "fit-ratio" },
         { "text-max-distance", "max-distance" },
         { "text-occlusion-opacity", "occlusion-opacity" },
         { "text-z-elevate", "z-elevate" },

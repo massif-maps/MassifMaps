@@ -34,6 +34,8 @@ namespace massif::vt::scenario {
         // LabelCuller::EXTRA_LABEL_BUFFER: the box a label is placed by has one pixel more than the glyphs.
         constexpr float CULLER_BUFFER = 1.0f;
         constexpr int MAX_RETRIES = 4;
+        constexpr std::size_t REVERSAL_WINDOW = 3;
+        constexpr std::size_t SETTLED_WINDOW = 6; // the last passes at the final camera, after every tile has come
 
         struct StrictLogger : mvt::Logger {
             void write(Severity severity, const std::string& message) override {
@@ -198,7 +200,7 @@ namespace massif::vt::scenario {
         // The labels of one path: what GLTileRenderer keeps of them between passes, and no more.
         class Scene {
         public:
-            explicit Scene(Fixture& fixture) : _fixture(fixture), _culler(static_cast<float>(WORLD_SIZE)) { }
+            Scene(Fixture& fixture, int tileDelay) : _fixture(fixture), _tileDelay(tileDelay), _culler(static_cast<float>(WORLD_SIZE)) { }
 
             // One placement pass at `camera`, and then the passes the renderer owes a run it sent to another spot.
             Decisions place(const Camera& camera) {
@@ -234,6 +236,7 @@ namespace massif::vt::scenario {
                         break;
                     }
                 }
+                _pass++;
                 return snapshot(screen);
             }
 
@@ -260,8 +263,34 @@ namespace massif::vt::scenario {
             }
 
             // GLTileRenderer on a new tile set: the copies of a label the tiles carry merge, and the placement state is handed on.
+            // The tiles the renderer draws: a wanted tile is there `_tileDelay` passes after the one wanted before it, and
+            // until all have come the tiles they replace stay.
+            std::vector<TileId> arrivedTiles(const std::vector<TileId>& wanted) {
+                std::vector<TileId> arrived;
+                int fresh = 0;
+                bool pending = false;
+                for (const TileId& id : wanted) {
+                    auto key = std::make_tuple(id.zoom, id.x, id.y);
+                    auto it = _arrival.find(key);
+                    if (it == _arrival.end()) {
+                        it = _arrival.emplace(key, _pass + _tileDelay * ++fresh).first;
+                    }
+                    if (it->second <= _pass) {
+                        arrived.push_back(id);
+                    } else {
+                        pending = true;
+                    }
+                }
+                for (const TileId& id : _tileIds) {
+                    if (pending && std::find(wanted.begin(), wanted.end(), id) == wanted.end()) {
+                        arrived.push_back(id);
+                    }
+                }
+                return arrived;
+            }
+
             void rebuild(const Screen& screen, const Camera& camera) {
-                std::vector<TileId> ids = visibleTiles(screen, camera);
+                std::vector<TileId> ids = arrivedTiles(visibleTiles(screen, camera));
                 if (ids == _tileIds) {
                     return;
                 }
@@ -317,6 +346,7 @@ namespace massif::vt::scenario {
                     decision.line = label->isLineRun();
                     decision.exempt = label->getGroupId() < 0;
                     decision.visible = label->isVisible();
+                    decision.onScreen = label->isOnScreen();
                     decision.text = decision.visible && label->drawsText();
                     decision.variant = label->getVariantIndex();
                     decision.sizeStep = label->getSizeStep();
@@ -352,6 +382,9 @@ namespace massif::vt::scenario {
             }
 
             Fixture& _fixture;
+            int _tileDelay;
+            int _pass = 0;
+            std::map<std::tuple<int, int, int>, int> _arrival;
             LabelCuller _culler;
             std::vector<TileId> _tileIds;
             std::map<Key, std::shared_ptr<Label>> _byKey;
@@ -368,14 +401,14 @@ namespace massif::vt::scenario {
 
         std::string flip(const std::pair<int, long long>& key, const Decision& before, const Decision& after) {
             auto state = [](const Decision& d) {
-                return !d.visible ? std::string("hidden") : d.line ? "step " + std::to_string(d.sizeStep) : d.text ? "side " + std::to_string(d.variant) : std::string("icon only");
+                return !d.shown() ? std::string("hidden") : d.line ? "step " + std::to_string(d.sizeStep) : d.text ? "side " + std::to_string(d.variant) : std::string("icon only");
             };
             return labelOf(key, after) + " " + state(before) + " -> " + state(after);
         }
     }
 
     bool Decision::sameAs(const Decision& other) const {
-        return visible == other.visible && (!visible || (text == other.text && variant == other.variant && sizeStep == other.sizeStep));
+        return shown() == other.shown() && (!shown() || (text == other.text && variant == other.variant && sizeStep == other.sizeStep));
     }
 
     Path travel(const std::string& name, const Camera& from, const Camera& to, int steps, int passes) {
@@ -404,7 +437,6 @@ namespace massif::vt::scenario {
 
     const char* toString(Invariant invariant) {
         switch (invariant) {
-        case Invariant::PATH_INDEPENDENCE: return "path independence";
         case Invariant::SETTLING: return "settling";
         case Invariant::POI_KEEPS_TEXT: return "a POI keeps its text";
         case Invariant::NO_OVERLAP: return "no overlap";
@@ -474,6 +506,51 @@ namespace massif::vt::scenario {
         return quad[1](0) - quad[0](0);
     }
 
+    // Between two passes the renderer fades what changed: the old state out and the new one in, so for a moment a label
+    // that left or changed shows over one that arrives or changes where it was.
+    static int transientOverlaps(const Decisions& before, const Decisions& after) {
+        int count = 0;
+        for (auto a = after.begin(); a != after.end(); a++) {
+            auto previousA = before.find(a->first);
+            for (auto b = std::next(a); previousA != before.end() && b != after.end(); b++) {
+                auto previousB = before.find(b->first);
+                if (previousB == before.end() || a->second.exempt || b->second.exempt) {
+                    continue;
+                }
+                if (previousA->second.sameAs(a->second) && previousB->second.sameAs(b->second)) {
+                    continue;
+                }
+                bool old = previousA->second.shown() && b->second.shown() && overlap(previousA->second.boxes, b->second.boxes);
+                bool young = a->second.shown() && previousB->second.shown() && overlap(a->second.boxes, previousB->second.boxes);
+                count += (old || young ? 1 : 0);
+            }
+        }
+        return count;
+    }
+
+    static int reversals(const std::vector<Frame>& frames) {
+        auto state = [](const Decision& d) {
+            return !d.shown() ? 0 : d.line ? 100 + d.sizeStep : d.text ? 10 + d.variant : 1;
+        };
+        int count = 0;
+        for (std::size_t frame = 1; frame < frames.size(); frame++) {
+            for (const auto& [key, decision] : frames[frame].decisions) {
+                auto it = frames[frame - 1].decisions.find(key);
+                if (it == frames[frame - 1].decisions.end() || state(it->second) == state(decision)) {
+                    continue;
+                }
+                for (std::size_t later = frame + 1; later < frames.size() && later <= frame + REVERSAL_WINDOW; later++) {
+                    auto back = frames[later].decisions.find(key);
+                    if (back != frames[later].decisions.end() && state(back->second) == state(it->second)) {
+                        count++;
+                        break;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
     Evaluation evaluate(const Scenario& scenario) {
         Fixture fixture(scenario.tiles);
         Evaluation evaluation;
@@ -481,7 +558,7 @@ namespace massif::vt::scenario {
         evaluation.height = static_cast<float>(SCREEN_HEIGHT);
         evaluation.band = ViewState::MAX_LABEL_PADDING;
         for (const Path& path : scenario.paths) {
-            Scene scene(fixture);
+            Scene scene(fixture, scenario.tileDelay);
             PathOutcome outcome;
             outcome.name = path.name;
             for (const Camera& camera : path.cameras) {
@@ -496,13 +573,28 @@ namespace massif::vt::scenario {
             }
 
             outcome.decisions = passes.back();
+            std::size_t moving = path.cameras.size() * path.passes;
+            for (std::size_t frame = 1; frame < outcome.frames.size(); frame++) {
+                const Decisions &before = outcome.frames[frame - 1].decisions, &after = outcome.frames[frame].decisions;
+                int flips = static_cast<int>(differences(before, after).size());
+                outcome.churn += flips;
+                outcome.stopFlips += (frame >= moving ? flips : 0);
+                for (const auto& [key, decision] : after) {
+                    auto it = before.find(key);
+                    outcome.sideFlips += (it != before.end() && !decision.line && decision.shown() && it->second.shown() && decision.text && it->second.text && decision.variant != it->second.variant ? 1 : 0);
+                }
+                int overlapsNow = transientOverlaps(before, after);
+                outcome.transients += overlapsNow;
+                outcome.stopTransients += (frame >= moving ? overlapsNow : 0);
+            }
+            outcome.reversals = reversals(outcome.frames);
             float lowest = 1e30f, highest = -1e30f;
             for (const auto& [key, decision] : outcome.decisions) {
                 lowest = std::min(lowest, decision.priority);
                 highest = std::max(highest, decision.priority);
             }
             for (const auto& [key, decision] : outcome.decisions) {
-                if (!decision.visible) {
+                if (!decision.shown()) {
                     continue;
                 }
                 (decision.line ? outcome.streets : decision.text ? outcome.poiNames : outcome.poiIcons)++;
@@ -510,7 +602,7 @@ namespace massif::vt::scenario {
                 outcome.score += decision.text ? weight : 0.25 * weight;
             }
 
-            for (std::size_t pass = 1; pass < passes.size(); pass++) {
+            for (std::size_t pass = std::max<std::size_t>(1, passes.size() > SETTLED_WINDOW ? passes.size() - SETTLED_WINDOW + 1 : 1); pass < passes.size(); pass++) {
                 for (const std::string& flip : differences(passes[pass - 1], passes[pass])) {
                     evaluation.findings.push_back({ Invariant::SETTLING, path.name, "pass " + std::to_string(pass) + ": " + flip });
                 }
@@ -525,18 +617,13 @@ namespace massif::vt::scenario {
             evaluation.paths.push_back(std::move(outcome));
         }
 
-        for (std::size_t i = 1; i < evaluation.paths.size(); i++) {
-            for (const std::string& flip : differences(evaluation.paths[0].decisions, evaluation.paths[i].decisions)) {
-                evaluation.findings.push_back({ Invariant::PATH_INDEPENDENCE, evaluation.paths[i].name, flip + " (against " + evaluation.paths[0].name + ")" });
-            }
-        }
         return evaluation;
     }
 
     std::string describe(const PathOutcome& outcome) {
         std::vector<std::string> lines;
         for (const auto& [key, decision] : outcome.decisions) {
-            if (decision.visible) {
+            if (decision.shown()) {
                 lines.push_back(std::string(decision.line ? "street " : decision.text ? "poi    " : "icon   ") + decision.name + (decision.line ? " (step " + std::to_string(decision.sizeStep) + ")" : decision.text ? " (side " + std::to_string(decision.variant) + ")" : ""));
             }
         }

@@ -88,19 +88,25 @@ list.push_back(champagne("name", { zoomIn(to, 15.5, 20), jump(to) }));
 pinch or both, centre and zoom together; `via(stops, steps)` several in turn (zoom out and back in, a
 detour). A path is any list of `Camera`s (centre in tiles of the fixture's zoom, render zoom), each
 placed `passes` times, and every path of a scenario ends on the same camera. `watch` names the labels
-whose state is printed per path. Every scenario is checked for four invariants, and prints a score per
-path (the visible names weighted by priority, an icon alone a quarter) to compare policies by a number:
+whose state is printed per path. Every scenario is checked for three invariants, and prints a score per
+path (the names shown on the screen weighted by priority, an icon alone a quarter) to compare policies by a number, with the flips on the way (shown labels that changed state between two passes: what a user sees flicker),
+how many of those were a POI taking another side and how many came when the camera stopped, the
+*overlaps mid-fade* (between two passes the renderer crossfades: a label that left or changed shows over
+one that arrives or changes where it was, and how many of those at the stop) and the *reversals* (a label back in the state it left within
+three passes: left, right, left). Each scenario runs twice, the second with the tiles streaming in two
+passes apart (the tiles they replace stay until all have come), and the settling check judges only the
+last six passes, after the last tile.
+Only what is on the screen counts there: a label placed in the band around it is not seen:
 
 | Invariant | Holds when |
 |---|---|
-| path independence | every path ends on the same visible set, POI sides and line-run size steps |
 | settling | placing again at the final camera flips no visibility, side or size step |
 | a POI keeps its text | no POI is left without its text by a street name on a side it could have taken |
 | no overlap | no two placed labels overlap, in the boxes the culler tests |
 
 An invariant the culler breaks today goes in the scenario's `knownFailures`: it prints `XFAIL`, and
 the run **fails once it holds**, so the mark cannot outlive the fix. `LABEL_SCENARIO_VERBOSE=1`
-prints every visible label of every path.
+prints every label shown on the screen, of every path.
 
 To **see** it, `LABEL_SCENARIO_HTML=/tmp/pages /tmp/massif-tests-build/vt/vt_tests` (the directory must
 exist) writes one page per scenario: the final frame of every path side by side, as the culler placed it —

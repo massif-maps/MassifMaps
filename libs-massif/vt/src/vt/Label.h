@@ -25,6 +25,7 @@
 #include <vector>
 #include <limits>
 #include <algorithm>
+#include <cmath>
 
 namespace massif::vt {
     // Where a label's plate colours landed in the draw batch (TileLabel::Style::Plate); -1 = not drawn. A plate WITH a border takes
@@ -104,6 +105,12 @@ namespace massif::vt {
 
         bool isVisible() const { return _visible; }
         void setVisible(bool visible) { _visible = visible; }
+        // A line run the style lets shrink: it is drawn at fitRatio^step of its size, step 0 being the full one.
+        int getFitSteps() const { return isLineRun() ? _style->fitSteps : 0; }
+        int getSizeStep() const { return _sizeStep; }
+        void setSizeStep(int step) { _sizeStep = std::max(0, std::min(getFitSteps(), step)); }
+        float getSizeFactor() const { return _sizeStep > 0 ? std::pow(_style->fitRatio, static_cast<float>(_sizeStep)) : 1.0f; }
+        float getMinSizeFactor() const { return getFitSteps() > 0 ? std::pow(_style->fitRatio, static_cast<float>(getFitSteps())) : 1.0f; }
         bool isOnScreen() const { return _onScreen; }
         void setOnScreen(bool onScreen) { _onScreen = onScreen; }
         // A line run the culler hid on screen takes another spot along its stretch on the next pass: a still camera gets
@@ -121,6 +128,7 @@ namespace massif::vt {
         // Which of the style's sides the text is laid out on. Owned by LabelCuller; carried over by snapPlacement, or a label
         // rebuilt on a tile-set change takes the first side again and the name hops around its icon while panning.
         std::size_t getVariantCount() const { return _variants.size(); }
+        bool variantDrawsText(std::size_t index) const { return _variants[index].drawText; }
         int getVariantIndex() const { return _variantIndex; }
         void setVariantIndex(int index);
         bool drawsText() const { return _variants.empty() || _variants[_variantIndex].drawText; }
@@ -194,10 +202,12 @@ namespace massif::vt {
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
         // glyphEnvelopes: a line run's glyph boxes, the shape maplibre collides it by; its bounds on a diagonal street claimed the blocks beside it.
-        bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope, std::vector<std::array<cglib::vec3<float>, 4>>* glyphEnvelopes = nullptr) const;
+        // strict: lay a line run out afresh and judge it without the grace and keep thresholds that hold a drawn one, leaving
+        // that history alone. With them a size that did not fit read as fitting for a few passes, and a name hopped big and small.
+        bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope, std::vector<std::array<cglib::vec3<float>, 4>>* glyphEnvelopes = nullptr, bool strict = false) const;
         // One call, one placement: envelopes = each variant's whole box (the single one when there are none).
         // partEnvelopes = what it collides by when one box claims too much (name and icon apart, a line run's glyphs); empty = whole box.
-        bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes, std::vector<std::vector<std::array<cglib::vec3<float>, 4>>>& partEnvelopes) const;
+        bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes, std::vector<std::vector<std::array<cglib::vec3<float>, 4>>>& partEnvelopes, bool strict = false) const;
         bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex, iconHaloStyleIndex, buildNormals); }
         bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const;
 
@@ -383,8 +393,8 @@ namespace massif::vt {
         // an UNREADABLE one is a property of the line's shape at this scale and must never be drawn.
         enum class LineLayout { PLACED, NO_ROOM, UNREADABLE };
 
-        void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const;
-        LineLayout buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool keepRun = false) const;
+        void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView, bool strict = false) const;
+        LineLayout buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool keepRun = false, bool strict = false) const;
 
         // Where the text pen starts for the variant in use - zero for a label with one fixed
         // layout, which is every label a style without anchors builds.
@@ -507,6 +517,7 @@ namespace massif::vt {
         int _slideRetries = 0;
         cglib::mat4x4<double> _slideRetryView = cglib::mat4x4<double>::identity();
         bool _slideRetry = false;
+        int _sizeStep = 0;
         bool _placementSlid = false; // placed by slideRunOntoScreen, not at the anchor: the padded-band keep rule has no anchor to judge
         bool _onScreen = false;
         mutable std::shared_ptr<const Placement> _cachedFlippedPlacement;

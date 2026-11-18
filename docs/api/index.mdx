@@ -122,9 +122,10 @@ another without holding a reference to it:
 {"type": "vector", "source": "osm", "style": "outdoor"}
 ```
 
-A **string** where a spec is expected is an id lookup. An **object** there is an anonymous child
-built on the spot. Both are checked against the class the key needs, so a `style` id naming a
-source is refused rather than cast.
+A **string** where a spec is expected is an id lookup; a string no id claims is read as a type
+name, so `"projection": "EPSG:4326"` is `{"type": "EPSG:4326"}`. An **object** there is an anonymous
+child built on the spot. Both are checked against the class the key needs, so a `style` id naming
+a source is refused rather than cast.
 
 ## A spec is a constructor plus properties
 

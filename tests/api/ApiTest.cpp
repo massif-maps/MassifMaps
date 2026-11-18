@@ -379,7 +379,15 @@ namespace {
                    value.stringValue == "EPSG:3857",
                    "and the nested spec was built and assigned, not written as text");
 
-        // A string there is a registry id, the same rule a constructor argument follows.
+        // A string no id claims is a type name: "sourceProjection": "EPSG:3857".
+        Handle byName = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "writer", "wn",
+                                "{\"type\":\"w\",\"sourceProjection\":\"EPSG:3857\"}", byName) == RESULT_OK &&
+                   context->getProperty(byName, "sourceProjection.name", value) == RESULT_OK &&
+                   value.stringValue == "EPSG:3857", "a string naming no id builds that type");
+        context->unregisterObject("writer", "wn");
+
+        // A string there is a registry id first, the same rule a constructor argument follows.
         Handle projection = NULL_HANDLE;
         TEST_CHECK(Spec::create(*context, "projection", "p3857", "{\"type\":\"EPSG:3857\"}",
                                 projection) == RESULT_OK, "a projection registers under an id");

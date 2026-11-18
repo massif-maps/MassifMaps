@@ -103,10 +103,16 @@ jobs:
       publish: ${{ inputs.publish }}
       prerelease: ${{ inputs.prerelease }}
 
+  wasm:
+    name: Style wasm
+    needs: [plan]
+    if: ${{ needs.plan.outputs.styles != '' && needs.plan.outputs.tools != '' }}
+    uses: ./.github/workflows/build-wasm.yml
+
   styles:
     name: Styles
-    needs: [plan]
-    if: ${{ needs.plan.outputs.styles != '' }}
+    needs: [plan, wasm]
+    if: ${{ !cancelled() && needs.wasm.result != 'failure' && needs.plan.outputs.styles != '' }}
     uses: ./.github/workflows/release-styles.yml
     secrets: inherit
     permissions:
@@ -118,11 +124,12 @@ jobs:
       min_sdk: ${{ needs.plan.outputs.styles_min_sdk }}
       publish: ${{ inputs.publish }}
       prerelease: ${{ inputs.prerelease }}
+      wasm_ready: ${{ needs.wasm.result == 'success' }}
 
   tools:
     name: Style tools
-    needs: [plan]
-    if: ${{ needs.plan.outputs.tools != '' }}
+    needs: [plan, wasm]
+    if: ${{ !cancelled() && needs.wasm.result != 'failure' && needs.plan.outputs.tools != '' }}
     uses: ./.github/workflows/release-style-tools.yml
     permissions:
       contents: write
@@ -131,6 +138,7 @@ jobs:
       version: ${{ needs.plan.outputs.tools }}
       publish: ${{ inputs.publish }}
       prerelease: ${{ inputs.prerelease }}
+      wasm_ready: ${{ needs.wasm.result == 'success' }}
 
   # compat.json says `next` until the SDK it waited for has a version: write it down once the
   # styles are out, so the styles after this one do not ask for an SDK release again.

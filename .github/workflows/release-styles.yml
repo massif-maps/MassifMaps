@@ -32,6 +32,10 @@ on:
         description: 'Pre-release: npm dist-tag next, GitHub prerelease'
         default: false
         type: boolean
+      wasm_ready:
+        description: 'The wasm is already built in this run (release.yml builds it once for both)'
+        default: false
+        type: boolean
 
 env:
   VERSION: ${{ inputs.version || '0.0.0-ci' }}
@@ -40,37 +44,14 @@ env:
   SITE: https://massif-maps.github.io/MassifMaps/styles/massif
 
 jobs:
-  build-wasm:
-    name: Build massif-style.wasm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: recursive
-          fetch-depth: 1
-      - uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: latest
-          actions-cache-folder: emsdk-cache
-      # the same Boost as release-style-tools.yml, for the same reason (see there)
-      - name: Prepare Boost
-        uses: ./.github/actions/prepare-boost
-      - name: Build wasm
-        working-directory: libs-massif/cartocss/util
-        run: |
-          emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=MinSizeRel
-          emmake make -C build-wasm -j"$(nproc)" massif-style
-      - uses: actions/upload-artifact@v4
-        with:
-          name: massif-style-wasm
-          path: |
-            libs-massif/cartocss/util/build-wasm/massif-style.wasm
-            libs-massif/cartocss/util/build-wasm/massif-style.mjs
-          if-no-files-found: error
+  wasm:
+    if: ${{ !inputs.wasm_ready }}
+    uses: ./.github/workflows/build-wasm.yml
 
   package:
     name: Build every flavour
-    needs: [build-wasm]
+    needs: [wasm]
+    if: ${{ !cancelled() && needs.wasm.result != 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -659,7 +659,8 @@ registry entry instead.
 
 A `"source"`, `"style"` or `"layer"` reference inside another spec is either a registry id or an
 inline spec of that kind, and it is checked against the class the caller is about to cast to — a
-`"style"` id naming a source is refused rather than cast:
+`"style"` id naming a source is refused rather than cast. A string no id claims falls back to
+`{"type": <string>}`, which is how `"projection": "EPSG:4326"` reaches a request (`childOf`):
 
 | kind | types |
 |---|---|

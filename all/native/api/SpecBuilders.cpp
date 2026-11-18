@@ -2,6 +2,7 @@
 #include "utils/Log.h"
 
 #include <cstring>
+#include <map>
 
 namespace massif { namespace api {
 
@@ -208,18 +209,26 @@ namespace massif { namespace api {
         }
         Variant child = spec.getObjectElement(key);
         if (child.getType() == VariantType::VARIANT_TYPE_STRING) {
-            out = context.getObject(context.findObject(kind, child.getString()), requiredClass);
-            if (!out) {
-                // Said out loud: this used to come back as a bare RESULT_BAD_HANDLE over an empty
-                // log. A STRING here is an ID in the registry - a well-known name is a TYPE, and has
-                // to be written as { "type": "EPSG:4326" } so the kind's factory builds it.
-                Log::Errorf("Spec: '%s' names no registered %s (as %s); a well-known name is a "
-                            "type, not an id - write { \"type\": \"%s\" }",
-                            child.getString().c_str(), kind, requiredClass,
-                            child.getString().c_str());
-                return RESULT_BAD_HANDLE;
+            Handle registered = context.findObject(kind, child.getString());
+            out = context.getObject(registered, requiredClass);
+            if (out) {
+                return RESULT_OK;
             }
-            return RESULT_OK;
+            // An id wins; a name nothing registered is shorthand for { "type": name }, so
+            // "projection": "EPSG:4326" works as the typings say. A wrong-class id stays an error.
+            if (registered == NULL_HANDLE) {
+                ObjectRef named;
+                std::set<std::string> namedConsumed;
+                if (Spec::build(context, kind, Variant(std::map<std::string, Variant>{{"type", child}}),
+                                named, namedConsumed) == RESULT_OK &&
+                    isSubclassOf(named.cppClass, requiredClass)) {
+                    out = named.obj;
+                    return RESULT_OK;
+                }
+            }
+            Log::Errorf("Spec: '%s' is neither a registered %s (as %s) nor a type the %s factory builds",
+                        child.getString().c_str(), kind, requiredClass, kind);
+            return RESULT_BAD_HANDLE;
         }
         // A NUMBER is a handle, which is how an app shares an object it already holds - the source
         // an overlay draws with the base map's tiles, and anything else that must not be built

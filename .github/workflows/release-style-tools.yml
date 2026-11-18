@@ -21,57 +21,23 @@ on:
         description: 'Pre-release: npm dist-tag next, GitHub prerelease'
         default: false
         type: boolean
+      wasm_ready:
+        description: 'The wasm is already built in this run (release.yml builds it once for both)'
+        default: false
+        type: boolean
 
 env:
   PACKAGE_DIR: tools/style-cli
 
 jobs:
-  build-wasm:
-    name: Build massif-style.wasm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: recursive
-          fetch-depth: 1
-
-      - uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: 6.0.9
-          actions-cache-folder: emsdk-cache
-
-      # The SAME Boost the SDK builds against (BUILDING.md, build.yml). It has to be: the wasm
-      # compiles the style compiler, and boost.spirit.karma resolves an ambiguous grammar
-      # differently between versions and between compilers - a generator that wrote a nested `or`
-      # without parentheses under emcc, and with them under clang, silently corrupted every
-      # converted style's filters while every native check passed.
-      - name: Prepare Boost
-        uses: ./.github/actions/prepare-boost
-
-      - name: Build wasm
-        working-directory: libs-massif/cartocss/util
-        run: |
-          emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=MinSizeRel
-          emmake make -C build-wasm -j"$(nproc)" massif-style
-          ls -la build-wasm/massif-style.*
-
-      - name: Report size
-        run: |
-          cd libs-massif/cartocss/util/build-wasm
-          echo "### wasm artifact" >> "$GITHUB_STEP_SUMMARY"
-          { echo '```'; ls -lh massif-style.wasm massif-style.mjs; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: massif-style-wasm
-          path: |
-            libs-massif/cartocss/util/build-wasm/massif-style.wasm
-            libs-massif/cartocss/util/build-wasm/massif-style.mjs
-          if-no-files-found: error
+  wasm:
+    if: ${{ !inputs.wasm_ready }}
+    uses: ./.github/workflows/build-wasm.yml
 
   package:
     name: Build and test the npm package
-    needs: [build-wasm]
+    needs: [wasm]
+    if: ${{ !cancelled() && needs.wasm.result != 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

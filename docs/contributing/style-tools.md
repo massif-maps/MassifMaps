@@ -133,8 +133,10 @@ without an SDK release; `style-tools-v6.2.1` is where the numbering continued fr
 builds and packs on pull requests and on pushes to master (which also publish the `dev` build), and
 releases when [`release.yml`](release-workflow.md#cutting-a-release) calls it with `tools=…`:
 
-1. **build-wasm** — checkout with submodules, install emsdk, fetch Boost headers, build, upload the
-   two artifacts.
+1. **wasm** — [`build-wasm.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/build-wasm.yml):
+   checkout with submodules, install emsdk, fetch Boost headers, build, upload the two artifacts.
+   The styles release needs the same wasm: when `release.yml` publishes both it builds once and
+   passes `wasm_ready`, otherwise each workflow builds it itself.
 2. **package** — `gen-cartocss-properties.py --check`, build and test the TypeScript, smoke-test the
    wasm subcommand, pack the tarball with `scripts/npm-packages.py`.
 

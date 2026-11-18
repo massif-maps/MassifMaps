@@ -58,7 +58,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - name: Install Android platform (for android.jar)
         run: sdkmanager --install "platforms;android-34"
       - name: Build SWIG fork

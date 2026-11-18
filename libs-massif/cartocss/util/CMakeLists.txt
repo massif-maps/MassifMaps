@@ -76,6 +76,7 @@ include_directories(
   "${LIBS_DIR}/zlib/zlib"
   "${LIBS_DIR}/bidi"
   "${LIBS_DIR}/tess2/include"
+  "${LIBS_DIR}/freetype/config"
   "${LIBS_DIR}/freetype/freetype/include"
   "${LIBS_DIR}/harfbuzz/harfbuzz/src"
   "${LIBS_DIR}/pugixml/pugixml/src"

@@ -32,6 +32,7 @@ SYMBOLIZER_DIR = REPO / "libs-massif" / "mapnikvt" / "src" / "mapnikvt"
 TRANSLATOR = REPO / "libs-massif" / "cartocss" / "src" / "cartocss" / "CartoCSSMapnikTranslator.cpp"
 MARKDOWN_OUT = REPO / "docs" / "features" / "cartocss-properties.md"
 JSON_OUT = REPO / "tools" / "style-cli" / "src" / "generated" / "properties.json"
+VT_STYLES = REPO / "libs-massif" / "vt" / "src" / "vt" / "Styles.h"
 
 # Symbolizer itself has no base, and it is the one that binds comp-op for everything else.
 CLASS_RE = re.compile(r"class\s+(\w+)\s*(?::\s*public\s+(\w+))?\s*\{")
@@ -90,6 +91,12 @@ def parse_symbolizers():
 def clean_default(text):
     """'1.0f' -> '1.0', '"#000000"' -> '#000000'. The C++ literal suffix is noise in a reference."""
     text = text.strip().strip('"')
+    named = re.fullmatch(r"vt::([A-Z_0-9]+)", text)
+    if named:
+        found = re.search(rf"constexpr\s+\w+\s+{named.group(1)}\s*=\s*([^;]+);", VT_STYLES.read_text(encoding="utf-8"))
+        if not found:
+            sys.exit(f"cannot resolve default {text!r}: no constexpr in {VT_STYLES.name}")
+        text = found.group(1).strip()
     return text[:-1] if re.fullmatch(r"-?\d+(\.\d+)?f", text) else text
 
 

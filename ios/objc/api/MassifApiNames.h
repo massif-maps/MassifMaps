@@ -64,7 +64,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationPosition;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationStarted;
 /** Returns the animation style of the billboard. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnimationStyle;
-/** Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only. */
+/** Returns the scale the map is drawn at right now: the buffer's size over the view's. Read only. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAppliedRenderScale;
 /** Returns the number of elements in the array. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyArraySize;

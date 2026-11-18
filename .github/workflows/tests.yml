@@ -1,7 +1,8 @@
 name: Tests
 
-# The host-native ctest suite and the generated-binding drift check, on demand: a PR runs them
-# while it carries the `run-tests` label, or run the workflow by hand. Before this, only a release did.
+# The host-native ctest suite and the release-script tests, on demand: a PR runs them while it carries
+# the `run-tests` label, or run the workflow by hand. The generated-file drift checks are cheap and run
+# on every PR, so a stale file fails the PR instead of the Release workflow.
 
 on:
   pull_request:
@@ -36,7 +37,7 @@ jobs:
           CMAKE_BUILD_PARALLEL_LEVEL: 2
         run: tests/run.sh
 
-  scripts-and-bindings:
+  release-scripts:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-tests')
     runs-on: ubuntu-latest
     steps:
@@ -55,5 +56,21 @@ jobs:
       - name: Test the release scripts
         run: python3 -W ignore -m unittest discover -s scripts/tests
 
+  generated-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
       - name: Check the generated API bindings are up to date
         run: ./scripts/gen-api-bindings.sh --check
+
+      - name: Check the CartoCSS property allowlist is current
+        run: python3 scripts/gen-cartocss-properties.py --check

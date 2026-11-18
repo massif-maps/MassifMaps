@@ -73,6 +73,7 @@ add_executable(vt_tests
   LabelOcclusionKeepTest.cpp
   LabelGroupDistanceTest.cpp
   LabelSlideTest.cpp
+  LabelFitSizeTest.cpp
   LabelScenarioTest.cpp
   LabelScenario.cpp
   LabelScenarioView.cpp

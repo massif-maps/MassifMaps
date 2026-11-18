@@ -2346,6 +2346,26 @@
       "baked": false
     },
     {
+      "cartocss": "text-fit-ratio",
+      "mapnik": "fit-ratio",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.85",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-fit-steps",
+      "mapnik": "fit-steps",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "text-halo-emissive-strength",
       "mapnik": "halo-emissive-strength",
       "symbolizer": "text",

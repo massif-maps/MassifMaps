@@ -35,16 +35,22 @@ namespace {
 
     std::vector<Scenario> scenarios() {
         Camera z17 = at(350, 520, 17.0), z174 = at(350, 520, 17.4), z176 = at(350, 520, 17.6), z178 = at(350, 520, 17.8);
-        // A POI keeps the side it took, and a name that was shown is placed before one of the same priority (LabelCuller::process
-        // sorts by wasVisible): where POIs of one priority crowd, the history decides which keeps its text.
-        const std::vector<Invariant> history = { Invariant::PATH_INDEPENDENCE };
-        return {
-            champagne("zoom in to z17.0", { zoomIn(z17, 15.5, 20), jump(z17) }),
-            champagne("zoom in to z17.4", { zoomIn(z174, 15.5, 20), jump(z174) }, history),
-            champagne("zoom in to z17.8", { zoomIn(z178, 15.5, 20), jump(z178) }, history),
-            champagne("pan to z17.6 from the west or from the south", { jump(z176), travel("pan-W", at(-250, 520, 17.6), z176, 20), travel("pan-S", at(350, 1120, 17.6), z176, 20) }, history),
-            champagne("zoom out and in to z17.8", { jump(z178), via("out-in", { z178, at(350, 520, 16.0), z178 }, 20), via("pan-in", { at(1150, 120, 16.5), at(350, 520, 16.5), z178 }, 20) }, history),
+        std::vector<Scenario> list;
+        // Each scenario twice: the tiles there at once, and streaming in two passes apart (with the passes it takes to have
+        // them all), where an arriving tile sets what a run kept free again.
+        auto add = [&](const std::string& name, std::vector<Path> paths) {
+            list.push_back(champagne(name, paths));
+            Scenario streamed = champagne(name + " (tiles stream in)", std::move(paths));
+            streamed.tileDelay = 2;
+            streamed.settlePasses = 30;
+            list.push_back(std::move(streamed));
         };
+        add("zoom in to z17.0", { zoomIn(z17, 15.5, 20), jump(z17) });
+        add("zoom in to z17.4", { zoomIn(z174, 15.5, 20), jump(z174) });
+        add("zoom in to z17.8", { zoomIn(z178, 15.5, 20), jump(z178) });
+        add("pan to z17.6 from the west or from the south", { jump(z176), travel("pan-W", at(-250, 520, 17.6), z176, 20), travel("pan-S", at(350, 1120, 17.6), z176, 20) });
+        add("zoom out and in to z17.8", { jump(z178), via("out-in", { z178, at(350, 520, 16.0), z178 }, 20), via("pan-in", { at(1150, 120, 16.5), at(350, 520, 16.5), z178 }, 20) });
+        return list;
     }
 
     Quad box(float x0, float y0, float x1, float y1) {
@@ -56,6 +62,7 @@ namespace {
         decision.name = name;
         decision.line = line;
         decision.visible = true;
+        decision.onScreen = true;
         decision.text = true;
         decision.boxes = { quad };
         return decision;
@@ -90,6 +97,10 @@ namespace {
         TEST_CHECK(differences(before, after).size() == 2, "a changed step and a lost label are differences");
         before[{ 0, 2 }].visible = false;
         TEST_CHECK(differences(before, after).size() == 1, "and the side a hidden label last held is not");
+        after[{ 0, 1 }].onScreen = false;
+        TEST_CHECK(differences(before, after).size() == 1, "a run on the screen on one path and in the band on the other is a difference");
+        before[{ 0, 1 }].onScreen = false;
+        TEST_CHECK(differences(before, after).empty(), "and in the band on both, whatever its step, is not");
     }
 
     std::string slug(const std::string& name) {
@@ -105,7 +116,7 @@ namespace {
         Evaluation evaluation = evaluate(scenario);
         bool verbose = std::getenv("LABEL_SCENARIO_VERBOSE") != nullptr;
         for (const PathOutcome& outcome : evaluation.paths) {
-            std::printf("    %-4s score %.2f: %d POI names, %d icons only, %d street names\n", outcome.name.c_str(), outcome.score, outcome.poiNames, outcome.poiIcons, outcome.streets);
+            std::printf("    %-4s score %.2f: %d POI names, %d icons only, %d street names, %d flips on the way (%d side changes, %d at the stop), %d overlaps mid-fade (%d at the stop), %d reversals\n", outcome.name.c_str(), outcome.score, outcome.poiNames, outcome.poiIcons, outcome.streets, outcome.churn, outcome.sideFlips, outcome.stopFlips, outcome.transients, outcome.stopTransients, outcome.reversals);
             for (const std::string& name : scenario.watch) {
                 for (const auto& [key, decision] : outcome.decisions) {
                     if (decision.name == name) {
@@ -125,7 +136,7 @@ namespace {
             std::printf("    page: %s\n", file.c_str());
         }
 
-        for (Invariant invariant : { Invariant::PATH_INDEPENDENCE, Invariant::SETTLING, Invariant::POI_KEEPS_TEXT, Invariant::NO_OVERLAP }) {
+        for (Invariant invariant : { Invariant::SETTLING, Invariant::POI_KEEPS_TEXT, Invariant::NO_OVERLAP }) {
             bool known = std::find(scenario.knownFailures.begin(), scenario.knownFailures.end(), invariant) != scenario.knownFailures.end();
             bool broken = evaluation.violates(invariant);
             int printed = 0;

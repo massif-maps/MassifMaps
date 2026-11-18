@@ -678,6 +678,8 @@ namespace massif::vt {
             || _labelStyle->maxDistance != style.maxDistance
             || _labelStyle->occlusionOpacity != style.occlusionOpacity
             || _labelStyle->zElevate != style.zElevate
+            || _labelStyle->fitSteps != style.fitSteps
+            || _labelStyle->fitRatio != style.fitRatio
             || _labelStyle->rankFunc != style.rankFunc
             || _labelStyle->secondaryColorFunc.has_value() != style.secondaryColorFunc.has_value()
             || (style.secondaryColorFunc && *_labelStyle->secondaryColorFunc != *style.secondaryColorFunc)
@@ -732,6 +734,8 @@ namespace massif::vt {
             labelStyle->zElevate = style.zElevate;
             labelStyle->collisionPadding = style.collisionPadding;
             labelStyle->maxAngle = style.maxAngle;
+            labelStyle->fitSteps = style.fitSteps;
+            labelStyle->fitRatio = style.fitRatio;
             labelStyle->calloutBandFollow = style.calloutBandFollow;
             labelStyle->calloutAnchorVisible = style.calloutAnchorVisible;
             labelStyle->iconHaloColorFunc = style.iconHaloColorFunc;

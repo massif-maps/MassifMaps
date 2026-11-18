@@ -163,6 +163,20 @@ namespace massif::vt {
         std::vector<std::vector<std::array<cglib::vec3<float>, 4>>> partEnvelopes;
         CullRecord partRecord;
         std::vector<CullRecord> variants;
+        // The record of worldEnvelopes[i]/partEnvelopes[i], as the collect loop and the size search below both need it.
+        auto fillRecord = [&](const Label& label, std::size_t i, CullRecord& record) {
+            projectEnvelope(worldEnvelopes[i], record);
+            for (const std::array<cglib::vec3<float>, 4>& part : partEnvelopes[i]) {
+                projectEnvelope(part, partRecord);
+                record.parts.push_back(partRecord.envelope);
+                record.partBounds.push_back(partRecord.bounds);
+                record.axisAligned = record.axisAligned && partRecord.axisAligned;
+            }
+            // Snapshot the identity fields; the placement (and thus the local id) can be
+            // changed concurrently by tile updates once labelMutex is released.
+            record.localId = label.getLocalId();
+            record.allowOverlapSameFeatureId = label.allowOverlapSameFeatureId();
+        };
         VT_STAT_CLOCK(phaseClock);
         BatchLock labelLock(labelMutex, LABEL_LOCK_BATCH);
         // Slicing the collect (most of a pass, performance-log 28) runs before the sort, so it costs no ordering.
@@ -257,27 +271,20 @@ namespace massif::vt {
                     rankViewState.labelDistance = distance;
                     priority += (style->rankFunc)(rankViewState);
                 }
+                // Every pass starts a fitting run from its full size: the size it takes is not the one it was left at.
+                if (label->getFitSteps() > 0) {
+                    label->setSizeStep(0);
+                }
                 bool valid = label->calculateVariantEnvelopes(size, EXTRA_LABEL_BUFFER, _viewState, worldEnvelopes, partEnvelopes);
                 variants.clear();
                 for (std::size_t i = 0; i < worldEnvelopes.size(); i++) {
-                    CullRecord& record = variants.emplace_back();
-                    projectEnvelope(worldEnvelopes[i], record);
-                    for (const std::array<cglib::vec3<float>, 4>& part : partEnvelopes[i]) {
-                        projectEnvelope(part, partRecord);
-                        record.parts.push_back(partRecord.envelope);
-                        record.partBounds.push_back(partRecord.bounds);
-                        record.axisAligned = record.axisAligned && partRecord.axisAligned;
-                    }
-                    // Snapshot the identity fields; the placement (and thus the local id) can be
-                    // changed concurrently by tile updates once labelMutex is released.
-                    record.localId = label->getLocalId();
-                    record.allowOverlapSameFeatureId = label->allowOverlapSameFeatureId();
+                    fillRecord(*label, i, variants.emplace_back());
                 }
                 int variantIndex = std::min(static_cast<int>(variants.size()) - 1, std::max(0, label->getVariantIndex()));
                 if (label->isStandIn()) {
                     VT_STAT_INC(cullerStandIn);
                 }
-                validLabelList.push_back({ valid, wasVisible, label->isOnScreen(), label->isPartlyOccluded(), !label->isOcclusionKnown(), label->isStandIn(), priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
+                validLabelList.push_back({ valid, wasVisible, label->isPartlyOccluded(), !label->isOcclusionKnown(), label->isStandIn(), priority, label->getLayerIndex(), size, std::round(label->calculateAnchorScreenY(_viewState)), label, variants[variantIndex],
                                            variants.size() > 1 ? variants : std::vector<CullRecord>() });
             }
         }
@@ -289,8 +296,8 @@ namespace massif::vt {
         labelLock.release();
         VT_STAT_SPLIT(cullerCollectNs, phaseClock);
 
-        // Previously visible labels go before new ones of equal priority (MapLibre's committed placement);
-        // wasVisible, not opacity, since updatePlacement() can reset the opacity of a visible label.
+        // MapLibre's order: priority (symbol-sort-key), then the anchor's screen y, then the feature index. Nothing that was
+        // shown before ranks a label, so what a pass places is the scene's, and only a POI's side carries over (placeAnchoredLabel).
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
             if (labelInfo1.standIn != labelInfo2.standIn) {
                 return labelInfo2.standIn;
@@ -307,23 +314,14 @@ namespace massif::vt {
             if (labelInfo1.priority != labelInfo2.priority) {
                 return labelInfo1.priority > labelInfo2.priority;
             }
-            if (labelInfo1.wasVisible != labelInfo2.wasVisible) {
-                return labelInfo1.wasVisible;
+            if (labelInfo1.anchorY != labelInfo2.anchorY) {
+                return labelInfo1.anchorY < labelInfo2.anchorY;
             }
-            // One waiting in the padded band must not take a slot from a name the user is reading.
-            if (labelInfo1.wasOnScreen != labelInfo2.wasOnScreen) {
-                return labelInfo1.wasOnScreen;
+            // Ids of one feature in every tile it is cut into are the same however the tiles arrived; the global id is a load order.
+            if (labelInfo1.label->getLocalId() != labelInfo2.label->getLocalId()) {
+                return labelInfo1.label->getLocalId() < labelInfo2.label->getLocalId();
             }
-            if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
-                return labelInfo1.layerIndex < labelInfo2.layerIndex;
-            }
-            if (labelInfo1.size != labelInfo2.size) {
-                return labelInfo1.size > labelInfo2.size;
-            }
-            if (labelInfo1.opacity != labelInfo2.opacity) {
-                return labelInfo1.opacity > labelInfo2.opacity;
-            }
-            return labelInfo1.label->getGlobalId() > labelInfo2.label->getGlobalId();
+            return labelInfo1.label->getGlobalId() < labelInfo2.label->getGlobalId();
         });
 
         VT_STAT_SPLIT(cullerSortNs, phaseClock);
@@ -353,6 +351,53 @@ namespace massif::vt {
             return true;
         };
 
+        // A line run that may shrink (text-fit-steps) takes the largest size that is free: smaller when it collides or
+        // does not fit, larger when it is drawn small and room has come. Each try lays the run out again.
+        auto fitLineRunSize = [&](LabelInfo& info, bool fits) {
+            Label& label = *info.label;
+            int held = label.getSizeStep();
+            CullRecord heldRecord = info.cullRecord;
+            bool heldValid = info.valid;
+            int lastStep = held;
+            auto tryStep = [&](int step) {
+                lastStep = step;
+                label.setSizeStep(step);
+                bool fitsStreet = label.calculateVariantEnvelopes(info.size, EXTRA_LABEL_BUFFER, _viewState, worldEnvelopes, partEnvelopes, true);
+                if (fitsStreet) {
+                    info.cullRecord = CullRecord();
+                    fillRecord(label, 0, info.cullRecord);
+                    info.valid = true;
+                }
+                return fitsStreet && testGridOverlap(info) && testGroupDistance(info);
+            };
+            // A smaller run only takes less room, so what fits is a run of steps ending at the smallest size: the
+            // first that does is found by halving, a few layouts however many steps the style allows.
+            int low = fits ? 0 : held + 1;
+            int high = fits ? held : label.getFitSteps();
+            bool found = fits;
+            if (!fits && low <= high) {
+                found = tryStep(high);
+            }
+            if (found) {
+                while (low < high) {
+                    int middle = (low + high) / 2;
+                    if (tryStep(middle)) {
+                        high = middle;
+                    } else {
+                        low = middle + 1;
+                    }
+                }
+                // Every size ever taken as high was free, but a failed try after it overwrote its layout.
+                if (high != held && (lastStep == high || tryStep(high))) {
+                    return true;
+                }
+            }
+            label.setSizeStep(held);
+            info.cullRecord = heldRecord;
+            info.valid = heldValid;
+            return fits;
+        };
+
         // A following band sits just above the highest summit it names (peakfinder's row), capped by the screen anchor.
         _highestCalloutAnchorY = -1.0f;
         for (const LabelInfo& labelInfo : validLabelList) {
@@ -374,10 +419,21 @@ namespace massif::vt {
         }
         for (std::size_t i = 0; i < validLabelList.size(); i++) {
             const LabelInfo& labelInfo = validLabelList[i];
-            if (labelInfo.valid && labelInfo.wasVisible && !labelInfo.occluded && !labelInfo.standIn && labelInfo.label->getGroupId() >= 0) {
-                CullRecord record = labelInfo.cullRecord;
-                record.reservation = static_cast<int>(i);
-                addGridRecord(_reservedGrid, record);
+            if (!labelInfo.valid || labelInfo.occluded || labelInfo.standIn || labelInfo.label->getGroupId() < 0) {
+                continue;
+            }
+            const std::shared_ptr<Label>& label = labelInfo.label;
+            // A POI also leaves a later one the room for its icon, so the name that comes first does not cost it its place.
+            if (!label->isLineRun()) {
+                const CullRecord* footprint = labelInfo.variants.empty() ? &labelInfo.cullRecord : nullptr;
+                for (std::size_t variant = 0; !footprint && variant < labelInfo.variants.size(); variant++) {
+                    footprint = label->variantDrawsText(variant) ? nullptr : &labelInfo.variants[variant];
+                }
+                if (footprint && !isOffscreen(*footprint)) {
+                    CullRecord record = *footprint;
+                    record.reservation = static_cast<int>(i);
+                    addGridRecord(_reservedGrid, record);
+                }
             }
         }
 
@@ -387,6 +443,7 @@ namespace massif::vt {
             labelLock.step();
 
             const std::shared_ptr<Label>& label = labelInfo.label;
+            int variantBefore = label->getVariantIndex(), stepBefore = label->getSizeStep();
 
             long long groupId = label->getGroupId();
 
@@ -399,6 +456,10 @@ namespace massif::vt {
             } else {
                 visible = groupId >= 0 ? labelInfo.valid && testGridOverlap(labelInfo) : labelInfo.valid;
                 visible = visible && testGroupDistance(labelInfo);
+                // A run placed in the padded band is not read: it keeps its size and pays for no layouts.
+                if (groupId >= 0 && label->getFitSteps() > 0 && !(visible && isOffscreen(labelInfo.cullRecord))) {
+                    visible = fitLineRunSize(labelInfo, visible);
+                }
             }
 
             if (!labelInfo.valid) {
@@ -427,6 +488,9 @@ namespace massif::vt {
                     label->setTextOpacity(1.0f);
                 }
             }
+            // A side or a size another step is a change to draw too, though nothing was shown or hidden.
+            bool line = label->isLineRun();
+            changed = changed || (visible && labelInfo.wasVisible && (line ? label->getSizeStep() != stepBefore : label->getVariantIndex() != variantBefore));
             if (visible != label->isVisible()) {
                 label->setVisible(visible);
                 VT_STAT_INC(cullerVisibilityFlips);
@@ -700,20 +764,26 @@ namespace massif::vt {
             }
         }
 
-        int evicting = -1;
+        // A side that covers a later label's footprint still keeps the text: it is taken only when no side is clear, and
+        // before the icon alone.
+        int covering = -1;
         for (int index : candidates) {
             takeVariant(labelInfo, index);
             if (testGridOverlap(labelInfo) && testGroupDistance(labelInfo)) {
-                if (!label->drawsText() || !testReservedOverlap(labelInfo.cullRecord, labelIndex)) {
+                if (!label->drawsText()) {
+                    if (covering >= 0) {
+                        break;
+                    }
                     return true;
                 }
-                if (evicting < 0) {
-                    evicting = index;
+                if (!testReservedOverlap(labelInfo.cullRecord, labelIndex)) {
+                    return true;
                 }
+                covering = (covering < 0 ? index : covering);
             }
         }
-        if (evicting >= 0) {
-            takeVariant(labelInfo, evicting);
+        if (covering >= 0) {
+            takeVariant(labelInfo, covering);
             return true;
         }
 

@@ -98,14 +98,13 @@ namespace massif::vt {
         struct LabelInfo {
             bool valid;
             bool wasVisible;
-            bool wasOnScreen; // drawn inside the real viewport, not only inside the padded one
             bool occluded; // partly hidden by 3D content on the last frame drawn
             bool unknown; // its occlusion was never judged: it may be behind a building, so it takes no slot from a label in the clear
             bool standIn;
             float priority;
             int layerIndex;
             float size;
-            float opacity;
+            float anchorY; // screen y of the anchor: the tie-break after priority, as in mapbox
             std::shared_ptr<Label> label;
             CullRecord cullRecord;
             // One per side the label may take, in preference order; the last one is its smallest
@@ -119,7 +118,7 @@ namespace massif::vt {
         void clearGrid();
         void addGridRecord(RecordGrid& grid, const CullRecord& cullRecord) const;
         bool testGridOverlap(const LabelInfo& labelInfo) const;
-        // Whether the record covers a label shown last pass that has not been inserted yet.
+        // Whether the record covers the footprint of a label inserted after this one.
         bool testReservedOverlap(const CullRecord& cullRecord, int index) const;
         // Whether two records whose bounds, grown by the buffer, already intersect really overlap.
         static bool testRecordOverlap(const CullRecord& record1, const CullRecord& record2, float buffer);

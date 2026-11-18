@@ -90,15 +90,6 @@ namespace massif {
         _mapRenderer->onSurfaceChanged(width, height);
     }
     
-    void BaseMapView::onSurfaceChanged(int width, int height, float renderScale) {
-        _options->setAppliedRenderScale(renderScale);
-        onSurfaceChanged(width, height);
-    }
-
-    float BaseMapView::getWantedRenderScale() const {
-        return _wantedRenderScale.load();
-    }
-
     void BaseMapView::onDrawFrame() {
         RenderScalePolicy::Config config;
         config.scale2D = _options->getRenderScale();
@@ -111,7 +102,12 @@ namespace massif {
         input.nowSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
         RenderScalePolicy::Result result = RenderScalePolicy::step(_renderScaleState, config, input);
         _renderScaleState = result.state;
-        _wantedRenderScale = result.scale;
+#if defined(__ANDROID__)
+        if (result.scale != _options->getAppliedRenderScale()) {
+            _options->setAppliedRenderScale(result.scale);
+            _mapRenderer->setRenderScale(result.scale);
+        }
+#endif
         if (result.pending && !input.gestureActive) {
             // Held for the hold time only, and nothing else wakes the loop once it is over.
             _mapRenderer->requestRedraw();

@@ -4298,7 +4298,7 @@ export interface PropertyTypes {
         'DPI': number;
         /** Returns the color of the ambient light. */
         'ambientLightColor': number;
-        /** (read-only) Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only. */
+        /** (read-only) Returns the scale the map is drawn at right now: the buffer's size over the view's. Read only. */
         readonly 'appliedRenderScale': number;
         /** Returns the background bitmap. May be null. */
         'background': Handle;

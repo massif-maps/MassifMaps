@@ -10,7 +10,6 @@
 #include "ui/FlightEasing.h"
 #include "ui/RenderScalePolicy.h"
 
-#include <atomic>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -55,22 +54,6 @@ namespace massif {
          * @param height The new height of the map view.
          */
         void onSurfaceChanged(int width, int height);
-        /**
-         * Changes the screen size of the map view when the surface is smaller than the view, see
-         * Options::setRenderScale. The view's pixels are what the API speaks (touches, screenToMap,
-         * mapToScreen, moveToFitBounds); the map is drawn to the surface's, and the DPI follows.
-         * @param width The new width of the surface.
-         * @param height The new height of the surface.
-         * @param renderScale The surface's size over the view's, in (0, 1]; 1 when they are the same.
-         */
-        void onSurfaceChanged(int width, int height, float renderScale);
-        /**
-         * Returns the render scale the surface should have: Options::getRenderScale in 2D, getRenderScale3D in 3D.
-         * Refreshed by every drawn frame. A platform view reads it after a frame and resizes its surface when it
-         * differs from the surface's size over the view's, then reports the result with the overload of onSurfaceChanged above.
-         * @return The wanted render scale, in (0, 1].
-         */
-        float getWantedRenderScale() const;
         /**
          * Draws a single frame to the current graphics context. Calling this method before
          * onSurfaceCreated and onSurfaceChanged are called results in undefined behaviour.
@@ -451,7 +434,6 @@ namespace massif {
         std::shared_ptr<TouchHandler> _touchHandler;
 
         RenderScalePolicy::State _renderScaleState;
-        std::atomic<float> _wantedRenderScale { 1.0f };
         
         mutable std::mutex _mutex;
     };

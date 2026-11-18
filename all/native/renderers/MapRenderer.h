@@ -213,6 +213,8 @@ namespace massif {
         
         void onSurfaceCreated();
         void onSurfaceChanged(int width, int height);
+        // The map is drawn at this fraction of the surface's pixels, into an offscreen buffer scaled up to the surface.
+        void setRenderScale(float scale);
         void onDrawFrame();
         void onSurfaceDestroyed();
 
@@ -224,6 +226,9 @@ namespace massif {
         void blendAndUnbindScreenFBO(float opacity);
         // Full-screen quad sampling the mask. Sets no render state: one caller runs inside the drape bake.
         void drawMaskQuad(unsigned int texture, float invWidth, float invHeight);
+        void applyRenderSize();
+        void bindSceneFrameBuffer();
+        void presentSceneFrameBuffer(GLuint targetFBO);
         // dst *= mask, with its own render state.
         void multiplyScreenMask(unsigned int texture, float invWidth, float invHeight);
         void setZBuffering(bool enable);
@@ -378,6 +383,10 @@ namespace massif {
         std::vector<std::pair<GLuint, GLuint> > _screenBoundFBOs;
         std::map<GLuint, std::shared_ptr<FrameBuffer> > _screenFrameBuffers;
         std::shared_ptr<Shader> _screenBlendShader;
+        std::shared_ptr<FrameBuffer> _sceneFrameBuffer;
+        int _surfaceWidth;
+        int _surfaceHeight;
+        float _renderScale;
 
         std::shared_ptr<PostProcessEffect> _postProcessEffect;
         std::shared_ptr<Shader> _postProcessShader;

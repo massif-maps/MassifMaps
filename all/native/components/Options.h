@@ -421,8 +421,8 @@ namespace massif {
          */
         float getRenderScale() const;
         /**
-         * Sets the render scale used while the map is flat. Below 1 the map draws to a smaller surface that the
-         * system scales up to the view, and the DPI is lowered by the same factor, so the view keeps its ground,
+         * Sets the render scale used while the map is flat. Below 1 the map draws to a smaller offscreen buffer that is
+         * scaled up to the view, and the DPI is lowered by the same factor, so the view keeps its ground,
          * zoom and label sizes and only loses sharpness. Takes effect on a platform whose view supports it (Android MapView).
          * @param scale The new scale, in (0, 1]; anything else means 1, and it is not taken below 0.25.
          */
@@ -441,14 +441,13 @@ namespace massif {
         void setRenderScale3D(float scale);
 
         /**
-         * Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the
-         * scale asked for by the resize the platform has to do. Read only.
+         * Returns the scale the map is drawn at right now: the buffer's size over the view's. Read only.
          * @return The applied render scale, in (0, 1].
          */
         float getAppliedRenderScale() const;
         /**
-         * Sets the scale the surface was resized to. Called by the platform view when its surface changes. Internal method.
-         * @param scale The surface's size over the view's, in (0, 1].
+         * Sets the scale the map is drawn at. Called by the map view when the scale it wants changes. Internal method.
+         * @param scale The buffer's size over the view's, in (0, 1].
          */
         void setAppliedRenderScale(float scale);
 

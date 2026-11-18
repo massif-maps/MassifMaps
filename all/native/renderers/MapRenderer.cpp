@@ -689,6 +689,10 @@ namespace massif {
         _screenBoundFBOs(),
         _screenFrameBuffers(),
         _screenBlendShader(),
+        _sceneFrameBuffer(),
+        _surfaceWidth(0),
+        _surfaceHeight(0),
+        _renderScale(1.0f),
         _backgroundRenderer(*options, *layers),
         _skyRenderer(*options),
         _billboardDrawDatas(),
@@ -1487,6 +1491,7 @@ namespace massif {
 
         _screenBoundFBOs.clear();
         _screenFrameBuffers.clear();
+        _sceneFrameBuffer.reset();
         _screenBlendShader.reset();
 
         _backgroundRenderer.onSurfaceCreated(_glResourceManager);
@@ -1498,12 +1503,9 @@ namespace massif {
     void MapRenderer::onSurfaceChanged(int width, int height) {
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            _viewState.setScreenSize(width, height);
-            _viewState.calculateViewState(*_options);
-            _viewState.clampZoom(*_options);
-            _viewState.clampFocusPos(*_options);
-            _screenFrameBuffers.clear(); // reset, as this depends on the surface dimensions
-            _surfaceChanged = true;
+            _surfaceWidth = width;
+            _surfaceHeight = height;
+            applyRenderSize();
         }
 
         DirectorPtr<MapRendererListener> mapRendererListener = _mapRendererListener;
@@ -1511,7 +1513,53 @@ namespace massif {
             mapRendererListener->onSurfaceChanged(width, height);
         }
     }
-    
+
+    void MapRenderer::setRenderScale(float scale) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        if (_renderScale == scale) {
+            return;
+        }
+        _renderScale = scale;
+        if (_surfaceWidth > 0 && _surfaceHeight > 0) {
+            applyRenderSize();
+        }
+    }
+
+    void MapRenderer::applyRenderSize() {
+        int width = std::max(1, static_cast<int>(std::lround(_surfaceWidth * _renderScale)));
+        int height = std::max(1, static_cast<int>(std::lround(_surfaceHeight * _renderScale)));
+        _viewState.setScreenSize(width, height);
+        _viewState.calculateViewState(*_options);
+        _viewState.clampZoom(*_options);
+        _viewState.clampFocusPos(*_options);
+        _screenFrameBuffers.clear(); // reset, as this depends on the render dimensions
+        _sceneFrameBuffer.reset();
+        _surfaceChanged = true;
+    }
+
+    void MapRenderer::bindSceneFrameBuffer() {
+        if (!_sceneFrameBuffer || !_sceneFrameBuffer->isValid()) {
+            _sceneFrameBuffer = _glResourceManager->create<FrameBuffer>(_viewState.getWidth(), _viewState.getHeight(), true, true, true);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, _sceneFrameBuffer->getColorTexId());
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, _sceneFrameBuffer->getFBOId());
+        glViewport(0, 0, _sceneFrameBuffer->getWidth(), _sceneFrameBuffer->getHeight());
+    }
+
+    void MapRenderer::presentSceneFrameBuffer(GLuint targetFBO) {
+        glBindFramebuffer(GL_FRAMEBUFFER, targetFBO);
+        glViewport(0, 0, _surfaceWidth, _surfaceHeight);
+        glDisable(GL_BLEND);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+        drawMaskQuad(_sceneFrameBuffer->getColorTexId(), 1.0f / _surfaceWidth, 1.0f / _surfaceHeight);
+        GLContext::CheckGLError("MapRenderer::presentSceneFrameBuffer");
+    }
+
     void MapRenderer::onDrawFrame() {
         if (!_surfaceCreated) {
             Log::Error("MapRenderer::onDrawFrame: Surface not yet created");
@@ -1550,6 +1598,13 @@ namespace massif {
             _lastFrameTime.reset();
 
             viewChanged(false, MapMoveReason::MAP_MOVE_REASON_API);
+        }
+
+        GLint presentFBO = 0;
+        bool scaled = _renderScale < 1.0f && _surfaceWidth > 0 && _surfaceHeight > 0;
+        if (scaled) {
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &presentFBO);
+            bindSceneFrameBuffer();
         }
         
         std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
@@ -1745,6 +1800,10 @@ namespace massif {
         }
 
         handleRendererCaptureCallbacks();
+
+        if (scaled) {
+            presentSceneFrameBuffer(static_cast<GLuint>(presentFBO));
+        }
         
         if (_billboardsChanged.exchange(false)) {
             _billboardPlacementWorker->init(BILLBOARD_PLACEMENT_TASK_DELAY);
@@ -1804,6 +1863,7 @@ namespace massif {
 
         _screenBoundFBOs.clear();
         _screenFrameBuffers.clear();
+        _sceneFrameBuffer.reset();
         _screenBlendShader.reset();
 
         // Their handles belong to the dying context.

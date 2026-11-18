@@ -64,7 +64,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> ANIMATION_STARTED = MassifObject.key("animationStarted");
     /** Returns the animation style of the billboard. */
     public static final MassifObject.Key<MassifObject> ANIMATION_STYLE = MassifObject.key("animationStyle");
-    /** Returns the scale the surface is drawn at right now: the surface's size over the view's. It trails the scale asked for by the resize the platform has to do. Read only. */
+    /** Returns the scale the map is drawn at right now: the buffer's size over the view's. Read only. */
     public static final MassifObject.Key<Double> APPLIED_RENDER_SCALE = MassifObject.key("appliedRenderScale");
     /** Returns the number of elements in the array. */
     public static final MassifObject.Key<Long> ARRAY_SIZE = MassifObject.key("arraySize");

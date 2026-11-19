@@ -114,7 +114,7 @@ jobs:
   publish:
     name: Publish
     needs: [package]
-    if: ${{ inputs.publish }}
+    if: ${{ !cancelled() && needs.package.result == 'success' && inputs.publish }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

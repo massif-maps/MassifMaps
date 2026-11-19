@@ -104,7 +104,7 @@ jobs:
     name: Publish the dev build
     # not under release.yml: a call carries its version and its caller's workflow_dispatch event
     needs: [package]
-    if: ${{ !inputs.version && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ !cancelled() && needs.package.result == 'success' && !inputs.version && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -129,7 +129,7 @@ jobs:
   release:
     name: Release
     needs: [package]
-    if: ${{ inputs.version && inputs.publish }}
+    if: ${{ !cancelled() && needs.package.result == 'success' && inputs.version && inputs.publish }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
